@@ -1,8 +1,9 @@
 #include <memory>
 #include <verilated.h>
+#include "verilated_vcd_c.h"
 #include "Vcounter.h"
 
-#define MAX_CLOCK 40
+#define MAX_TIME 40
 
 
 int main(int argc, char** argv) {
@@ -12,13 +13,16 @@ int main(int argc, char** argv) {
     contextp->randReset(2);
     contextp->traceEverOn(true);
     contextp->commandArgs(argc, argv);
+    const std::unique_ptr<VerilatedVcdC> tfp{new VerilatedVcdC};
     const std::unique_ptr<Vcounter> top{new Vcounter{contextp.get(), "TOP"}};
 
     // set initial input signals
     top->rst_n = !0;
     top->clk = 0;
+    top->trace(tfp.get(), 99);
+    tfp->open("logs/sim.vcd");
 
-    for (int clk=0; clk < MAX_CLOCK && !contextp->gotFinish(); ++clk) {
+    while (contextp->time() < MAX_TIME && !contextp->gotFinish()) {
         contextp->timeInc(1);
         top->clk = !top->clk;
 
@@ -27,6 +31,7 @@ int main(int argc, char** argv) {
         }
 
         top->eval();
+        tfp->dump(contextp->time());
 
         VL_PRINTF("[%" PRId64 "] clk=%x rstl=%x counter=%" PRIx32 "\n",
                     contextp->time(), top->clk, top->rst_n, top->count);
@@ -36,6 +41,7 @@ int main(int argc, char** argv) {
 
     top->final();
 
+    tfp->close();
     Verilated::mkdir("logs");
     contextp->coveragep()->write("logs/coverage.dat");
 

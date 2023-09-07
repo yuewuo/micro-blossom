@@ -31,3 +31,6 @@ counter_test:
 	obj_dir/Vcounter +trace
 	# @rm -rf logs/annotated
 	# verilator_coverage --annotate logs/annotated logs/coverage.dat
+
+view:
+	gtkwave logs/sim.vcd
