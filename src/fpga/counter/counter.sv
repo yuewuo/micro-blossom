@@ -7,9 +7,9 @@ module counter (
 );
 
     // Parameter for maximum count value
-    parameter MAX_COUNT = 32'd0010;
+    parameter MAX_COUNT = 32'h0010;
 
-    always @(posedge clk or negedge rst_n) begin
+    always_ff @(posedge clk) begin
         if (!rst_n) begin
             $display("reset counter");
             count <= 32'd0;         // If reset is active, initialize counter to zero

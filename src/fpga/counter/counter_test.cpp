@@ -2,7 +2,7 @@
 #include <verilated.h>
 #include "Vcounter.h"
 
-#define MAX_CLOCK 100
+#define MAX_CLOCK 40
 
 
 int main(int argc, char** argv) {
@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
 
         top->eval();
 
-        VL_PRINTF("[%" PRId64 "] clk=%x rstl=%x counter=%" PRIx64 "\n",
+        VL_PRINTF("[%" PRId64 "] clk=%x rstl=%x counter=%" PRIx32 "\n",
                     contextp->time(), top->clk, top->rst_n, top->count);
 
         // TODO: you can add any test assertions here
