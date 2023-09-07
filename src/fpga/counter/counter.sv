@@ -1,3 +1,5 @@
+`timescale 1ns/1ps
+
 module counter (
     input clk,       // Clock input
     input rst_n,     // Active low reset
@@ -5,15 +7,19 @@ module counter (
 );
 
     // Parameter for maximum count value
-    parameter MAX_COUNT = 32'd1000; // Default to 1000, adjust as necessary
+    parameter MAX_COUNT = 32'd0010;
 
     always @(posedge clk or negedge rst_n) begin
-        if (!rst_n) 
+        if (!rst_n) begin
+            $display("reset counter");
             count <= 32'd0;         // If reset is active, initialize counter to zero
-        else if (count == MAX_COUNT)
+        end else if (count == MAX_COUNT) begin
+            $display("wrap counter");
             count <= 32'd0;         // If counter reaches the maximum value, wrap around
-        else
+        end else begin
+            $display("add counter");
             count <= count + 32'd1; // Otherwise, just increment the counter
+        end
     end
 
 endmodule
