@@ -5,14 +5,12 @@
 int main()
 {
     printf("sizeof(BroadcastMessage) = %ld\n", sizeof(BroadcastMessage));
-    assert(sizeof(BroadcastMessage) <= 4);
+    assert(sizeof(BroadcastMessage) == 6);
 
-    printf("sizeof(VertexFullAddress) = %ld\n", sizeof(VertexFullAddress));
-    assert(sizeof(VertexFullAddress) == 8);
+    printf("sizeof(GlobalVertex) = %ld\n", sizeof(GlobalVertex));
+    assert(sizeof(GlobalVertex) == 8);
 
-    assert(VERTEX_T_BITS + VERTEX_I_BITS + VERTEX_J_BITS <= 8 * sizeof(VERTEX_BITS_DATA_TYPE));
-    printf("sizeof(VertexAddress) = %ld\n", sizeof(VertexAddress));
-    assert(sizeof(VertexAddress) == sizeof(VERTEX_BITS_DATA_TYPE));
+    printf("sizeof(LocalVertex) = %ld\n", sizeof(LocalVertex));
 
     return 0;
 }

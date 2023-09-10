@@ -1,48 +1,132 @@
 #include "stdint.h"
 
-typedef struct
-{
-    unsigned char type : 4;
-} BroadcastMessage;
-
-typedef struct
-{
-
-} ConvergecastMessage;
+#define WEIGHT_DATA_TYPE uint8_t
 
 /*
- * In the algorithm we always use full address to distinguish vertices between fusion partitions,
- * but such a 64-bit full address is too large for distributed dual module logic.
- * The dual driver should convert the full address `VertexFullAddress` to a local address `VertexAddress`
- * and vice versa when it interacts with the distributed dual module.
- * The dual driver needs to maintain an offset value of type `VertexFullAddress` to do this conversion.
+ * A local vertex address is the coordinate system used in a single FPGA decoding block.
+ * Usually, the size of the decoding block is limited by the resources in the FPGA,
+ * which means we could use much fewer bits to identify each vertex in the block.
+ * When a vertex is mirrored, e.g. the real vertex exists in another block, the software
+ * is responsible for mirroring their behavior when fusing them.
+ * FPGA side need this `mirror` bit to determine whether it should notify the CPU side
+ * of any state updates of the vertex
  */
-typedef struct
-{
-    uint32_t t;
-    uint16_t i;
-    uint16_t j;
-} VertexFullAddress;
+#define LOCAL_VERTEX_DATA_TYPE uint16_t
+typedef LOCAL_VERTEX_DATA_TYPE LocalVertex;
+typedef LOCAL_VERTEX_DATA_TYPE LocalNode;
 
-#ifndef VERTEX_T_BITS
-#define VERTEX_T_BITS 6 // t <= 64
-#endif
-
-#ifndef VERTEX_I_BITS
-#define VERTEX_I_BITS 5 // i <= 32
-#endif
-
-#ifndef VERTEX_J_BITS
-#define VERTEX_J_BITS 5 // j <= 32
-#endif
-
-#ifndef VERTEX_BITS_DATA_TYPE
-#define VERTEX_BITS_DATA_TYPE uint16_t // 6 + 5 + 5 = 16 bits
-#endif
+/*
+ * Decoding block requires larger address
+ */
+#define T_BIAS_DATA_TYPE uint32_t      // 2^32 measurement rounds
+#define BLOCK_INDEX_DATA_TYPE uint16_t // 2^16=65536 logical qubits
 
 typedef struct
 {
-    VERTEX_BITS_DATA_TYPE t : VERTEX_T_BITS;
-    VERTEX_BITS_DATA_TYPE i : VERTEX_I_BITS;
-    VERTEX_BITS_DATA_TYPE j : VERTEX_J_BITS;
-} VertexAddress;
+    T_BIAS_DATA_TYPE t_bias;
+    BLOCK_INDEX_DATA_TYPE block_idx;
+    LocalVertex local;
+} GlobalVertex;
+
+typedef struct
+{
+    T_BIAS_DATA_TYPE t_bias;
+    BLOCK_INDEX_DATA_TYPE block_idx;
+    LocalNode local;
+} GlobalNode;
+
+/*
+ * Broadcast Message
+ */
+
+enum __attribute__((__packed__)) BroadcastType
+{
+    Grow = 0b00,
+    SetSpeed = 0b01,
+    SetParent = 0b10,
+};
+
+// use one-hot encoding for simpler hardware
+enum __attribute__((__packed__)) Speed
+{
+    Stop = 0b00,
+    Plus = 0b01,
+    Minus = 0b10,
+};
+
+typedef struct
+{
+    WEIGHT_DATA_TYPE length;
+} BoardcastMessageGrow;
+
+typedef struct
+{
+    LocalNode node;
+    Speed speed;
+} BoardcastMessageSetSpeed;
+
+typedef struct
+{
+    LocalNode node;
+    LocalNode parent;
+} BoardcastMessageSetParent;
+
+typedef struct
+{
+    BroadcastType type;
+    union
+    {
+        BoardcastMessageGrow grow;
+        BoardcastMessageSetSpeed set_speed;
+        BoardcastMessageSetParent set_parent;
+    } data;
+} BroadcastMessage;
+
+/*
+ * Convergecast Message
+ */
+
+enum __attribute__((__packed__)) ConvergecastType
+{
+    NonZeroGrow = 0b100,
+    Conflict = 0b000,
+    TouchingVirtual = 0b010,
+    BlossomNeedExpand = 0b001,
+};
+
+typedef struct
+{
+    WEIGHT_DATA_TYPE length;
+} ConvergecastMessageNonZeroGrow;
+
+typedef struct
+{
+    LocalNode node_1;
+    LocalVertex touch_1;
+    LocalNode node_2;
+    LocalVertex touch_2;
+} ConvergecastMessageConflict;
+
+typedef struct
+{
+    LocalNode node_1;
+    LocalVertex touch_1;
+    LocalVertex vertex; // it touches a virtual vertex
+} ConvergecastMessageTouchingVirtual;
+
+typedef struct
+{
+    LocalNode blossom;
+} ConvergecastMessageBlossomNeedExpand;
+
+typedef struct
+{
+    ConvergecastType type;
+    union
+    {
+        ConvergecastMessageNonZeroGrow non_zero_grow;
+        ConvergecastMessageConflict conflict;
+        ConvergecastMessageTouchingVirtual touching_virtual;
+        ConvergecastMessageBlossomNeedExpand blossom_need_expand;
+    } data;
+} ConvergecastMessage;
