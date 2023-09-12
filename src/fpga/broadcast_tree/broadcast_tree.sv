@@ -1,21 +1,21 @@
 
+function integer max_full_subtree_nodes(integer nodes, max_fanouts);
+begin
+    max_full_subtree_nodes = 1;
+    while (max_full_subtree_nodes * max_fanouts < nodes) begin
+        max_full_subtree_nodes *= max_fanouts;
+    end
+end
+endfunction
+
 module broadcast_tree #(
     parameter MESSAGE_WIDTH = 16,
-    parameter MAX_FANOUT = 5,
-    parameter NODES = 11
+    parameter MAX_FANOUT = 3,
+    parameter NODES = 100
 ) (
     input wire [MESSAGE_WIDTH-1:0] message,
     output wire [MESSAGE_WIDTH-1:0] outputs [0:NODES-1]
 );
-
-function integer max_full_subtree_nodes(integer nodes);
-begin
-    max_full_subtree_nodes = 1;
-    while (max_full_subtree_nodes * MAX_FANOUT < nodes) begin
-        max_full_subtree_nodes *= MAX_FANOUT;
-    end
-end
-endfunction
 
 genvar i;
 generate
@@ -24,7 +24,7 @@ generate
             assign outputs[i] = message;
         end
     end else begin : gen_subtree
-        parameter subtree = max_full_subtree_nodes(NODES);
+        parameter subtree = max_full_subtree_nodes(NODES, MAX_FANOUT);
         parameter subtree_num = NODES / subtree;
         for (i=0; i<subtree_num; i=i+1) begin
             broadcast_tree #(
