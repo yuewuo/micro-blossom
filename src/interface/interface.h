@@ -14,6 +14,9 @@
 #define LOCAL_VERTEX_DATA_TYPE uint16_t
 typedef LOCAL_VERTEX_DATA_TYPE LocalVertex;
 typedef LOCAL_VERTEX_DATA_TYPE LocalNode;
+#define BLOSSOM_NODE_INDICATE 0x8000
+#define IS_DEFECT_NODE(local_node) (!(local_node & BLOSSOM_NODE_INDICATE))
+#define IS_BLOSSOM_NODE(local_node) (!IS_DEFECT_NODE(local_node))
 
 /*
  * Decoding block requires larger address
@@ -43,7 +46,7 @@ enum __attribute__((__packed__)) BroadcastType
 {
     Grow = 0b00,
     SetSpeed = 0b01,
-    SetParent = 0b10,
+    SetBlossom = 0b10,
 };
 
 // use one-hot encoding for simpler hardware
@@ -69,7 +72,7 @@ typedef struct
 {
     LocalNode node;
     LocalNode parent;
-} BoardcastMessageSetParent;
+} BoardcastMessageSetBlossom;
 
 typedef struct
 {
@@ -78,7 +81,7 @@ typedef struct
     {
         BoardcastMessageGrow grow;
         BoardcastMessageSetSpeed set_speed;
-        BoardcastMessageSetParent set_parent;
+        BoardcastMessageSetBlossom set_blossom;
     } data;
 } BroadcastMessage;
 
@@ -90,7 +93,7 @@ enum __attribute__((__packed__)) ConvergecastType
 {
     NonZeroGrow = 0b100,
     Conflict = 0b000,
-    TouchingVirtual = 0b010,
+    ConflictVirtual = 0b010,
     BlossomNeedExpand = 0b001,
 };
 
@@ -112,7 +115,7 @@ typedef struct
     LocalNode node_1;
     LocalVertex touch_1;
     LocalVertex vertex; // it touches a virtual vertex
-} ConvergecastMessageTouchingVirtual;
+} ConvergecastMessageConflictVirtual;
 
 typedef struct
 {
@@ -126,7 +129,7 @@ typedef struct
     {
         ConvergecastMessageNonZeroGrow non_zero_grow;
         ConvergecastMessageConflict conflict;
-        ConvergecastMessageTouchingVirtual touching_virtual;
+        ConvergecastMessageConflictVirtual conflict_virtual;
         ConvergecastMessageBlossomNeedExpand blossom_need_expand;
     } data;
 } ConvergecastMessage;
