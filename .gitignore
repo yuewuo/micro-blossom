@@ -1,2 +1,4 @@
 obj_dir
 logs
+tmp
+.metals
