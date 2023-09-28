@@ -1,0 +1,197 @@
+{
+    "$schema": "https://json-schema.org/draft/2019-09/schema",
+    "$id": "https://raw.githubusercontent.com/yuewuo/distributed-mwpm/main/resources/graphs/schema.json",
+    "type": "object",
+    "default": {},
+    "title": "Single MWPM Solver Initializer",
+    "required": [
+        "vertex_num",
+        "positions",
+        "weighted_edges"
+    ],
+    "properties": {
+        "vertex_num": {
+            "type": "integer",
+            "default": 0,
+            "title": "number of vertices",
+            "examples": [
+                3
+            ]
+        },
+        "positions": {
+            "type": "array",
+            "default": [],
+            "title": "visualization position of the vertices",
+            "items": {
+                "type": "object",
+                "title": "Position",
+                "required": [
+                    "t",
+                    "i",
+                    "j"
+                ],
+                "properties": {
+                    "t": {
+                        "type": "number",
+                        "title": "time coordinate",
+                        "examples": [
+                            0
+                        ]
+                    },
+                    "i": {
+                        "type": "number",
+                        "title": "spatial coordinate (i axis)",
+                        "examples": [
+                            0
+                        ]
+                    },
+                    "j": {
+                        "type": "number",
+                        "title": "spatial coordinate (j axis)",
+                        "examples": [
+                            0,
+                            1,
+                            2
+                        ]
+                    }
+                },
+                "examples": [
+                    {
+                        "t": 0,
+                        "i": 0,
+                        "j": 0
+                    },
+                    {
+                        "t": 0,
+                        "i": 0,
+                        "j": 1
+                    },
+                    {
+                        "t": 0,
+                        "i": 0,
+                        "j": 2
+                    }
+                ]
+            },
+            "examples": [
+                [
+                    {
+                        "t": 0,
+                        "i": 0,
+                        "j": 0
+                    },
+                    {
+                        "t": 0,
+                        "i": 0,
+                        "j": 1
+                    },
+                    {
+                        "t": 0,
+                        "i": 0,
+                        "j": 2
+                    }
+                ]
+            ]
+        },
+        "weighted_edges": {
+            "type": "array",
+            "default": [],
+            "title": "Weighted Edges",
+            "items": {
+                "type": "object",
+                "title": "Weighted edges",
+                "required": [
+                    "l",
+                    "r",
+                    "w"
+                ],
+                "properties": {
+                    "l": {
+                        "type": "integer",
+                        "title": "left vertex index",
+                        "examples": [
+                            0,
+                            1
+                        ]
+                    },
+                    "r": {
+                        "type": "integer",
+                        "title": "right vertex index",
+                        "examples": [
+                            1,
+                            2
+                        ]
+                    },
+                    "w": {
+                        "type": "integer",
+                        "title": "integer weight",
+                        "examples": [
+                            100,
+                            150
+                        ]
+                    }
+                },
+                "examples": [
+                    {
+                        "l": 0,
+                        "r": 1,
+                        "w": 100
+                    },
+                    {
+                        "l": 1,
+                        "r": 2,
+                        "w": 150
+                    }
+                ]
+            },
+            "examples": [
+                [
+                    {
+                        "l": 0,
+                        "r": 1,
+                        "w": 100
+                    },
+                    {
+                        "l": 1,
+                        "r": 2,
+                        "w": 150
+                    }
+                ]
+            ]
+        }
+    },
+    "examples": [
+        {
+            "vertex_num": 3,
+            "positions": [
+                {
+                    "t": 0,
+                    "i": 0,
+                    "j": 0
+                },
+                {
+                    "t": 0,
+                    "i": 0,
+                    "j": 1
+                },
+                {
+                    "t": 0,
+                    "i": 0,
+                    "j": 2
+                }
+            ],
+            "weighted_edges": [
+                {
+                    "l": 0,
+                    "r": 1,
+                    "w": 100
+                },
+                {
+                    "l": 1,
+                    "r": 2,
+                    "w": 150
+                }
+            ]
+        }
+    ]
+}
