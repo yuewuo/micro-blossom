@@ -2,7 +2,7 @@ import mill._, scalalib._
 
 val spinalVersion = "1.9.0"
 
-object projectname extends SbtModule {
+object microblossom extends SbtModule {
   def scalaVersion = "2.12.16"
   override def millSourcePath = os.pwd
   def sources = T.sources(
