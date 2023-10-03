@@ -10,7 +10,13 @@ val spinalIdslPlugin = compilerPlugin("com.github.spinalhdl" %% "spinalhdl-idsl-
 lazy val microblossom = (project in file("."))
   .settings(
     Compile / scalaSource := baseDirectory.value / "spinal",
-    libraryDependencies ++= Seq(spinalCore, spinalLib, spinalIdslPlugin)
+    Test / scalaSource := baseDirectory.value / "spinal",
+    libraryDependencies ++= Seq(
+      spinalCore,
+      spinalLib,
+      spinalIdslPlugin,
+      "org.scalatest" %% "scalatest" % "3.2.5"
+    )
   )
 
 fork := true
