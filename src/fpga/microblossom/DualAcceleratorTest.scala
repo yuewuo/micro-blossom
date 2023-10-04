@@ -33,3 +33,13 @@ class DualConfigTest extends AnyFunSuite {
   }
 
 }
+
+class DualAcceleratorTest extends AnyFunSuite {
+
+  test("construct accelerator from file") {
+    val config = new DualConfig(filename = "./resources/graphs/example_repetition_code.json")
+    // SpinalVerilog(new DualAccelerator(config))
+    Config.spinal.generateVerilog(new DualAccelerator(config))
+  }
+
+}

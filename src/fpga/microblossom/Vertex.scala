@@ -3,30 +3,17 @@ package microblossom
 import spinal.core._
 import microblossom._
 
-// // Hardware definition
-// case class Vertex(VertexBits: Int, VertexIndex: Int) extends Component {
-//   val io = new Bundle {
-//     val instruction = in(VertexInstruction(VertexBits))
-//   }
+case class VertexOutput(config: DualConfig) extends Bundle {
+  val someInfoToEdge = Bits(3 bits)
+}
 
-//   val counter = Reg(UInt(8 bits)) init 0
+case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
+  val io = new Bundle {
+    val instruction = in(InternalInstruction(config))
+    val opcode = out(Bits(2 bits))
+    val vertexOutputs = out(Vec.fill(config.numIncidentEdgeOf(vertexIndex))(VertexOutput(config)))
+    val edgeInputs = in(Vec.fill(config.numIncidentEdgeOf(vertexIndex))(EdgeOutput(config)))
+  }
 
-//   // decode stage
-//   val command = RegInit(VertexInstructionType.None)
-//   command := io.instruction.command
-//   switch(command) {
-//     is(VertexInstructionType.Grow) {}
-//   }
-
-//   // io.state := counter
-//   // io.flag := (counter === 0) | io.cond1
-// }
-
-// object VertexVerilog extends App {
-//   // an example of vertex
-//   Config.spinal.generateVerilog(Vertex(8, 1))
-// }
-
-// object VertexVhdl extends App {
-//   Config.spinal.generateVhdl(Vertex(8, 1))
-// }
+  io.opcode := io.instruction.opcode
+}

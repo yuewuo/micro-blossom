@@ -48,12 +48,12 @@ import spinal.core._
  *
  */
 
-object OpCode extends SpinalEnum {
-  val Grow, SetSpeed, SetBlossom = newElement()
-  val Match = newElement()
-}
-
-case class Instruction(MessageBits: Int) extends Bundle {
-  val opcode = OpCode()
-  val payload = Bits(MessageBits bits)
+// note: use `def` instead of `val` to define hardware constant, see https://github.com/SpinalHDL/SpinalHDL/issues/294
+object Architecture {
+  object OpCode1 {
+    def SetSpeed = B"00"
+    def SetBlossom = B"01"
+    def Match = B"11"
+    def Grow = B"10"
+  }
 }
