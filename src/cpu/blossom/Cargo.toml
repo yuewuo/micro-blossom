@@ -1,0 +1,51 @@
+[package]
+name = "micro-blossom"
+version = "0.0.0"
+authors = ["Yue Wu <wuyue16pku@gmail.com>"]
+edition = "2021"
+license = "MIT"
+description = "hardware MWPM decoder"
+readme = "README.md"
+keywords = ["QEC", "quantum-computing", "error-correction", "visualization"]
+categories = ["science"]
+default-run = "micro_blossom"
+
+# see https://doc.rust-lang.org/1.39.0/cargo/reference/manifest.html#the-documentation-field-optional
+[badges]
+maintenance = { status = "actively-developed" }
+
+[lib]
+name = "micro_blossom"
+path = "src/lib.rs"
+crate-type = ["lib", "cdylib"]
+
+[[bin]]
+name = "micro_blossom"
+path = "src/main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+# to enable a feature, use `--features xxx`
+default = []
+
+[dependencies]
+rand_xoshiro = "0.6.0"
+libc = "0.2.124"
+cfg-if = "1.0.0"
+priority-queue = "1.2.1"
+parking_lot = { version = "0.12.1", features = ["hardware-lock-elision"] }
+serde = { version = "1.0.117", features = ["derive", "rc"] }
+serde_json = "1.0.59"
+chrono = "0.4.19"
+derivative = "2.2.0"
+urlencoding = "2.1.0"
+clap = { version = "4.2.4", features = ["cargo", "derive"] }
+pbr = "1.0.4"
+rayon = "1.7.0"
+weak-table = "0.3.2"
+rand = "0.8.5"
+lazy_static = "1.4.0"
+petgraph = "0.6.3"
+qecp = { version = "0.2.2", features = ["fusion-blossom"], optional = true }
+fusion-blossom = "0.2.3"

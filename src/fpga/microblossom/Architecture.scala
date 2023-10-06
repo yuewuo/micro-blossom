@@ -8,7 +8,7 @@ import spinal.core._
  * The instruction set of dual accelerator: each instruction is 32-bits wide:
  * -------------------------------------------------------------------------------------------------
  * |31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0|
- * |                  Node[14:0]                |Speed|                   0                  |2'b00| SetSpeed
+ * |                  Node[14:0]                |Speed|                                     0|2'b00| SetSpeed
  * |                  Node[14:0]                |                  Blossom[14:0]             |2'b01| SetBlossom
  * |               Vertex_1[14:0]               |                 Vertex_2[14:0]             |2'b11| Match
  * |                                        Length[29:0]                                     |2'b10| Grow
@@ -17,11 +17,13 @@ import spinal.core._
  * |                                                             EdgeIndex       | 3'b010 | 3'b100 | AccumulateEdge
  * |                                     Reserved                                | 3'b011 | 3'b100 | Reserved
  * |                                         0                                   | 3'b100 | 3'b100 | Reset
- * |                  Time[14:0]                |           Channel[11:0]        | 3'b101 | 3'b100 | LoadSyndrome
+ * |                  Time[14:0]                |           Channel[11:0]        | 3'b101 | 3'b100 | LoadSyndromeExternal
+ * |                 Vertex[14:0]               |                 0              | 3'b110 | 3'b100 | AddDefectVertex(debug)
+ * |                                                                             | 3'b111 | 3'b100 | Reserved
  * -------------------------------------------------------------------------------------------------
  *
  *
- * The return command is also 32-bits wide, but some messages are splitted into two
+ * The return value is also 32-bits wide, but some messages are splitted into two
  * -------------------------------------------------------------------------------------------------
  * |31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0|
  * |                                        Length[29:0]                                     |2'b00| NonZeroGrow
@@ -30,6 +32,8 @@ import spinal.core._
  * |               Vertex_1[14:0]               |                 Vertex_2[14:0]             |2'b01| Conflict(part 3)
  * |                 Node[14:0]                 |                  Touch[14:0]               |2'b10| ConflictVirtual(part 1)
  * |                Vertex[14:0]                |               VirtualVertex[14:0]          |2'b10| ConflictVirtual(part 2)
+ * |                Blossom[14:0]               |                                           0|2'b11| BlossomNeedExpand
+ * |                                                                             | 3'b111 | 3'b100 | Reserved
  * -------------------------------------------------------------------------------------------------
  *
  *
