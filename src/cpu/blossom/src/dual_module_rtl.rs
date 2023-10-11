@@ -9,7 +9,9 @@
 
 use fusion_blossom::dual_module::*;
 use fusion_blossom::util::*;
+use fusion_blossom::visualize::*;
 
+#[derive(Clone, Debug)]
 pub struct DualModuleRTL {
     // always reconstruct the whole graph when reset
     pub initializer: SolverInitializer,
@@ -23,6 +25,7 @@ pub enum Instruction {
     SetBlossom { node: NodeIndex, blossom: NodeIndex },
     AddDefectVertex { vertex: VertexIndex },
     FindObstacle { region_preference: usize },
+    Grow { length: Weight },
 }
 
 pub enum Response {
@@ -43,6 +46,15 @@ pub enum Response {
         vertex: VertexIndex,
         virtual_vertex: VertexIndex,
     },
+    BlossomNeedExpand {
+        blossom: NodeIndex,
+    },
+}
+
+impl Response {
+    pub fn reduce(resp1: Option<Response>, resp2: Option<Response>) -> Option<Response> {
+        None // TODO
+    }
 }
 
 pub fn get_blossom_roots(dual_node_ptr: &DualNodePtr) -> Vec<NodeIndex> {
@@ -60,12 +72,42 @@ pub fn get_blossom_roots(dual_node_ptr: &DualNodePtr) -> Vec<NodeIndex> {
 }
 
 impl DualModuleRTL {
+    fn execute_instruction(&mut self, instruction: Instruction) -> Option<Response> {
+        // register transfer logic
+        let vertices_next = self.vertices.iter().map(|vertex| vertex.next(self)).collect();
+        let edges_next = self.edges.iter().map(|edge| edge.next(self)).collect();
+        let response = self
+            .vertices
+            .iter()
+            .map(|vertex| vertex.respond(self))
+            .chain(self.edges.iter().map(|edge| edge.respond(self)))
+            .reduce(Response::reduce);
+        // update registers
+        self.vertices = vertices_next;
+        self.edges = edges_next;
+        None
+    }
+}
+
+impl DualModuleImpl for DualModuleRTL {
+    fn new_empty(initializer: &SolverInitializer) -> Self {
+        let mut dual_module = DualModuleRTL {
+            initializer: initializer.clone(),
+            vertices: vec![],
+            edges: vec![],
+            nodes: vec![],
+        };
+        dual_module.clear();
+        dual_module
+    }
+
     fn clear(&mut self) {
         // set vertices
         self.vertices = (0..self.initializer.vertex_num)
             .map(|vertex_index| Vertex {
                 vertex_index,
                 edge_indices: vec![],
+                speed: DualNodeGrowState::Stay,
                 is_virtual: false,
                 is_defect: false,
                 node_index: None,
@@ -91,19 +133,12 @@ impl DualModuleRTL {
                 self.vertices[vertex_index].edge_indices.push(edge_index);
             }
         }
+        // each vertex must have at least one incident edge
+        for vertex in self.vertices.iter() {
+            assert!(!vertex.edge_indices.is_empty());
+        }
         // clear nodes
         self.nodes.clear();
-    }
-
-    fn new_empty(initializer: &SolverInitializer) -> Self {
-        let mut dual_module = DualModuleRTL {
-            initializer: initializer.clone(),
-            vertices: vec![],
-            edges: vec![],
-            nodes: vec![],
-        };
-        dual_module.clear();
-        dual_module
     }
 
     fn add_dual_node(&mut self, dual_node_ptr: &DualNodePtr) {
@@ -181,6 +216,7 @@ impl DualModuleRTL {
                 (self.nodes[node].clone(), self.nodes[touch].clone()),
                 (virtual_vertex, false),
             ),
+            Response::BlossomNeedExpand { blossom } => MaxUpdateLength::BlossomNeedExpand(self.nodes[blossom].clone()),
             _ => unreachable!(),
         };
         let mut group_max_update_length = GroupMaxUpdateLength::new();
@@ -188,20 +224,39 @@ impl DualModuleRTL {
         group_max_update_length
     }
 
-    fn execute_instruction(&mut self, instruction: Instruction) -> Option<Response> {
-        None
+    fn grow(&mut self, length: Weight) {
+        self.execute_instruction(Instruction::Grow { length });
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Vertex {
     pub vertex_index: VertexIndex,
     pub edge_indices: Vec<EdgeIndex>,
+    pub speed: DualNodeGrowState,
     pub is_virtual: bool,
     pub is_defect: bool,
     pub node_index: Option<NodeIndex>, // propagated_dual_node
     pub root_index: Option<NodeIndex>, // propagated_grandson_dual_node
 }
 
+impl Vertex {
+    // compute the next register values
+    fn next(&self, dual_module: &DualModuleRTL) -> Self {
+        self.clone()
+    }
+
+    // generate a response
+    fn respond(&self, dual_module: &DualModuleRTL) -> Option<Response> {
+        // only detect when y_S = 0 and delta y_S = -1, whether there are two growing
+        if self.speed != DualNodeGrowState::Shrink {
+            return None;
+        }
+        None
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct Edge {
     pub edge_index: EdgeIndex,
     pub weight: Weight,
@@ -211,11 +266,122 @@ pub struct Edge {
     pub right_growth: Weight,
 }
 
+impl Edge {
+    // compute the next register values
+    fn next(&self, dual_module: &DualModuleRTL) -> Self {
+        self.clone()
+    }
+
+    // generate a response
+    fn respond(&self, dual_module: &DualModuleRTL) -> Option<Response> {
+        None
+    }
+}
+
+impl FusionVisualizer for DualModuleRTL {
+    #[allow(clippy::unnecessary_cast)]
+    fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+        let vertices: Vec<serde_json::Value> = self
+            .vertices
+            .iter()
+            .map(|vertex| {
+                let mut value = json!({
+                    if abbrev { "v" } else { "is_virtual" }: i32::from(vertex.is_virtual),
+                    if abbrev { "s" } else { "is_defect" }: i32::from(vertex.is_defect),
+                });
+                if let Some(node_index) = vertex.node_index.as_ref() {
+                    value.as_object_mut().unwrap().insert(
+                        (if abbrev { "p" } else { "propagated_dual_node" }).to_string(),
+                        json!(node_index),
+                    );
+                }
+                if let Some(root_index) = vertex.root_index.as_ref() {
+                    value.as_object_mut().unwrap().insert(
+                        (if abbrev { "pg" } else { "propagated_grandson_dual_node" }).to_string(),
+                        json!(root_index),
+                    );
+                }
+                value
+            })
+            .collect();
+        let edges: Vec<serde_json::Value> = self
+            .edges
+            .iter()
+            .map(|edge| {
+                let mut value = json!({
+                    if abbrev { "w" } else { "weight" }: edge.weight,
+                    if abbrev { "l" } else { "left" }: edge.left_index,
+                    if abbrev { "r" } else { "right" }: edge.right_index,
+                    if abbrev { "lg" } else { "left_growth" }: edge.left_growth,
+                    if abbrev { "rg" } else { "right_growth" }: edge.right_growth,
+                });
+                let left_vertex = &self.vertices[edge.left_index];
+                let right_vertex = &self.vertices[edge.right_index];
+                if let Some(node_index) = left_vertex.node_index.as_ref() {
+                    value
+                        .as_object_mut()
+                        .unwrap()
+                        .insert((if abbrev { "ld" } else { "left_dual_node" }).to_string(), json!(node_index));
+                }
+                if let Some(root_index) = left_vertex.root_index.as_ref() {
+                    value.as_object_mut().unwrap().insert(
+                        (if abbrev { "lgd" } else { "left_grandson_dual_node" }).to_string(),
+                        json!(root_index),
+                    );
+                }
+                if let Some(node_index) = right_vertex.node_index.as_ref() {
+                    value
+                        .as_object_mut()
+                        .unwrap()
+                        .insert((if abbrev { "rd" } else { "right_dual_node" }).to_string(), json!(node_index));
+                }
+                if let Some(root_index) = right_vertex.root_index.as_ref() {
+                    value.as_object_mut().unwrap().insert(
+                        (if abbrev { "rgd" } else { "right_grandson_dual_node" }).to_string(),
+                        json!(root_index),
+                    );
+                }
+                value
+            })
+            .collect();
+        json!({
+            "vertices": vertices,
+            "edges": edges,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fusion_blossom::example_codes::*;
 
-    fn dual_module_rtl_vertex_1() {
-        // cargo test dual_module_rtl_vertex_1 -- --nocapture
+    // to use visualization, we need the folder of fusion-blossom repo
+    // e.g. export FUSION_DIR=/Users/wuyue/Documents/GitHub/fusion-blossom
+
+    #[test]
+    fn dual_module_rtl_basic_1() {
+        // cargo test dual_module_rtl_basic_1 -- --nocapture
+        let visualize_filename = "dual_module_rtl_basic_1.json".to_string();
+        let half_weight = 500;
+        let mut code = CodeCapacityPlanarCode::new(7, 0.1, half_weight);
+
+        let mut visualizer = Visualizer::new(
+            option_env!("FUSION_DIR").map(|dir| dir.to_owned() + "/visualize/data/" + visualize_filename.as_str()),
+            code.get_positions(),
+            true,
+        )
+        .unwrap();
+        print_visualize_link(visualize_filename.clone());
+        // create dual module
+        let initializer = code.get_initializer();
+        let mut dual_module = DualModuleRTL::new_empty(&initializer);
+        // a simple syndrome
+        code.vertices[19].is_defect = true;
+        code.vertices[25].is_defect = true;
+        let interface_ptr = DualModuleInterfacePtr::new_load(&code.get_syndrome(), &mut dual_module);
+        visualizer
+            .snapshot_combined("syndrome".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
     }
 }
