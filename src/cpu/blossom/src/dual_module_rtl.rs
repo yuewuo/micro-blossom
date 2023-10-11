@@ -23,7 +23,7 @@ pub struct DualModuleRTL {
 pub enum Instruction {
     SetSpeed { node: NodeIndex, speed: DualNodeGrowState },
     SetBlossom { node: NodeIndex, blossom: NodeIndex },
-    AddDefectVertex { vertex: VertexIndex },
+    AddDefectVertex { vertex: VertexIndex, node: NodeIndex },
     FindObstacle { region_preference: usize },
     Grow { length: Weight },
 }
@@ -71,24 +71,6 @@ pub fn get_blossom_roots(dual_node_ptr: &DualNodePtr) -> Vec<NodeIndex> {
     }
 }
 
-impl DualModuleRTL {
-    fn execute_instruction(&mut self, instruction: Instruction) -> Option<Response> {
-        // register transfer logic
-        let vertices_next = self.vertices.iter().map(|vertex| vertex.next(self)).collect();
-        let edges_next = self.edges.iter().map(|edge| edge.next(self)).collect();
-        let response = self
-            .vertices
-            .iter()
-            .map(|vertex| vertex.respond(self))
-            .chain(self.edges.iter().map(|edge| edge.respond(self)))
-            .reduce(Response::reduce);
-        // update registers
-        self.vertices = vertices_next;
-        self.edges = edges_next;
-        None
-    }
-}
-
 impl DualModuleImpl for DualModuleRTL {
     fn new_empty(initializer: &SolverInitializer) -> Self {
         let mut dual_module = DualModuleRTL {
@@ -108,6 +90,7 @@ impl DualModuleImpl for DualModuleRTL {
                 vertex_index,
                 edge_indices: vec![],
                 speed: DualNodeGrowState::Stay,
+                grown: 0,
                 is_virtual: false,
                 is_defect: false,
                 node_index: None,
@@ -158,7 +141,11 @@ impl DualModuleImpl for DualModuleRTL {
                 // TODO: use priority queue to track shrinking blossom constraint
             }
             DualNodeClass::DefectVertex { defect_index } => {
-                self.execute_instruction(Instruction::AddDefectVertex { vertex: *defect_index });
+                assert!(!self.vertices[*defect_index].is_defect, "cannot set defect twice");
+                self.execute_instruction(Instruction::AddDefectVertex {
+                    vertex: *defect_index,
+                    node: node.index,
+                });
             }
         }
     }
@@ -225,8 +212,57 @@ impl DualModuleImpl for DualModuleRTL {
     }
 
     fn grow(&mut self, length: Weight) {
+        assert!(length > 0, "RTL design doesn't allow negative growth");
         self.execute_instruction(Instruction::Grow { length });
     }
+}
+
+macro_rules! pipeline_staged {
+    ($dual_module:ident, $instruction:ident, $stage_name:ident) => {
+        let vertices_next = $dual_module
+            .vertices
+            .iter()
+            .cloned()
+            .map(|mut vertex| {
+                vertex.$stage_name($dual_module, &$instruction);
+                vertex
+            })
+            .collect();
+        let edges_next = $dual_module
+            .edges
+            .iter()
+            .cloned()
+            .map(|mut edge| {
+                edge.$stage_name($dual_module, &$instruction);
+                edge
+            })
+            .collect();
+        $dual_module.vertices = vertices_next;
+        $dual_module.edges = edges_next;
+    };
+}
+
+impl DualModuleRTL {
+    fn execute_instruction(&mut self, instruction: Instruction) -> Option<Response> {
+        pipeline_staged!(self, instruction, execute_stage);
+        pipeline_staged!(self, instruction, update_stage);
+        let response = self
+            .vertices
+            .iter()
+            .map(|vertex| vertex.respond(self))
+            .chain(self.edges.iter().map(|edge| edge.respond(self)))
+            .reduce(Response::reduce);
+        None
+    }
+}
+
+pub trait DualPipelined {
+    /// execute growth and respond to speed and blossom updates
+    fn execute_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction);
+    /// update the node according to the updated speed and length after growth
+    fn update_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction);
+    /// generate a response after the update stage (and optionally, write back to memory)
+    fn respond(&self, dual_module: &DualModuleRTL) -> Option<Response>;
 }
 
 #[derive(Clone, Debug)]
@@ -234,6 +270,7 @@ pub struct Vertex {
     pub vertex_index: VertexIndex,
     pub edge_indices: Vec<EdgeIndex>,
     pub speed: DualNodeGrowState,
+    pub grown: Weight,
     pub is_virtual: bool,
     pub is_defect: bool,
     pub node_index: Option<NodeIndex>, // propagated_dual_node
@@ -241,9 +278,70 @@ pub struct Vertex {
 }
 
 impl Vertex {
-    // compute the next register values
-    fn next(&self, dual_module: &DualModuleRTL) -> Self {
-        self.clone()
+    pub fn get_speed(&self) -> Weight {
+        match self.speed {
+            DualNodeGrowState::Stay => 0,
+            DualNodeGrowState::Shrink => -1,
+            DualNodeGrowState::Grow => 1,
+        }
+    }
+}
+
+impl DualPipelined for Vertex {
+    fn execute_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {
+        match instruction {
+            Instruction::AddDefectVertex { vertex, node } => {
+                if *vertex == self.vertex_index {
+                    self.is_defect = true;
+                    self.speed = DualNodeGrowState::Grow;
+                    self.root_index = Some(*node);
+                    self.node_index = Some(*node);
+                }
+            }
+            Instruction::SetSpeed { node, speed } => {
+                if Some(*node) == self.node_index {
+                    self.speed = *speed;
+                }
+            }
+            Instruction::Grow { length } => {
+                self.grown += self.get_speed() * length;
+                assert!(self.grown >= 0);
+            }
+            _ => {}
+        }
+    }
+
+    fn update_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {
+        // is there any growing peer trying to propagate to this node?
+        let propagating_peer: Option<&Vertex> = {
+            // find a peer node with positive growth and fully-grown edge
+            self.edge_indices
+                .iter()
+                .map(|&edge_index| {
+                    let edge = &dual_module.edges[edge_index];
+                    let peer_index = edge.get_peer(self.vertex_index);
+                    let peer = &dual_module.vertices[peer_index];
+                    if edge.is_tight_from(peer_index) && peer.speed == DualNodeGrowState::Grow {
+                        Some(peer)
+                    } else {
+                        None
+                    }
+                })
+                .reduce(|a, b| a.or(b))
+                .unwrap()
+        };
+        // is this node contributing to at least one
+        if !self.is_defect && !self.is_virtual && self.grown == 0 {
+            if let Some(peer) = propagating_peer {
+                self.node_index = peer.node_index;
+                self.root_index = peer.root_index;
+                self.speed = peer.speed;
+            } else {
+                self.node_index = None;
+                self.root_index = None;
+                self.speed = DualNodeGrowState::Stay;
+            }
+        }
     }
 
     // generate a response
@@ -267,10 +365,51 @@ pub struct Edge {
 }
 
 impl Edge {
-    // compute the next register values
-    fn next(&self, dual_module: &DualModuleRTL) -> Self {
-        self.clone()
+    pub fn is_tight(&self) -> bool {
+        self.left_growth + self.right_growth >= self.weight
     }
+
+    pub fn get_peer(&self, vertex: VertexIndex) -> VertexIndex {
+        if vertex == self.left_index {
+            self.right_index
+        } else if vertex == self.right_index {
+            self.left_index
+        } else {
+            panic!("vertex is not incident to the edge, cannot get peer")
+        }
+    }
+
+    pub fn is_tight_from(&self, vertex: VertexIndex) -> bool {
+        if vertex == self.left_index {
+            self.left_growth == self.weight
+        } else if vertex == self.right_index {
+            self.right_growth == self.weight
+        } else {
+            panic!("invalid input: vertex is not incident to the edge")
+        }
+    }
+}
+
+impl DualPipelined for Edge {
+    // compute the next register values
+    fn execute_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {
+        match instruction {
+            Instruction::Grow { length } => {
+                let left_vertex = &dual_module.vertices[self.left_index];
+                let right_vertex = &dual_module.vertices[self.right_index];
+                if left_vertex.node_index != right_vertex.node_index {
+                    self.left_growth += left_vertex.get_speed() * length;
+                    self.right_growth += right_vertex.get_speed() * length;
+                    assert!(self.left_growth >= 0);
+                    assert!(self.right_growth >= 0);
+                    assert!(self.left_growth + self.right_growth <= self.weight);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn update_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {}
 
     // generate a response
     fn respond(&self, dual_module: &DualModuleRTL) -> Option<Response> {
@@ -382,6 +521,36 @@ mod tests {
         let interface_ptr = DualModuleInterfacePtr::new_load(&code.get_syndrome(), &mut dual_module);
         visualizer
             .snapshot_combined("syndrome".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        // create dual nodes and grow them by half length
+        let dual_node_19_ptr = interface_ptr.read_recursive().nodes[0].clone().unwrap();
+        let dual_node_25_ptr = interface_ptr.read_recursive().nodes[1].clone().unwrap();
+        dual_module.grow(half_weight);
+        visualizer
+            .snapshot_combined("grow to 0.5".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        dual_module.grow(half_weight);
+        visualizer
+            .snapshot_combined("grow to 1".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        dual_module.grow(half_weight);
+        visualizer
+            .snapshot_combined("grow to 1.5".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        // set to shrink
+        dual_module.set_grow_state(&dual_node_19_ptr, DualNodeGrowState::Shrink);
+        dual_module.set_grow_state(&dual_node_25_ptr, DualNodeGrowState::Shrink);
+        dual_module.grow(half_weight);
+        visualizer
+            .snapshot_combined("shrink to 1".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        dual_module.grow(half_weight);
+        visualizer
+            .snapshot_combined("shrink to 0.5".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        dual_module.grow(half_weight);
+        visualizer
+            .snapshot_combined("shrink to 0".to_string(), vec![&interface_ptr, &dual_module])
             .unwrap();
     }
 }
