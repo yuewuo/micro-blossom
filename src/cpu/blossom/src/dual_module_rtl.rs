@@ -11,13 +11,15 @@ use fusion_blossom::dual_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct DualModuleRTL {
     // always reconstruct the whole graph when reset
     pub initializer: SolverInitializer,
     pub vertices: Vec<Vertex>,
     pub edges: Vec<Edge>,
     pub nodes: Vec<DualNodePtr>,
+    /// temporary list of synchronize requests, not used until hardware fusion
+    pub sync_requests: Vec<SyncRequest>,
 }
 
 pub enum Instruction {
@@ -78,6 +80,7 @@ impl DualModuleImpl for DualModuleRTL {
             vertices: vec![],
             edges: vec![],
             nodes: vec![],
+            sync_requests: vec![],
         };
         dual_module.clear();
         dual_module
@@ -215,6 +218,11 @@ impl DualModuleImpl for DualModuleRTL {
         assert!(length > 0, "RTL design doesn't allow negative growth");
         self.execute_instruction(Instruction::Grow { length });
     }
+
+    fn prepare_nodes_shrink(&mut self, _nodes_circle: &[DualNodePtr]) -> &mut Vec<SyncRequest> {
+        self.sync_requests.clear();
+        &mut self.sync_requests
+    }
 }
 
 macro_rules! pipeline_staged {
@@ -249,20 +257,22 @@ impl DualModuleRTL {
         let response = self
             .vertices
             .iter()
-            .map(|vertex| vertex.respond(self))
-            .chain(self.edges.iter().map(|edge| edge.respond(self)))
+            .map(|vertex| vertex.write_stage(self, &instruction))
+            .chain(self.edges.iter().map(|edge| edge.write_stage(self, &instruction)))
             .reduce(Response::reduce);
         None
     }
 }
 
 pub trait DualPipelined {
+    /// load data from
+    fn load_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {}
     /// execute growth and respond to speed and blossom updates
     fn execute_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction);
     /// update the node according to the updated speed and length after growth
     fn update_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction);
     /// generate a response after the update stage (and optionally, write back to memory)
-    fn respond(&self, dual_module: &DualModuleRTL) -> Option<Response>;
+    fn write_stage(&self, dual_module: &DualModuleRTL, instruction: &Instruction) -> Option<Response>;
 }
 
 #[derive(Clone, Debug)]
@@ -307,6 +317,12 @@ impl DualPipelined for Vertex {
                 self.grown += self.get_speed() * length;
                 assert!(self.grown >= 0);
             }
+            Instruction::SetBlossom { node, blossom } => {
+                if Some(*node) == self.node_index || Some(*node) == self.root_index {
+                    self.node_index = Some(*blossom);
+                    self.speed = DualNodeGrowState::Grow;
+                }
+            }
             _ => {}
         }
     }
@@ -345,7 +361,7 @@ impl DualPipelined for Vertex {
     }
 
     // generate a response
-    fn respond(&self, dual_module: &DualModuleRTL) -> Option<Response> {
+    fn write_stage(&self, dual_module: &DualModuleRTL, instruction: &Instruction) -> Option<Response> {
         // only detect when y_S = 0 and delta y_S = -1, whether there are two growing
         if self.speed != DualNodeGrowState::Shrink {
             return None;
@@ -412,7 +428,7 @@ impl DualPipelined for Edge {
     fn update_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {}
 
     // generate a response
-    fn respond(&self, dual_module: &DualModuleRTL) -> Option<Response> {
+    fn write_stage(&self, dual_module: &DualModuleRTL, instruction: &Instruction) -> Option<Response> {
         None
     }
 }
@@ -504,7 +520,6 @@ mod tests {
         let visualize_filename = "dual_module_rtl_basic_1.json".to_string();
         let half_weight = 500;
         let mut code = CodeCapacityPlanarCode::new(7, 0.1, half_weight);
-
         let mut visualizer = Visualizer::new(
             option_env!("FUSION_DIR").map(|dir| dir.to_owned() + "/visualize/data/" + visualize_filename.as_str()),
             code.get_positions(),
@@ -551,6 +566,82 @@ mod tests {
         dual_module.grow(half_weight);
         visualizer
             .snapshot_combined("shrink to 0".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+    }
+
+    #[test]
+    fn dual_module_rtl_blossom_basics() {
+        // cargo test dual_module_rtl_blossom_basics -- --nocapture
+        let visualize_filename = "dual_module_rtl_blossom_basics.json".to_string();
+        let half_weight = 500;
+        let mut code = CodeCapacityPlanarCode::new(7, 0.1, half_weight);
+        let mut visualizer = Visualizer::new(
+            option_env!("FUSION_DIR").map(|dir| dir.to_owned() + "/visualize/data/" + visualize_filename.as_str()),
+            code.get_positions(),
+            true,
+        )
+        .unwrap();
+        print_visualize_link(visualize_filename.clone());
+        // create dual module
+        let initializer = code.get_initializer();
+        let mut dual_module = DualModuleRTL::new_empty(&initializer);
+        // try to work on a simple syndrome
+        code.vertices[19].is_defect = true;
+        code.vertices[26].is_defect = true;
+        code.vertices[35].is_defect = true;
+        let interface_ptr = DualModuleInterfacePtr::new_load(&code.get_syndrome(), &mut dual_module);
+        visualizer
+            .snapshot_combined("syndrome".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        // create dual nodes and grow them by half length
+        let dual_node_19_ptr = interface_ptr.read_recursive().nodes[0].clone().unwrap();
+        let dual_node_26_ptr = interface_ptr.read_recursive().nodes[1].clone().unwrap();
+        let dual_node_35_ptr = interface_ptr.read_recursive().nodes[2].clone().unwrap();
+        interface_ptr.grow(2 * half_weight, &mut dual_module);
+        assert_eq!(interface_ptr.sum_dual_variables(), 6 * half_weight);
+        visualizer
+            .snapshot_combined("before create blossom".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        let nodes_circle = vec![dual_node_19_ptr.clone(), dual_node_26_ptr.clone(), dual_node_35_ptr.clone()];
+        interface_ptr.set_grow_state(&dual_node_26_ptr, DualNodeGrowState::Shrink, &mut dual_module);
+        let dual_node_blossom = interface_ptr.create_blossom(nodes_circle, vec![], &mut dual_module);
+        interface_ptr.grow(half_weight, &mut dual_module);
+        assert_eq!(interface_ptr.sum_dual_variables(), 7 * half_weight);
+        visualizer
+            .snapshot_combined("blossom grow half weight".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        interface_ptr.grow(half_weight, &mut dual_module);
+        assert_eq!(interface_ptr.sum_dual_variables(), 8 * half_weight);
+        visualizer
+            .snapshot_combined("blossom grow half weight".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        interface_ptr.grow(half_weight, &mut dual_module);
+        assert_eq!(interface_ptr.sum_dual_variables(), 9 * half_weight);
+        visualizer
+            .snapshot_combined("blossom grow half weight".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        interface_ptr.set_grow_state(&dual_node_blossom, DualNodeGrowState::Shrink, &mut dual_module);
+        interface_ptr.grow(half_weight, &mut dual_module);
+        assert_eq!(interface_ptr.sum_dual_variables(), 8 * half_weight);
+        visualizer
+            .snapshot_combined("blossom shrink half weight".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        interface_ptr.grow(2 * half_weight, &mut dual_module);
+        assert_eq!(interface_ptr.sum_dual_variables(), 6 * half_weight);
+        visualizer
+            .snapshot_combined("blossom shrink weight".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        interface_ptr.expand_blossom(dual_node_blossom, &mut dual_module);
+        interface_ptr.set_grow_state(&dual_node_19_ptr, DualNodeGrowState::Shrink, &mut dual_module);
+        interface_ptr.set_grow_state(&dual_node_26_ptr, DualNodeGrowState::Shrink, &mut dual_module);
+        interface_ptr.set_grow_state(&dual_node_35_ptr, DualNodeGrowState::Shrink, &mut dual_module);
+        interface_ptr.grow(half_weight, &mut dual_module);
+        assert_eq!(interface_ptr.sum_dual_variables(), 3 * half_weight);
+        visualizer
+            .snapshot_combined(
+                "individual shrink half weight".to_string(),
+                vec![&interface_ptr, &dual_module],
+            )
             .unwrap();
     }
 }
