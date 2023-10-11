@@ -22,6 +22,7 @@ pub struct DualModuleRTL {
     pub sync_requests: Vec<SyncRequest>,
 }
 
+#[derive(Debug)]
 pub enum Instruction {
     SetSpeed { node: NodeIndex, speed: DualNodeGrowState },
     SetBlossom { node: NodeIndex, blossom: NodeIndex },
@@ -30,6 +31,7 @@ pub enum Instruction {
     Grow { length: Weight },
 }
 
+#[derive(Debug)]
 pub enum Response {
     NonZeroGrow {
         length: Weight,
@@ -42,20 +44,34 @@ pub enum Response {
         vertex_1: VertexIndex,
         vertex_2: VertexIndex,
     },
-    ConflictVirtual {
-        node: NodeIndex,
-        touch: NodeIndex,
-        vertex: VertexIndex,
-        virtual_vertex: VertexIndex,
-    },
     BlossomNeedExpand {
         blossom: NodeIndex,
     },
 }
 
+const VIRTUAL_NODE_INDEX: NodeIndex = NodeIndex::MAX;
+
 impl Response {
     pub fn reduce(resp1: Option<Response>, resp2: Option<Response>) -> Option<Response> {
-        None // TODO
+        if resp1.is_none() {
+            return resp2;
+        }
+        if resp2.is_none() {
+            return resp1;
+        }
+        let resp1 = resp1.unwrap();
+        let resp2 = resp2.unwrap();
+        if !matches!(resp1, Response::NonZeroGrow { .. }) {
+            return Some(resp1);
+        }
+        if !matches!(resp2, Response::NonZeroGrow { .. }) {
+            return Some(resp2);
+        }
+        let Response::NonZeroGrow { length: length1 } = resp1 else { unreachable!() };
+        let Response::NonZeroGrow { length: length2 } = resp2 else { unreachable!() };
+        Some(Response::NonZeroGrow {
+            length: std::cmp::min(length1, length2),
+        })
     }
 }
 
@@ -103,6 +119,8 @@ impl DualModuleImpl for DualModuleRTL {
         // set virtual vertices
         for &virtual_vertex in self.initializer.virtual_vertices.iter() {
             self.vertices[virtual_vertex].is_virtual = true;
+            self.vertices[virtual_vertex].node_index = Some(VIRTUAL_NODE_INDEX);
+            self.vertices[virtual_vertex].root_index = Some(VIRTUAL_NODE_INDEX);
         }
         // set edges
         self.edges.clear();
@@ -186,26 +204,36 @@ impl DualModuleImpl for DualModuleRTL {
             .execute_instruction(Instruction::FindObstacle { region_preference: 0 })
             .unwrap();
         let max_update_length = match return_value {
-            Response::NonZeroGrow { length } => MaxUpdateLength::NonZeroGrow((length, false)),
+            Response::NonZeroGrow { length } => {
+                assert!(length > 0);
+                MaxUpdateLength::NonZeroGrow((length, false))
+            }
             Response::Conflict {
                 node_1,
                 node_2,
                 touch_1,
                 touch_2,
-                ..
-            } => MaxUpdateLength::Conflicting(
-                (self.nodes[node_1].clone(), self.nodes[touch_1].clone()),
-                (self.nodes[node_2].clone(), self.nodes[touch_2].clone()),
-            ),
-            Response::ConflictVirtual {
-                node,
-                touch,
-                virtual_vertex,
-                ..
-            } => MaxUpdateLength::TouchingVirtual(
-                (self.nodes[node].clone(), self.nodes[touch].clone()),
-                (virtual_vertex, false),
-            ),
+                vertex_1,
+                vertex_2,
+            } => {
+                if node_1 != VIRTUAL_NODE_INDEX && node_2 != VIRTUAL_NODE_INDEX {
+                    MaxUpdateLength::Conflicting(
+                        (self.nodes[node_1].clone(), self.nodes[touch_1].clone()),
+                        (self.nodes[node_2].clone(), self.nodes[touch_2].clone()),
+                    )
+                } else {
+                    assert!(node_1 != VIRTUAL_NODE_INDEX || node_2 != VIRTUAL_NODE_INDEX);
+                    let (node, touch, virtual_vertex) = if node_1 != VIRTUAL_NODE_INDEX {
+                        (node_1, touch_1, vertex_2)
+                    } else {
+                        (node_2, touch_2, vertex_1)
+                    };
+                    MaxUpdateLength::TouchingVirtual(
+                        (self.nodes[node].clone(), self.nodes[touch].clone()),
+                        (virtual_vertex, false),
+                    )
+                }
+            }
             Response::BlossomNeedExpand { blossom } => MaxUpdateLength::BlossomNeedExpand(self.nodes[blossom].clone()),
             _ => unreachable!(),
         };
@@ -254,13 +282,12 @@ impl DualModuleRTL {
     fn execute_instruction(&mut self, instruction: Instruction) -> Option<Response> {
         pipeline_staged!(self, instruction, execute_stage);
         pipeline_staged!(self, instruction, update_stage);
-        let response = self
-            .vertices
+        self.vertices
             .iter()
             .map(|vertex| vertex.write_stage(self, &instruction))
             .chain(self.edges.iter().map(|edge| edge.write_stage(self, &instruction)))
-            .reduce(Response::reduce);
-        None
+            .reduce(Response::reduce)
+            .unwrap()
     }
 }
 
@@ -362,11 +389,43 @@ impl DualPipelined for Vertex {
 
     // generate a response
     fn write_stage(&self, dual_module: &DualModuleRTL, instruction: &Instruction) -> Option<Response> {
-        // only detect when y_S = 0 and delta y_S = -1, whether there are two growing
-        if self.speed != DualNodeGrowState::Shrink {
+        // only detect when y_S = 0 and delta y_S = -1, whether there are two growing peers
+        if self.speed != DualNodeGrowState::Shrink || self.grown != 0 {
             return None;
         }
-        None
+        // search for two growing peers
+        let (edge_index_1, edge_index_2) = {
+            let is_peer_growing = |edge_index: &&EdgeIndex| {
+                let edge = &dual_module.edges[**edge_index];
+                let peer_index = edge.get_peer(self.vertex_index);
+                let peer = &dual_module.vertices[peer_index];
+                peer.get_speed() > 0
+            };
+            (
+                self.edge_indices.iter().find(is_peer_growing),       // search from beginning
+                self.edge_indices.iter().rev().find(is_peer_growing), // search from end
+            )
+        };
+        if edge_index_1 != edge_index_2 {
+            let edge_index_1 = edge_index_1.unwrap();
+            let edge_index_2 = edge_index_2.unwrap();
+            let edge_1 = &dual_module.edges[*edge_index_1];
+            let edge_2 = &dual_module.edges[*edge_index_2];
+            let peer_index_1 = edge_1.get_peer(self.vertex_index);
+            let peer_index_2 = edge_2.get_peer(self.vertex_index);
+            let peer_1 = &dual_module.vertices[peer_index_1];
+            let peer_2 = &dual_module.vertices[peer_index_2];
+            Some(Response::Conflict {
+                node_1: peer_1.node_index.unwrap(),
+                touch_1: peer_1.root_index.unwrap(),
+                node_2: peer_2.node_index.unwrap(),
+                touch_2: peer_2.root_index.unwrap(),
+                vertex_1: self.vertex_index,
+                vertex_2: self.vertex_index,
+            })
+        } else {
+            None
+        }
     }
 }
 
@@ -429,7 +488,46 @@ impl DualPipelined for Edge {
 
     // generate a response
     fn write_stage(&self, dual_module: &DualModuleRTL, instruction: &Instruction) -> Option<Response> {
-        None
+        if !matches!(instruction, Instruction::FindObstacle { .. }) {
+            return None;
+        }
+        let left_vertex = &dual_module.vertices[self.left_index];
+        let right_vertex = &dual_module.vertices[self.right_index];
+        if left_vertex.node_index == right_vertex.node_index {
+            return None;
+        }
+        let mut max_growth = Weight::MAX;
+        let left_speed = left_vertex.get_speed();
+        if left_speed < 0 {
+            // normally self.left_growth > 0, unless the defect vertex has yS=0, which suggests two conflicting nodes
+            max_growth = std::cmp::min(max_growth, self.left_growth);
+        } else if left_speed > 0 {
+            max_growth = std::cmp::min(max_growth, self.weight - self.left_growth);
+        }
+        let right_speed = right_vertex.get_speed();
+        if right_speed < 0 {
+            // normally self.left_growth > 0, unless the defect vertex has yS=0, which suggests two conflicting nodes
+            max_growth = std::cmp::min(max_growth, self.right_growth);
+        } else if right_speed > 0 {
+            max_growth = std::cmp::min(max_growth, self.weight - self.right_growth);
+        }
+        let joint_speed = left_speed + right_speed;
+        if joint_speed > 0 {
+            let remaining = self.weight - self.left_growth - self.right_growth;
+            if remaining == 0 {
+                return Some(Response::Conflict {
+                    node_1: left_vertex.node_index.unwrap(),
+                    touch_1: left_vertex.root_index.unwrap(),
+                    vertex_1: self.left_index,
+                    node_2: right_vertex.node_index.unwrap(),
+                    touch_2: right_vertex.root_index.unwrap(),
+                    vertex_2: self.right_index,
+                });
+            }
+            max_growth = std::cmp::min(max_growth, remaining / joint_speed);
+        }
+        if max_growth == 0 {}
+        Some(Response::NonZeroGrow { length: max_growth })
     }
 }
 
@@ -642,6 +740,267 @@ mod tests {
                 "individual shrink half weight".to_string(),
                 vec![&interface_ptr, &dual_module],
             )
+            .unwrap();
+    }
+
+    #[test]
+    fn dual_module_rtl_stop_reason_1() {
+        // cargo test dual_module_rtl_stop_reason_1 -- --nocapture
+        let visualize_filename = "dual_module_rtl_stop_reason_1.json".to_string();
+        let half_weight = 500;
+        let mut code = CodeCapacityPlanarCode::new(7, 0.1, half_weight);
+        let mut visualizer = Visualizer::new(
+            option_env!("FUSION_DIR").map(|dir| dir.to_owned() + "/visualize/data/" + visualize_filename.as_str()),
+            code.get_positions(),
+            true,
+        )
+        .unwrap();
+        print_visualize_link(visualize_filename.clone());
+        // create dual module
+        let initializer = code.get_initializer();
+        let mut dual_module = DualModuleRTL::new_empty(&initializer);
+        // try to work on a simple syndrome
+        code.vertices[19].is_defect = true;
+        code.vertices[25].is_defect = true;
+        let interface_ptr = DualModuleInterfacePtr::new_load(&code.get_syndrome(), &mut dual_module);
+        visualizer
+            .snapshot_combined("syndrome".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        // create dual nodes and grow them by half length
+        let dual_node_19_ptr = interface_ptr.read_recursive().nodes[0].clone().unwrap();
+        let dual_node_25_ptr = interface_ptr.read_recursive().nodes[1].clone().unwrap();
+        // grow the maximum
+        let group_max_update_length = dual_module.compute_maximum_update_length();
+        assert_eq!(
+            group_max_update_length.get_none_zero_growth(),
+            Some(2 * half_weight),
+            "unexpected: {:?}",
+            group_max_update_length
+        );
+        interface_ptr.grow(2 * half_weight, &mut dual_module);
+        assert_eq!(interface_ptr.sum_dual_variables(), 4 * half_weight);
+        visualizer
+            .snapshot_combined("grow".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        // grow the maximum
+        let group_max_update_length = dual_module.compute_maximum_update_length();
+        assert_eq!(
+            group_max_update_length.get_none_zero_growth(),
+            Some(half_weight),
+            "unexpected: {:?}",
+            group_max_update_length
+        );
+        interface_ptr.grow(half_weight, &mut dual_module);
+        assert_eq!(interface_ptr.sum_dual_variables(), 6 * half_weight);
+        visualizer
+            .snapshot_combined("grow".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        // cannot grow anymore, find out the reason
+        let group_max_update_length = dual_module.compute_maximum_update_length();
+        assert!(
+            group_max_update_length
+                .peek()
+                .unwrap()
+                .is_conflicting(&dual_node_19_ptr, &dual_node_25_ptr),
+            "unexpected: {:?}",
+            group_max_update_length
+        );
+    }
+
+    #[test]
+    fn dual_module_rtl_stop_reason_2() {
+        // cargo test dual_module_rtl_stop_reason_2 -- --nocapture
+        let visualize_filename = "dual_module_rtl_stop_reason_2.json".to_string();
+        let half_weight = 500;
+        let mut code = CodeCapacityPlanarCode::new(7, 0.1, half_weight);
+        let mut visualizer = Visualizer::new(
+            option_env!("FUSION_DIR").map(|dir| dir.to_owned() + "/visualize/data/" + visualize_filename.as_str()),
+            code.get_positions(),
+            true,
+        )
+        .unwrap();
+        print_visualize_link(visualize_filename.clone());
+        // create dual module
+        let initializer = code.get_initializer();
+        let mut dual_module = DualModuleRTL::new_empty(&initializer);
+        // try to work on a simple syndrome
+        code.vertices[18].is_defect = true;
+        code.vertices[26].is_defect = true;
+        code.vertices[34].is_defect = true;
+        let interface_ptr = DualModuleInterfacePtr::new_load(&code.get_syndrome(), &mut dual_module);
+        visualizer
+            .snapshot_combined("syndrome".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        // create dual nodes and grow them by half length
+        let dual_node_18_ptr = interface_ptr.read_recursive().nodes[0].clone().unwrap();
+        let dual_node_26_ptr = interface_ptr.read_recursive().nodes[1].clone().unwrap();
+        let dual_node_34_ptr = interface_ptr.read_recursive().nodes[2].clone().unwrap();
+        // grow the maximum
+        let group_max_update_length = dual_module.compute_maximum_update_length();
+        assert_eq!(
+            group_max_update_length.get_none_zero_growth(),
+            Some(half_weight),
+            "unexpected: {:?}",
+            group_max_update_length
+        );
+        interface_ptr.grow(half_weight, &mut dual_module);
+        assert_eq!(interface_ptr.sum_dual_variables(), 3 * half_weight);
+        visualizer
+            .snapshot_combined("grow".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        // cannot grow anymore, find out the reason
+        let group_max_update_length = dual_module.compute_maximum_update_length();
+        assert!(
+            group_max_update_length
+                .peek()
+                .unwrap()
+                .is_conflicting(&dual_node_18_ptr, &dual_node_26_ptr)
+                || group_max_update_length
+                    .peek()
+                    .unwrap()
+                    .is_conflicting(&dual_node_26_ptr, &dual_node_34_ptr),
+            "unexpected: {:?}",
+            group_max_update_length
+        );
+        // first match 18 and 26
+        interface_ptr.set_grow_state(&dual_node_18_ptr, DualNodeGrowState::Stay, &mut dual_module);
+        interface_ptr.set_grow_state(&dual_node_26_ptr, DualNodeGrowState::Stay, &mut dual_module);
+        // cannot grow anymore, find out the reason
+        let group_max_update_length = dual_module.compute_maximum_update_length();
+        assert!(
+            group_max_update_length
+                .peek()
+                .unwrap()
+                .is_conflicting(&dual_node_26_ptr, &dual_node_34_ptr),
+            "unexpected: {:?}",
+            group_max_update_length
+        );
+        // 34 touches 26, so it will grow the tree by absorbing 18 and 26
+        interface_ptr.set_grow_state(&dual_node_18_ptr, DualNodeGrowState::Grow, &mut dual_module);
+        interface_ptr.set_grow_state(&dual_node_26_ptr, DualNodeGrowState::Shrink, &mut dual_module);
+        // grow the maximum
+        let group_max_update_length = dual_module.compute_maximum_update_length();
+        assert_eq!(
+            group_max_update_length.get_none_zero_growth(),
+            Some(half_weight),
+            "unexpected: {:?}",
+            group_max_update_length
+        );
+        interface_ptr.grow(half_weight, &mut dual_module);
+        assert_eq!(interface_ptr.sum_dual_variables(), 4 * half_weight);
+        visualizer
+            .snapshot_combined("grow".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        // cannot grow anymore, find out the reason
+        let group_max_update_length = dual_module.compute_maximum_update_length();
+        assert!(
+            group_max_update_length
+                .peek()
+                .unwrap()
+                .is_conflicting(&dual_node_18_ptr, &dual_node_34_ptr),
+            "unexpected: {:?}",
+            group_max_update_length
+        );
+        // for a blossom because 18 and 34 come from the same alternating tree
+        let dual_node_blossom = interface_ptr.create_blossom(
+            vec![dual_node_18_ptr.clone(), dual_node_26_ptr.clone(), dual_node_34_ptr.clone()],
+            vec![],
+            &mut dual_module,
+        );
+        // grow the maximum
+        let group_max_update_length = dual_module.compute_maximum_update_length();
+        assert_eq!(
+            group_max_update_length.get_none_zero_growth(),
+            Some(2 * half_weight),
+            "unexpected: {:?}",
+            group_max_update_length
+        );
+        interface_ptr.grow(2 * half_weight, &mut dual_module);
+        assert_eq!(interface_ptr.sum_dual_variables(), 6 * half_weight);
+        visualizer
+            .snapshot_combined("grow blossom".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        // grow the maximum
+        let group_max_update_length = dual_module.compute_maximum_update_length();
+        assert_eq!(
+            group_max_update_length.get_none_zero_growth(),
+            Some(2 * half_weight),
+            "unexpected: {:?}",
+            group_max_update_length
+        );
+        interface_ptr.grow(2 * half_weight, &mut dual_module);
+        assert_eq!(interface_ptr.sum_dual_variables(), 8 * half_weight);
+        visualizer
+            .snapshot_combined("grow blossom".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        // cannot grow anymore, find out the reason
+        let group_max_update_length = dual_module.compute_maximum_update_length();
+        assert!(
+            group_max_update_length.peek().unwrap().get_touching_virtual() == Some((dual_node_blossom.clone(), 23))
+                || group_max_update_length.peek().unwrap().get_touching_virtual() == Some((dual_node_blossom.clone(), 39)),
+            "unexpected: {:?}",
+            group_max_update_length
+        );
+        // blossom touches virtual boundary, so it's matched
+        interface_ptr.set_grow_state(&dual_node_blossom, DualNodeGrowState::Stay, &mut dual_module);
+        let group_max_update_length = dual_module.compute_maximum_update_length();
+        assert!(
+            group_max_update_length.is_empty(),
+            "unexpected: {:?}",
+            group_max_update_length
+        );
+        // also test the reverse procedure: shrinking and expanding blossom
+        interface_ptr.set_grow_state(&dual_node_blossom, DualNodeGrowState::Shrink, &mut dual_module);
+        let group_max_update_length = dual_module.compute_maximum_update_length();
+        assert_eq!(
+            group_max_update_length.get_none_zero_growth(),
+            Some(2 * half_weight),
+            "unexpected: {:?}",
+            group_max_update_length
+        );
+        interface_ptr.grow(2 * half_weight, &mut dual_module);
+        assert_eq!(interface_ptr.sum_dual_variables(), 6 * half_weight);
+        visualizer
+            .snapshot_combined("shrink blossom".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        // before expand
+        interface_ptr.set_grow_state(&dual_node_blossom, DualNodeGrowState::Shrink, &mut dual_module);
+        let group_max_update_length = dual_module.compute_maximum_update_length();
+        assert_eq!(
+            group_max_update_length.get_none_zero_growth(),
+            Some(2 * half_weight),
+            "unexpected: {:?}",
+            group_max_update_length
+        );
+        interface_ptr.grow(2 * half_weight, &mut dual_module);
+        assert_eq!(interface_ptr.sum_dual_variables(), 4 * half_weight);
+        visualizer
+            .snapshot_combined("shrink blossom".to_string(), vec![&interface_ptr, &dual_module])
+            .unwrap();
+        // cannot shrink anymore, find out the reason
+        let group_max_update_length = dual_module.compute_maximum_update_length();
+        assert!(
+            group_max_update_length.peek().unwrap() == &MaxUpdateLength::BlossomNeedExpand(dual_node_blossom.clone()),
+            "unexpected: {:?}",
+            group_max_update_length
+        );
+        // expand blossom
+        interface_ptr.expand_blossom(dual_node_blossom, &mut dual_module);
+        // regain access to underlying nodes
+        interface_ptr.set_grow_state(&dual_node_18_ptr, DualNodeGrowState::Shrink, &mut dual_module);
+        interface_ptr.set_grow_state(&dual_node_26_ptr, DualNodeGrowState::Grow, &mut dual_module);
+        interface_ptr.set_grow_state(&dual_node_34_ptr, DualNodeGrowState::Shrink, &mut dual_module);
+        let group_max_update_length = dual_module.compute_maximum_update_length();
+        assert_eq!(
+            group_max_update_length.get_none_zero_growth(),
+            Some(2 * half_weight),
+            "unexpected: {:?}",
+            group_max_update_length
+        );
+        interface_ptr.grow(2 * half_weight, &mut dual_module);
+        assert_eq!(interface_ptr.sum_dual_variables(), 2 * half_weight);
+        visualizer
+            .snapshot_combined("shrink".to_string(), vec![&interface_ptr, &dual_module])
             .unwrap();
     }
 }

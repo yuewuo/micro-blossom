@@ -30,8 +30,6 @@ import spinal.core._
  * |                Node_1[14:0]                |                  Node_2[14:0]              |2'b01| Conflict(part 1)
  * |               Touch_1[14:0]                |                 Touch_2[14:0]              |2'b01| Conflict(part 2)
  * |               Vertex_1[14:0]               |                 Vertex_2[14:0]             |2'b01| Conflict(part 3)
- * |                 Node[14:0]                 |                  Touch[14:0]               |2'b10| ConflictVirtual(part 1)
- * |                Vertex[14:0]                |               VirtualVertex[14:0]          |2'b10| ConflictVirtual(part 2)
  * |                Blossom[14:0]               |                                           0|2'b11| BlossomNeedExpand
  * |                                                                             | 3'b111 | 3'b100 | Reserved
  * -------------------------------------------------------------------------------------------------
