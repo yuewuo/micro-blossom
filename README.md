@@ -34,6 +34,61 @@ make -j `nproc`  # Build Verilator itself (if error, try just 'make')
 sudo make install
 ```
 
+### Install VexRiscV
+
+```sh
+git clone git@github.com:SpinalHDL/VexRiscv.git --recursive
+```
+
+### Install OpenOCD for VexRiscV
+
+I include the installation for both Ubuntu and MacOS. MacOS doesn't seem to work...: `Error: target 'fpga_spinal.cpu0' init failed`
+when I run `openocd -c 'set VEXRISCV_YAML ../VexRiscv/cpu0.yaml' -f tcl/target/vexriscv_sim.cfg`.
+
+**Update**: OpenOCD uses GDB instead of LLDB, but GDB does not support apple silicon, only x86. Thus, it is impossible to 
+interactively debug the CPU with M1 Macs. However, the verilator and VexRiscV/SpinalHDL runs on M1 Macs without a problem.
+We can debug the design on a x86 Linux machine and do other staffs on Macs.
+
+```sh
+git clone git@github.com:SpinalHDL/openocd_riscv.git
+cd openocd_riscv
+
+# for Ubuntu
+sudo apt-get install libtool automake texinfo libusb-1.0-0-dev libusb-dev libyaml-dev pkg-config
+# for MacOS (@Yue 2023.10.11)
+brew install libtool automake libusb libyaml pkg-config texinfo
+
+./bootstrap
+
+# for Ubuntu
+./configure --enable-ftdi --enable-dummy --enable-openjtag
+# for MacOS (@Yue 2023.10.11, must enable openjtag for simulation)
+LDFLAGS="-L/opt/homebrew/lib" CPPFLAGS="-I/opt/homebrew/include" ./configure --enable-ftdi --enable-dummy --disable-werror --enable-openjtag
+
+make -j10
+sudo make install
+```
+
+**Only on Linux** Simulation
+
+```sh
+# In the VexRiscv repository (`make run` should show `Boot` and then hang there until the OpenOCD is connected)
+sbt "runMain vexriscv.demo.GenFull"
+cd src/test/cpp/regression
+make run DEBUG_PLUGIN_EXTERNAL=yes
+
+# In the openocd repository, after building it =>
+src/openocd -c "set VEXRISCV_YAML ../VexRiscv/cpu0.yaml" -f tcl/target/vexriscv_sim.cfg
+
+# Run GDB session
+riscv32-unknown-elf-gdb VexRiscvRepo/src/test/resources/elf/uart.elf
+target remote localhost:3333
+monitor reset halt
+load
+continue
+# then a sequence of messages should be print to the first terminal
+```
+
 ## Build
 
 
