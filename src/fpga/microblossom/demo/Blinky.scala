@@ -10,10 +10,18 @@ class Blinky extends Component {
     val led = out Bool
   }
 
-  val led_reg = Reg(Bool()) init False
-  io.led := led_reg
+  val externalClockDomain = ClockDomain.external(
+    "io", // result in a clock named "io_clk"
+    ClockDomainConfig(resetKind = BOOT) // does not generate a reset IO
+  )
 
-  led_reg := !led_reg
+  new ClockingArea(externalClockDomain) {
+
+    val led_reg = Reg(Bool()) init True
+    io.led := led_reg
+
+    led_reg := !led_reg
+  }
 
 }
 
@@ -25,7 +33,7 @@ object BlinkyVerilog extends App {
 // sbt "runMain microblossom.demo.BlinkyTestA" && gtkwave simWorkspace/Blinky/testA.fst
 object BlinkyTestA extends App {
   Config.sim.compile(new Blinky()).doSim("testA") { dut =>
-    dut.clockDomain.forkStimulus(10)
+    dut.externalClockDomain.forkStimulus(10)
     sleep(1000)
   }
 }
@@ -33,7 +41,7 @@ object BlinkyTestA extends App {
 // sbt "runMain microblossom.demo.BlinkyTestB" && gtkwave simWorkspace/Blinky/testB.fst
 object BlinkyTestB extends App {
   Config.sim.compile(new Blinky()).doSim("testB") { dut =>
-    dut.clockDomain.forkStimulus(10)
+    dut.externalClockDomain.forkStimulus(10)
     sleep(200)
   }
 }
