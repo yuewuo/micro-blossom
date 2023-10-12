@@ -7,7 +7,7 @@ import microblossom.Config
 
 class Blinky extends Component {
   val io = new Bundle {
-    val led = out Bool
+    val led = out Bool ()
   }
 
   val externalClockDomain = ClockDomain.external(

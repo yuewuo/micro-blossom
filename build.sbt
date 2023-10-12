@@ -1,22 +1,22 @@
 ThisBuild / version := "1.0"
-ThisBuild / scalaVersion := "2.13.12"
+ThisBuild / scalaVersion := "2.12.12"
 ThisBuild / organization := "org.yecl"
 
 val spinalVersion = "1.9.3"
-val spinalCore = "com.github.spinalhdl" %% "spinalhdl-core" % spinalVersion
-val spinalLib = "com.github.spinalhdl" %% "spinalhdl-lib" % spinalVersion
-val spinalIdslPlugin = compilerPlugin("com.github.spinalhdl" %% "spinalhdl-idsl-plugin" % spinalVersion)
+val vexRiscV = RootProject(uri("https://github.com/yuewuo/VexRiscv.git"))
 
 lazy val microblossom = (project in file("."))
+  .dependsOn(vexRiscV)
   .settings(
     Compile / scalaSource := baseDirectory.value / "src" / "fpga",
     Test / scalaSource := baseDirectory.value / "src" / "fpga",
-    scalacOptions ++= Seq("-Ymacro-annotations"),
     libraryDependencies ++= Seq(
-      spinalCore,
-      spinalLib,
-      spinalIdslPlugin,
+      "com.github.spinalhdl" % "spinalhdl-core_2.12" % spinalVersion,
+      "com.github.spinalhdl" % "spinalhdl-lib_2.12" % spinalVersion,
+      compilerPlugin("com.github.spinalhdl" % "spinalhdl-idsl-plugin_2.12" % spinalVersion),
       "org.scalatest" %% "scalatest" % "3.2.5",
+      "org.yaml" % "snakeyaml" % "1.8",
+      compilerPlugin("org.scalamacros" % "paradise" % "2.1.1" cross CrossVersion.full),
       "io.circe" %% "circe-core" % "0.14.3",
       "io.circe" %% "circe-generic" % "0.14.3",
       "io.circe" %% "circe-parser" % "0.14.3",
