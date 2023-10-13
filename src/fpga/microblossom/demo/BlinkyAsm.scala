@@ -30,7 +30,7 @@ class BlinkyAsm extends Component {
       catchAccessFault = false
     ),
     new DecoderSimplePlugin(
-      catchIllegalInstruction = false
+      catchIllegalInstruction = true // Rust relies on illegal instruction catch
     ),
     new RegFilePlugin(
       regFileReadyKind = plugin.SYNC,
@@ -71,7 +71,8 @@ class BlinkyAsm extends Component {
         minstretAccess = CsrAccess.NONE,
         ecallGen = false,
         wfiGenAsWait = false,
-        ucycleAccess = CsrAccess.NONE
+        ucycleAccess = CsrAccess.NONE,
+        ebreakGen = true // Rust relies on software ebreak instruction support
       )
     )
   )
@@ -159,6 +160,7 @@ object BlinkyAsmVerilog extends App {
 
   def buildTop(): BlinkyAsm = {
     val top = new BlinkyAsm()
+    // val program = loadProgram("src/fpga/microblossom/demo/empty.bin", 1024)
     // val program = loadProgram("src/fpga/microblossom/demo/blink.bin", 1024)
     val program = loadProgram("src/cpu/embedded/target/riscv32i-unknown-none-elf/release/embedded.bin", 1024)
     top.core.ram.ram.initBigInt(program)
@@ -172,6 +174,6 @@ object BlinkyAsmVerilog extends App {
 object BlinkyAsmTestA extends App {
   Config.sim.compile(BlinkyAsmVerilog.buildTop()).doSim("testA") { dut =>
     dut.externalClockDomain.forkStimulus(10)
-    sleep(10000000)
+    sleep(100000)
   }
 }

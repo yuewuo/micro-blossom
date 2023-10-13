@@ -1,4 +1,3 @@
-#![feature(asm)]
 #![no_std]
 #![no_main]
 
@@ -30,6 +29,7 @@ fn main() -> ! {
         if mask == 0 {
             mask = 0x40;
         }
-        delay(300000);
+        // delay(300000);
+        delay(100); // for simulation
     }
 }

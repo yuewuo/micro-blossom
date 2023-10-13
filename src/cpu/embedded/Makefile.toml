@@ -11,3 +11,13 @@ args = [
     "target/riscv32i-unknown-none-elf/release/embedded.bin",
 ]
 dependencies = ["strip"]
+
+[tasks.objdump]
+command = "riscv32-unknown-elf-objdump"
+args = [
+    "-O",
+    "binary",
+    "target/riscv32i-unknown-none-elf/release/embedded",
+    "target/riscv32i-unknown-none-elf/release/embedded.s",
+]
+dependencies = ["strip"]
