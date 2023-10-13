@@ -16,7 +16,7 @@ fn delay(cycles: u32) {
 
 fn set_leds(mask: u32) {
     unsafe {
-        *(0x10000000 as *mut u32) = mask;
+        *(0xF0000000 as *mut u32) = mask;
     }
 }
 

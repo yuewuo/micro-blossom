@@ -126,3 +126,7 @@ The tested commands are:
 sbt "runMain vexriscv.demo.Briey"  # try to build briey
 VEXRISCV_REGRESSION_SEED=42 VEXRISCV_REGRESSION_LINUX_REGRESSION=no VEXRISCV_REGRESSION_ZEPHYR_COUNT=0 sbt "testOnly vexriscv.TestIndividualFeatures"
 ```
+
+## References
+
+[Blog: Rust on Risc-V, by Craig J Bishop](https://craigjb.com/2020/01/22/ecp5/)

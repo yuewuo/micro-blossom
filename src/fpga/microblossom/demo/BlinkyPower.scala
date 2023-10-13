@@ -13,21 +13,40 @@ import scala.collection.mutable.ArrayBuffer
 import java.nio.file.{Files, Paths}
 import java.math.BigInteger
 
-class BlinkyAsm extends Component {
+class BlinkyPower extends Component {
   val io = new Bundle {
     val leds = out Bits (6 bits)
   }
 
   val vexRiscVPlugins = ArrayBuffer(
-    new PcManagerSimplePlugin(0x00000000L, false),
-    new IBusSimplePlugin(
+    new PcManagerSimplePlugin(
       resetVector = 0x00000000L,
-      cmdForkOnSecondStage = true,
-      cmdForkPersistence = true
+      relaxedPcCalculation = false
+    ),
+    new IBusCachedPlugin(
+      resetVector = 0x00000000L,
+      prediction = DYNAMIC_TARGET, // FullMaxPerf(DYNAMIC_TARGET) vs Briey(STATIC)
+      historyRamSizeLog2 = 8,
+      config = InstructionCacheConfig(
+        cacheSize = 4096 * 2,
+        bytePerLine = 32,
+        wayCount = 1,
+        addressWidth = 32,
+        cpuDataWidth = 32,
+        memDataWidth = 32,
+        catchIllegalAccess = true,
+        catchAccessFault = true,
+        asyncTagMemory = false,
+        twoCycleRam = true, // FullMaxPerf(false) vs Briey(true)
+        twoCycleCache = true
+      )
     ),
     new DBusSimplePlugin(
       catchAddressMisaligned = false,
       catchAccessFault = false
+    ),
+    new StaticMemoryTranslatorPlugin( // required for cached IBus and dBus
+      ioRange = _(31 downto 28) === 0xf
     ),
     new DecoderSimplePlugin(
       catchIllegalInstruction = true // Rust relies on illegal instruction catch
@@ -104,7 +123,7 @@ class BlinkyAsm extends Component {
     var iBus: Axi4ReadOnly = null
     var dBus: Axi4Shared = null
     for (plugin <- vexRiscVConfig.plugins) plugin match {
-      case plugin: IBusSimplePlugin => iBus = plugin.iBus.toAxi4ReadOnly()
+      case plugin: IBusCachedPlugin => iBus = plugin.iBus.toAxi4ReadOnly()
       case plugin: DBusSimplePlugin => dBus = plugin.dBus.toAxi4Shared()
       case plugin: CsrPlugin => {
         plugin.externalInterrupt := False
@@ -145,8 +164,8 @@ class BlinkyAsm extends Component {
 
 }
 
-// sbt "runMain microblossom.demo.BlinkyAsmVerilog"
-object BlinkyAsmVerilog extends App {
+// sbt "runMain microblossom.demo.BlinkyPowerVerilog"
+object BlinkyPowerVerilog extends App {
   def loadProgram(path: String, padToWordCount: Int): Array[BigInt] = {
     Files
       .readAllBytes(Paths.get(path))
@@ -158,10 +177,8 @@ object BlinkyAsmVerilog extends App {
       .toArray
   }
 
-  def buildTop(): BlinkyAsm = {
-    val top = new BlinkyAsm()
-    // val program = loadProgram("src/fpga/microblossom/demo/empty.bin", 1024)
-    // val program = loadProgram("src/fpga/microblossom/demo/blink.bin", 1024)
+  def buildTop(): BlinkyPower = {
+    val top = new BlinkyPower()
     val program = loadProgram("src/cpu/embedded/target/riscv32i-unknown-none-elf/release/embedded.bin", 1024)
     top.core.ram.ram.initBigInt(program)
     top
@@ -170,9 +187,9 @@ object BlinkyAsmVerilog extends App {
   Config.spinal.generateVerilog(buildTop())
 }
 
-// sbt "runMain microblossom.demo.BlinkyAsmTestA" && gtkwave simWorkspace/BlinkyAsm/testA.fst
-object BlinkyAsmTestA extends App {
-  Config.sim.compile(BlinkyAsmVerilog.buildTop()).doSim("testA") { dut =>
+// sbt "runMain microblossom.demo.BlinkyPowerTestA" && gtkwave simWorkspace/BlinkyPower/testA.fst
+object BlinkyPowerTestA extends App {
+  Config.sim.compile(BlinkyPowerVerilog.buildTop()).doSim("testA") { dut =>
     dut.externalClockDomain.forkStimulus(10)
     sleep(100000)
   }
