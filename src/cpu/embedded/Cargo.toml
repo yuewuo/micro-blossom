@@ -1,0 +1,22 @@
+[package]
+name = "embedded"
+version = "0.1.0"
+authors = ["Yue Wu <wuyue16pku@gmail.com>"]
+edition = "2021"
+
+# rustup target add --toolchain nightly riscv32i-unknown-none-elf
+# cargo install cargo-make
+# cargo build --release
+# cargo make objcopy
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+riscv-rt = "0.11.0"
+panic-halt = "0.2.0"
+
+# see https://craigjb.com/2020/01/22/ecp5/
+[profile.release]
+codegen-units = 1 # better optimizations
+debug = true      # symbols are nice and they don't increase the size on Flash
+lto = true        # better optimizations and smaller binary size

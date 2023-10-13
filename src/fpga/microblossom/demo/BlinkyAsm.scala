@@ -10,8 +10,10 @@ import vexriscv.plugin._
 import vexriscv._
 import vexriscv.ip.{DataCacheConfig, InstructionCacheConfig}
 import scala.collection.mutable.ArrayBuffer
+import java.nio.file.{Files, Paths}
+import java.math.BigInteger
 
-class Briey extends Component {
+class BlinkyAsm extends Component {
   val io = new Bundle {
     val leds = out Bits (6 bits)
   }
@@ -74,13 +76,13 @@ class Briey extends Component {
     )
   )
 
-  val resetCtrlDomain = ClockDomain.external(
-    "",
-    ClockDomainConfig(resetKind = BOOT)
+  val externalClockDomain = ClockDomain.external(
+    "io", // result in a clock named "io_clk"
+    ClockDomainConfig(resetKind = BOOT) // does not generate a reset IO
   )
 
   // AXI spec requires a long reset
-  val resetCtrl = new ClockingArea(resetCtrlDomain) {
+  val resetCtrl = new ClockingArea(externalClockDomain) {
     val systemReset = RegInit(True)
     val resetCounter = RegInit(U"6'h0")
     when(resetCounter =/= 63) {
@@ -91,7 +93,7 @@ class Briey extends Component {
   }
 
   val coreDomain = ClockDomain(
-    clock = resetCtrlDomain.readClockWire,
+    clock = externalClockDomain.readClockWire,
     reset = resetCtrl.systemReset
   )
 
@@ -142,7 +144,34 @@ class Briey extends Component {
 
 }
 
-// sbt "runMain microblossom.demo.BrieyVerilog"
-object BrieyVerilog extends App {
-  Config.spinal.generateVerilog(new Briey())
+// sbt "runMain microblossom.demo.BlinkyAsmVerilog"
+object BlinkyAsmVerilog extends App {
+  def loadProgram(path: String, padToWordCount: Int): Array[BigInt] = {
+    Files
+      .readAllBytes(Paths.get(path))
+      .grouped(4)
+      .map(wordBytes => {
+        BigInt(new BigInteger(wordBytes.padTo(8, 0.toByte).reverse.toArray))
+      })
+      .padTo(padToWordCount, BigInt(0))
+      .toArray
+  }
+
+  def buildTop(): BlinkyAsm = {
+    val top = new BlinkyAsm()
+    // val program = loadProgram("src/fpga/microblossom/demo/blink.bin", 1024)
+    val program = loadProgram("src/cpu/embedded/target/riscv32i-unknown-none-elf/release/embedded.bin", 1024)
+    top.core.ram.ram.initBigInt(program)
+    top
+  }
+
+  Config.spinal.generateVerilog(buildTop())
+}
+
+// sbt "runMain microblossom.demo.BlinkyAsmTestA" && gtkwave simWorkspace/BlinkyAsm/testA.fst
+object BlinkyAsmTestA extends App {
+  Config.sim.compile(BlinkyAsmVerilog.buildTop()).doSim("testA") { dut =>
+    dut.externalClockDomain.forkStimulus(10)
+    sleep(10000000)
+  }
 }

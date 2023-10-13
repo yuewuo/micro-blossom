@@ -69,7 +69,24 @@ make -j10
 sudo make install
 ```
 
-**Only on Linux** Simulation
+### Install RiscV toolchain
+
+```sh
+git clone https://github.com/riscv/riscv-gnu-toolchain
+
+# for Ubuntu
+sudo apt-get install autoconf automake autotools-dev curl python3 python3-pip libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc zlib1g-dev libexpat-dev ninja-build git cmake libglib2.0-dev
+# for MacOS
+brew install python3 gawk gnu-sed gmp mpfr libmpc isl zlib expat texinfo flock
+
+mkdir $HOME/riscv
+./configure --prefix=$HOME/riscv --with-arch=rv32ia --with-abi=ilp32
+./configure --prefix=$HOME/riscv --with-arch=rv32ia --with-abi=ilp32 --disable-gdb --enable-llvm # for MacOS
+
+make -j10
+```
+
+### **Only on Linux** Simulation
 
 ```sh
 # In the VexRiscv repository (`make run` should show `Boot` and then hang there until the OpenOCD is connected)
