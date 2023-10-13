@@ -23,6 +23,11 @@ class BlinkyPower extends Component {
       resetVector = 0x00000000L,
       relaxedPcCalculation = false
     ),
+    // new IBusSimplePlugin(
+    //   resetVector = 0x00000000L,
+    //   cmdForkOnSecondStage = true,
+    //   cmdForkPersistence = true
+    // ),
     new IBusCachedPlugin(
       resetVector = 0x00000000L,
       prediction = DYNAMIC_TARGET, // FullMaxPerf(DYNAMIC_TARGET) vs Briey(STATIC)
@@ -41,9 +46,23 @@ class BlinkyPower extends Component {
         twoCycleCache = true
       )
     ),
-    new DBusSimplePlugin(
-      catchAddressMisaligned = false,
-      catchAccessFault = false
+    // new DBusSimplePlugin(
+    //   catchAddressMisaligned = false,
+    //   catchAccessFault = false
+    // ),
+    new DBusCachedPlugin(
+      config = new DataCacheConfig(
+        cacheSize = 4096 * 2,
+        bytePerLine = 32,
+        wayCount = 1,
+        addressWidth = 32,
+        cpuDataWidth = 32,
+        memDataWidth = 32,
+        catchAccessError = true,
+        catchIllegal = true,
+        catchUnaligned = true
+      ),
+      memoryTranslatorPortConfig = null
     ),
     new StaticMemoryTranslatorPlugin( // required for cached IBus and dBus
       ioRange = _(31 downto 28) === 0xf
@@ -62,10 +81,13 @@ class BlinkyPower extends Component {
     ),
     new LightShifterPlugin,
     new HazardSimplePlugin(
-      bypassExecute = false,
-      bypassMemory = false,
-      bypassWriteBack = false,
-      bypassWriteBackBuffer = false
+      bypassExecute = true,
+      bypassMemory = true,
+      bypassWriteBack = true,
+      bypassWriteBackBuffer = true,
+      pessimisticUseSrc = false,
+      pessimisticWriteRegFile = false,
+      pessimisticAddressMatch = false
     ),
     new BranchPlugin(
       earlyBranch = false,
@@ -123,8 +145,10 @@ class BlinkyPower extends Component {
     var iBus: Axi4ReadOnly = null
     var dBus: Axi4Shared = null
     for (plugin <- vexRiscVConfig.plugins) plugin match {
+      case plugin: IBusSimplePlugin => iBus = plugin.iBus.toAxi4ReadOnly()
       case plugin: IBusCachedPlugin => iBus = plugin.iBus.toAxi4ReadOnly()
       case plugin: DBusSimplePlugin => dBus = plugin.dBus.toAxi4Shared()
+      case plugin: DBusCachedPlugin => dBus = plugin.dBus.toAxi4Shared(true)
       case plugin: CsrPlugin => {
         plugin.externalInterrupt := False
         plugin.timerInterrupt := False
