@@ -158,7 +158,7 @@ class BlinkyPower extends Component {
 
     val ram = Axi4SharedOnChipRam(
       dataWidth = 32,
-      byteCount = 4 kB,
+      byteCount = 256 kB,
       idWidth = 4
     )
 
@@ -203,7 +203,11 @@ object BlinkyPowerVerilog extends App {
 
   def buildTop(): BlinkyPower = {
     val top = new BlinkyPower()
-    val program = loadProgram("src/cpu/embedded/target/riscv32i-unknown-none-elf/release/embedded.bin", 1024)
+    val program =
+      loadProgram(
+        "src/cpu/embedded/target/riscv32i-unknown-none-elf/release/embedded.bin",
+        top.core.ram.ram.byteCount / 4 // how many words (four-byte)
+      )
     top.core.ram.ram.initBigInt(program)
     top
   }
