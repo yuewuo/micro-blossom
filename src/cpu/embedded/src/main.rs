@@ -20,11 +20,20 @@ fn set_leds(mask: u32) {
     }
 }
 
+fn test_acc(mask: u32) {
+    unsafe {
+        // currently it's a mock accelerator of 4kB memory; just to test assertion
+        *(0xF1000000 as *mut u32) = mask;
+        assert_eq!(*(0xF1000000 as *const u32), mask);
+    }
+}
+
 #[entry]
 fn main() -> ! {
     let mut mask = 0x40;
     loop {
         set_leds(mask);
+        test_acc(mask);
         mask >>= 1;
         if mask == 0 {
             mask = 0x40;

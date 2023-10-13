@@ -162,6 +162,12 @@ class BlinkyPower extends Component {
       idWidth = 4
     )
 
+    val mockDualAccelerator = Axi4SharedOnChipRam(
+      dataWidth = 32,
+      byteCount = 4 kB,
+      idWidth = 4
+    )
+
     val apbBridge = Axi4SharedToApb3Bridge(
       addressWidth = 32,
       dataWidth = 32,
@@ -171,12 +177,13 @@ class BlinkyPower extends Component {
     val axiCrossbar = Axi4CrossbarFactory()
     axiCrossbar.addSlaves(
       ram.io.axi -> (0x00000000L, 4 kB),
+      mockDualAccelerator.io.axi -> (0xf1000000L, 4 kB),
       apbBridge.io.axi -> (0xf0000000L, 1 MB)
     )
 
     axiCrossbar.addConnections(
       iBus -> List(ram.io.axi),
-      dBus -> List(ram.io.axi, apbBridge.io.axi)
+      dBus -> List(ram.io.axi, apbBridge.io.axi, mockDualAccelerator.io.axi)
     )
 
     axiCrossbar.build()
