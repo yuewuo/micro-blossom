@@ -1,13 +1,32 @@
 [package]
-name = "embedded"
+name = "embedded-blossom"
 version = "0.1.0"
 authors = ["Yue Wu <wuyue16pku@gmail.com>"]
 edition = "2021"
+license = "MIT"
+description = "hardware MWPM decoder"
+readme = "README.md"
+keywords = ["QEC", "quantum-computing", "error-correction", "embedded"]
+categories = ["science"]
+default-run = "embedded_blossom"
 
 # rustup target add --toolchain nightly riscv32i-unknown-none-elf
 # cargo install cargo-make
 # cargo build --release
 # cargo make objcopy
+
+# see https://doc.rust-lang.org/1.39.0/cargo/reference/manifest.html#the-documentation-field-optional
+[badges]
+maintenance = { status = "actively-developed" }
+
+# [lib]
+# name = "embedded_blossom"
+# path = "src/lib.rs"
+# crate-type = ["lib"]
+
+[[bin]]
+name = "embedded_blossom"
+path = "src/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

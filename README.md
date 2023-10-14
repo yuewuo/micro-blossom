@@ -108,7 +108,15 @@ continue
 
 ## Build
 
+### Hardware
 
+### Binary for RiscV CPU
+
+```sh
+cd src/cpu/embedded
+cargo build --release
+cargo make embedded
+```
 
 ## Known Issues
 

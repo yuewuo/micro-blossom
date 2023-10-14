@@ -13,11 +13,8 @@ args = [
 dependencies = ["strip"]
 
 [tasks.objdump]
-command = "riscv32-unknown-elf-objdump"
-args = [
-    "-O",
-    "binary",
-    "target/riscv32i-unknown-none-elf/release/embedded",
-    "target/riscv32i-unknown-none-elf/release/embedded.s",
-]
+script = "riscv32-unknown-elf-objdump -d target/riscv32i-unknown-none-elf/release/embedded > target/riscv32i-unknown-none-elf/release/embedded.s"
 dependencies = ["strip"]
+
+[tasks.embedded]
+dependencies = ["objcopy", "objdump"]

@@ -1035,6 +1035,7 @@ dependencies = [
  "fusion-blossom",
  "lazy_static",
  "libc",
+ "micro-blossom-nostd",
  "parking_lot",
  "pbr",
  "petgraph",
@@ -1047,6 +1048,13 @@ dependencies = [
  "serde_json",
  "urlencoding",
  "weak-table",
+]
+
+[[package]]
+name = "micro-blossom-nostd"
+version = "0.0.0"
+dependencies = [
+ "panic-halt",
 ]
 
 [[package]]
@@ -1150,6 +1158,12 @@ checksum = "2a54938017eacd63036332b4ae5c8a49fc8c0c1d6d629893057e4f13609edd06"
 dependencies = [
  "num-traits",
 ]
+
+[[package]]
+name = "panic-halt"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de96540e0ebde571dc55c73d60ef407c653844e6f9a1e2fdbd40c07b9252d812"
 
 [[package]]
 name = "parking_lot"

@@ -1,9 +1,8 @@
 #![no_std]
 #![no_main]
 
-extern crate panic_halt;
-
 use core::arch::asm;
+use embedded_blossom as _;
 use riscv_rt::entry;
 
 fn delay(cycles: u32) {

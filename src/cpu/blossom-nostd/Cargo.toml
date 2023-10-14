@@ -1,0 +1,33 @@
+[package]
+name = "micro-blossom-nostd"
+version = "0.0.0"
+authors = ["Yue Wu <wuyue16pku@gmail.com>"]
+edition = "2021"
+license = "MIT"
+description = "hardware MWPM decoder"
+readme = "README.md"
+keywords = ["QEC", "quantum-computing", "error-correction", "visualization"]
+categories = ["science"]
+# default-run = "micro_blossom_nostd"
+
+# see https://doc.rust-lang.org/1.39.0/cargo/reference/manifest.html#the-documentation-field-optional
+[badges]
+maintenance = { status = "actively-developed" }
+
+[lib]
+name = "micro_blossom_nostd"
+path = "src/lib.rs"
+crate-type = ["lib"]
+
+# [[bin]]
+# name = "micro_blossom"
+# path = "src/main.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+# to enable a feature, use `--features xxx`
+default = []
+
+[dependencies]
+panic-halt = "0.2.0"
