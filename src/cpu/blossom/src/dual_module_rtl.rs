@@ -10,6 +10,7 @@
 use fusion_blossom::dual_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
+use serde_json::json;
 
 #[derive(Debug)]
 pub struct DualModuleRTL {
