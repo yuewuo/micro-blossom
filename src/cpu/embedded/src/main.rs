@@ -23,7 +23,7 @@ fn test_acc(mask: u32) {
     unsafe {
         // currently it's a mock accelerator of 4kB memory; just to test assertion
         *(0xF1000000 as *mut u32) = mask;
-        assert_eq!(*(0xF1000000 as *const u32), mask);
+        core::assert_eq!(*(0xF1000000 as *const u32), mask);
     }
 }
 
