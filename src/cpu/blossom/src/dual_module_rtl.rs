@@ -441,7 +441,7 @@ impl DualPipelined for Vertex {
                 let edge = &dual_module.edges[**edge_index];
                 let peer_index = edge.get_peer(self.vertex_index);
                 let peer = &dual_module.vertices[peer_index];
-                peer.get_speed() > 0
+                peer.get_speed() > 0 && edge.left_growth + edge.right_growth == edge.weight
             };
             (
                 self.edge_indices.iter().find(is_peer_growing),       // search from beginning
@@ -1057,4 +1057,9 @@ mod tests {
     // phenomena: infinite loop
     // command: cargo run --release -- benchmark 7 0.15 --code-type code-capacity-planar-code --total-rounds 1000000 --verifier fusion-serial --use-deterministic-seed --starting-iteration 7 --print-syndrome-pattern
     // bug: constantly reporting "Conflicting((22, 0), (22, 5))" because the vertex forgot to check whether the node is the same
+
+    // phenomena: unexpected perfect matching weight 6000 vs 5000
+    // command: cargo run --release -- benchmark 7 0.03 --code-type code-capacity-planar-code --total-rounds 1000000 --verifier fusion-serial --use-deterministic-seed --starting-iteration 820 --enable-visualizer
+    // bug: the conflict reported is wrong: should be TouchingVirtual but reported a wrong Conflicting;
+    // cause: when checking for conflicts at a real node, I forgot to add condition that only checks fully-grown edges
 }
