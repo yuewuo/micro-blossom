@@ -335,7 +335,7 @@ impl DualModuleRTL {
 
 pub trait DualPipelined {
     /// load data from
-    fn load_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {}
+    fn load_stage(&mut self, _dual_module: &DualModuleRTL, _instruction: &Instruction) {}
     /// execute growth and respond to speed and blossom updates
     fn execute_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction);
     /// update the node according to the updated speed and length after growth
@@ -367,7 +367,7 @@ impl Vertex {
 }
 
 impl DualPipelined for Vertex {
-    fn execute_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {
+    fn execute_stage(&mut self, _dual_module: &DualModuleRTL, instruction: &Instruction) {
         match instruction {
             Instruction::AddDefectVertex { vertex, node } => {
                 if *vertex == self.vertex_index {
@@ -396,7 +396,7 @@ impl DualPipelined for Vertex {
         }
     }
 
-    fn update_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {
+    fn update_stage(&mut self, dual_module: &DualModuleRTL, _instruction: &Instruction) {
         // is there any growing peer trying to propagate to this node?
         let propagating_peer: Option<&Vertex> = {
             // find a peer node with positive growth and fully-grown edge
@@ -430,7 +430,7 @@ impl DualPipelined for Vertex {
     }
 
     // generate a response
-    fn write_stage(&self, dual_module: &DualModuleRTL, instruction: &Instruction) -> Option<Response> {
+    fn write_stage(&self, dual_module: &DualModuleRTL, _instruction: &Instruction) -> Option<Response> {
         // only detect when y_S = 0 and delta y_S = -1, whether there are two growing peers
         if self.speed != DualNodeGrowState::Shrink || self.grown != 0 {
             return None;
@@ -511,6 +511,7 @@ impl Edge {
 
 impl DualPipelined for Edge {
     // compute the next register values
+    #[allow(clippy::single_match)]
     fn execute_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {
         match instruction {
             Instruction::Grow { length } => {
@@ -528,9 +529,10 @@ impl DualPipelined for Edge {
         }
     }
 
-    fn update_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {}
+    fn update_stage(&mut self, _dual_module: &DualModuleRTL, _instruction: &Instruction) {}
 
     // generate a response
+    #[allow(clippy::comparison_chain)]
     fn write_stage(&self, dual_module: &DualModuleRTL, instruction: &Instruction) -> Option<Response> {
         if !matches!(instruction, Instruction::FindObstacle { .. }) {
             return None;

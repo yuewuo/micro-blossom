@@ -33,6 +33,7 @@ pub struct BlossomTracker<const N: usize> {
     grow_states: Vec<BlossomGrowState, N>,
 }
 
+#[derive(Debug)]
 struct HitZeroEvent {
     timestamp: Timestamp,
     /// the node that *probably* hits zero; it's probable because we never delete such event from the queue
@@ -48,11 +49,15 @@ pub enum BlossomGrowState {
 }
 
 #[cfg(any(test, feature = "std"))]
-fn binary_heap_debug_formatter<const N: usize>(
-    binary_heap: &BinaryHeap<HitZeroEvent, Min, N>,
+fn binary_heap_debug_formatter<const N: usize, T: std::fmt::Debug + Ord>(
+    binary_heap: &BinaryHeap<T, Min, N>,
     formatter: &mut std::fmt::Formatter,
 ) -> Result<(), std::fmt::Error> {
-    Ok(())
+    formatter
+        .debug_struct("BinaryHeap")
+        .field("top", &binary_heap.peek())
+        .field("len", &binary_heap.len())
+        .finish()
 }
 
 impl<const N: usize> BlossomTracker<N> {
