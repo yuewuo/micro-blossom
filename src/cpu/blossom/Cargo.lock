@@ -744,9 +744,34 @@ dependencies = [
 
 [[package]]
 name = "fusion-blossom"
-version = "0.2.7"
+version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c37bb782f937cc3108581d227b7b57bb48b92f1756cdc6e9ee67a60e8549141"
+checksum = "45b123e0eaeda1c78b54bda20a0e2259b53907a68737c3fc26642825cb1a3528"
+dependencies = [
+ "cc",
+ "cfg-if",
+ "chrono",
+ "clap",
+ "core_affinity",
+ "derivative",
+ "lazy_static",
+ "libc",
+ "parking_lot",
+ "pbr",
+ "petgraph",
+ "priority-queue",
+ "rand",
+ "rand_xoshiro",
+ "rayon",
+ "serde",
+ "serde_json",
+ "urlencoding",
+ "weak-table",
+]
+
+[[package]]
+name = "fusion-blossom"
+version = "0.2.9"
 dependencies = [
  "cc",
  "cfg-if",
@@ -1075,7 +1100,7 @@ dependencies = [
  "chrono",
  "clap",
  "derivative",
- "fusion-blossom",
+ "fusion-blossom 0.2.9",
  "heapless",
  "lazy_static",
  "libc",
@@ -1339,7 +1364,7 @@ dependencies = [
  "enum_dispatch",
  "float-cmp",
  "float-ord",
- "fusion-blossom",
+ "fusion-blossom 0.2.8",
  "lazy_static",
  "libc",
  "ndarray",

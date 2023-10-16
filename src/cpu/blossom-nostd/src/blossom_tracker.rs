@@ -66,6 +66,12 @@ impl<const N: usize> BlossomTracker<N> {
         }
     }
 
+    pub fn clear(&mut self) {
+        self.hit_zero_events.clear();
+        self.checkpoints.clear();
+        self.grow_states.clear();
+    }
+
     pub fn advance_time(&mut self, delta: Timestamp) {
         self.timestamp += delta;
         debug_assert!(

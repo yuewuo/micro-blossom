@@ -149,6 +149,8 @@ impl DualModuleImpl for DualModuleRTL {
         }
         // clear nodes
         self.nodes.clear();
+        // clear tracker
+        self.blossom_tracker.clear();
     }
 
     fn add_dual_node(&mut self, dual_node_ptr: &DualNodePtr) {
@@ -264,7 +266,6 @@ impl DualModuleImpl for DualModuleRTL {
                 }
             }
             Response::BlossomNeedExpand { blossom } => MaxUpdateLength::BlossomNeedExpand(self.nodes[blossom].clone()),
-            _ => unreachable!(),
         };
         // get blossom expand event from blossom tracker, only when no other conflicts are detected
         if matches!(max_update_length, MaxUpdateLength::NonZeroGrow { .. }) {
@@ -447,26 +448,28 @@ impl DualPipelined for Vertex {
                 self.edge_indices.iter().rev().find(is_peer_growing), // search from end
             )
         };
-        if edge_index_1 != edge_index_2 {
-            let edge_index_1 = edge_index_1.unwrap();
-            let edge_index_2 = edge_index_2.unwrap();
-            let edge_1 = &dual_module.edges[*edge_index_1];
-            let edge_2 = &dual_module.edges[*edge_index_2];
-            let peer_index_1 = edge_1.get_peer(self.vertex_index);
-            let peer_index_2 = edge_2.get_peer(self.vertex_index);
-            let peer_1 = &dual_module.vertices[peer_index_1];
-            let peer_2 = &dual_module.vertices[peer_index_2];
-            Some(Response::Conflict {
-                node_1: peer_1.node_index.unwrap(),
-                touch_1: peer_1.root_index.unwrap(),
-                node_2: peer_2.node_index.unwrap(),
-                touch_2: peer_2.root_index.unwrap(),
-                vertex_1: self.vertex_index,
-                vertex_2: self.vertex_index,
-            })
-        } else {
-            None
+        if edge_index_1 == edge_index_2 {
+            return None;
         }
+        let edge_index_1 = edge_index_1.unwrap();
+        let edge_index_2 = edge_index_2.unwrap();
+        let edge_1 = &dual_module.edges[*edge_index_1];
+        let edge_2 = &dual_module.edges[*edge_index_2];
+        let peer_index_1 = edge_1.get_peer(self.vertex_index);
+        let peer_index_2 = edge_2.get_peer(self.vertex_index);
+        let peer_1 = &dual_module.vertices[peer_index_1];
+        let peer_2 = &dual_module.vertices[peer_index_2];
+        if peer_1.node_index == peer_2.node_index {
+            return None;
+        }
+        Some(Response::Conflict {
+            node_1: peer_1.node_index.unwrap(),
+            touch_1: peer_1.root_index.unwrap(),
+            node_2: peer_2.node_index.unwrap(),
+            touch_2: peer_2.root_index.unwrap(),
+            vertex_1: self.vertex_index,
+            vertex_2: self.vertex_index,
+        })
     }
 }
 
@@ -1044,4 +1047,12 @@ mod tests {
             .snapshot_combined("shrink".to_string(), vec![&interface_ptr, &dual_module])
             .unwrap();
     }
+
+    // phenomena: index out of bound error
+    // command: cargo run --release -- benchmark 7 0.15 --code-type code-capacity-repetition-code --pb-message 'repetition 7 0.1' --total-rounds 1000000 --verifier fusion-serial --use-deterministic-seed --starting-iteration 472872 --print-syndrome-pattern
+    // bug: forgot to clear the blossom tracker
+
+    // phenomena: infinite loop
+    // command: cargo run --release -- benchmark 7 0.15 --code-type code-capacity-planar-code --total-rounds 1000000 --verifier fusion-serial --use-deterministic-seed --starting-iteration 7 --print-syndrome-pattern
+    // bug: constantly reporting "Conflicting((22, 0), (22, 5))" because the vertex forgot to check whether the node is the same
 }

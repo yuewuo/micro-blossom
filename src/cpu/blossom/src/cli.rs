@@ -1,8 +1,8 @@
+use crate::mwpm_solver::*;
 use clap::{Parser, Subcommand, ValueEnum};
 use fusion_blossom::cli::{ExampleCodeType, RunnableBenchmarkParameters, Verifier};
+use fusion_blossom::mwpm_solver::*;
 use fusion_blossom::util::*;
-use pbr::ProgressBar;
-use rand::{thread_rng, Rng};
 use serde::Serialize;
 use serde_json::json;
 use std::env;
@@ -136,8 +136,8 @@ impl From<BenchmarkParameters> for fusion_blossom::cli::BenchmarkParameters {
             print_syndrome_pattern,
             verifier,
             total_rounds,
-            primal_dual_type: _,
-            primal_dual_config: _,
+            primal_dual_type,
+            primal_dual_config,
             pb_message,
             use_deterministic_seed,
             benchmark_profiler_output,
@@ -152,21 +152,51 @@ impl From<BenchmarkParameters> for fusion_blossom::cli::BenchmarkParameters {
         legacy_parameters.print_syndrome_pattern = print_syndrome_pattern;
         legacy_parameters.verifier = verifier;
         legacy_parameters.total_rounds = total_rounds;
-        legacy_parameters.primal_dual_type = fusion_blossom::cli::PrimalDualType::Serial;
-        legacy_parameters.primal_dual_config = "{}".to_string();
+        match primal_dual_type {
+            PrimalDualType::Serial => {
+                legacy_parameters.primal_dual_type = fusion_blossom::cli::PrimalDualType::Serial;
+                legacy_parameters.primal_dual_config = primal_dual_config;
+            }
+            PrimalDualType::ErrorPatternLogger => {
+                legacy_parameters.primal_dual_type = fusion_blossom::cli::PrimalDualType::ErrorPatternLogger;
+                legacy_parameters.primal_dual_config = primal_dual_config;
+            }
+            _ => {}
+        }
         legacy_parameters.pb_message = pb_message;
         legacy_parameters.use_deterministic_seed = use_deterministic_seed;
         legacy_parameters.benchmark_profiler_output = benchmark_profiler_output;
         legacy_parameters.starting_iteration = starting_iteration;
-
-        println!("legacy_parameters: {legacy_parameters:?}");
         legacy_parameters
     }
 }
 
 impl From<BenchmarkParameters> for RunnableBenchmarkParameters {
     fn from(parameters: BenchmarkParameters) -> Self {
-        let mut runnable = RunnableBenchmarkParameters::from(fusion_blossom::cli::BenchmarkParameters::from(parameters));
+        let mut runnable =
+            RunnableBenchmarkParameters::from(fusion_blossom::cli::BenchmarkParameters::from(parameters.clone()));
+        // patch the runnable with real primal-dual-solver in this crate
+        match parameters.primal_dual_type {
+            PrimalDualType::Serial | PrimalDualType::ErrorPatternLogger => {}
+            _ => {
+                let BenchmarkParameters {
+                    code_type,
+                    d,
+                    p,
+                    noisy_measurements,
+                    max_half_weight,
+                    code_config,
+                    primal_dual_type,
+                    primal_dual_config,
+                    ..
+                } = parameters;
+                let code_config: serde_json::Value = serde_json::from_str(&code_config).unwrap();
+                let primal_dual_config: serde_json::Value = serde_json::from_str(&primal_dual_config).unwrap();
+                let code = code_type.build(d, p, noisy_measurements, max_half_weight, code_config);
+                let initializer = code.get_initializer();
+                runnable.primal_dual_solver = primal_dual_type.build(&initializer, primal_dual_config);
+            }
+        }
         runnable
     }
 }
@@ -176,8 +206,7 @@ impl Cli {
         match self.command {
             Commands::Benchmark(benchmark_parameters) => {
                 let runnable = RunnableBenchmarkParameters::from(benchmark_parameters);
-                // runnable.run();
-                println!("haha");
+                runnable.run();
             }
             Commands::Test { command } => {
                 match command {
@@ -298,4 +327,20 @@ pub fn execute_in_cli<'a>(iter: impl Iterator<Item = &'a String> + Clone, print_
         println!();
     }
     Cli::parse_from(iter).run();
+}
+
+impl PrimalDualType {
+    pub fn build(
+        &self,
+        initializer: &SolverInitializer,
+        primal_dual_config: serde_json::Value,
+    ) -> Box<dyn PrimalDualSolver> {
+        match self {
+            Self::DualRTL => {
+                assert_eq!(primal_dual_config, json!({}));
+                Box::new(SolverDualRTL::new(initializer))
+            }
+            _ => unimplemented!(),
+        }
+    }
 }
