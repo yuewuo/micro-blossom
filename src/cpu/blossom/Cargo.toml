@@ -49,4 +49,5 @@ lazy_static = "1.4.0"
 petgraph = "0.6.3"
 qecp = { version = "0.2.2", features = ["fusion-blossom"], optional = true }
 fusion-blossom = "0.2.3"
-micro-blossom-nostd = { path = "../blossom-nostd" }
+micro-blossom-nostd = { path = "../blossom-nostd", features = ["std"] }
+heapless = "0.7.16"

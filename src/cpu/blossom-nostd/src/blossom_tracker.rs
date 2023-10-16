@@ -8,6 +8,8 @@
 
 use crate::util::*;
 use core::cmp::Ordering;
+#[cfg(any(test, feature = "std"))]
+use derivative::Derivative;
 use heapless::binary_heap::{BinaryHeap, Min};
 use heapless::Vec;
 
@@ -15,8 +17,11 @@ use heapless::Vec;
 // The blossom indices have nice property that they will never decreasing.
 // In fact, the indices are allocated linearly, meaning it's guaranteed that the next index after K is always K+1.
 // Utilizing this, we can reduce the memory usage of the mapping significantly.
+#[cfg_attr(any(test, feature = "std"), derive(Derivative))]
+#[cfg_attr(any(test, feature = "std"), derivative(Debug))]
 pub struct BlossomTracker<const N: usize> {
     /// the priority queue of next timestamp
+    #[cfg_attr(any(test, feature = "std"), derivative(Debug(format_with = "binary_heap_debug_formatter")))]
     hit_zero_events: BinaryHeap<HitZeroEvent, Min, N>,
     /// it is the responsibility of outer program to report the timestamp properly
     timestamp: Timestamp,
@@ -35,11 +40,19 @@ struct HitZeroEvent {
 }
 
 #[repr(u8)]
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum BlossomGrowState {
     Grow,
     Shrink,
     Stay,
+}
+
+#[cfg(any(test, feature = "std"))]
+fn binary_heap_debug_formatter<const N: usize>(
+    binary_heap: &BinaryHeap<HitZeroEvent, Min, N>,
+    formatter: &mut std::fmt::Formatter,
+) -> Result<(), std::fmt::Error> {
+    Ok(())
 }
 
 impl<const N: usize> BlossomTracker<N> {
@@ -70,7 +83,13 @@ impl<const N: usize> BlossomTracker<N> {
 
     #[inline]
     fn assert_valid_node_index(&self, node_index: NodeIndex) {
-        debug_assert!(node_index >= self.first_index && node_index < self.first_index + self.checkpoints.len() as NodeIndex);
+        debug_assert!(
+            node_index >= self.first_index && node_index < self.first_index + self.checkpoints.len() as NodeIndex,
+            "invalid node index {}, not within the range of [{}, {})",
+            node_index,
+            self.first_index,
+            self.first_index + self.checkpoints.len() as NodeIndex
+        );
     }
 
     #[inline]
@@ -151,14 +170,12 @@ impl<const N: usize> BlossomTracker<N> {
         }
     }
 
-    pub fn get_maximum_growth(&mut self) -> Weight {
+    pub fn get_maximum_growth(&mut self) -> Option<(Weight, NodeIndex)> {
         self.remove_outdated_events();
-        if let Some(event) = self.hit_zero_events.peek() {
+        self.hit_zero_events.peek().map(|event| {
             debug_assert!(event.timestamp >= self.timestamp);
-            (event.timestamp - self.timestamp) as Weight
-        } else {
-            Weight::MAX
-        }
+            ((event.timestamp - self.timestamp) as Weight, event.node_index)
+        })
     }
 }
 
@@ -206,41 +223,41 @@ mod tests {
 
         tracker.create_blossom(node_1);
         assert_eq!(tracker.get_dual_variable(node_1), 0);
-        assert_eq!(tracker.get_maximum_growth(), Weight::MAX);
+        assert_eq!(tracker.get_maximum_growth(), None);
 
         tracker.advance_time(20);
         assert_eq!(tracker.get_dual_variable(node_1), 20);
-        assert_eq!(tracker.get_maximum_growth(), Weight::MAX);
+        assert_eq!(tracker.get_maximum_growth(), None);
 
         tracker.create_blossom(node_2);
         tracker.advance_time(30);
         assert_eq!(tracker.get_dual_variable(node_1), 50);
         assert_eq!(tracker.get_dual_variable(node_2), 30);
-        assert_eq!(tracker.get_maximum_growth(), Weight::MAX);
+        assert_eq!(tracker.get_maximum_growth(), None);
 
         tracker.set_speed(node_1, BlossomGrowState::Stay);
         tracker.advance_time(10);
         assert_eq!(tracker.get_dual_variable(node_1), 50);
         assert_eq!(tracker.get_dual_variable(node_2), 40);
-        assert_eq!(tracker.get_maximum_growth(), Weight::MAX);
+        assert_eq!(tracker.get_maximum_growth(), None);
 
         tracker.set_speed(node_1, BlossomGrowState::Grow);
         tracker.set_speed(node_2, BlossomGrowState::Shrink);
         tracker.advance_time(10);
         assert_eq!(tracker.get_dual_variable(node_1), 60);
         assert_eq!(tracker.get_dual_variable(node_2), 30);
-        assert_eq!(tracker.get_maximum_growth(), 30);
+        assert_eq!(tracker.get_maximum_growth(), Some((30, node_2)));
 
         tracker.advance_time(30);
         assert_eq!(tracker.get_dual_variable(node_1), 90);
         assert_eq!(tracker.get_dual_variable(node_2), 0);
-        assert_eq!(tracker.get_maximum_growth(), 0);
+        assert_eq!(tracker.get_maximum_growth(), Some((0, node_2)));
 
         tracker.set_speed(node_2, BlossomGrowState::Grow);
-        assert_eq!(tracker.get_maximum_growth(), Weight::MAX);
+        assert_eq!(tracker.get_maximum_growth(), None);
 
         tracker.set_speed(node_2, BlossomGrowState::Shrink);
-        assert_eq!(tracker.get_maximum_growth(), 0);
+        assert_eq!(tracker.get_maximum_growth(), Some((0, node_2)));
 
         tracker.set_speed(node_2, BlossomGrowState::Grow);
         tracker.advance_time(30);
@@ -248,6 +265,6 @@ mod tests {
         tracker.set_speed(node_2, BlossomGrowState::Grow);
         tracker.advance_time(30);
         tracker.set_speed(node_2, BlossomGrowState::Shrink);
-        assert_eq!(tracker.get_maximum_growth(), 60);
+        assert_eq!(tracker.get_maximum_growth(), Some((60, node_2)));
     }
 }

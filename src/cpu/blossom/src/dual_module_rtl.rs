@@ -10,7 +10,10 @@
 use fusion_blossom::dual_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
+use micro_blossom_nostd::blossom_tracker::*;
 use serde_json::json;
+
+const BLOSSOM_TRACKER_SIZE: usize = 30 * 30 * 30; // guarantees working at d=31
 
 #[derive(Debug)]
 pub struct DualModuleRTL {
@@ -19,6 +22,7 @@ pub struct DualModuleRTL {
     pub vertices: Vec<Vertex>,
     pub edges: Vec<Edge>,
     pub nodes: Vec<DualNodePtr>,
+    pub blossom_tracker: Box<BlossomTracker<BLOSSOM_TRACKER_SIZE>>,
     /// temporary list of synchronize requests, not used until hardware fusion
     pub sync_requests: Vec<SyncRequest>,
 }
@@ -97,6 +101,7 @@ impl DualModuleImpl for DualModuleRTL {
             vertices: vec![],
             edges: vec![],
             nodes: vec![],
+            blossom_tracker: Box::new(BlossomTracker::new()),
             sync_requests: vec![],
         };
         dual_module.clear();
@@ -152,13 +157,19 @@ impl DualModuleImpl for DualModuleRTL {
         self.nodes.push(dual_node_ptr.clone());
         match &node.class {
             DualNodeClass::Blossom { nodes_circle, .. } => {
+                self.blossom_tracker.create_blossom(node.index.try_into().unwrap());
                 // creating blossom is cheap
                 for weak_ptr in nodes_circle.iter() {
-                    let node_index = weak_ptr.upgrade_force().read_recursive().index;
+                    let child_node_ptr = weak_ptr.upgrade_force();
+                    let child_node = child_node_ptr.read_recursive();
                     self.execute_instruction(Instruction::SetBlossom {
-                        node: node_index,
+                        node: child_node.index,
                         blossom: node.index,
                     });
+                    if matches!(child_node.class, DualNodeClass::Blossom { .. }) {
+                        self.blossom_tracker
+                            .set_speed(child_node.index.try_into().unwrap(), BlossomGrowState::Stay);
+                    }
                 }
                 // TODO: use priority queue to track shrinking blossom constraint
             }
@@ -179,6 +190,8 @@ impl DualModuleImpl for DualModuleRTL {
             DualNodeClass::Blossom { nodes_circle, .. } => nodes_circle.clone(),
             _ => unreachable!(),
         };
+        self.blossom_tracker
+            .set_speed(node.index.try_into().unwrap(), BlossomGrowState::Stay);
         for weak_ptr in nodes_circle.iter() {
             let node_ptr = weak_ptr.upgrade_force();
             let roots = get_blossom_roots(&node_ptr);
@@ -193,7 +206,18 @@ impl DualModuleImpl for DualModuleRTL {
     }
 
     fn set_grow_state(&mut self, dual_node_ptr: &DualNodePtr, grow_state: DualNodeGrowState) {
+        let node = dual_node_ptr.read_recursive();
         let node_index = dual_node_ptr.read_recursive().index;
+        if matches!(node.class, DualNodeClass::Blossom { .. }) {
+            self.blossom_tracker.set_speed(
+                node_index.try_into().unwrap(),
+                match grow_state {
+                    DualNodeGrowState::Grow => BlossomGrowState::Grow,
+                    DualNodeGrowState::Shrink => BlossomGrowState::Shrink,
+                    DualNodeGrowState::Stay => BlossomGrowState::Stay,
+                },
+            );
+        }
         self.execute_instruction(Instruction::SetSpeed {
             node: node_index,
             speed: grow_state,
@@ -204,9 +228,13 @@ impl DualModuleImpl for DualModuleRTL {
         let return_value = self
             .execute_instruction(Instruction::FindObstacle { region_preference: 0 })
             .unwrap();
-        let max_update_length = match return_value {
-            Response::NonZeroGrow { length } => {
-                assert!(length > 0);
+        let maximum_growth_blossom_hit_zero = self.blossom_tracker.get_maximum_growth();
+        let mut max_update_length = match return_value {
+            Response::NonZeroGrow { mut length } => {
+                if let Some((blossom_length, _)) = &maximum_growth_blossom_hit_zero {
+                    let blossom_length: Weight = (*blossom_length).try_into().unwrap();
+                    length = std::cmp::min(length, blossom_length);
+                }
                 MaxUpdateLength::NonZeroGrow((length, false))
             }
             Response::Conflict {
@@ -238,6 +266,17 @@ impl DualModuleImpl for DualModuleRTL {
             Response::BlossomNeedExpand { blossom } => MaxUpdateLength::BlossomNeedExpand(self.nodes[blossom].clone()),
             _ => unreachable!(),
         };
+        // get blossom expand event from blossom tracker, only when no other conflicts are detected
+        if matches!(max_update_length, MaxUpdateLength::NonZeroGrow { .. }) {
+            if let Some((length, blossom_index)) = maximum_growth_blossom_hit_zero {
+                if length == 0 {
+                    max_update_length = MaxUpdateLength::BlossomNeedExpand(self.nodes[blossom_index as usize].clone());
+                }
+            }
+        }
+        if let MaxUpdateLength::NonZeroGrow((length, _)) = &max_update_length {
+            assert!(*length > 0);
+        }
         let mut group_max_update_length = GroupMaxUpdateLength::new();
         group_max_update_length.add(max_update_length);
         group_max_update_length
@@ -245,6 +284,7 @@ impl DualModuleImpl for DualModuleRTL {
 
     fn grow(&mut self, length: Weight) {
         assert!(length > 0, "RTL design doesn't allow negative growth");
+        self.blossom_tracker.advance_time(length.try_into().unwrap());
         self.execute_instruction(Instruction::Grow { length });
     }
 

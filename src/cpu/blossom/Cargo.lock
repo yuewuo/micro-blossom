@@ -1076,6 +1076,7 @@ dependencies = [
  "clap",
  "derivative",
  "fusion-blossom",
+ "heapless",
  "lazy_static",
  "libc",
  "micro-blossom-nostd",
@@ -1098,6 +1099,7 @@ name = "micro-blossom-nostd"
 version = "0.0.0"
 dependencies = [
  "cfg-if",
+ "derivative",
  "heapless",
  "panic-halt",
 ]
