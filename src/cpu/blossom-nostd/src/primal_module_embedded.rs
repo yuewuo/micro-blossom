@@ -27,7 +27,6 @@ pub struct Nodes<const N: usize, const DOUBLE_N: usize> {
 }
 
 #[derive(Clone)]
-#[cfg_attr(any(test, feature = "std"), derive(Debug))]
 pub struct Node {
     /// the root of an alternating tree, or `NODE_NONE` if this node is not initialized
     pub root: NodeIndex,
@@ -40,11 +39,10 @@ pub struct Node {
     /// the depth in the alternating tree, root has 0 depth
     pub depth: NodeNum,
     /// temporary match with another node, (target, touching_grandson)
-    pub temporary_match: Link,
+    pub matching: Link,
 }
 
 #[derive(Clone)]
-#[cfg_attr(any(test, feature = "std"), derive(Debug))]
 pub struct Link {
     /// the index of the peer
     pub peer: NodeIndex,
@@ -55,6 +53,115 @@ pub struct Link {
 impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
     pub fn new() -> Self {
         Self { nodes: Nodes::new() }
+    }
+
+    pub fn clear(&mut self) {
+        self.nodes.clear();
+    }
+}
+
+impl<const N: usize, const DOUBLE_N: usize> Nodes<N, DOUBLE_N> {
+    pub fn new() -> Self {
+        debug_assert_eq!(N * 2, DOUBLE_N);
+        let mut buffer = Vec::new();
+        buffer.resize(DOUBLE_N, Node::none()).unwrap();
+        Self {
+            buffer,
+            count_defects: 0,
+            count_blossoms: 0,
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.count_defects = 0;
+        self.count_blossoms = 0;
+    }
+
+    fn prepare_defects_up_to(&mut self, defect_index: NodeIndex) {
+        if defect_index >= self.count_defects {
+            for index in self.count_defects..=defect_index {
+                self.buffer[index as usize].set_none();
+            }
+            self.count_defects = defect_index + 1;
+        }
+    }
+
+    /// make sure the defect node is set up correctly, especially because the primal module
+    /// doesn't really know how many defects are there. In fact, the software primal module
+    /// may not eventually holding all the defects because of the offloading, i.e., pre-decoding.
+    /// This function is supposed to be called multiple times, whenever a defect vertex is reported to the primal.
+    pub fn check_defect(&mut self, defect_index: NodeIndex) {
+        debug_assert!(
+            (defect_index as usize) < N,
+            "defect index too large, overlapping with blossom"
+        );
+        self.prepare_defects_up_to(defect_index);
+        if self.buffer[defect_index as usize].is_none() {
+            self.buffer[defect_index as usize].create_some(defect_index);
+        }
+    }
+
+    /// This function is supposed to be called multiple times, whenever a blossom node is reported to the primal.
+    /// Blossoms are created by the primal module, so they should be within the proper index range.
+    pub fn check_blossom(&mut self, blossom_index: NodeIndex) {
+        debug_assert!(
+            (blossom_index as usize) >= N,
+            "blossom index too small, overlapping with defect nodes"
+        );
+        debug_assert!(
+            (blossom_index as usize) < DOUBLE_N,
+            "blossom index too large, leading to overflow"
+        );
+        let local_index = blossom_index - N as NodeIndex;
+        assert!(
+            local_index < self.count_blossoms,
+            "blossoms should always be created by the primal module"
+        );
+    }
+}
+
+impl Node {
+    pub fn none() -> Self {
+        Self {
+            root: NODE_NONE, // mark as uninitialized node
+            parent: Link::none(),
+            first_child: NODE_NONE,
+            sibling: NODE_NONE,
+            depth: 0,
+            matching: Link::none(),
+        }
+    }
+
+    /// since most of the defect nodes will never be accessed by the primal module when offloading,
+    /// we optimize speed by simply marking them as "None"
+    fn set_none(&mut self) {
+        self.root = NODE_NONE;
+    }
+
+    fn is_none(&self) -> bool {
+        self.root == NODE_NONE
+    }
+
+    fn create_some(&mut self, node_index: NodeIndex) {
+        self.root = node_index; // set the root as itself
+        self.parent = Link::none();
+        self.first_child = NODE_NONE;
+        self.sibling = NODE_NONE;
+        self.depth = 0; // root has 0 depth
+        self.matching = Link::none();
+    }
+}
+
+impl Link {
+    pub fn none() -> Self {
+        Self {
+            peer: NODE_NONE,
+            touching: NODE_NONE,
+        }
+    }
+
+    fn is_none(&self) -> bool {
+        self.peer == NODE_NONE
     }
 }
 
@@ -69,37 +176,35 @@ impl<const N: usize, const DOUBLE_N: usize> std::fmt::Debug for Nodes<N, DOUBLE_
     }
 }
 
-impl<const N: usize, const DOUBLE_N: usize> Nodes<N, DOUBLE_N> {
-    pub fn new() -> Self {
-        debug_assert_eq!(N * 2, DOUBLE_N);
-        let mut buffer = Vec::new();
-        buffer.resize(DOUBLE_N, Node::new()).unwrap();
-        Self {
-            buffer,
-            count_defects: 0,
-            count_blossoms: 0,
+#[cfg(any(test, feature = "std"))]
+impl std::fmt::Debug for Node {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if self.is_none() {
+            formatter.write_str("None")
+        } else {
+            formatter
+                .debug_struct("Node")
+                .field("parent", &self.parent)
+                .field("first_child", &self.first_child)
+                .field("sibling", &self.sibling)
+                .field("depth", &self.depth)
+                .field("matching", &self.matching)
+                .finish()
         }
     }
 }
 
-impl Node {
-    pub fn new() -> Self {
-        Self {
-            root: NODE_NONE, // mark as uninitialized node
-            parent: Link::new(),
-            first_child: NODE_NONE,
-            sibling: NODE_NONE,
-            depth: 0,
-            temporary_match: Link::new(),
-        }
-    }
-}
-
-impl Link {
-    pub fn new() -> Self {
-        Self {
-            peer: NODE_NONE,
-            touching: NODE_NONE,
+#[cfg(any(test, feature = "std"))]
+impl std::fmt::Debug for Link {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if self.is_none() {
+            formatter.write_str("None")
+        } else {
+            formatter
+                .debug_struct("Link")
+                .field("peer", &self.peer)
+                .field("touching", &self.touching)
+                .finish()
         }
     }
 }
@@ -123,7 +228,11 @@ mod tests {
         // cargo test primal_module_debug_print -- --nocapture
         const N: usize = 100;
         const DOUBLE_N: usize = 2 * N;
-        let primal_module: PrimalModuleEmbedded<N, DOUBLE_N> = PrimalModuleEmbedded::new();
+        let mut primal_module: PrimalModuleEmbedded<N, DOUBLE_N> = PrimalModuleEmbedded::new();
+        println!("{primal_module:?}");
+        primal_module.nodes.check_defect(3);
+        primal_module.nodes.check_defect(1);
+        primal_module.nodes.check_defect(4);
         println!("{primal_module:?}");
     }
 }
