@@ -7,13 +7,12 @@
 //! This is supposed to be an algorithm design for Micro Blossom.
 //!
 
+use crate::util::*;
 use fusion_blossom::dual_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::blossom_tracker::*;
 use serde_json::json;
-
-const BLOSSOM_TRACKER_SIZE: usize = 30 * 30 * 30; // guarantees working at d=31
 
 #[derive(Debug)]
 pub struct DualModuleRTL {
@@ -22,7 +21,7 @@ pub struct DualModuleRTL {
     pub vertices: Vec<Vertex>,
     pub edges: Vec<Edge>,
     pub nodes: Vec<DualNodePtr>,
-    pub blossom_tracker: Box<BlossomTracker<BLOSSOM_TRACKER_SIZE>>,
+    pub blossom_tracker: Box<BlossomTracker<MAX_NODE_NUM>>,
     /// temporary list of synchronize requests, not used until hardware fusion
     pub sync_requests: Vec<SyncRequest>,
 }
