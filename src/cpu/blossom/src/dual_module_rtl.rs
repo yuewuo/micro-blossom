@@ -12,6 +12,7 @@ use fusion_blossom::dual_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::blossom_tracker::*;
+use micro_blossom_nostd::util::GrowState;
 use serde_json::json;
 
 #[derive(Debug)]
@@ -169,7 +170,7 @@ impl DualModuleImpl for DualModuleRTL {
                     });
                     if matches!(child_node.class, DualNodeClass::Blossom { .. }) {
                         self.blossom_tracker
-                            .set_speed(child_node.index.try_into().unwrap(), BlossomGrowState::Stay);
+                            .set_speed(child_node.index.try_into().unwrap(), GrowState::Stay);
                     }
                 }
                 // TODO: use priority queue to track shrinking blossom constraint
@@ -192,7 +193,7 @@ impl DualModuleImpl for DualModuleRTL {
             _ => unreachable!(),
         };
         self.blossom_tracker
-            .set_speed(node.index.try_into().unwrap(), BlossomGrowState::Stay);
+            .set_speed(node.index.try_into().unwrap(), GrowState::Stay);
         for weak_ptr in nodes_circle.iter() {
             let node_ptr = weak_ptr.upgrade_force();
             let roots = get_blossom_roots(&node_ptr);
@@ -213,9 +214,9 @@ impl DualModuleImpl for DualModuleRTL {
             self.blossom_tracker.set_speed(
                 node_index.try_into().unwrap(),
                 match grow_state {
-                    DualNodeGrowState::Grow => BlossomGrowState::Grow,
-                    DualNodeGrowState::Shrink => BlossomGrowState::Shrink,
-                    DualNodeGrowState::Stay => BlossomGrowState::Stay,
+                    DualNodeGrowState::Grow => GrowState::Grow,
+                    DualNodeGrowState::Shrink => GrowState::Shrink,
+                    DualNodeGrowState::Stay => GrowState::Stay,
                 },
             );
         }

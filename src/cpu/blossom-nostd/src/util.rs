@@ -50,3 +50,11 @@ impl<'a, T: std::fmt::Debug, const N: usize> std::fmt::Debug for SlicedVec<'a, T
             .finish()
     }
 }
+
+#[repr(u8)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub enum GrowState {
+    Grow,
+    Shrink,
+    Stay,
+}

@@ -1,19 +1,19 @@
 [tasks.strip]
 command = "riscv32-unknown-elf-strip"
-args = ["target/riscv32i-unknown-none-elf/release/embedded"]
+args = ["target/riscv32i-unknown-none-elf/release/embedded_blossom"]
 
 [tasks.objcopy]
 command = "riscv32-unknown-elf-objcopy"
 args = [
     "-O",
     "binary",
-    "target/riscv32i-unknown-none-elf/release/embedded",
-    "target/riscv32i-unknown-none-elf/release/embedded.bin",
+    "target/riscv32i-unknown-none-elf/release/embedded_blossom",
+    "target/riscv32i-unknown-none-elf/release/embedded_blossom.bin",
 ]
 dependencies = ["strip"]
 
 [tasks.objdump]
-script = "riscv32-unknown-elf-objdump -d target/riscv32i-unknown-none-elf/release/embedded > target/riscv32i-unknown-none-elf/release/embedded.s"
+script = "riscv32-unknown-elf-objdump -d target/riscv32i-unknown-none-elf/release/embedded_blossom > target/riscv32i-unknown-none-elf/release/embedded_blossom.s"
 dependencies = ["strip"]
 
 [tasks.embedded]

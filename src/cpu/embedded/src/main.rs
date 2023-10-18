@@ -1,6 +1,8 @@
 #![no_std]
 #![no_main]
 
+// static mut GLOBAL_STATE: Option<GlobalState> = None;
+
 use core::arch::asm;
 use embedded_blossom as _;
 use riscv_rt::entry;

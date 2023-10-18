@@ -4,22 +4,32 @@ use fusion_blossom::primal_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::primal_module_embedded::*;
+use micro_blossom_nostd::util::NodeIndex as EmbeddedNodeIndex;
 use serde_json::json;
+use std::collections::BTreeMap;
 
 #[derive(Debug)]
 pub struct PrimalModuleEmbeddedAdaptor {
+    /// the embedded primal module
     pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
+    /// mapping between the integer index interface and the pointer interface
+    pub index_to_ptr: BTreeMap<EmbeddedNodeIndex, DualNodePtr>,
+    pub ptr_to_index: BTreeMap<DualNodePtr, EmbeddedNodeIndex>,
 }
 
 impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
     fn new_empty(_initializer: &SolverInitializer) -> Self {
         Self {
             primal_module: PrimalModuleEmbedded::new(),
+            index_to_ptr: BTreeMap::new(),
+            ptr_to_index: BTreeMap::new(),
         }
     }
 
     fn clear(&mut self) {
         self.primal_module.clear();
+        self.index_to_ptr.clear();
+        self.ptr_to_index.clear();
     }
 
     fn load_defect_dual_node(&mut self, dual_node_ptr: &DualNodePtr) {
