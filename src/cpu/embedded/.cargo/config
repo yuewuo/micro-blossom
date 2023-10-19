@@ -5,4 +5,5 @@ rustflags = [
 ]
 
 [build]
+# Pick ONE of these compilation targets
 target = "riscv32i-unknown-none-elf"

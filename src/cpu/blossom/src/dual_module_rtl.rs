@@ -334,7 +334,7 @@ impl DualModuleRTL {
 }
 
 pub trait DualPipelined {
-    /// load data from
+    /// load data from BRAM (optional)
     fn load_stage(&mut self, _dual_module: &DualModuleRTL, _instruction: &Instruction) {}
     /// execute growth and respond to speed and blossom updates
     fn execute_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction);
