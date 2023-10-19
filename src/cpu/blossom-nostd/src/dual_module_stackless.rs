@@ -2,6 +2,7 @@ use crate::interface::*;
 use crate::util::*;
 
 pub trait DualStacklessDriver {
+    fn clear(&mut self);
     fn set_speed(&mut self, node: NodeIndex, speed: GrowState);
     fn set_blossom(&mut self, node: NodeIndex, blossom: NodeIndex);
     fn find_obstacle(&mut self) -> MaxUpdateLength;
@@ -15,7 +16,7 @@ pub struct DualModuleStackless<D: DualStacklessDriver> {
 
 impl<D: DualStacklessDriver> DualInterface for DualModuleStackless<D> {
     fn clear(&mut self) {
-        unimplemented!()
+        self.driver.clear();
     }
 
     fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: NodeIndex) {
@@ -38,7 +39,6 @@ impl<D: DualStacklessDriver> DualInterface for DualModuleStackless<D> {
         self.driver.find_obstacle()
     }
 
-    /// grow a specific length
     fn grow(&mut self, length: Weight) {
         self.driver.grow(length);
     }
@@ -68,7 +68,7 @@ impl<D: DualStacklessDriver> DualModuleStackless<D> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap, VecDeque};
 
     #[test]
     fn dual_module_stackless_basic_1() {
@@ -155,7 +155,7 @@ mod tests {
     pub struct MockDualDriver {
         pub verbose: bool, // whether print every log
         pub logs: Vec<String>,
-        pub pending_obstacles: Vec<MaxUpdateLength>,
+        pub pending_obstacles: VecDeque<MaxUpdateLength>,
     }
 
     impl MockDualDriver {
@@ -163,7 +163,7 @@ mod tests {
             Self {
                 verbose: true,
                 logs: vec![],
-                pending_obstacles: vec![],
+                pending_obstacles: VecDeque::new(),
             }
         }
         pub fn log(&mut self, message: String) {
@@ -182,6 +182,9 @@ mod tests {
     }
 
     impl DualStacklessDriver for MockDualDriver {
+        fn clear(&mut self) {
+            self.log(format!("clear()"));
+        }
         fn set_speed(&mut self, node: NodeIndex, speed: GrowState) {
             self.log(format!("set_speed({node}, {speed:?})"));
         }
@@ -190,7 +193,7 @@ mod tests {
         }
         fn find_obstacle(&mut self) -> MaxUpdateLength {
             self.log(format!("find_obstacle()"));
-            unimplemented!()
+            self.pending_obstacles.pop_front().unwrap()
         }
         fn grow(&mut self, length: Weight) {
             self.log(format!("grow({length})"));

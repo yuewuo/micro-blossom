@@ -10,10 +10,14 @@ use crate::util::*;
 
 #[derive(Debug)]
 pub enum MaxUpdateLength {
-    NonZeroGrow {
-        /// when length is null,
+    /// nothing to do
+    None,
+    /// a non-negative growth
+    GrowLength {
+        /// when length is 0, one just need to call grow(0) for erasure errors to propagate
         length: Weight,
     },
+    /// some conflict needs the primal module to resolve
     Conflict {
         /// node_1 is assumed to be always normal node
         node_1: NodeIndex,
@@ -24,9 +28,8 @@ pub enum MaxUpdateLength {
         vertex_1: VertexIndex,
         vertex_2: VertexIndex,
     },
-    BlossomNeedExpand {
-        blossom: NodeIndex,
-    },
+    /// a blossom needs to be expanded
+    BlossomNeedExpand { blossom: NodeIndex },
 }
 
 pub trait PrimalInterface {
@@ -56,6 +59,6 @@ pub trait DualInterface {
     /// compute the maximum length to update, or to find an obstacle
     fn compute_maximum_update_length(&mut self) -> MaxUpdateLength;
 
-    /// grow a specific length
+    /// grow a specific length; however in an offloaded system, this should never be called from software
     fn grow(&mut self, length: Weight);
 }
