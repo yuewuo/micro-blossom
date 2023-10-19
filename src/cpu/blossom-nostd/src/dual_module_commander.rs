@@ -32,10 +32,6 @@ pub struct DualModuleCommander<D: DualCommanderDriver> {
 }
 
 impl<D: DualCommanderDriver> DualInterface for DualModuleCommander<D> {
-    fn new_empty() -> Self {
-        unimplemented!("use `new` instead, providing the driver")
-    }
-
     fn clear(&mut self) {
         unimplemented!()
     }
@@ -117,9 +113,6 @@ mod tests {
     }
 
     impl PrimalInterface for MockPrimal {
-        fn new_empty() -> Self {
-            Self { nodes: BTreeMap::new() }
-        }
         fn clear(&mut self) {}
         fn is_blossom(&self, node_index: NodeIndex) -> bool {
             !self.nodes[&node_index].children.is_empty()
@@ -132,6 +125,9 @@ mod tests {
     }
 
     impl MockPrimal {
+        fn new_empty() -> Self {
+            Self { nodes: BTreeMap::new() }
+        }
         pub fn add_defect(&mut self, node_index: NodeIndex) {
             assert!(!self.nodes.contains_key(&node_index));
             self.nodes.insert(

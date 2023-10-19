@@ -3,6 +3,7 @@ use fusion_blossom::dual_module::*;
 use fusion_blossom::primal_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
+use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::primal_module_embedded::*;
 use micro_blossom_nostd::util::NodeIndex as EmbeddedNodeIndex;
 use serde_json::json;

@@ -9,9 +9,6 @@
 use crate::util::*;
 
 pub trait PrimalInterface {
-    /// create a new instance
-    fn new_empty() -> Self;
-
     /// reset the primal module
     fn clear(&mut self);
 
@@ -23,9 +20,6 @@ pub trait PrimalInterface {
 }
 
 pub trait DualInterface {
-    /// create a new instance
-    fn new_empty() -> Self;
-
     /// reset the dual module
     fn clear(&mut self);
 
