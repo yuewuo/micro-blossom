@@ -1,37 +1,19 @@
 use crate::interface::*;
 use crate::util::*;
 
-#[derive(Debug)]
-pub enum CommanderResponse {
-    NonZeroGrow {
-        length: Weight,
-    },
-    Conflict {
-        node_1: NodeIndex,
-        node_2: NodeIndex,
-        touch_1: NodeIndex,
-        touch_2: NodeIndex,
-        vertex_1: VertexIndex,
-        vertex_2: VertexIndex,
-    },
-    BlossomNeedExpand {
-        blossom: NodeIndex,
-    },
-}
-
-pub trait DualCommanderDriver {
+pub trait DualStacklessDriver {
     fn set_speed(&mut self, node: NodeIndex, speed: GrowState);
     fn set_blossom(&mut self, node: NodeIndex, blossom: NodeIndex);
-    fn find_obstacle(&mut self) -> CommanderResponse;
+    fn find_obstacle(&mut self) -> MaxUpdateLength;
     fn grow(&mut self, length: Weight);
 }
 
-/// a dual module implementation that calls the driver to do its jobs
-pub struct DualModuleCommander<D: DualCommanderDriver> {
+/// a dual module implementation that removes the need to maintain a stack of blossom structure
+pub struct DualModuleStackless<D: DualStacklessDriver> {
     pub driver: D,
 }
 
-impl<D: DualCommanderDriver> DualInterface for DualModuleCommander<D> {
+impl<D: DualStacklessDriver> DualInterface for DualModuleStackless<D> {
     fn clear(&mut self) {
         unimplemented!()
     }
@@ -44,16 +26,25 @@ impl<D: DualCommanderDriver> DualInterface for DualModuleCommander<D> {
 
     fn expand_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: NodeIndex) {
         primal_module.iterate_blossom_children(blossom_index, |primal_module, child_index| {
-            self.iterative_expand_blossom(primal_module, blossom_index, child_index);
+            self.iterative_expand_blossom(primal_module, child_index, child_index);
         });
     }
 
     fn set_grow_state(&mut self, node_index: NodeIndex, grow_state: GrowState) {
         self.driver.set_speed(node_index, grow_state);
     }
+
+    fn compute_maximum_update_length(&mut self) -> MaxUpdateLength {
+        self.driver.find_obstacle()
+    }
+
+    /// grow a specific length
+    fn grow(&mut self, length: Weight) {
+        self.driver.grow(length);
+    }
 }
 
-impl<D: DualCommanderDriver> DualModuleCommander<D> {
+impl<D: DualStacklessDriver> DualModuleStackless<D> {
     pub fn new(driver: D) -> Self {
         Self { driver }
     }
@@ -80,8 +71,8 @@ mod tests {
     use std::collections::BTreeMap;
 
     #[test]
-    fn dual_module_commander_basic_1() {
-        // cargo test dual_module_commander_basic_1 -- --nocapture
+    fn dual_module_stackless_basic_1() {
+        // cargo test dual_module_stackless_basic_1 -- --nocapture
         let mut primal = MockPrimal::new_empty();
         primal.add_defect(0);
         primal.add_defect(1);
@@ -90,7 +81,7 @@ mod tests {
         primal.add_defect(4);
         primal.add_blossom(100, vec![0, 1, 3]);
         primal.add_blossom(101, vec![2, 100, 4]);
-        let mut dual = DualModuleCommander::new(MockDualDriver::new());
+        let mut dual = DualModuleStackless::new(MockDualDriver::new());
         dual.create_blossom(&primal, 100);
         dual.driver
             .check(&["set_blossom(0, 100)", "set_blossom(1, 100)", "set_blossom(3, 100)"]);
@@ -98,9 +89,20 @@ mod tests {
         dual.driver
             .check(&["set_blossom(2, 101)", "set_blossom(100, 101)", "set_blossom(4, 101)"]);
         dual.expand_blossom(&primal, 100);
-        dual.driver.check(&[]);
+        dual.driver
+            .check(&["set_blossom(0, 0)", "set_blossom(1, 1)", "set_blossom(3, 3)"]);
         dual.expand_blossom(&primal, 101);
-        dual.driver.check(&[]);
+        // this is the tricky part: only defect vertices are updated;
+        // it's designed this way so that the hardware accelerator doesn't have to maintain
+        // a stack of blossom nodes which is very expensive considering the worst case
+        // this is acceptable because expanding a large blossom is exponentially unlikely to happen
+        dual.driver.check(&[
+            "set_blossom(2, 2)",
+            "set_blossom(0, 100)",
+            "set_blossom(1, 100)",
+            "set_blossom(3, 100)",
+            "set_blossom(4, 4)",
+        ]);
     }
 
     pub struct MockPrimal {
@@ -153,6 +155,7 @@ mod tests {
     pub struct MockDualDriver {
         pub verbose: bool, // whether print every log
         pub logs: Vec<String>,
+        pub pending_obstacles: Vec<MaxUpdateLength>,
     }
 
     impl MockDualDriver {
@@ -160,6 +163,7 @@ mod tests {
             Self {
                 verbose: true,
                 logs: vec![],
+                pending_obstacles: vec![],
             }
         }
         pub fn log(&mut self, message: String) {
@@ -177,14 +181,14 @@ mod tests {
         }
     }
 
-    impl DualCommanderDriver for MockDualDriver {
+    impl DualStacklessDriver for MockDualDriver {
         fn set_speed(&mut self, node: NodeIndex, speed: GrowState) {
             self.log(format!("set_speed({node}, {speed:?})"));
         }
         fn set_blossom(&mut self, node: NodeIndex, blossom: NodeIndex) {
             self.log(format!("set_blossom({node}, {blossom})"));
         }
-        fn find_obstacle(&mut self) -> CommanderResponse {
+        fn find_obstacle(&mut self) -> MaxUpdateLength {
             self.log(format!("find_obstacle()"));
             unimplemented!()
         }

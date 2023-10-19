@@ -163,7 +163,7 @@ impl Link {
         }
     }
 
-    fn is_none(&self) -> bool {
+    pub fn is_none(&self) -> bool {
         self.peer == NODE_NONE
     }
 }

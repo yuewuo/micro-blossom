@@ -8,6 +8,27 @@
 
 use crate::util::*;
 
+#[derive(Debug)]
+pub enum MaxUpdateLength {
+    NonZeroGrow {
+        /// when length is null,
+        length: Weight,
+    },
+    Conflict {
+        /// node_1 is assumed to be always normal node
+        node_1: NodeIndex,
+        /// node_2 could be NODE_NONE, which means it's touching a virtual vertex `vertex_2`
+        node_2: NodeIndex,
+        touch_1: NodeIndex,
+        touch_2: NodeIndex,
+        vertex_1: VertexIndex,
+        vertex_2: VertexIndex,
+    },
+    BlossomNeedExpand {
+        blossom: NodeIndex,
+    },
+}
+
 pub trait PrimalInterface {
     /// reset the primal module
     fn clear(&mut self);
@@ -31,4 +52,10 @@ pub trait DualInterface {
 
     /// set the speed of a node
     fn set_grow_state(&mut self, node_index: NodeIndex, grow_state: GrowState);
+
+    /// compute the maximum length to update, or to find an obstacle
+    fn compute_maximum_update_length(&mut self) -> MaxUpdateLength;
+
+    /// grow a specific length
+    fn grow(&mut self, length: Weight);
 }
