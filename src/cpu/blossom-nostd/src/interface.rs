@@ -41,6 +41,19 @@ pub trait PrimalInterface {
 
     /// query the structure of a blossom
     fn iterate_blossom_children(&self, blossom_index: NodeIndex, func: impl FnMut(&Self, NodeIndex));
+
+    /// query the detailed structure of a blossom including the data of the touching information
+    fn iterate_blossom_children_with_touching(
+        &self,
+        blossom_index: NodeIndex,
+        func: impl FnMut(&Self, NodeIndex, ((NodeIndex, VertexIndex), (NodeIndex, VertexIndex))),
+    );
+
+    /// resolve one obstacle
+    fn resolve(&mut self, dual_module: &mut impl DualInterface, max_update_length: MaxUpdateLength);
+
+    /// return the perfect matching between nodes
+    fn iterate_perfect_matching(&mut self, func: impl FnMut(&Self, NodeIndex));
 }
 
 pub trait DualInterface {
@@ -61,4 +74,10 @@ pub trait DualInterface {
 
     /// grow a specific length; however in an offloaded system, this should never be called from software
     fn grow(&mut self, length: Weight);
+}
+
+impl MaxUpdateLength {
+    pub fn is_obstacle(&self) -> bool {
+        !(matches!(self, Self::None) || matches!(self, Self::GrowLength { .. }))
+    }
 }

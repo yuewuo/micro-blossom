@@ -39,6 +39,8 @@ pub struct Link {
     pub peer: NodeIndex,
     /// touching through node index
     pub touching: NodeIndex,
+    /// the vertex through which they touch
+    pub through: VertexIndex,
 }
 
 impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
@@ -121,6 +123,26 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
             child_index = self.get_node(child_index).sibling;
         }
     }
+
+    pub fn iterate_blossom_children_with_touching(
+        &self,
+        blossom_index: NodeIndex,
+        mut func: impl FnMut(NodeIndex, ((NodeIndex, VertexIndex), (NodeIndex, VertexIndex))),
+    ) {
+        let blossom = self.get_blossom(blossom_index);
+        let mut child_index = blossom.first_child;
+        while child_index != NODE_NONE {
+            let node = self.get_node(child_index);
+            func(
+                child_index,
+                (
+                    (node.parent.touching, node.parent.through),
+                    (node.matching.touching, node.matching.through),
+                ),
+            );
+            child_index = node.sibling;
+        }
+    }
 }
 
 impl PrimalNode {
@@ -160,6 +182,7 @@ impl Link {
         Self {
             peer: NODE_NONE,
             touching: NODE_NONE,
+            through: VertexIndex::MAX,
         }
     }
 

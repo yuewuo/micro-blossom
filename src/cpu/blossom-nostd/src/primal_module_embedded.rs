@@ -40,6 +40,37 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
         self.nodes
             .iterate_blossom_children(blossom_index, |node_index| func(self, node_index));
     }
+
+    /// query the structure of a blossom with detailed information of touching points
+    fn iterate_blossom_children_with_touching(
+        &self,
+        blossom_index: NodeIndex,
+        mut func: impl FnMut(&Self, NodeIndex, ((NodeIndex, VertexIndex), (NodeIndex, VertexIndex))),
+    ) {
+        self.nodes
+            .iterate_blossom_children_with_touching(blossom_index, |node_index, touching_info| {
+                func(self, node_index, touching_info)
+            });
+    }
+
+    /// resolve one obstacle
+    fn resolve(&mut self, dual_module: &mut impl DualInterface, obstacle: MaxUpdateLength) {
+        debug_assert!(obstacle.is_obstacle());
+        match obstacle {
+            MaxUpdateLength::Conflict { .. } => {
+                unimplemented!()
+            }
+            MaxUpdateLength::BlossomNeedExpand { blossom } => {
+                unimplemented!()
+            }
+            _ => unimplemented!(),
+        }
+    }
+
+    /// return the perfect matching between nodes
+    fn iterate_perfect_matching(&mut self, func: impl FnMut(&Self, NodeIndex)) {
+        unimplemented!()
+    }
 }
 
 #[cfg(test)]

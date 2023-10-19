@@ -119,10 +119,23 @@ mod tests {
         fn is_blossom(&self, node_index: NodeIndex) -> bool {
             !self.nodes[&node_index].children.is_empty()
         }
+        fn iterate_blossom_children_with_touching(
+            &self,
+            _blossom_index: NodeIndex,
+            _func: impl FnMut(&Self, NodeIndex, ((NodeIndex, VertexIndex), (NodeIndex, VertexIndex))),
+        ) {
+            unimplemented!()
+        }
         fn iterate_blossom_children(&self, blossom_index: NodeIndex, mut func: impl FnMut(&Self, NodeIndex)) {
             for &child_index in self.nodes[&blossom_index].children.iter() {
                 func(self, child_index);
             }
+        }
+        fn resolve(&mut self, _dual_module: &mut impl DualInterface, _max_update_length: MaxUpdateLength) {
+            unimplemented!()
+        }
+        fn iterate_perfect_matching(&mut self, _func: impl FnMut(&Self, NodeIndex)) {
+            unimplemented!()
         }
     }
 
