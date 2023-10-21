@@ -1,7 +1,7 @@
 all: release
 
-TARGET ?= riscv32imac-unknown-none-elf
-# TARGET ?= riscv32i-unknown-none-elf
+# TARGET ?= riscv32imac-unknown-none-elf
+TARGET ?= riscv32i-unknown-none-elf
 
 release:
 	cargo build --release --target $(TARGET)

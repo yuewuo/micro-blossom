@@ -62,7 +62,9 @@ class BlinkyPower extends Component {
         memDataWidth = 32,
         catchAccessError = true,
         catchIllegal = true,
-        catchUnaligned = true
+        catchUnaligned = true,
+        withLrSc = true, // part of the RV32A extension, used by spin::Mutex
+        withAmo = true
       ),
       memoryTranslatorPortConfig = null
     ),
@@ -219,7 +221,7 @@ object BlinkyPowerVerilog extends App {
     val top = new BlinkyPower()
     val program =
       loadProgram(
-        "src/cpu/embedded/target/riscv32imac-unknown-none-elf/release/embedded_blossom.bin",
+        "src/cpu/embedded/target/riscv32i-unknown-none-elf/release/embedded_blossom.bin",
         top.core.ram.ram.byteCount / 4 // how many words (four-byte)
       )
     top.core.ram.ram.initBigInt(program)
@@ -233,6 +235,6 @@ object BlinkyPowerVerilog extends App {
 object BlinkyPowerTestA extends App {
   Config.sim.compile(BlinkyPowerVerilog.buildTop()).doSim("testA") { dut =>
     dut.externalClockDomain.forkStimulus(10)
-    sleep(100000)
+    sleep(1000000)
   }
 }

@@ -3,14 +3,13 @@
 
 use core::arch::asm;
 use embedded_blossom as _; // import panic handler
-use heapless::Vec;
 use konst::{option, primitive::parse_usize, result::unwrap_ctx};
 use micro_blossom_nostd::primal_module_embedded::*;
 use riscv_rt::entry;
 
 // by default guarantees working at d=15, but can increase if needed
 // the value should be a power of 2, because otherwise it's a lot slower to initialize
-pub const MAX_NODE_NUM: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("MAX_NODE_NUM"), "50")));
+pub const MAX_NODE_NUM: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("MAX_NODE_NUM"), "512")));
 pub const DOUBLE_MAX_NODE_NUM: usize = MAX_NODE_NUM * 2;
 
 fn delay(cycles: u32) {
@@ -39,6 +38,9 @@ fn test_acc(mask: u32) {
 fn main() -> ! {
     let mut mask = 0x40;
     let primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM> = PrimalModuleEmbedded::new();
+    for index in 0..DOUBLE_MAX_NODE_NUM {
+        assert!(primal_module.nodes.buffer[index].is_none());
+    }
     loop {
         set_leds(mask);
         test_acc(mask);

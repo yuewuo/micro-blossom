@@ -10,7 +10,7 @@ use heapless::Vec;
 
 pub struct PrimalNodes<const N: usize, const DOUBLE_N: usize> {
     /// defect nodes starting from 0, blossom nodes starting from DOUBLE_N/2
-    pub buffer: Vec<PrimalNode, DOUBLE_N>,
+    pub buffer: Vec<Option<PrimalNode>, DOUBLE_N>,
     /// the number of defect nodes reported by the dual module, not necessarily all the defect nodes
     pub count_defects: NodeNum,
     /// the number of allocated blossoms
@@ -19,7 +19,7 @@ pub struct PrimalNodes<const N: usize, const DOUBLE_N: usize> {
 
 #[derive(Clone)]
 pub struct PrimalNode {
-    /// the root of an alternating tree, or `NODE_NONE` if this node is not initialized
+    /// the root of an alternating tree
     pub root: NodeIndex,
     /// the parent in the alternating tree, or `NODE_NONE` if it doesn't have a parent;
     /// when the node is a root node, sibling means the parent in the alternating tree;
@@ -36,7 +36,7 @@ pub struct PrimalNode {
     /// a link between another node. Depending on the state of a node, the link has different meanings:
     /// when the node is a root node, then the link is pointing to its parent;
     /// when the node is within a blossom, then the link is pointing to its sibling (the circle)
-    pub link: Link,
+    pub link: Option<Link>,
 }
 
 #[derive(Clone)]
@@ -54,8 +54,8 @@ pub struct Link {
 impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     pub fn new() -> Self {
         debug_assert_eq!(N * 2, DOUBLE_N);
-        let mut buffer: Vec<PrimalNode, DOUBLE_N> = Vec::new();
-        buffer.resize(DOUBLE_N, PrimalNode::none()).unwrap();
+        let mut buffer = Vec::new();
+        buffer.resize(DOUBLE_N, None).unwrap();
         Self {
             buffer,
             count_defects: 0,
@@ -71,7 +71,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     fn prepare_defects_up_to(&mut self, defect_index: NodeIndex) {
         if defect_index >= self.count_defects {
             for index in self.count_defects..=defect_index {
-                self.buffer[index as usize].set_none();
+                self.buffer[index as usize] = None;
             }
             self.count_defects = defect_index + 1;
         }
@@ -90,7 +90,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         } else {
             self.prepare_defects_up_to(node_index);
             if self.buffer[node_index as usize].is_none() {
-                self.buffer[node_index as usize].create_some(node_index);
+                self.buffer[node_index as usize] = Some(PrimalNode::new(node_index));
             }
         }
     }
@@ -109,7 +109,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     }
 
     pub fn get_node(&self, node_index: NodeIndex) -> &PrimalNode {
-        &self.buffer[node_index as usize]
+        self.buffer[node_index as usize].as_ref().unwrap()
     }
 
     pub fn get_defect(&self, defect_index: NodeIndex) -> &PrimalNode {
@@ -141,12 +141,10 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         let mut child_index = blossom.first_child;
         while child_index != NODE_NONE {
             let node = self.get_node(child_index);
+            let link = node.link.as_ref().unwrap();
             func(
                 child_index,
-                (
-                    (node.link.touch, node.link.through),
-                    (node.link.peer_touch, node.link.peer_through),
-                ),
+                ((link.touch, link.through), (link.peer_touch, link.peer_through)),
             );
             child_index = node.sibling;
         }
@@ -154,51 +152,15 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
 }
 
 impl PrimalNode {
-    pub fn none() -> Self {
+    pub fn new(node_index: NodeIndex) -> Self {
         Self {
-            root: NODE_NONE, // mark as uninitialized node
+            root: node_index,
             parent: NODE_NONE,
             first_child: NODE_NONE,
             sibling: NODE_NONE,
             depth: 0,
-            link: Link::none(),
+            link: None,
         }
-    }
-
-    /// since most of the defect nodes will never be accessed by the primal module when offloading,
-    /// we optimize speed by simply marking them as "None"
-    pub fn set_none(&mut self) {
-        self.root = NODE_NONE;
-    }
-    pub fn is_none(&self) -> bool {
-        self.root == NODE_NONE
-    }
-
-    pub fn create_some(&mut self, node_index: NodeIndex) {
-        self.root = node_index; // set the root as itself
-        self.parent = NODE_NONE;
-        self.first_child = NODE_NONE;
-        self.sibling = NODE_NONE;
-        self.depth = 0; // root has 0 depth
-        self.link.set_none();
-    }
-}
-
-impl Link {
-    pub fn none() -> Self {
-        Self {
-            touch: NODE_NONE,
-            through: VertexIndex::MAX,
-            peer_touch: NODE_NONE,
-            peer_through: VertexIndex::MAX,
-        }
-    }
-
-    pub fn set_none(&mut self) {
-        self.touch = NODE_NONE
-    }
-    pub fn is_none(&self) -> bool {
-        self.touch == NODE_NONE
     }
 }
 
@@ -207,8 +169,18 @@ impl<const N: usize, const DOUBLE_N: usize> std::fmt::Debug for PrimalNodes<N, D
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         formatter
             .debug_struct("Nodes")
-            .field("defects", &SlicedVec::new(&self.buffer, 0, self.count_defects as usize))
-            .field("blossoms", &SlicedVec::new(&self.buffer, N, N + self.count_blossoms as usize))
+            .field(
+                "defects",
+                &(0..self.count_defects as usize)
+                    .map(|index| &self.buffer[index])
+                    .collect::<std::vec::Vec<_>>(),
+            )
+            .field(
+                "blossoms",
+                &(N..N + self.count_blossoms as usize)
+                    .map(|index| &self.buffer[index])
+                    .collect::<std::vec::Vec<_>>(),
+            )
             .finish()
     }
 }
@@ -216,34 +188,26 @@ impl<const N: usize, const DOUBLE_N: usize> std::fmt::Debug for PrimalNodes<N, D
 #[cfg(any(test, feature = "std"))]
 impl std::fmt::Debug for PrimalNode {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if self.is_none() {
-            formatter.write_str("None")
-        } else {
-            formatter
-                .debug_struct("Node")
-                .field("parent", &self.parent)
-                .field("first_child", &self.first_child)
-                .field("sibling", &self.sibling)
-                .field("depth", &self.depth)
-                .field("link", &self.link)
-                .finish()
-        }
+        formatter
+            .debug_struct("Node")
+            .field("parent", &self.parent)
+            .field("first_child", &self.first_child)
+            .field("sibling", &self.sibling)
+            .field("depth", &self.depth)
+            .field("link", &self.link)
+            .finish()
     }
 }
 
 #[cfg(any(test, feature = "std"))]
 impl std::fmt::Debug for Link {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if self.is_none() {
-            formatter.write_str("None")
-        } else {
-            formatter
-                .debug_struct("Link")
-                .field("touch", &self.touch)
-                .field("through", &self.through)
-                .field("peer_touch", &self.peer_touch)
-                .field("peer_through", &self.peer_through)
-                .finish()
-        }
+        formatter
+            .debug_struct("Link")
+            .field("touch", &self.touch)
+            .field("through", &self.through)
+            .field("peer_touch", &self.peer_touch)
+            .field("peer_through", &self.peer_through)
+            .finish()
     }
 }
