@@ -6,17 +6,18 @@
 //!
 
 use crate::util::*;
-use heapless::Vec;
 
 pub struct PrimalNodes<const N: usize, const DOUBLE_N: usize> {
     /// defect nodes starting from 0, blossom nodes starting from DOUBLE_N/2
-    pub buffer: Vec<Option<PrimalNode>, DOUBLE_N>,
+    pub buffer: [Option<PrimalNode>; DOUBLE_N],
     /// the number of defect nodes reported by the dual module, not necessarily all the defect nodes
     pub count_defects: NodeNum,
     /// the number of allocated blossoms
     pub count_blossoms: NodeNum,
 }
 
+/// the primal node is designed to have exactly 8 fields (32 bytes or 8 bytes in total, w/wo u16_index feature).
+/// this simplifies the design on
 #[derive(Clone)]
 pub struct PrimalNode {
     /// the parent in the alternating tree, or `NODE_NONE` if it doesn't have a parent;
@@ -50,10 +51,9 @@ pub struct Link {
 impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     pub fn new() -> Self {
         debug_assert_eq!(N * 2, DOUBLE_N);
-        let mut buffer = Vec::new();
-        buffer.resize(DOUBLE_N, None).unwrap();
+        const PRIMAL_NODE_NONE: Option<PrimalNode> = None;
         Self {
-            buffer,
+            buffer: [PRIMAL_NODE_NONE; DOUBLE_N],
             count_defects: 0,
             count_blossoms: 0,
         }
@@ -86,7 +86,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         } else {
             self.prepare_defects_up_to(node_index);
             if self.buffer[node_index as usize].is_none() {
-                self.buffer[node_index as usize] = Some(PrimalNode::new(node_index));
+                self.buffer[node_index as usize] = Some(PrimalNode::new());
             }
         }
     }
@@ -148,7 +148,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
 }
 
 impl PrimalNode {
-    pub fn new(node_index: NodeIndex) -> Self {
+    pub fn new() -> Self {
         Self {
             parent: NODE_NONE,
             first_child: NODE_NONE,
