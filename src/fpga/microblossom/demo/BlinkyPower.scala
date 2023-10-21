@@ -31,8 +31,8 @@ class BlinkyPower extends Component {
     new IBusCachedPlugin(
       resetVector = 0x00000000L,
       prediction = DYNAMIC_TARGET, // FullMaxPerf(DYNAMIC_TARGET) vs Briey(STATIC)
-      compressedGen = true, // Add RV32C ISA Extension
-      injectorStage = true, // needed for RV32C, see https://github.com/SpinalHDL/VexRiscv/issues/93
+      // compressedGen = true, // Add RV32C ISA Extension
+      // injectorStage = true, // needed for RV32C, see https://github.com/SpinalHDL/VexRiscv/issues/93
       historyRamSizeLog2 = 8,
       config = InstructionCacheConfig(
         cacheSize = 4096 * 2,
@@ -62,9 +62,9 @@ class BlinkyPower extends Component {
         memDataWidth = 32,
         catchAccessError = true,
         catchIllegal = true,
-        catchUnaligned = true,
-        withLrSc = true, // part of the RV32A extension, used by spin::Mutex
-        withAmo = true
+        catchUnaligned = true
+        // withLrSc = true, // part of the RV32A extension, used by spin::Mutex
+        // withAmo = true
       ),
       memoryTranslatorPortConfig = null
     ),
@@ -99,7 +99,7 @@ class BlinkyPower extends Component {
     ),
     // these two plugins are required because Rust only have RV32I and RV32IMAC support; I need Atomic extension so
     // it has to add the M and C extensions to make it work. However, the binary doesn't necessary use them
-    new MulPlugin,
+    // new MulPlugin,
     // new DivPlugin,  // try to avoid using any integer divisions in the code (there shouldn't be any...)
 
     new CsrPlugin(
