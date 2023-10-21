@@ -1,29 +1,23 @@
 use heapless::Vec;
 
 cfg_if::cfg_if! {
-    if #[cfg(not(feature="wide_index"))] {
-        // use 32 bit data types, for less memory usage
-        pub type EdgeIndex = u32;
-        pub type Timestamp = u32;
-        pub type VertexIndex = u32;  // the vertex index in the decoding graph
-        pub type NodeIndex = VertexIndex;
-        pub type DefectIndex = VertexIndex;
-        pub type VertexNodeIndex = VertexIndex;  // must be same as VertexIndex, NodeIndex, DefectIndex
-        pub type VertexNum = VertexIndex;
-        pub type NodeNum = VertexIndex;
-        pub type Weight = i32;
+    if #[cfg(feature="u16_index")] {
+        // use 16 bit data types, for less memory usage
+        pub type VertexIndex = u16;
     } else {
-        pub type EdgeIndex = usize;
-        pub type Timestamp = usize;
-        pub type VertexIndex = usize;
-        pub type NodeIndex = VertexIndex;
-        pub type DefectIndex = VertexIndex;
-        pub type VertexNodeIndex = VertexIndex;  // must be same as VertexIndex, NodeIndex, DefectIndex
-        pub type VertexNum = VertexIndex;
-        pub type NodeNum = VertexIndex;
-        pub type Weight = i64;
+        pub type VertexIndex = u32;
     }
 }
+
+pub type NodeIndex = VertexIndex;
+pub type DefectIndex = VertexIndex;
+pub type VertexNodeIndex = VertexIndex;
+pub type VertexNum = VertexIndex;
+pub type NodeNum = VertexIndex;
+
+pub type EdgeIndex = u32;
+pub type Timestamp = u32;
+pub type Weight = i32; // shouldn't matter
 
 pub const NODE_NONE: NodeIndex = NodeIndex::MAX;
 

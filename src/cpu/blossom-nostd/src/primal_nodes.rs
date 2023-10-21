@@ -21,26 +21,34 @@ pub struct PrimalNodes<const N: usize, const DOUBLE_N: usize> {
 pub struct PrimalNode {
     /// the root of an alternating tree, or `NODE_NONE` if this node is not initialized
     pub root: NodeIndex,
-    /// the parent in the alternating tree, or `NODE_NONE` if it doesn't have a parent
-    pub parent: Link,
-    /// the starting of the children
+    /// the parent in the alternating tree, or `NODE_NONE` if it doesn't have a parent;
+    /// when the node is a root node, sibling means the parent in the alternating tree;
+    /// when the node is within a blossom, then the parent means the parent blossom
+    pub parent: NodeIndex,
+    /// the starting of the children, whether the children in the blossom cycle or in an alternating tree
     pub first_child: NodeIndex,
     /// the index of one remaining sibling if there exists any, otherwise `NODE_NONE`;
+    /// when the node is a root node, sibling means some + node that has the same parent in the alternating tree;
+    /// when the node is a blossom node, sibling means the next
     pub sibling: NodeIndex,
-    /// the depth in the alternating tree, root has 0 depth
+    /// the depth in the alternating tree, root has 0 depth; valid only when it's a root node
     pub depth: NodeNum,
-    /// temporary match with another node, (target, touching_grandson)
-    pub matching: Link,
+    /// a link between another node. Depending on the state of a node, the link has different meanings:
+    /// when the node is a root node, then the link is pointing to its parent;
+    /// when the node is within a blossom, then the link is pointing to its sibling (the circle)
+    pub link: Link,
 }
 
 #[derive(Clone)]
 pub struct Link {
-    /// the index of the peer
-    pub peer: NodeIndex,
     /// touching through node index
-    pub touching: NodeIndex,
-    /// the vertex through which they touch
+    pub touch: NodeIndex,
+    /// touching through vertex
     pub through: VertexIndex,
+    /// peer touches myself through node index
+    pub peer_touch: NodeIndex,
+    /// peer touches myself through vertex
+    pub peer_through: VertexIndex,
 }
 
 impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
@@ -136,8 +144,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
             func(
                 child_index,
                 (
-                    (node.parent.touching, node.parent.through),
-                    (node.matching.touching, node.matching.through),
+                    (node.link.touch, node.link.through),
+                    (node.link.peer_touch, node.link.peer_through),
                 ),
             );
             child_index = node.sibling;
@@ -149,45 +157,48 @@ impl PrimalNode {
     pub fn none() -> Self {
         Self {
             root: NODE_NONE, // mark as uninitialized node
-            parent: Link::none(),
+            parent: NODE_NONE,
             first_child: NODE_NONE,
             sibling: NODE_NONE,
             depth: 0,
-            matching: Link::none(),
+            link: Link::none(),
         }
     }
 
     /// since most of the defect nodes will never be accessed by the primal module when offloading,
     /// we optimize speed by simply marking them as "None"
-    fn set_none(&mut self) {
+    pub fn set_none(&mut self) {
         self.root = NODE_NONE;
     }
-
-    fn is_none(&self) -> bool {
+    pub fn is_none(&self) -> bool {
         self.root == NODE_NONE
     }
 
-    fn create_some(&mut self, node_index: NodeIndex) {
+    pub fn create_some(&mut self, node_index: NodeIndex) {
         self.root = node_index; // set the root as itself
-        self.parent = Link::none();
+        self.parent = NODE_NONE;
         self.first_child = NODE_NONE;
         self.sibling = NODE_NONE;
         self.depth = 0; // root has 0 depth
-        self.matching = Link::none();
+        self.link.set_none();
     }
 }
 
 impl Link {
     pub fn none() -> Self {
         Self {
-            peer: NODE_NONE,
-            touching: NODE_NONE,
+            touch: NODE_NONE,
             through: VertexIndex::MAX,
+            peer_touch: NODE_NONE,
+            peer_through: VertexIndex::MAX,
         }
     }
 
+    pub fn set_none(&mut self) {
+        self.touch = NODE_NONE
+    }
     pub fn is_none(&self) -> bool {
-        self.peer == NODE_NONE
+        self.touch == NODE_NONE
     }
 }
 
@@ -214,7 +225,7 @@ impl std::fmt::Debug for PrimalNode {
                 .field("first_child", &self.first_child)
                 .field("sibling", &self.sibling)
                 .field("depth", &self.depth)
-                .field("matching", &self.matching)
+                .field("link", &self.link)
                 .finish()
         }
     }
@@ -228,8 +239,10 @@ impl std::fmt::Debug for Link {
         } else {
             formatter
                 .debug_struct("Link")
-                .field("peer", &self.peer)
-                .field("touching", &self.touching)
+                .field("touch", &self.touch)
+                .field("through", &self.through)
+                .field("peer_touch", &self.peer_touch)
+                .field("peer_through", &self.peer_through)
                 .finish()
         }
     }

@@ -28,7 +28,7 @@ crate-type = ["lib"]
 [features]
 # to enable a feature, use `--features xxx`
 default = []
-wide_index = []
+u16_index = []
 std = []
 
 [dependencies]

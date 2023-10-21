@@ -220,7 +220,7 @@ mod tests {
         // cargo test blossom_tracker_test_1 -- --nocapture
         let mut tracker = BlossomTracker::<10>::new();
         tracker.advance_time(10);
-        const BLOSSOM_BIAS: NodeIndex = 0x11000;
+        const BLOSSOM_BIAS: NodeIndex = 0x1100;
         let node_1 = BLOSSOM_BIAS;
         let node_2 = BLOSSOM_BIAS + 1;
 

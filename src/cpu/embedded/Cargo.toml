@@ -11,9 +11,7 @@ categories = ["science"]
 default-run = "embedded_blossom"
 
 # rustup target add --toolchain nightly riscv32i-unknown-none-elf
-# cargo install cargo-make
-# cargo build --release
-# cargo make objcopy
+# make
 
 # see https://doc.rust-lang.org/1.39.0/cargo/reference/manifest.html#the-documentation-field-optional
 [badges]
@@ -34,7 +32,9 @@ path = "src/main.rs"
 riscv-rt = "0.11.0"
 panic-halt = "0.2.0"
 heapless = "0.7.16"
-micro-blossom-nostd = { path = "../blossom-nostd", version = "0.0.0" }
+micro-blossom-nostd = { path = "../blossom-nostd", version = "0.0.0", features = [
+    "u16_index",
+] }
 konst = "0.3.6"
 num = { version = "0.4.1", default-features = false }
 num-derive = "0.4.1"
@@ -42,6 +42,8 @@ num-traits = { version = "0.2.17", default-features = false }
 
 # see https://craigjb.com/2020/01/22/ecp5/
 [profile.release]
-codegen-units = 1 # better optimizations
-debug = true      # symbols are nice and they don't increase the size on Flash
-lto = true        # better optimizations and smaller binary size
+opt-level = 3
+codegen-units = 1       # better optimizations
+debug = true            # symbols are nice and they don't increase the size on Flash
+lto = true              # better optimizations and smaller binary size
+overflow-checks = false

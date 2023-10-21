@@ -34,17 +34,27 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
     }
     fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: micro_blossom_nostd::util::NodeIndex) {
         let mut nodes_circle = vec![];
-        let mut touching_children = vec![];
+        let mut links = vec![]; // the format is different in embedded primal to easy programming
         primal_module.iterate_blossom_children_with_touching(
             blossom_index,
-            |_primal_module, child_index, ((touching_left, _through_left), (touching_right, _through_right))| {
+            |_primal_module, child_index, ((touch, _through), (peer_touch, _peer_through))| {
                 nodes_circle.push(self.index_to_ptr.get(&child_index).unwrap().clone());
-                touching_children.push((
-                    self.index_to_ptr.get(&touching_left).unwrap().clone().downgrade(),
-                    self.index_to_ptr.get(&touching_right).unwrap().clone().downgrade(),
+                links.push((
+                    self.index_to_ptr.get(&touch).unwrap().clone().downgrade(),
+                    self.index_to_ptr.get(&peer_touch).unwrap().clone().downgrade(),
                 ));
             },
         );
+        let mut touching_children = vec![];
+        let length = links.len();
+        for i in 0..length {
+            let left_touching = if i == 0 {
+                links[length - 1].1.clone()
+            } else {
+                links[i - 1].1.clone()
+            };
+            touching_children.push((left_touching, links[i].0.clone()))
+        }
         let blossom_node_ptr = self
             .interface_ptr
             .create_blossom(nodes_circle, touching_children, self.dual_module);

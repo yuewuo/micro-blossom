@@ -1,11 +1,12 @@
 #![no_std]
 #![no_main]
 
-// static mut GLOBAL_STATE: Option<GlobalState> = None;
-
 use core::arch::asm;
-use embedded_blossom as _;
+use embedded_blossom as _; // import panic handler
+use micro_blossom_nostd::primal_module_embedded::*;
 use riscv_rt::entry;
+
+static mut PRIMAL_MODULE: Option<PrimalModuleEmbedded<10000, 20000>> = None;
 
 fn delay(cycles: u32) {
     for _ in 0..cycles {

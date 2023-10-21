@@ -42,7 +42,9 @@ pub trait PrimalInterface {
     /// query the structure of a blossom
     fn iterate_blossom_children(&self, blossom_index: NodeIndex, func: impl FnMut(&Self, NodeIndex));
 
-    /// query the detailed structure of a blossom including the data of the touching information
+    /// query the detailed structure of a blossom including the data of the touching information;
+    /// the format is (node, ((touch, through), (peer_touch, peer_through))), (peer, ......;
+    /// this is different
     fn iterate_blossom_children_with_touching(
         &self,
         blossom_index: NodeIndex,

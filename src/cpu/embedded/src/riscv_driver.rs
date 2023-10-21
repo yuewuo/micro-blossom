@@ -1,4 +1,5 @@
-use micro_blossom_nostd::dual_module_commander::*;
+use micro_blossom_nostd::dual_module_stackless::*;
+use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
 use num_derive::FromPrimitive;
 
@@ -6,34 +7,37 @@ pub struct RiscVCommandDriver {
     pub base_register: usize,
 }
 
-impl DualCommanderDriver for RiscVCommandDriver {
+impl DualStacklessDriver for RiscVCommandDriver {
+    fn clear(&mut self) {
+        unimplemented!()
+    }
     fn set_speed(&mut self, node: NodeIndex, speed: GrowState) {
-        self.write_argument::<1>(node);
+        self.write_argument::<1>(node.into());
         self.write_argument::<2>(speed as u32);
         self.write_opcode(OpCode::SetSpeed);
     }
     fn set_blossom(&mut self, node: NodeIndex, blossom: NodeIndex) {
-        self.write_argument::<1>(node);
-        self.write_argument::<2>(blossom);
+        self.write_argument::<1>(node.into());
+        self.write_argument::<2>(blossom.into());
         self.write_opcode(OpCode::SetBlossom);
     }
-    fn find_obstacle(&mut self) -> CommanderResponse {
+    fn find_obstacle(&mut self) -> MaxUpdateLength {
         self.write_opcode(OpCode::FindObstacle);
         let rspcode = self.read_rspcode();
         match rspcode {
-            RspCode::NonZeroGrow => CommanderResponse::NonZeroGrow {
+            RspCode::NonZeroGrow => MaxUpdateLength::GrowLength {
                 length: self.read_argument::<5>() as Weight,
             },
-            RspCode::Conflict => CommanderResponse::Conflict {
-                node_1: self.read_argument::<5>(),
-                node_2: self.read_argument::<6>(),
-                touch_1: self.read_argument::<7>(),
-                touch_2: self.read_argument::<8>(),
-                vertex_1: self.read_argument::<9>(),
-                vertex_2: self.read_argument::<10>(),
+            RspCode::Conflict => MaxUpdateLength::Conflict {
+                node_1: self.read_argument::<5>() as NodeIndex,
+                node_2: self.read_argument::<6>() as NodeIndex,
+                touch_1: self.read_argument::<7>() as NodeIndex,
+                touch_2: self.read_argument::<8>() as NodeIndex,
+                vertex_1: self.read_argument::<9>() as VertexIndex,
+                vertex_2: self.read_argument::<10>() as VertexIndex,
             },
-            RspCode::BlossomNeedExpand => CommanderResponse::BlossomNeedExpand {
-                blossom: self.read_argument::<5>(),
+            RspCode::BlossomNeedExpand => MaxUpdateLength::BlossomNeedExpand {
+                blossom: self.read_argument::<5>() as NodeIndex,
             },
         }
     }
