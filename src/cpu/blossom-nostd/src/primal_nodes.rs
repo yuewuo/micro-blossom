@@ -19,8 +19,6 @@ pub struct PrimalNodes<const N: usize, const DOUBLE_N: usize> {
 
 #[derive(Clone)]
 pub struct PrimalNode {
-    /// the root of an alternating tree
-    pub root: NodeIndex,
     /// the parent in the alternating tree, or `NODE_NONE` if it doesn't have a parent;
     /// when the node is a root node, sibling means the parent in the alternating tree;
     /// when the node is within a blossom, then the parent means the parent blossom
@@ -31,8 +29,6 @@ pub struct PrimalNode {
     /// when the node is a root node, sibling means some + node that has the same parent in the alternating tree;
     /// when the node is a blossom node, sibling means the next
     pub sibling: NodeIndex,
-    /// the depth in the alternating tree, root has 0 depth; valid only when it's a root node
-    pub depth: NodeNum,
     /// a link between another node. Depending on the state of a node, the link has different meanings:
     /// when the node is a root node, then the link is pointing to its parent;
     /// when the node is within a blossom, then the link is pointing to its sibling (the circle)
@@ -154,11 +150,9 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
 impl PrimalNode {
     pub fn new(node_index: NodeIndex) -> Self {
         Self {
-            root: node_index,
             parent: NODE_NONE,
             first_child: NODE_NONE,
             sibling: NODE_NONE,
-            depth: 0,
             link: None,
         }
     }
@@ -193,7 +187,6 @@ impl std::fmt::Debug for PrimalNode {
             .field("parent", &self.parent)
             .field("first_child", &self.first_child)
             .field("sibling", &self.sibling)
-            .field("depth", &self.depth)
             .field("link", &self.link)
             .finish()
     }
