@@ -22,9 +22,9 @@ pub enum MaxUpdateLength {
         /// node_1 is assumed to be always normal node
         node_1: NodeIndex,
         /// node_2 could be NODE_NONE, which means it's touching a virtual vertex `vertex_2`
-        node_2: NodeIndex,
+        node_2: Option<NodeIndex>,
         touch_1: NodeIndex,
-        touch_2: NodeIndex,
+        touch_2: Option<NodeIndex>,
         vertex_1: VertexIndex,
         vertex_2: VertexIndex,
     },

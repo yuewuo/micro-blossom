@@ -74,24 +74,24 @@ mod tests {
     fn dual_module_stackless_basic_1() {
         // cargo test dual_module_stackless_basic_1 -- --nocapture
         let mut primal = MockPrimal::new_empty();
-        primal.add_defect(0);
-        primal.add_defect(1);
-        primal.add_defect(2);
-        primal.add_defect(3);
-        primal.add_defect(4);
-        primal.add_blossom(100, vec![0, 1, 3]);
-        primal.add_blossom(101, vec![2, 100, 4]);
+        primal.add_defect(ni!(0));
+        primal.add_defect(ni!(1));
+        primal.add_defect(ni!(2));
+        primal.add_defect(ni!(3));
+        primal.add_defect(ni!(4));
+        primal.add_blossom(ni!(100), vec![ni!(0), ni!(1), ni!(3)]);
+        primal.add_blossom(ni!(101), vec![ni!(2), ni!(100), ni!(4)]);
         let mut dual = DualModuleStackless::new(MockDualDriver::new());
-        dual.create_blossom(&primal, 100);
+        dual.create_blossom(&primal, ni!(100));
         dual.driver
             .check(&["set_blossom(0, 100)", "set_blossom(1, 100)", "set_blossom(3, 100)"]);
-        dual.create_blossom(&primal, 101);
+        dual.create_blossom(&primal, ni!(101));
         dual.driver
             .check(&["set_blossom(2, 101)", "set_blossom(100, 101)", "set_blossom(4, 101)"]);
-        dual.expand_blossom(&primal, 100);
+        dual.expand_blossom(&primal, ni!(100));
         dual.driver
             .check(&["set_blossom(0, 0)", "set_blossom(1, 1)", "set_blossom(3, 3)"]);
-        dual.expand_blossom(&primal, 101);
+        dual.expand_blossom(&primal, ni!(101));
         // this is the tricky part: only defect vertices are updated;
         // it's designed this way so that the hardware accelerator doesn't have to maintain
         // a stack of blossom nodes which is very expensive considering the worst case

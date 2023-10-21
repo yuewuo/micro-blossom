@@ -23,13 +23,13 @@ pub struct PrimalNode {
     /// the parent in the alternating tree, or `NODE_NONE` if it doesn't have a parent;
     /// when the node is a root node, sibling means the parent in the alternating tree;
     /// when the node is within a blossom, then the parent means the parent blossom
-    pub parent: NodeIndex,
+    pub parent: Option<NodeIndex>,
     /// the starting of the children, whether the children in the blossom cycle or in an alternating tree
-    pub first_child: NodeIndex,
+    pub first_child: Option<NodeIndex>,
     /// the index of one remaining sibling if there exists any, otherwise `NODE_NONE`;
     /// when the node is a root node, sibling means some + node that has the same parent in the alternating tree;
     /// when the node is a blossom node, sibling means the next
-    pub sibling: NodeIndex,
+    pub sibling: Option<NodeIndex>,
     /// a link between another node. Depending on the state of a node, the link has different meanings:
     /// when the node is a root node, then the link is pointing to its parent;
     /// when the node is within a blossom, then the link is pointing to its sibling (the circle)
@@ -65,11 +65,11 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     }
 
     fn prepare_defects_up_to(&mut self, defect_index: NodeIndex) {
-        if defect_index >= self.count_defects {
-            for index in self.count_defects..=defect_index {
+        if defect_index.get() >= self.count_defects {
+            for index in self.count_defects..=defect_index.get() {
                 self.buffer[index as usize] = None;
             }
-            self.count_defects = defect_index + 1;
+            self.count_defects = defect_index.get() + 1;
         }
     }
 
@@ -80,37 +80,47 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     pub fn check_node_index(&mut self, node_index: NodeIndex) {
         if self.is_blossom(node_index) {
             assert!(
-                (node_index - N as NodeIndex) < self.count_blossoms,
+                (node_index.get() - N as NodeNum) < self.count_blossoms,
                 "blossoms should always be created by the primal module"
             );
         } else {
             self.prepare_defects_up_to(node_index);
-            if self.buffer[node_index as usize].is_none() {
-                self.buffer[node_index as usize] = Some(PrimalNode::new());
+            if self.buffer[node_index.get() as usize].is_none() {
+                self.buffer[node_index.get() as usize] = Some(PrimalNode::new());
             }
         }
     }
 
     pub fn is_blossom(&self, node_index: NodeIndex) -> bool {
-        debug_assert!((node_index as usize) < DOUBLE_N, "node index too large, leading to overflow");
-        if node_index < N as NodeIndex {
+        debug_assert!(
+            (node_index.get() as usize) < DOUBLE_N,
+            "node index too large, leading to overflow"
+        );
+        if node_index.get() < N as NodeNum {
             false
         } else {
             debug_assert!(
-                (node_index - N as NodeIndex) < self.count_blossoms,
+                (node_index.get() - N as NodeNum) < self.count_blossoms,
                 "blossoms should always be created by the primal module"
             );
             true
         }
     }
 
+    pub fn has_node(&self, node_index: NodeIndex) -> bool {
+        self.buffer[node_index.get() as usize].is_some()
+    }
+
     pub fn get_node(&self, node_index: NodeIndex) -> &PrimalNode {
-        self.buffer[node_index as usize].as_ref().unwrap()
+        self.buffer[node_index.get() as usize].as_ref().unwrap()
     }
 
     pub fn get_defect(&self, defect_index: NodeIndex) -> &PrimalNode {
         debug_assert!(!self.is_blossom(defect_index));
-        debug_assert!(defect_index < self.count_defects, "cannot get an uninitialized defect node");
+        debug_assert!(
+            defect_index.get() < self.count_defects,
+            "cannot get an uninitialized defect node"
+        );
         self.get_node(defect_index)
     }
 
@@ -122,9 +132,9 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     pub fn iterate_blossom_children(&self, blossom_index: NodeIndex, mut func: impl FnMut(NodeIndex)) {
         let blossom = self.get_blossom(blossom_index);
         let mut child_index = blossom.first_child;
-        while child_index != NODE_NONE {
-            func(child_index);
-            child_index = self.get_node(child_index).sibling;
+        while child_index.is_some() {
+            func(child_index.clone().unwrap());
+            child_index = self.get_node(child_index.unwrap()).sibling;
         }
     }
 
@@ -135,24 +145,30 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     ) {
         let blossom = self.get_blossom(blossom_index);
         let mut child_index = blossom.first_child;
-        while child_index != NODE_NONE {
-            let node = self.get_node(child_index);
+        while child_index.is_some() {
+            let node = self.get_node(child_index.clone().unwrap());
             let link = node.link.as_ref().unwrap();
             func(
-                child_index,
+                child_index.unwrap(),
                 ((link.touch, link.through), (link.peer_touch, link.peer_through)),
             );
             child_index = node.sibling;
         }
+    }
+
+    pub fn get_blossom_root(&self, node_index: NodeIndex) -> NodeIndex {
+        let outer_index = node_index;
+        outer_index
+        // while self.get_node(outer_index).parent != NODE_NONE
     }
 }
 
 impl PrimalNode {
     pub fn new() -> Self {
         Self {
-            parent: NODE_NONE,
-            first_child: NODE_NONE,
-            sibling: NODE_NONE,
+            parent: None,
+            first_child: None,
+            sibling: None,
             link: None,
         }
     }

@@ -57,7 +57,7 @@ impl<const N: usize> BlossomTracker<N> {
         Self {
             hit_zero_events: BinaryHeap::new(),
             timestamp: 0,
-            first_index: NodeIndex::MAX,
+            first_index: ni!(0),
             checkpoints: Vec::new(),
             grow_states: Vec::new(),
         }
@@ -87,22 +87,25 @@ impl<const N: usize> BlossomTracker<N> {
     #[inline]
     fn assert_valid_node_index(&self, node_index: NodeIndex) {
         debug_assert!(
-            node_index >= self.first_index && node_index < self.first_index + self.checkpoints.len() as NodeIndex,
+            node_index.get() >= self.first_index.get()
+                && node_index.get() < self.first_index.get() + self.checkpoints.len() as NodeNum,
             "invalid node index {}, not within the range of [{}, {})",
             node_index,
             self.first_index,
-            self.first_index + self.checkpoints.len() as NodeIndex
+            self.first_index.get() + self.checkpoints.len() as NodeNum
         );
     }
 
     #[inline]
     fn local_index_of(&self, node_index: NodeIndex) -> usize {
         self.assert_valid_node_index(node_index);
-        (node_index - self.first_index) as usize
+        (node_index.get() - self.first_index.get()) as usize
     }
 
     pub fn create_blossom(&mut self, node_index: NodeIndex) {
-        debug_assert!(self.checkpoints.is_empty() || node_index == self.first_index + self.checkpoints.len() as NodeIndex);
+        debug_assert!(
+            self.checkpoints.is_empty() || node_index.get() == self.first_index.get() + self.checkpoints.len() as NodeNum
+        );
         if self.checkpoints.is_empty() {
             self.first_index = node_index;
         }
@@ -220,9 +223,9 @@ mod tests {
         // cargo test blossom_tracker_test_1 -- --nocapture
         let mut tracker = BlossomTracker::<10>::new();
         tracker.advance_time(10);
-        const BLOSSOM_BIAS: NodeIndex = 0x1100;
+        let BLOSSOM_BIAS: NodeIndex = ni!(0x1100);
         let node_1 = BLOSSOM_BIAS;
-        let node_2 = BLOSSOM_BIAS + 1;
+        let node_2 = ni!(BLOSSOM_BIAS.get() + 1);
 
         tracker.create_blossom(node_1);
         assert_eq!(tracker.get_dual_variable(node_1), 0);

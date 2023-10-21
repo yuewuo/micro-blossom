@@ -54,14 +54,48 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
     }
 
     /// resolve one obstacle
+    #[allow(unused_mut)]
     fn resolve(&mut self, dual_module: &mut impl DualInterface, obstacle: MaxUpdateLength) {
         debug_assert!(obstacle.is_obstacle());
         match obstacle {
-            MaxUpdateLength::Conflict { .. } => {
-                unimplemented!()
+            MaxUpdateLength::Conflict {
+                mut node_1,
+                mut node_2,
+                touch_1,
+                touch_2,
+                vertex_1,
+                vertex_2,
+            } => {
+                if let Some(node_2) = node_2 {
+                    assert!(node_1 != node_2, "one cannot conflict with itself");
+                }
+                cfg_if::cfg_if! {
+                    if #[cfg(feature="obstacle_potentially_outdated")] {
+                        if self.nodes.is_blossom(node_1) && !self.nodes.has_node(node_1) {
+                            return; // outdated event
+                        }
+                        // also convert the conflict to between the outer blossom
+                        node_1 = self.nodes.get_blossom_root(node_1);
+                        if let Some(some_node_2) = node_2 {
+                            if self.nodes.is_blossom(some_node_2) && !self.nodes.has_node(some_node_2) {
+                                return; // outdated event
+                            }
+                            node_2 = Some(self.nodes.get_blossom_root(some_node_2));
+                        }
+                    }
+                }
+                self.nodes.check_node_index(node_1);
+                self.nodes.check_node_index(touch_1);
+                if let Some(node_2) = node_2 {
+                    self.nodes.check_node_index(node_2);
+                    self.nodes.check_node_index(touch_2.unwrap());
+                    self.resolve_conflict(dual_module, node_1, node_2, touch_1, touch_2.unwrap(), vertex_1, vertex_2);
+                } else {
+                    self.resolve_conflict_virtual(dual_module, node_1, touch_1, vertex_1, vertex_2);
+                }
             }
             MaxUpdateLength::BlossomNeedExpand { blossom } => {
-                unimplemented!()
+                self.resolve_blossom_need_expand(dual_module, blossom);
             }
             _ => unimplemented!(),
         }
@@ -69,6 +103,41 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
 
     /// return the perfect matching between nodes
     fn iterate_perfect_matching(&mut self, func: impl FnMut(&Self, NodeIndex)) {
+        unimplemented!()
+    }
+}
+
+impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
+    /// handle an up-to-date conflict event
+    pub fn resolve_conflict(
+        &mut self,
+        dual_module: &mut impl DualInterface,
+        node_1: NodeIndex,
+        node_2: NodeIndex,
+        touch_1: NodeIndex,
+        touch_2: NodeIndex,
+        vertex_1: VertexIndex,
+        vertex_2: VertexIndex,
+    ) {
+        let primal_node_1 = self.nodes.get_node(node_1);
+        let primal_node_2 = self.nodes.get_node(node_2);
+        unimplemented!()
+    }
+
+    /// handle an up-to-date conflict virtual event
+    pub fn resolve_conflict_virtual(
+        &mut self,
+        dual_module: &mut impl DualInterface,
+        node: NodeIndex,
+        touch: NodeIndex,
+        vertex: VertexIndex,
+        virtual_vertex: VertexIndex,
+    ) {
+        unimplemented!()
+    }
+
+    /// handle an up-to-date blossom need expand event
+    pub fn resolve_blossom_need_expand(&mut self, dual_module: &mut impl DualInterface, blossom: NodeIndex) {
         unimplemented!()
     }
 }
@@ -85,6 +154,13 @@ mod tests {
         let total_size = core::mem::size_of::<PrimalModuleEmbedded<N, DOUBLE_N>>();
         println!("memory: {} bytes per node", total_size / DOUBLE_N);
         println!("memory overhead: {} bytes", total_size - (total_size / DOUBLE_N) * DOUBLE_N);
+        cfg_if::cfg_if! {
+            if #[cfg(feature="u16_index")] {
+                assert!(total_size / DOUBLE_N == 16);
+            } else {
+                assert!(total_size / DOUBLE_N == 32);
+            }
+        }
     }
 
     #[test]
@@ -94,9 +170,9 @@ mod tests {
         const DOUBLE_N: usize = 2 * N;
         let mut primal_module: PrimalModuleEmbedded<N, DOUBLE_N> = PrimalModuleEmbedded::new();
         println!("{primal_module:?}");
-        primal_module.nodes.check_node_index(3);
-        primal_module.nodes.check_node_index(1);
-        primal_module.nodes.check_node_index(4);
+        primal_module.nodes.check_node_index(ni!(3));
+        primal_module.nodes.check_node_index(ni!(1));
+        primal_module.nodes.check_node_index(ni!(4));
         println!("{primal_module:?}");
     }
 }
