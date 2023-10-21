@@ -114,8 +114,7 @@ continue
 
 ```sh
 cd src/cpu/embedded
-cargo build --release
-cargo make embedded
+make
 ```
 
 ## Developer Notes

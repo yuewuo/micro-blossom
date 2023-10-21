@@ -162,7 +162,7 @@ object BlinkyAsmVerilog extends App {
     val top = new BlinkyAsm()
     // val program = loadProgram("src/fpga/microblossom/demo/empty.bin", 1024)
     // val program = loadProgram("src/fpga/microblossom/demo/blink.bin", 1024)
-    val program = loadProgram("src/cpu/embedded/target/riscv32i-unknown-none-elf/release/embedded.bin", 1024)
+    val program = loadProgram("src/cpu/embedded/target/riscv32i-unknown-none-elf/release/embedded_blossom.bin", 1024)
     top.core.ram.ram.initBigInt(program)
     top
   }

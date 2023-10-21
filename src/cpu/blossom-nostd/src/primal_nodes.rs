@@ -54,7 +54,7 @@ pub struct Link {
 impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     pub fn new() -> Self {
         debug_assert_eq!(N * 2, DOUBLE_N);
-        let mut buffer = Vec::new();
+        let mut buffer: Vec<PrimalNode, DOUBLE_N> = Vec::new();
         buffer.resize(DOUBLE_N, PrimalNode::none()).unwrap();
         Self {
             buffer,

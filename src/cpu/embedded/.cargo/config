@@ -4,6 +4,14 @@ rustflags = [
   "-C", "link-arg=-Tlink.x",
 ]
 
+[target.riscv32imac-unknown-none-elf]
+rustflags = [
+  "-C", "link-arg=-Tmemory.x",
+  "-C", "link-arg=-Tlink.x",
+]
+
+
 [build]
 # Pick ONE of these compilation targets
-target = "riscv32i-unknown-none-elf"
+# target = "riscv32i-unknown-none-elf"
+target = "riscv32imac-unknown-none-elf"
