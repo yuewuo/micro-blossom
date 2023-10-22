@@ -15,21 +15,21 @@ pub enum MaxUpdateLength {
     /// a non-negative growth
     GrowLength {
         /// when length is 0, one just need to call grow(0) for erasure errors to propagate
-        length: Weight,
+        length: CompactWeight,
     },
     /// some conflict needs the primal module to resolve
     Conflict {
         /// node_1 is assumed to be always normal node
-        node_1: NodeIndex,
+        node_1: CompactNodeIndex,
         /// node_2 could be NODE_NONE, which means it's touching a virtual vertex `vertex_2`
-        node_2: Option<NodeIndex>,
-        touch_1: NodeIndex,
-        touch_2: Option<NodeIndex>,
-        vertex_1: VertexIndex,
-        vertex_2: VertexIndex,
+        node_2: Option<CompactNodeIndex>,
+        touch_1: CompactNodeIndex,
+        touch_2: Option<CompactNodeIndex>,
+        vertex_1: CompactVertexIndex,
+        vertex_2: CompactVertexIndex,
     },
     /// a blossom needs to be expanded
-    BlossomNeedExpand { blossom: NodeIndex },
+    BlossomNeedExpand { blossom: CompactNodeIndex },
 }
 
 pub trait PrimalInterface {
@@ -37,25 +37,29 @@ pub trait PrimalInterface {
     fn clear(&mut self);
 
     /// query if a node is a blossom node
-    fn is_blossom(&self, node_index: NodeIndex) -> bool;
+    fn is_blossom(&self, node_index: CompactNodeIndex) -> bool;
 
     /// query the structure of a blossom
-    fn iterate_blossom_children(&self, blossom_index: NodeIndex, func: impl FnMut(&Self, NodeIndex));
+    fn iterate_blossom_children(&self, blossom_index: CompactNodeIndex, func: impl FnMut(&Self, CompactNodeIndex));
 
     /// query the detailed structure of a blossom including the data of the touching information;
     /// the format is (node, ((touch, through), (peer_touch, peer_through))), (peer, ......;
     /// this is different
     fn iterate_blossom_children_with_touching(
         &self,
-        blossom_index: NodeIndex,
-        func: impl FnMut(&Self, NodeIndex, ((NodeIndex, VertexIndex), (NodeIndex, VertexIndex))),
+        blossom_index: CompactNodeIndex,
+        func: impl FnMut(
+            &Self,
+            CompactNodeIndex,
+            ((CompactNodeIndex, CompactVertexIndex), (CompactNodeIndex, CompactVertexIndex)),
+        ),
     );
 
     /// resolve one obstacle
     fn resolve(&mut self, dual_module: &mut impl DualInterface, max_update_length: MaxUpdateLength);
 
     /// return the perfect matching between nodes
-    fn iterate_perfect_matching(&mut self, func: impl FnMut(&Self, NodeIndex));
+    fn iterate_perfect_matching(&mut self, func: impl FnMut(&Self, CompactNodeIndex));
 }
 
 pub trait DualInterface {
@@ -63,19 +67,19 @@ pub trait DualInterface {
     fn clear(&mut self);
 
     /// create a blossom
-    fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: NodeIndex);
+    fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex);
 
     /// expand a blossom
-    fn expand_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: NodeIndex);
+    fn expand_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex);
 
     /// set the speed of a node
-    fn set_grow_state(&mut self, node_index: NodeIndex, grow_state: GrowState);
+    fn set_grow_state(&mut self, node_index: CompactNodeIndex, grow_state: CompactGrowState);
 
     /// compute the maximum length to update, or to find an obstacle
     fn compute_maximum_update_length(&mut self) -> MaxUpdateLength;
 
     /// grow a specific length; however in an offloaded system, this should never be called from software
-    fn grow(&mut self, length: Weight);
+    fn grow(&mut self, length: CompactWeight);
 }
 
 impl MaxUpdateLength {

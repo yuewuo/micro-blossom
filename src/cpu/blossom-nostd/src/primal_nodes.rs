@@ -11,9 +11,9 @@ pub struct PrimalNodes<const N: usize, const DOUBLE_N: usize> {
     /// defect nodes starting from 0, blossom nodes starting from DOUBLE_N/2
     pub buffer: [Option<PrimalNode>; DOUBLE_N],
     /// the number of defect nodes reported by the dual module, not necessarily all the defect nodes
-    pub count_defects: NodeNum,
+    pub count_defects: CompactNodeNum,
     /// the number of allocated blossoms
-    pub count_blossoms: NodeNum,
+    pub count_blossoms: CompactNodeNum,
 }
 
 /// the primal node is designed to have exactly 8 fields (32 bytes or 8 bytes in total, w/wo u16_index feature).
@@ -23,13 +23,13 @@ pub struct PrimalNode {
     /// the parent in the alternating tree, or `NODE_NONE` if it doesn't have a parent;
     /// when the node is a root node, sibling means the parent in the alternating tree;
     /// when the node is within a blossom, then the parent means the parent blossom
-    pub parent: Option<NodeIndex>,
+    pub parent: Option<CompactNodeIndex>,
     /// the starting of the children, whether the children in the blossom cycle or in an alternating tree
-    pub first_child: Option<NodeIndex>,
+    pub first_child: Option<CompactNodeIndex>,
     /// the index of one remaining sibling if there exists any, otherwise `NODE_NONE`;
     /// when the node is a root node, sibling means some + node that has the same parent in the alternating tree;
     /// when the node is a blossom node, sibling means the next
-    pub sibling: Option<NodeIndex>,
+    pub sibling: Option<CompactNodeIndex>,
     /// a link between another node. Depending on the state of a node, the link has different meanings:
     /// when the node is a root node, then the link is pointing to its parent;
     /// when the node is within a blossom, then the link is pointing to its sibling (the circle)
@@ -39,13 +39,13 @@ pub struct PrimalNode {
 #[derive(Clone)]
 pub struct Link {
     /// touching through node index
-    pub touch: NodeIndex,
+    pub touch: CompactNodeIndex,
     /// touching through vertex
-    pub through: VertexIndex,
+    pub through: CompactVertexIndex,
     /// peer touches myself through node index
-    pub peer_touch: NodeIndex,
+    pub peer_touch: CompactNodeIndex,
     /// peer touches myself through vertex
-    pub peer_through: VertexIndex,
+    pub peer_through: CompactVertexIndex,
 }
 
 impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
@@ -64,7 +64,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         self.count_blossoms = 0;
     }
 
-    fn prepare_defects_up_to(&mut self, defect_index: NodeIndex) {
+    fn prepare_defects_up_to(&mut self, defect_index: CompactNodeIndex) {
         if defect_index.get() >= self.count_defects {
             for index in self.count_defects..=defect_index.get() {
                 self.buffer[index as usize] = None;
@@ -77,10 +77,10 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     /// doesn't really know how many defects are there. In fact, the software primal module
     /// may not eventually holding all the defects because of the offloading, i.e., pre-decoding.
     /// This function is supposed to be called multiple times, whenever a node index is reported to the primal.
-    pub fn check_node_index(&mut self, node_index: NodeIndex) {
+    pub fn check_node_index(&mut self, node_index: CompactNodeIndex) {
         if self.is_blossom(node_index) {
             assert!(
-                (node_index.get() - N as NodeNum) < self.count_blossoms,
+                (node_index.get() - N as CompactNodeNum) < self.count_blossoms,
                 "blossoms should always be created by the primal module"
             );
         } else {
@@ -91,31 +91,31 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         }
     }
 
-    pub fn is_blossom(&self, node_index: NodeIndex) -> bool {
+    pub fn is_blossom(&self, node_index: CompactNodeIndex) -> bool {
         debug_assert!(
             (node_index.get() as usize) < DOUBLE_N,
             "node index too large, leading to overflow"
         );
-        if node_index.get() < N as NodeNum {
+        if node_index.get() < N as CompactNodeNum {
             false
         } else {
             debug_assert!(
-                (node_index.get() - N as NodeNum) < self.count_blossoms,
+                (node_index.get() - N as CompactNodeNum) < self.count_blossoms,
                 "blossoms should always be created by the primal module"
             );
             true
         }
     }
 
-    pub fn has_node(&self, node_index: NodeIndex) -> bool {
+    pub fn has_node(&self, node_index: CompactNodeIndex) -> bool {
         self.buffer[node_index.get() as usize].is_some()
     }
 
-    pub fn get_node(&self, node_index: NodeIndex) -> &PrimalNode {
+    pub fn get_node(&self, node_index: CompactNodeIndex) -> &PrimalNode {
         self.buffer[node_index.get() as usize].as_ref().unwrap()
     }
 
-    pub fn get_defect(&self, defect_index: NodeIndex) -> &PrimalNode {
+    pub fn get_defect(&self, defect_index: CompactNodeIndex) -> &PrimalNode {
         debug_assert!(!self.is_blossom(defect_index));
         debug_assert!(
             defect_index.get() < self.count_defects,
@@ -124,12 +124,12 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         self.get_node(defect_index)
     }
 
-    pub fn get_blossom(&self, blossom_index: NodeIndex) -> &PrimalNode {
+    pub fn get_blossom(&self, blossom_index: CompactNodeIndex) -> &PrimalNode {
         debug_assert!(self.is_blossom(blossom_index));
         self.get_node(blossom_index)
     }
 
-    pub fn iterate_blossom_children(&self, blossom_index: NodeIndex, mut func: impl FnMut(NodeIndex)) {
+    pub fn iterate_blossom_children(&self, blossom_index: CompactNodeIndex, mut func: impl FnMut(CompactNodeIndex)) {
         let blossom = self.get_blossom(blossom_index);
         let mut child_index = blossom.first_child;
         while child_index.is_some() {
@@ -140,8 +140,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
 
     pub fn iterate_blossom_children_with_touching(
         &self,
-        blossom_index: NodeIndex,
-        mut func: impl FnMut(NodeIndex, ((NodeIndex, VertexIndex), (NodeIndex, VertexIndex))),
+        blossom_index: CompactNodeIndex,
+        mut func: impl FnMut(CompactNodeIndex, ((CompactNodeIndex, CompactVertexIndex), (CompactNodeIndex, CompactVertexIndex))),
     ) {
         let blossom = self.get_blossom(blossom_index);
         let mut child_index = blossom.first_child;
@@ -156,7 +156,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         }
     }
 
-    pub fn get_blossom_root(&self, node_index: NodeIndex) -> NodeIndex {
+    pub fn get_blossom_root(&self, node_index: CompactNodeIndex) -> CompactNodeIndex {
         let outer_index = node_index;
         outer_index
         // while self.get_node(outer_index).parent != NODE_NONE

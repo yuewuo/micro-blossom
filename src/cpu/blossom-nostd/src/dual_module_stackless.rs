@@ -3,10 +3,10 @@ use crate::util::*;
 
 pub trait DualStacklessDriver {
     fn clear(&mut self);
-    fn set_speed(&mut self, node: NodeIndex, speed: GrowState);
-    fn set_blossom(&mut self, node: NodeIndex, blossom: NodeIndex);
+    fn set_speed(&mut self, node: CompactNodeIndex, speed: CompactGrowState);
+    fn set_blossom(&mut self, node: CompactNodeIndex, blossom: CompactNodeIndex);
     fn find_obstacle(&mut self) -> MaxUpdateLength;
-    fn grow(&mut self, length: Weight);
+    fn grow(&mut self, length: CompactWeight);
 }
 
 /// a dual module implementation that removes the need to maintain a stack of blossom structure
@@ -19,19 +19,19 @@ impl<D: DualStacklessDriver> DualInterface for DualModuleStackless<D> {
         self.driver.clear();
     }
 
-    fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: NodeIndex) {
+    fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
         primal_module.iterate_blossom_children(blossom_index, |_primal_module, child_index| {
             self.driver.set_blossom(child_index, blossom_index);
         })
     }
 
-    fn expand_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: NodeIndex) {
+    fn expand_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
         primal_module.iterate_blossom_children(blossom_index, |primal_module, child_index| {
             self.iterative_expand_blossom(primal_module, child_index, child_index);
         });
     }
 
-    fn set_grow_state(&mut self, node_index: NodeIndex, grow_state: GrowState) {
+    fn set_grow_state(&mut self, node_index: CompactNodeIndex, grow_state: CompactGrowState) {
         self.driver.set_speed(node_index, grow_state);
     }
 
@@ -39,7 +39,7 @@ impl<D: DualStacklessDriver> DualInterface for DualModuleStackless<D> {
         self.driver.find_obstacle()
     }
 
-    fn grow(&mut self, length: Weight) {
+    fn grow(&mut self, length: CompactWeight) {
         self.driver.grow(length);
     }
 }
@@ -52,8 +52,8 @@ impl<D: DualStacklessDriver> DualModuleStackless<D> {
     fn iterative_expand_blossom(
         &mut self,
         primal_module: &impl PrimalInterface,
-        blossom_index: NodeIndex,
-        child_index: NodeIndex,
+        blossom_index: CompactNodeIndex,
+        child_index: CompactNodeIndex,
     ) {
         if primal_module.is_blossom(child_index) {
             primal_module.iterate_blossom_children(child_index, |primal_module, grandchild_index| {
@@ -106,27 +106,31 @@ mod tests {
     }
 
     pub struct MockPrimal {
-        pub nodes: BTreeMap<NodeIndex, MockPrimalNode>,
+        pub nodes: BTreeMap<CompactNodeIndex, MockPrimalNode>,
     }
 
     pub struct MockPrimalNode {
-        parent: Option<NodeIndex>,
-        children: Vec<NodeIndex>,
+        parent: Option<CompactNodeIndex>,
+        children: Vec<CompactNodeIndex>,
     }
 
     impl PrimalInterface for MockPrimal {
         fn clear(&mut self) {}
-        fn is_blossom(&self, node_index: NodeIndex) -> bool {
+        fn is_blossom(&self, node_index: CompactNodeIndex) -> bool {
             !self.nodes[&node_index].children.is_empty()
         }
         fn iterate_blossom_children_with_touching(
             &self,
-            _blossom_index: NodeIndex,
-            _func: impl FnMut(&Self, NodeIndex, ((NodeIndex, VertexIndex), (NodeIndex, VertexIndex))),
+            _blossom_index: CompactNodeIndex,
+            _func: impl FnMut(
+                &Self,
+                CompactNodeIndex,
+                ((CompactNodeIndex, CompactVertexIndex), (CompactNodeIndex, CompactVertexIndex)),
+            ),
         ) {
             unimplemented!()
         }
-        fn iterate_blossom_children(&self, blossom_index: NodeIndex, mut func: impl FnMut(&Self, NodeIndex)) {
+        fn iterate_blossom_children(&self, blossom_index: CompactNodeIndex, mut func: impl FnMut(&Self, CompactNodeIndex)) {
             for &child_index in self.nodes[&blossom_index].children.iter() {
                 func(self, child_index);
             }
@@ -134,7 +138,7 @@ mod tests {
         fn resolve(&mut self, _dual_module: &mut impl DualInterface, _max_update_length: MaxUpdateLength) {
             unimplemented!()
         }
-        fn iterate_perfect_matching(&mut self, _func: impl FnMut(&Self, NodeIndex)) {
+        fn iterate_perfect_matching(&mut self, _func: impl FnMut(&Self, CompactNodeIndex)) {
             unimplemented!()
         }
     }
@@ -143,7 +147,7 @@ mod tests {
         fn new_empty() -> Self {
             Self { nodes: BTreeMap::new() }
         }
-        pub fn add_defect(&mut self, node_index: NodeIndex) {
+        pub fn add_defect(&mut self, node_index: CompactNodeIndex) {
             assert!(!self.nodes.contains_key(&node_index));
             self.nodes.insert(
                 node_index,
@@ -153,7 +157,7 @@ mod tests {
                 },
             );
         }
-        pub fn add_blossom(&mut self, blossom_index: NodeIndex, children: Vec<NodeIndex>) {
+        pub fn add_blossom(&mut self, blossom_index: CompactNodeIndex, children: Vec<CompactNodeIndex>) {
             assert!(!self.nodes.contains_key(&blossom_index));
             assert!(children.len() % 2 == 1, "blossom must be odd cycle");
             for child_index in children.iter() {
@@ -198,17 +202,17 @@ mod tests {
         fn clear(&mut self) {
             self.log(format!("clear()"));
         }
-        fn set_speed(&mut self, node: NodeIndex, speed: GrowState) {
+        fn set_speed(&mut self, node: CompactNodeIndex, speed: CompactGrowState) {
             self.log(format!("set_speed({node}, {speed:?})"));
         }
-        fn set_blossom(&mut self, node: NodeIndex, blossom: NodeIndex) {
+        fn set_blossom(&mut self, node: CompactNodeIndex, blossom: CompactNodeIndex) {
             self.log(format!("set_blossom({node}, {blossom})"));
         }
         fn find_obstacle(&mut self) -> MaxUpdateLength {
             self.log(format!("find_obstacle()"));
             self.pending_obstacles.pop_front().unwrap()
         }
-        fn grow(&mut self, length: Weight) {
+        fn grow(&mut self, length: CompactWeight) {
             self.log(format!("grow({length})"));
         }
     }

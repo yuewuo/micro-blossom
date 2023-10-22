@@ -24,20 +24,20 @@ pub struct BlossomTracker<const N: usize> {
     #[cfg_attr(any(test, feature = "std"), derivative(Debug(format_with = "binary_heap_debug_formatter")))]
     hit_zero_events: BinaryHeap<HitZeroEvent, Min, N>,
     /// it is the responsibility of outer program to report the timestamp properly
-    timestamp: Timestamp,
+    timestamp: CompactTimestamp,
     /// the index of the first blossom, meaningless when length=0
-    first_index: NodeIndex,
+    first_index: CompactNodeIndex,
     /// the checkpoints of dual variables
-    checkpoints: Vec<(Timestamp, Weight), N>,
+    checkpoints: Vec<(CompactTimestamp, CompactWeight), N>,
     /// speed of the blossom
-    grow_states: Vec<GrowState, N>,
+    grow_states: Vec<CompactGrowState, N>,
 }
 
 #[derive(Debug)]
 struct HitZeroEvent {
-    timestamp: Timestamp,
+    timestamp: CompactTimestamp,
     /// the node that *probably* hits zero; it's probable because we never delete such event from the queue
-    node_index: NodeIndex,
+    node_index: CompactNodeIndex,
 }
 
 #[cfg(any(test, feature = "std"))]
@@ -69,7 +69,7 @@ impl<const N: usize> BlossomTracker<N> {
         self.grow_states.clear();
     }
 
-    pub fn advance_time(&mut self, delta: Timestamp) {
+    pub fn advance_time(&mut self, delta: CompactTimestamp) {
         self.timestamp += delta;
         debug_assert!(
             {
@@ -85,35 +85,36 @@ impl<const N: usize> BlossomTracker<N> {
     }
 
     #[inline]
-    fn assert_valid_node_index(&self, node_index: NodeIndex) {
+    fn assert_valid_node_index(&self, node_index: CompactNodeIndex) {
         debug_assert!(
             node_index.get() >= self.first_index.get()
-                && node_index.get() < self.first_index.get() + self.checkpoints.len() as NodeNum,
+                && node_index.get() < self.first_index.get() + self.checkpoints.len() as CompactNodeNum,
             "invalid node index {}, not within the range of [{}, {})",
             node_index,
             self.first_index,
-            self.first_index.get() + self.checkpoints.len() as NodeNum
+            self.first_index.get() + self.checkpoints.len() as CompactNodeNum
         );
     }
 
     #[inline]
-    fn local_index_of(&self, node_index: NodeIndex) -> usize {
+    fn local_index_of(&self, node_index: CompactNodeIndex) -> usize {
         self.assert_valid_node_index(node_index);
         (node_index.get() - self.first_index.get()) as usize
     }
 
-    pub fn create_blossom(&mut self, node_index: NodeIndex) {
+    pub fn create_blossom(&mut self, node_index: CompactNodeIndex) {
         debug_assert!(
-            self.checkpoints.is_empty() || node_index.get() == self.first_index.get() + self.checkpoints.len() as NodeNum
+            self.checkpoints.is_empty()
+                || node_index.get() == self.first_index.get() + self.checkpoints.len() as CompactNodeNum
         );
         if self.checkpoints.is_empty() {
             self.first_index = node_index;
         }
         self.checkpoints.push((self.timestamp, 0)).ok().unwrap();
-        self.grow_states.push(GrowState::Grow).ok().unwrap();
+        self.grow_states.push(CompactGrowState::Grow).ok().unwrap();
     }
 
-    pub fn set_speed(&mut self, node_index: NodeIndex, grow_state: GrowState) {
+    pub fn set_speed(&mut self, node_index: CompactNodeIndex, grow_state: CompactGrowState) {
         let local_index = self.local_index_of(node_index);
         // update checkpoint timestamp to the current timestamp and update its dual value accordingly
         if grow_state == self.grow_states[local_index] {
@@ -123,10 +124,10 @@ impl<const N: usize> BlossomTracker<N> {
         self.checkpoints[local_index] = (self.timestamp, dual_value);
         self.grow_states[local_index] = grow_state;
         // insert a hit-zero event if the blossom becomes shrinking
-        if grow_state == GrowState::Shrink {
+        if grow_state == CompactGrowState::Shrink {
             self.hit_zero_events
                 .push(HitZeroEvent {
-                    timestamp: self.timestamp + dual_value as Timestamp,
+                    timestamp: self.timestamp + dual_value as CompactTimestamp,
                     node_index,
                 })
                 .ok()
@@ -134,28 +135,28 @@ impl<const N: usize> BlossomTracker<N> {
         }
     }
 
-    fn local_get_dual_variable(&self, local_index: usize) -> Weight {
+    fn local_get_dual_variable(&self, local_index: usize) -> CompactWeight {
         let (timestamp, dual_value) = self.checkpoints[local_index];
-        let delta = (self.timestamp - timestamp) as Weight;
+        let delta = (self.timestamp - timestamp) as CompactWeight;
         let dual_value = match self.grow_states[local_index] {
-            GrowState::Grow => dual_value + delta,
-            GrowState::Shrink => dual_value - delta,
-            GrowState::Stay => dual_value,
+            CompactGrowState::Grow => dual_value + delta,
+            CompactGrowState::Shrink => dual_value - delta,
+            CompactGrowState::Stay => dual_value,
         };
         debug_assert!(dual_value >= 0);
         dual_value
     }
 
-    pub fn get_dual_variable(&self, node_index: NodeIndex) -> Weight {
+    pub fn get_dual_variable(&self, node_index: CompactNodeIndex) -> CompactWeight {
         self.local_get_dual_variable(self.local_index_of(node_index))
     }
 
     #[inline]
     fn is_valid_event(&self, first_event: &HitZeroEvent) -> bool {
         let local_index = self.local_index_of(first_event.node_index);
-        if self.grow_states[local_index] == GrowState::Shrink {
+        if self.grow_states[local_index] == CompactGrowState::Shrink {
             let dual_value = self.local_get_dual_variable(local_index);
-            let actual_timestamp = self.timestamp + dual_value as Timestamp;
+            let actual_timestamp = self.timestamp + dual_value as CompactTimestamp;
             debug_assert!(
                 first_event.timestamp <= actual_timestamp,
                 "the first event should always capture growth"
@@ -176,11 +177,11 @@ impl<const N: usize> BlossomTracker<N> {
         }
     }
 
-    pub fn get_maximum_growth(&mut self) -> Option<(Weight, NodeIndex)> {
+    pub fn get_maximum_growth(&mut self) -> Option<(CompactWeight, CompactNodeIndex)> {
         self.remove_outdated_events();
         self.hit_zero_events.peek().map(|event| {
             debug_assert!(event.timestamp >= self.timestamp);
-            ((event.timestamp - self.timestamp) as Weight, event.node_index)
+            ((event.timestamp - self.timestamp) as CompactWeight, event.node_index)
         })
     }
 }
@@ -223,7 +224,7 @@ mod tests {
         // cargo test blossom_tracker_test_1 -- --nocapture
         let mut tracker = BlossomTracker::<10>::new();
         tracker.advance_time(10);
-        let BLOSSOM_BIAS: NodeIndex = ni!(0x1100);
+        let BLOSSOM_BIAS: CompactNodeIndex = ni!(0x1100);
         let node_1 = BLOSSOM_BIAS;
         let node_2 = ni!(BLOSSOM_BIAS.get() + 1);
 
@@ -241,14 +242,14 @@ mod tests {
         assert_eq!(tracker.get_dual_variable(node_2), 30);
         assert_eq!(tracker.get_maximum_growth(), None);
 
-        tracker.set_speed(node_1, GrowState::Stay);
+        tracker.set_speed(node_1, CompactGrowState::Stay);
         tracker.advance_time(10);
         assert_eq!(tracker.get_dual_variable(node_1), 50);
         assert_eq!(tracker.get_dual_variable(node_2), 40);
         assert_eq!(tracker.get_maximum_growth(), None);
 
-        tracker.set_speed(node_1, GrowState::Grow);
-        tracker.set_speed(node_2, GrowState::Shrink);
+        tracker.set_speed(node_1, CompactGrowState::Grow);
+        tracker.set_speed(node_2, CompactGrowState::Shrink);
         tracker.advance_time(10);
         assert_eq!(tracker.get_dual_variable(node_1), 60);
         assert_eq!(tracker.get_dual_variable(node_2), 30);
@@ -259,18 +260,18 @@ mod tests {
         assert_eq!(tracker.get_dual_variable(node_2), 0);
         assert_eq!(tracker.get_maximum_growth(), Some((0, node_2)));
 
-        tracker.set_speed(node_2, GrowState::Grow);
+        tracker.set_speed(node_2, CompactGrowState::Grow);
         assert_eq!(tracker.get_maximum_growth(), None);
 
-        tracker.set_speed(node_2, GrowState::Shrink);
+        tracker.set_speed(node_2, CompactGrowState::Shrink);
         assert_eq!(tracker.get_maximum_growth(), Some((0, node_2)));
 
-        tracker.set_speed(node_2, GrowState::Grow);
+        tracker.set_speed(node_2, CompactGrowState::Grow);
         tracker.advance_time(30);
-        tracker.set_speed(node_2, GrowState::Shrink);
-        tracker.set_speed(node_2, GrowState::Grow);
+        tracker.set_speed(node_2, CompactGrowState::Shrink);
+        tracker.set_speed(node_2, CompactGrowState::Grow);
         tracker.advance_time(30);
-        tracker.set_speed(node_2, GrowState::Shrink);
+        tracker.set_speed(node_2, CompactGrowState::Shrink);
         assert_eq!(tracker.get_maximum_growth(), Some((60, node_2)));
     }
 }

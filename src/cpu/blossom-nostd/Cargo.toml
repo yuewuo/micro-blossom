@@ -29,6 +29,7 @@ crate-type = ["lib"]
 # to enable a feature, use `--features xxx`
 default = []
 u16_index = []
+i16_weight = []
 std = []
 obstacle_potentially_outdated = []
 

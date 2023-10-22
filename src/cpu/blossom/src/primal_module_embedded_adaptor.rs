@@ -5,7 +5,7 @@ use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::primal_module_embedded::*;
-use micro_blossom_nostd::util::NodeIndex as EmbeddedNodeIndex;
+use micro_blossom_nostd::util::*;
 use serde_json::json;
 use std::collections::BTreeMap;
 
@@ -14,16 +14,16 @@ pub struct PrimalModuleEmbeddedAdaptor {
     /// the embedded primal module
     pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
     /// mapping between the integer index interface and the pointer interface
-    pub index_to_ptr: BTreeMap<EmbeddedNodeIndex, DualNodePtr>,
-    pub ptr_to_index: BTreeMap<DualNodePtr, EmbeddedNodeIndex>,
+    pub index_to_ptr: BTreeMap<CompactNodeIndex, DualNodePtr>,
+    pub ptr_to_index: BTreeMap<DualNodePtr, CompactNodeIndex>,
     /// debug mode: only resolve one conflict each time
     pub debug_resolve_only_one: bool,
 }
 
 /// mocking the interface of the embedded primal module
 pub struct MockDualInterface<'a, D: DualModuleImpl> {
-    index_to_ptr: &'a BTreeMap<EmbeddedNodeIndex, DualNodePtr>,
-    ptr_to_index: &'a mut BTreeMap<DualNodePtr, EmbeddedNodeIndex>,
+    index_to_ptr: &'a BTreeMap<CompactNodeIndex, DualNodePtr>,
+    ptr_to_index: &'a mut BTreeMap<DualNodePtr, CompactNodeIndex>,
     interface_ptr: &'a DualModuleInterfacePtr,
     dual_module: &'a mut D,
 }
@@ -32,7 +32,7 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
     fn clear(&mut self) {
         unreachable!("should not be called")
     }
-    fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: micro_blossom_nostd::util::NodeIndex) {
+    fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
         let mut nodes_circle = vec![];
         let mut links = vec![]; // the format is different in embedded primal to easy programming
         primal_module.iterate_blossom_children_with_touching(
@@ -60,25 +60,17 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
             .create_blossom(nodes_circle, touching_children, self.dual_module);
         self.ptr_to_index.insert(blossom_node_ptr, blossom_index);
     }
-    fn expand_blossom(
-        &mut self,
-        _primal_module: &impl PrimalInterface,
-        blossom_index: micro_blossom_nostd::util::NodeIndex,
-    ) {
+    fn expand_blossom(&mut self, _primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
         self.interface_ptr
             .expand_blossom(self.index_to_ptr.get(&blossom_index).unwrap().clone(), self.dual_module);
     }
-    fn set_grow_state(
-        &mut self,
-        node_index: micro_blossom_nostd::util::NodeIndex,
-        grow_state: micro_blossom_nostd::util::GrowState,
-    ) {
+    fn set_grow_state(&mut self, node_index: CompactNodeIndex, grow_state: CompactGrowState) {
         self.interface_ptr.set_grow_state(
             self.index_to_ptr.get(&node_index).unwrap(),
             match grow_state {
-                micro_blossom_nostd::util::GrowState::Grow => DualNodeGrowState::Grow,
-                micro_blossom_nostd::util::GrowState::Shrink => DualNodeGrowState::Shrink,
-                micro_blossom_nostd::util::GrowState::Stay => DualNodeGrowState::Stay,
+                CompactGrowState::Grow => DualNodeGrowState::Grow,
+                CompactGrowState::Shrink => DualNodeGrowState::Shrink,
+                CompactGrowState::Stay => DualNodeGrowState::Stay,
             },
             self.dual_module,
         );
@@ -87,7 +79,7 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
     fn compute_maximum_update_length(&mut self) -> micro_blossom_nostd::interface::MaxUpdateLength {
         unreachable!("should not be called")
     }
-    fn grow(&mut self, _length: micro_blossom_nostd::util::Weight) {
+    fn grow(&mut self, _length: CompactWeight) {
         unreachable!("should not be called")
     }
 }
@@ -112,10 +104,8 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
         let node = dual_node_ptr.read_recursive();
         debug_assert!(matches!(node.class, DualNodeClass::DefectVertex { .. }));
         debug_assert!(node.index == self.ptr_to_index.len());
-        self.ptr_to_index
-            .insert(dual_node_ptr.clone(), node.index as EmbeddedNodeIndex);
-        self.index_to_ptr
-            .insert(node.index as EmbeddedNodeIndex, dual_node_ptr.clone());
+        self.ptr_to_index.insert(dual_node_ptr.clone(), ni!(node.index));
+        self.index_to_ptr.insert(ni!(node.index), dual_node_ptr.clone());
         // there is no need to notify embedded primal module, since it's capable of automatically handling it
     }
 
@@ -143,11 +133,11 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
                 fusion_blossom::dual_module::MaxUpdateLength::Conflicting((node_1, touch_1), (node_2, touch_2)) => {
                     micro_blossom_nostd::interface::MaxUpdateLength::Conflict {
                         node_1: *self.ptr_to_index.get(&node_1).unwrap(),
-                        node_2: *self.ptr_to_index.get(&node_2).unwrap(),
+                        node_2: Some(*self.ptr_to_index.get(&node_2).unwrap()),
                         touch_1: *self.ptr_to_index.get(&touch_1).unwrap(),
-                        touch_2: *self.ptr_to_index.get(&touch_2).unwrap(),
-                        vertex_1: micro_blossom_nostd::util::VertexIndex::MAX,
-                        vertex_2: micro_blossom_nostd::util::VertexIndex::MAX,
+                        touch_2: Some(*self.ptr_to_index.get(&touch_2).unwrap()),
+                        vertex_1: ni!(0),
+                        vertex_2: ni!(0),
                     }
                 }
                 fusion_blossom::dual_module::MaxUpdateLength::TouchingVirtual(
@@ -155,11 +145,11 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
                     (virtual_vertex, _is_mirror),
                 ) => micro_blossom_nostd::interface::MaxUpdateLength::Conflict {
                     node_1: *self.ptr_to_index.get(&node).unwrap(),
-                    node_2: micro_blossom_nostd::util::NODE_NONE,
+                    node_2: None,
                     touch_1: *self.ptr_to_index.get(&touch).unwrap(),
-                    touch_2: micro_blossom_nostd::util::NODE_NONE,
-                    vertex_1: micro_blossom_nostd::util::VertexIndex::MAX,
-                    vertex_2: virtual_vertex as micro_blossom_nostd::util::VertexIndex,
+                    touch_2: None,
+                    vertex_1: ni!(0),
+                    vertex_2: ni!(virtual_vertex),
                 },
                 fusion_blossom::dual_module::MaxUpdateLength::BlossomNeedExpand(blossom_node) => {
                     micro_blossom_nostd::interface::MaxUpdateLength::BlossomNeedExpand {

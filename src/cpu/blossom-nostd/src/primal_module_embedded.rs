@@ -31,12 +31,12 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
         self.nodes.clear();
     }
 
-    fn is_blossom(&self, node_index: NodeIndex) -> bool {
+    fn is_blossom(&self, node_index: CompactNodeIndex) -> bool {
         self.nodes.is_blossom(node_index)
     }
 
     /// query the structure of a blossom
-    fn iterate_blossom_children(&self, blossom_index: NodeIndex, mut func: impl FnMut(&Self, NodeIndex)) {
+    fn iterate_blossom_children(&self, blossom_index: CompactNodeIndex, mut func: impl FnMut(&Self, CompactNodeIndex)) {
         self.nodes
             .iterate_blossom_children(blossom_index, |node_index| func(self, node_index));
     }
@@ -44,8 +44,12 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
     /// query the structure of a blossom with detailed information of touching points
     fn iterate_blossom_children_with_touching(
         &self,
-        blossom_index: NodeIndex,
-        mut func: impl FnMut(&Self, NodeIndex, ((NodeIndex, VertexIndex), (NodeIndex, VertexIndex))),
+        blossom_index: CompactNodeIndex,
+        mut func: impl FnMut(
+            &Self,
+            CompactNodeIndex,
+            ((CompactNodeIndex, CompactVertexIndex), (CompactNodeIndex, CompactVertexIndex)),
+        ),
     ) {
         self.nodes
             .iterate_blossom_children_with_touching(blossom_index, |node_index, touching_info| {
@@ -102,7 +106,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
     }
 
     /// return the perfect matching between nodes
-    fn iterate_perfect_matching(&mut self, func: impl FnMut(&Self, NodeIndex)) {
+    fn iterate_perfect_matching(&mut self, func: impl FnMut(&Self, CompactNodeIndex)) {
         unimplemented!()
     }
 }
@@ -112,15 +116,16 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
     pub fn resolve_conflict(
         &mut self,
         dual_module: &mut impl DualInterface,
-        node_1: NodeIndex,
-        node_2: NodeIndex,
-        touch_1: NodeIndex,
-        touch_2: NodeIndex,
-        vertex_1: VertexIndex,
-        vertex_2: VertexIndex,
+        node_1: CompactNodeIndex,
+        node_2: CompactNodeIndex,
+        touch_1: CompactNodeIndex,
+        touch_2: CompactNodeIndex,
+        vertex_1: CompactVertexIndex,
+        vertex_2: CompactVertexIndex,
     ) {
         let primal_node_1 = self.nodes.get_node(node_1);
         let primal_node_2 = self.nodes.get_node(node_2);
+        // println!("primal_node_1: {primal_node_1:?}, primal_node_2: {primal_node_2:?}");
         unimplemented!()
     }
 
@@ -128,16 +133,16 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
     pub fn resolve_conflict_virtual(
         &mut self,
         dual_module: &mut impl DualInterface,
-        node: NodeIndex,
-        touch: NodeIndex,
-        vertex: VertexIndex,
-        virtual_vertex: VertexIndex,
+        node: CompactNodeIndex,
+        touch: CompactNodeIndex,
+        vertex: CompactVertexIndex,
+        virtual_vertex: CompactVertexIndex,
     ) {
         unimplemented!()
     }
 
     /// handle an up-to-date blossom need expand event
-    pub fn resolve_blossom_need_expand(&mut self, dual_module: &mut impl DualInterface, blossom: NodeIndex) {
+    pub fn resolve_blossom_need_expand(&mut self, dual_module: &mut impl DualInterface, blossom: CompactNodeIndex) {
         unimplemented!()
     }
 }

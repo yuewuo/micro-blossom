@@ -12,13 +12,13 @@ impl DualStacklessDriver for RiscVCommandDriver {
         unimplemented!()
     }
     fn set_speed(&mut self, node: NodeIndex, speed: GrowState) {
-        self.write_argument::<1>(node.into());
+        self.write_argument::<1>(node.get().into());
         self.write_argument::<2>(speed as u32);
         self.write_opcode(OpCode::SetSpeed);
     }
     fn set_blossom(&mut self, node: NodeIndex, blossom: NodeIndex) {
-        self.write_argument::<1>(node.into());
-        self.write_argument::<2>(blossom.into());
+        self.write_argument::<1>(node.get().into());
+        self.write_argument::<2>(blossom.get().into());
         self.write_opcode(OpCode::SetBlossom);
     }
     fn find_obstacle(&mut self) -> MaxUpdateLength {
@@ -29,15 +29,15 @@ impl DualStacklessDriver for RiscVCommandDriver {
                 length: self.read_argument::<5>() as Weight,
             },
             RspCode::Conflict => MaxUpdateLength::Conflict {
-                node_1: self.read_argument::<5>() as NodeIndex,
-                node_2: self.read_argument::<6>() as NodeIndex,
-                touch_1: self.read_argument::<7>() as NodeIndex,
-                touch_2: self.read_argument::<8>() as NodeIndex,
-                vertex_1: self.read_argument::<9>() as VertexIndex,
-                vertex_2: self.read_argument::<10>() as VertexIndex,
+                node_1: NodeIndex::new(self.read_argument::<5>() as NodeNum).unwrap(),
+                node_2: NodeIndex::new(self.read_argument::<6>() as NodeNum),
+                touch_1: NodeIndex::new(self.read_argument::<7>() as NodeNum).unwrap(),
+                touch_2: NodeIndex::new(self.read_argument::<8>() as NodeNum),
+                vertex_1: VertexIndex::new(self.read_argument::<9>() as VertexNum).unwrap(),
+                vertex_2: VertexIndex::new(self.read_argument::<10>() as VertexNum).unwrap(),
             },
             RspCode::BlossomNeedExpand => MaxUpdateLength::BlossomNeedExpand {
-                blossom: self.read_argument::<5>() as NodeIndex,
+                blossom: NodeIndex::new(self.read_argument::<5>() as NodeNum).unwrap(),
             },
         }
     }

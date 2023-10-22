@@ -12,7 +12,7 @@ use fusion_blossom::dual_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::blossom_tracker::*;
-use micro_blossom_nostd::util::GrowState;
+use micro_blossom_nostd::util::*;
 use serde_json::json;
 
 #[derive(Debug)]
@@ -159,7 +159,8 @@ impl DualModuleImpl for DualModuleRTL {
         self.nodes.push(dual_node_ptr.clone());
         match &node.class {
             DualNodeClass::Blossom { nodes_circle, .. } => {
-                self.blossom_tracker.create_blossom(node.index.try_into().unwrap());
+                self.blossom_tracker
+                    .create_blossom(micro_blossom_nostd::util::ni!(node.index));
                 // creating blossom is cheap
                 for weak_ptr in nodes_circle.iter() {
                     let child_node_ptr = weak_ptr.upgrade_force();
@@ -170,7 +171,7 @@ impl DualModuleImpl for DualModuleRTL {
                     });
                     if matches!(child_node.class, DualNodeClass::Blossom { .. }) {
                         self.blossom_tracker
-                            .set_speed(child_node.index.try_into().unwrap(), GrowState::Stay);
+                            .set_speed(micro_blossom_nostd::util::ni!(child_node.index), CompactGrowState::Stay);
                     }
                 }
                 // TODO: use priority queue to track shrinking blossom constraint
@@ -193,7 +194,7 @@ impl DualModuleImpl for DualModuleRTL {
             _ => unreachable!(),
         };
         self.blossom_tracker
-            .set_speed(node.index.try_into().unwrap(), GrowState::Stay);
+            .set_speed(micro_blossom_nostd::util::ni!(node.index), CompactGrowState::Stay);
         for weak_ptr in nodes_circle.iter() {
             let node_ptr = weak_ptr.upgrade_force();
             let roots = get_blossom_roots(&node_ptr);
@@ -212,11 +213,11 @@ impl DualModuleImpl for DualModuleRTL {
         let node_index = dual_node_ptr.read_recursive().index;
         if matches!(node.class, DualNodeClass::Blossom { .. }) {
             self.blossom_tracker.set_speed(
-                node_index.try_into().unwrap(),
+                micro_blossom_nostd::util::ni!(node_index),
                 match grow_state {
-                    DualNodeGrowState::Grow => GrowState::Grow,
-                    DualNodeGrowState::Shrink => GrowState::Shrink,
-                    DualNodeGrowState::Stay => GrowState::Stay,
+                    DualNodeGrowState::Grow => CompactGrowState::Grow,
+                    DualNodeGrowState::Shrink => CompactGrowState::Shrink,
+                    DualNodeGrowState::Stay => CompactGrowState::Stay,
                 },
             );
         }
@@ -271,7 +272,7 @@ impl DualModuleImpl for DualModuleRTL {
         if matches!(max_update_length, MaxUpdateLength::NonZeroGrow { .. }) {
             if let Some((length, blossom_index)) = maximum_growth_blossom_hit_zero {
                 if length == 0 {
-                    max_update_length = MaxUpdateLength::BlossomNeedExpand(self.nodes[blossom_index as usize].clone());
+                    max_update_length = MaxUpdateLength::BlossomNeedExpand(self.nodes[blossom_index.get() as usize].clone());
                 }
             }
         }
