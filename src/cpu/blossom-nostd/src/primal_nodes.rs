@@ -5,6 +5,7 @@
 //! defects if they are not evolves in potential complex matchings.
 //!
 
+use crate::interface::*;
 use crate::util::*;
 
 pub struct PrimalNodes<const N: usize, const DOUBLE_N: usize> {
@@ -20,6 +21,7 @@ pub struct PrimalNodes<const N: usize, const DOUBLE_N: usize> {
 /// this simplifies the design on
 #[derive(Clone)]
 pub struct PrimalNode {
+    pub grow_state: CompactGrowState,
     /// the parent in the alternating tree, or `NODE_NONE` if it doesn't have a parent;
     /// when the node is a root node, sibling means the parent in the alternating tree;
     /// when the node is within a blossom, then the parent means the parent blossom
@@ -33,19 +35,19 @@ pub struct PrimalNode {
     /// a link between another node. Depending on the state of a node, the link has different meanings:
     /// when the node is a root node, then the link is pointing to its parent;
     /// when the node is within a blossom, then the link is pointing to its sibling (the circle)
-    pub link: Option<Link>,
+    pub link: Link,
 }
 
 #[derive(Clone)]
 pub struct Link {
     /// touching through node index
-    pub touch: CompactNodeIndex,
+    pub touch: Option<CompactNodeIndex>,
     /// touching through vertex
-    pub through: CompactVertexIndex,
+    pub through: Option<CompactVertexIndex>,
     /// peer touches myself through node index
-    pub peer_touch: CompactNodeIndex,
+    pub peer_touch: Option<CompactNodeIndex>,
     /// peer touches myself through vertex
-    pub peer_through: CompactVertexIndex,
+    pub peer_through: Option<CompactVertexIndex>,
 }
 
 impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
@@ -115,6 +117,10 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         self.buffer[node_index.get() as usize].as_ref().unwrap()
     }
 
+    pub fn get_node_mut(&mut self, node_index: CompactNodeIndex) -> &mut PrimalNode {
+        self.buffer[node_index.get() as usize].as_mut().unwrap()
+    }
+
     pub fn get_defect(&self, defect_index: CompactNodeIndex) -> &PrimalNode {
         debug_assert!(!self.is_blossom(defect_index));
         debug_assert!(
@@ -147,10 +153,13 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         let mut child_index = blossom.first_child;
         while child_index.is_some() {
             let node = self.get_node(child_index.clone().unwrap());
-            let link = node.link.as_ref().unwrap();
+            let link = &node.link;
             func(
                 child_index.unwrap(),
-                ((link.touch, link.through), (link.peer_touch, link.peer_through)),
+                (
+                    (link.touch.unwrap(), link.through.unwrap()),
+                    (link.peer_touch.unwrap(), link.peer_through.unwrap()),
+                ),
             );
             child_index = node.sibling;
         }
@@ -161,15 +170,41 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         outer_index
         // while self.get_node(outer_index).parent != NODE_NONE
     }
+
+    pub fn get_grow_state(&self, node_index: CompactNodeIndex) -> CompactGrowState {
+        self.get_node(node_index).grow_state
+    }
+
+    pub fn set_grow_state(
+        &mut self,
+        node_index: CompactNodeIndex,
+        grow_state: CompactGrowState,
+        dual_module: &mut impl DualInterface,
+    ) {
+        self.get_node_mut(node_index).grow_state = grow_state;
+        dual_module.set_grow_state(node_index, grow_state);
+    }
 }
 
 impl PrimalNode {
     pub fn new() -> Self {
         Self {
+            grow_state: CompactGrowState::Grow,
             parent: None,
             first_child: None,
             sibling: None,
-            link: None,
+            link: Link::new(),
+        }
+    }
+}
+
+impl Link {
+    pub fn new() -> Self {
+        Self {
+            touch: None,
+            through: None,
+            peer_touch: None,
+            peer_through: None,
         }
     }
 }

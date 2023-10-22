@@ -11,12 +11,12 @@ impl DualStacklessDriver for RiscVCommandDriver {
     fn clear(&mut self) {
         unimplemented!()
     }
-    fn set_speed(&mut self, node: NodeIndex, speed: GrowState) {
+    fn set_speed(&mut self, node: CompactNodeIndex, speed: CompactGrowState) {
         self.write_argument::<1>(node.get().into());
         self.write_argument::<2>(speed as u32);
         self.write_opcode(OpCode::SetSpeed);
     }
-    fn set_blossom(&mut self, node: NodeIndex, blossom: NodeIndex) {
+    fn set_blossom(&mut self, node: CompactNodeIndex, blossom: CompactNodeIndex) {
         self.write_argument::<1>(node.get().into());
         self.write_argument::<2>(blossom.get().into());
         self.write_opcode(OpCode::SetBlossom);
@@ -26,22 +26,22 @@ impl DualStacklessDriver for RiscVCommandDriver {
         let rspcode = self.read_rspcode();
         match rspcode {
             RspCode::NonZeroGrow => MaxUpdateLength::GrowLength {
-                length: self.read_argument::<5>() as Weight,
+                length: self.read_argument::<5>() as CompactWeight,
             },
             RspCode::Conflict => MaxUpdateLength::Conflict {
-                node_1: NodeIndex::new(self.read_argument::<5>() as NodeNum).unwrap(),
-                node_2: NodeIndex::new(self.read_argument::<6>() as NodeNum),
-                touch_1: NodeIndex::new(self.read_argument::<7>() as NodeNum).unwrap(),
-                touch_2: NodeIndex::new(self.read_argument::<8>() as NodeNum),
-                vertex_1: VertexIndex::new(self.read_argument::<9>() as VertexNum).unwrap(),
-                vertex_2: VertexIndex::new(self.read_argument::<10>() as VertexNum).unwrap(),
+                node_1: CompactNodeIndex::new(self.read_argument::<5>() as CompactNodeNum).unwrap(),
+                node_2: CompactNodeIndex::new(self.read_argument::<6>() as CompactNodeNum),
+                touch_1: CompactNodeIndex::new(self.read_argument::<7>() as CompactNodeNum).unwrap(),
+                touch_2: CompactNodeIndex::new(self.read_argument::<8>() as CompactNodeNum),
+                vertex_1: CompactVertexIndex::new(self.read_argument::<9>() as CompactVertexNum).unwrap(),
+                vertex_2: CompactVertexIndex::new(self.read_argument::<10>() as CompactVertexNum).unwrap(),
             },
             RspCode::BlossomNeedExpand => MaxUpdateLength::BlossomNeedExpand {
-                blossom: NodeIndex::new(self.read_argument::<5>() as NodeNum).unwrap(),
+                blossom: CompactNodeIndex::new(self.read_argument::<5>() as CompactNodeNum).unwrap(),
             },
         }
     }
-    fn grow(&mut self, length: Weight) {
+    fn grow(&mut self, length: CompactWeight) {
         self.write_argument::<1>(length as u32);
         self.write_opcode(OpCode::Grow);
     }

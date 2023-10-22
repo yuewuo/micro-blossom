@@ -32,6 +32,17 @@ pub enum CompactGrowState {
     Shrink = 2,
 }
 
+impl CompactGrowState {
+    pub fn is_conflicting(grow_state_1: CompactGrowState, grow_state_2: CompactGrowState) -> bool {
+        match (grow_state_1, grow_state_2) {
+            (CompactGrowState::Grow, CompactGrowState::Grow) => true,
+            (CompactGrowState::Grow, CompactGrowState::Stay) => true,
+            (CompactGrowState::Stay, CompactGrowState::Grow) => true,
+            _ => false,
+        }
+    }
+}
+
 #[macro_export]
 /// node index, constructed from any numerical type
 macro_rules! ni {

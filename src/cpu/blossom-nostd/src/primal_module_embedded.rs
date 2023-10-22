@@ -93,12 +93,28 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
                 if let Some(node_2) = node_2 {
                     self.nodes.check_node_index(node_2);
                     self.nodes.check_node_index(touch_2.unwrap());
+                    cfg_if::cfg_if! { if #[cfg(feature="obstacle_potentially_outdated")] {
+                        if !CompactGrowState::is_conflicting(
+                                self.nodes.get_grow_state(node_1), self.nodes.get_grow_state(node_2)) {
+                            return; // outdated event
+                        }
+                    } }
                     self.resolve_conflict(dual_module, node_1, node_2, touch_1, touch_2.unwrap(), vertex_1, vertex_2);
                 } else {
+                    cfg_if::cfg_if! { if #[cfg(feature="obstacle_potentially_outdated")] {
+                        if self.nodes.get_grow_state(node_1) != CompactGrowState::Grow {
+                            return; // outdated event
+                        }
+                    } }
                     self.resolve_conflict_virtual(dual_module, node_1, touch_1, vertex_1, vertex_2);
                 }
             }
             MaxUpdateLength::BlossomNeedExpand { blossom } => {
+                cfg_if::cfg_if! { if #[cfg(feature="obstacle_potentially_outdated")] {
+                    if self.nodes.get_grow_state(blossom) != CompactGrowState::Shrink {
+                        return; // outdated event
+                    }
+                } }
                 self.resolve_blossom_need_expand(dual_module, blossom);
             }
             _ => unimplemented!(),
