@@ -90,10 +90,21 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
                 }
                 self.nodes.check_node_index(node_1);
                 self.nodes.check_node_index(touch_1);
+                debug_assert!(
+                    self.nodes.get_blossom_root(node_1) == node_1,
+                    "outdated event found but feature not enabled"
+                );
                 if let Some(node_2) = node_2 {
                     self.nodes.check_node_index(node_2);
                     self.nodes.check_node_index(touch_2.unwrap());
+                    debug_assert!(
+                        self.nodes.get_blossom_root(node_2) == node_2,
+                        "outdated event found but feature not enabled"
+                    );
                     cfg_if::cfg_if! { if #[cfg(feature="obstacle_potentially_outdated")] {
+                        if node_1 == node_2 {
+                            return; // outdated event: already in the same blossom
+                        }
                         if !CompactGrowState::is_conflicting(
                                 self.nodes.get_grow_state(node_1), self.nodes.get_grow_state(node_2)) {
                             return; // outdated event
@@ -141,7 +152,56 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
     ) {
         let primal_node_1 = self.nodes.get_node(node_1);
         let primal_node_2 = self.nodes.get_node(node_2);
-        // println!("primal_node_1: {primal_node_1:?}, primal_node_2: {primal_node_2:?}");
+        // this is the most probable case, so put it in the front
+        let free_1 = primal_node_1.is_free();
+        let free_2 = primal_node_2.is_free();
+        if free_1 && free_2 {
+            // simply match them temporarily
+            self.nodes
+                .temporary_match(dual_module, node_1, node_2, touch_1, touch_2, vertex_1, vertex_2);
+            return;
+        }
+        // second probable case: single node touches a temporary matched pair and become an alternating tree
+        if (free_1 && primal_node_2.is_matched()) || (free_2 && primal_node_1.is_matched()) {
+            let (free_node, free_touch, free_vertex, matched_node, matched_primal_node, matched_touch, matched_vertex) =
+                if free_1 {
+                    (node_1, touch_1, vertex_1, node_2, primal_node_2, touch_2, vertex_2)
+                } else {
+                    (node_2, touch_2, vertex_2, node_1, primal_node_1, touch_1, vertex_1)
+                };
+            match matched_primal_node.get_matched() {
+                CompactMatchTarget::Peer(leaf_node) => {
+                    self.nodes.set_grow_state(free_node, CompactGrowState::Grow, dual_module);
+                    self.nodes.set_grow_state(matched_node, CompactGrowState::Shrink, dual_module);
+                    self.nodes.set_grow_state(leaf_node, CompactGrowState::Grow, dual_module);
+                    let free_primal_node = self.nodes.get_node_mut(free_node);
+                    free_primal_node.first_child = Some(matched_node);
+                    let matched_primal_node = self.nodes.get_node_mut(matched_node);
+                    matched_primal_node.parent = Some(free_node);
+                    matched_primal_node.first_child = Some(leaf_node);
+                    matched_primal_node.sibling = None;
+                    matched_primal_node.link.touch = Some(matched_touch);
+                    matched_primal_node.link.through = Some(matched_vertex);
+                    matched_primal_node.link.peer_touch = Some(free_touch);
+                    matched_primal_node.link.peer_through = Some(free_vertex);
+                    let leaf_primal_node = self.nodes.get_node_mut(leaf_node);
+                    leaf_primal_node.parent = Some(matched_node);
+                    leaf_primal_node.sibling = None;
+                }
+                CompactMatchTarget::VirtualVertex(_virtual_vertex) => {
+                    self.nodes.temporary_match(
+                        dual_module,
+                        free_node,
+                        matched_node,
+                        free_touch,
+                        matched_touch,
+                        free_vertex,
+                        matched_vertex,
+                    );
+                }
+            }
+            return;
+        }
         unimplemented!()
     }
 

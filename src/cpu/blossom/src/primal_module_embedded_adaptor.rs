@@ -74,7 +74,6 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
             },
             self.dual_module,
         );
-        unimplemented!()
     }
     fn compute_maximum_update_length(&mut self) -> micro_blossom_nostd::interface::MaxUpdateLength {
         unreachable!("should not be called")

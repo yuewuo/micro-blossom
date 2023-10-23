@@ -19,6 +19,7 @@ pub struct PrimalNodes<const N: usize, const DOUBLE_N: usize> {
 
 /// the primal node is designed to have exactly 8 fields (32 bytes or 8 bytes in total, w/wo u16_index feature).
 /// this simplifies the design on
+#[cfg_attr(any(test, feature = "std"), derive(Debug))]
 #[derive(Clone)]
 pub struct PrimalNode {
     pub grow_state: CompactGrowState,
@@ -29,12 +30,13 @@ pub struct PrimalNode {
     /// the starting of the children, whether the children in the blossom cycle or in an alternating tree
     pub first_child: Option<CompactNodeIndex>,
     /// the index of one remaining sibling if there exists any, otherwise `NODE_NONE`;
-    /// when the node is a root node, sibling means some + node that has the same parent in the alternating tree;
-    /// when the node is a blossom node, sibling means the next
+    /// when the node is a root node, sibling means some + node that has the same parent in the alternating tree, or
+    ///     it means the temporary match;
+    /// when the node is within a blossom, sibling means the next node in the odd cycle
     pub sibling: Option<CompactNodeIndex>,
     /// a link between another node. Depending on the state of a node, the link has different meanings:
     /// when the node is a root node, then the link is pointing to its parent;
-    /// when the node is within a blossom, then the link is pointing to its sibling (the circle)
+    /// when the node is within a blossom, then the link is pointing to its sibling (the odd cycle)
     pub link: Link,
 }
 
@@ -184,6 +186,34 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         self.get_node_mut(node_index).grow_state = grow_state;
         dual_module.set_grow_state(node_index, grow_state);
     }
+
+    pub fn temporary_match(
+        &mut self,
+        dual_module: &mut impl DualInterface,
+        node_1: CompactNodeIndex,
+        node_2: CompactNodeIndex,
+        touch_1: CompactNodeIndex,
+        touch_2: CompactNodeIndex,
+        vertex_1: CompactVertexIndex,
+        vertex_2: CompactVertexIndex,
+    ) {
+        self.set_grow_state(node_1, CompactGrowState::Stay, dual_module);
+        self.set_grow_state(node_2, CompactGrowState::Stay, dual_module);
+        let primal_node_1 = self.get_node_mut(node_1);
+        primal_node_1.remove_from_alternating_tree();
+        primal_node_1.sibling = Some(node_2);
+        primal_node_1.link.touch = Some(touch_1);
+        primal_node_1.link.through = Some(vertex_1);
+        primal_node_1.link.peer_touch = Some(touch_2);
+        primal_node_1.link.peer_through = Some(vertex_2);
+        let primal_node_2 = self.get_node_mut(node_2);
+        primal_node_2.remove_from_alternating_tree();
+        primal_node_2.sibling = Some(node_2);
+        primal_node_2.link.touch = Some(touch_2);
+        primal_node_2.link.through = Some(vertex_2);
+        primal_node_2.link.peer_touch = Some(touch_1);
+        primal_node_2.link.peer_through = Some(vertex_1);
+    }
 }
 
 impl PrimalNode {
@@ -196,6 +226,42 @@ impl PrimalNode {
             link: Link::new(),
         }
     }
+
+    /// check if the node is not matched or not in any alternating tree
+    pub fn is_free(&self) -> bool {
+        !self.in_alternating_tree() && self.link.touch.is_none()
+    }
+
+    pub fn is_matched(&self) -> bool {
+        // here we use link.touch to judge whether its matched, to distinguish two cases:
+        // 1. match to another node (sibling = Some) 2. match to virtual vertex (sibling = None)
+        !self.in_alternating_tree() && self.link.touch.is_some()
+    }
+
+    pub fn in_alternating_tree(&self) -> bool {
+        self.parent.is_some() || self.first_child.is_some()
+    }
+
+    pub fn remove_from_alternating_tree(&mut self) {
+        self.parent = None;
+        self.first_child = None;
+    }
+}
+
+pub enum CompactMatchTarget {
+    Peer(CompactNodeIndex),
+    VirtualVertex(CompactVertexIndex),
+}
+
+impl PrimalNode {
+    pub fn get_matched(&self) -> CompactMatchTarget {
+        debug_assert!(self.is_matched());
+        if let Some(node_index) = self.sibling {
+            CompactMatchTarget::Peer(node_index)
+        } else {
+            CompactMatchTarget::VirtualVertex(self.link.peer_through.unwrap())
+        }
+    }
 }
 
 impl Link {
@@ -206,6 +272,10 @@ impl Link {
             peer_touch: None,
             peer_through: None,
         }
+    }
+
+    pub fn is_none(&self) -> bool {
+        self.touch.is_none() && self.through.is_none() && self.peer_touch.is_none() && self.peer_through.is_none()
     }
 }
 
@@ -231,27 +301,18 @@ impl<const N: usize, const DOUBLE_N: usize> std::fmt::Debug for PrimalNodes<N, D
 }
 
 #[cfg(any(test, feature = "std"))]
-impl std::fmt::Debug for PrimalNode {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter
-            .debug_struct("Node")
-            .field("parent", &self.parent)
-            .field("first_child", &self.first_child)
-            .field("sibling", &self.sibling)
-            .field("link", &self.link)
-            .finish()
-    }
-}
-
-#[cfg(any(test, feature = "std"))]
 impl std::fmt::Debug for Link {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        formatter
-            .debug_struct("Link")
-            .field("touch", &self.touch)
-            .field("through", &self.through)
-            .field("peer_touch", &self.peer_touch)
-            .field("peer_through", &self.peer_through)
-            .finish()
+        if self.is_none() {
+            formatter.write_str("None")
+        } else {
+            formatter
+                .debug_struct("Link")
+                .field("touch", &self.touch)
+                .field("through", &self.through)
+                .field("peer_touch", &self.peer_touch)
+                .field("peer_through", &self.peer_through)
+                .finish()
+        }
     }
 }
