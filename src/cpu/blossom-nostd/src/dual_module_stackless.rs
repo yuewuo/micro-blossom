@@ -141,6 +141,14 @@ mod tests {
         fn iterate_perfect_matching(&mut self, _func: impl FnMut(&Self, CompactNodeIndex)) {
             unimplemented!()
         }
+        fn break_with_virtual_vertex(
+            &mut self,
+            dual_module: &mut impl DualInterface,
+            virtual_vertex: CompactVertexIndex,
+            hint_node_index: CompactNodeIndex,
+        ) -> bool {
+            unimplemented!()
+        }
     }
 
     impl MockPrimal {

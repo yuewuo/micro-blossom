@@ -73,32 +73,34 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
                 if let Some(node_2) = node_2 {
                     assert!(node_1 != node_2, "one cannot conflict with itself");
                 }
+                self.nodes.check_node_index(node_1);
+                self.nodes.check_node_index(touch_1);
                 cfg_if::cfg_if! {
                     if #[cfg(feature="obstacle_potentially_outdated")] {
                         if self.nodes.is_blossom(node_1) && !self.nodes.has_node(node_1) {
                             return; // outdated event
                         }
                         // also convert the conflict to between the outer blossom
-                        node_1 = self.nodes.get_blossom_root(node_1);
+                        node_1 = self.nodes.get_outer_blossom(node_1);
                         if let Some(some_node_2) = node_2 {
+                            self.nodes.check_node_index(some_node_2);
+                            self.nodes.check_node_index(touch_2.unwrap());
                             if self.nodes.is_blossom(some_node_2) && !self.nodes.has_node(some_node_2) {
                                 return; // outdated event
                             }
-                            node_2 = Some(self.nodes.get_blossom_root(some_node_2));
+                            node_2 = Some(self.nodes.get_outer_blossom(some_node_2));
                         }
                     }
                 }
-                self.nodes.check_node_index(node_1);
-                self.nodes.check_node_index(touch_1);
                 debug_assert!(
-                    self.nodes.get_blossom_root(node_1) == node_1,
+                    self.nodes.get_outer_blossom(node_1) == node_1,
                     "outdated event found but feature not enabled"
                 );
                 if let Some(node_2) = node_2 {
                     self.nodes.check_node_index(node_2);
                     self.nodes.check_node_index(touch_2.unwrap());
                     debug_assert!(
-                        self.nodes.get_blossom_root(node_2) == node_2,
+                        self.nodes.get_outer_blossom(node_2) == node_2,
                         "outdated event found but feature not enabled"
                     );
                     cfg_if::cfg_if! { if #[cfg(feature="obstacle_potentially_outdated")] {
@@ -135,6 +137,29 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
     /// return the perfect matching between nodes
     fn iterate_perfect_matching(&mut self, func: impl FnMut(&Self, CompactNodeIndex)) {
         unimplemented!()
+    }
+
+    fn break_with_virtual_vertex(
+        &mut self,
+        dual_module: &mut impl DualInterface,
+        virtual_vertex: CompactVertexIndex,
+        hint_node_index: CompactNodeIndex,
+    ) -> bool {
+        self.nodes.check_node_index(hint_node_index);
+        if self.nodes.is_blossom(hint_node_index) && !self.nodes.has_node(hint_node_index) {
+            return false; // outdated event, no need to break with virtual vertex anymore
+        }
+        let node_index = self.nodes.get_outer_blossom(hint_node_index);
+        let node = self.nodes.get_node_mut(node_index);
+        if !node.is_matched() {
+            return false;
+        }
+        if node.get_matched() == CompactMatchTarget::VirtualVertex(virtual_vertex) {
+            return false;
+        }
+        node.remove_from_matching();
+        self.nodes.set_grow_state(node_index, CompactGrowState::Grow, dual_module);
+        true
     }
 }
 
@@ -202,7 +227,78 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             }
             return;
         }
-        unimplemented!()
+        // third probable case: tree touches single vertex
+        let in_alternating_tree_1 = primal_node_1.in_alternating_tree();
+        let in_alternating_tree_2 = primal_node_2.in_alternating_tree();
+        if (free_1 && in_alternating_tree_2) || (free_2 && in_alternating_tree_1) {
+            let in_tree_node = if free_1 { node_2 } else { node_1 };
+            self.augment_whole_tree(dual_module, in_tree_node);
+            self.nodes
+                .temporary_match(dual_module, node_1, node_2, touch_1, touch_2, vertex_1, vertex_2);
+            return;
+        }
+        // fourth probable case: tree touches matched pair
+        let is_matched_1 = primal_node_1.is_matched();
+        let is_matched_2 = primal_node_2.is_matched();
+        if (in_alternating_tree_1 && is_matched_2) || (in_alternating_tree_2 && is_matched_1) {
+            let (
+                matched_node,
+                matched_primal_node,
+                matched_touch,
+                matched_vertex,
+                in_tree_node,
+                in_tree_touch,
+                in_tree_vertex,
+            ) = if is_matched_1 {
+                (node_1, primal_node_1, touch_1, vertex_1, node_2, touch_2, vertex_2)
+            } else {
+                (node_2, primal_node_2, touch_2, vertex_2, node_1, touch_1, vertex_1)
+            };
+            match matched_primal_node.get_matched() {
+                CompactMatchTarget::Peer(matched_peer_node) => {
+                    self.nodes.set_grow_state(matched_node, CompactGrowState::Shrink, dual_module);
+                    self.nodes
+                        .set_grow_state(matched_peer_node, CompactGrowState::Grow, dual_module);
+                    // set the matched peer to leaf
+                    let matched_peer_primal_node = self.nodes.get_node_mut(matched_peer_node);
+                    matched_peer_primal_node.parent = Some(matched_node);
+                    debug_assert_eq!(matched_peer_primal_node.sibling, Some(matched_node), "before breaking");
+                    matched_peer_primal_node.sibling = None;
+                    // set the matched node as the first child of the in-tree node
+                    let in_tree_primal_node = self.nodes.get_node_mut(in_tree_node);
+                    let first_child = in_tree_primal_node.first_child;
+                    in_tree_primal_node.first_child = Some(matched_node);
+                    // set the parent of the matched node as the in-tree node
+                    let matched_primal_node = self.nodes.get_node_mut(matched_node);
+                    matched_primal_node.parent = Some(in_tree_node);
+                    matched_primal_node.sibling = first_child;
+                    matched_primal_node.link.touch = Some(matched_touch);
+                    matched_primal_node.link.through = Some(matched_vertex);
+                    matched_primal_node.link.peer_touch = Some(in_tree_touch);
+                    matched_primal_node.link.peer_through = Some(in_tree_vertex);
+                }
+                CompactMatchTarget::VirtualVertex(_virtual_vertex) => {
+                    // peel the tree
+                    self.augment_whole_tree(dual_module, in_tree_node);
+                    self.nodes.temporary_match(
+                        dual_module,
+                        matched_node,
+                        in_tree_node,
+                        matched_touch,
+                        in_tree_touch,
+                        matched_vertex,
+                        in_tree_vertex,
+                    );
+                }
+            }
+            return;
+        }
+        // much less probable case: two trees touch and both are augmented
+        if in_alternating_tree_1 && in_alternating_tree_2 {
+            unimplemented!();
+            return;
+        }
+        unreachable!()
     }
 
     /// handle an up-to-date conflict virtual event
@@ -220,6 +316,87 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
     /// handle an up-to-date blossom need expand event
     pub fn resolve_blossom_need_expand(&mut self, dual_module: &mut impl DualInterface, blossom: CompactNodeIndex) {
         unimplemented!()
+    }
+
+    /// for any + node, match it with another node will augment the whole tree, breaking out into several matched pairs;
+    /// this function is called when assuming this node is matched and removed from the alternating tree
+    pub fn augment_whole_tree(&mut self, dual_module: &mut impl DualInterface, tree_node: CompactNodeIndex) {
+        debug_assert!(
+            self.nodes.get_grow_state(tree_node) == CompactGrowState::Grow,
+            "must be + node"
+        );
+        // augment the subtree
+        self.augment_subtree(dual_module, tree_node);
+        // let the parent match with ancestor, if exists any
+        let tree_primal_node = self.nodes.get_node(tree_node);
+        if let Some(parent_node) = tree_primal_node.parent {
+            debug_assert!(
+                self.nodes.get_grow_state(parent_node) == CompactGrowState::Shrink,
+                "must be - node"
+            );
+            let parent_primal_node = self.nodes.get_node(parent_node);
+            let ancestor_node = parent_primal_node.parent.expect("- node should always have parent");
+            let link = parent_primal_node.link.clone();
+            self.augment_whole_tree(dual_module, ancestor_node);
+            self.nodes
+                .temporary_match_with_link(dual_module, parent_node, &link, ancestor_node);
+        }
+    }
+
+    /// augment the subtree given a (+) root node, but leave the root node unchanged
+    pub fn augment_subtree(&mut self, dual_module: &mut impl DualInterface, root_node: CompactNodeIndex) {
+        debug_assert!(
+            self.nodes.get_grow_state(root_node) == CompactGrowState::Grow,
+            "must be + node"
+        );
+        let root_primal_node = self.nodes.get_node(root_node);
+        let mut first_child = root_primal_node.first_child;
+
+        // expand the subtree of its children
+        while let Some(first_child_node) = first_child {
+            let child_primal_node = self.nodes.get_node(first_child_node);
+            first_child = child_primal_node.sibling;
+            self.match_subtree(dual_module, first_child_node);
+        }
+    }
+
+    /// match the whole subtree given a (-) root node, changing all the subtree including the root node
+    pub fn match_subtree(&mut self, dual_module: &mut impl DualInterface, root_node: CompactNodeIndex) {
+        debug_assert!(
+            self.nodes.get_grow_state(root_node) == CompactGrowState::Shrink,
+            "must be - node"
+        );
+        let root_primal_node = self.nodes.get_node(root_node);
+        let child_node = root_primal_node.first_child.expect("- node is always followed by a + node");
+        debug_assert!(
+            self.nodes.get_grow_state(child_node) == CompactGrowState::Grow,
+            "must be + node"
+        );
+        let child_primal_node = self.nodes.get_node(child_node);
+        debug_assert!(child_primal_node.sibling.is_none(), "+ node should not have any siblings");
+        let child_link = child_primal_node.link.clone();
+        let mut first_grandchild = child_primal_node.first_child;
+        // match root with child
+        self.nodes
+            .temporary_match_with_link(dual_module, child_node, &child_link, root_node);
+        // iterate through the descendants and match the subtrees
+        while let Some(first_grandchild_node) = first_grandchild {
+            let grandchild_primal_node = self.nodes.get_node(first_grandchild_node);
+            first_grandchild = grandchild_primal_node.sibling;
+            self.match_subtree(dual_module, first_grandchild_node);
+        }
+    }
+
+    pub fn alternating_tree_root_of(&self, mut node_index: CompactNodeIndex) -> CompactNodeIndex {
+        loop {
+            let node = self.nodes.get_node(node_index);
+            debug_assert!(node.is_outer_blossom());
+            if let Some(parent) = node.parent {
+                node_index = parent;
+            } else {
+                return node_index;
+            }
+        }
     }
 }
 

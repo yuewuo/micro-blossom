@@ -22,7 +22,9 @@ pub struct PrimalNodes<const N: usize, const DOUBLE_N: usize> {
 #[cfg_attr(any(test, feature = "std"), derive(Debug))]
 #[derive(Clone)]
 pub struct PrimalNode {
-    pub grow_state: CompactGrowState,
+    /// an active outer blossom can have three different grow states, but the state of an inner node
+    /// (those created as the children of another blossom) is None
+    pub grow_state: Option<CompactGrowState>,
     /// the parent in the alternating tree, or `NODE_NONE` if it doesn't have a parent;
     /// when the node is a root node, sibling means the parent in the alternating tree;
     /// when the node is within a blossom, then the parent means the parent blossom
@@ -167,14 +169,22 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         }
     }
 
-    pub fn get_blossom_root(&self, node_index: CompactNodeIndex) -> CompactNodeIndex {
-        let outer_index = node_index;
-        outer_index
-        // while self.get_node(outer_index).parent != NODE_NONE
+    /// get the outer blossom of this possibly inner node
+    pub fn get_outer_blossom(&self, mut node_index: CompactNodeIndex) -> CompactNodeIndex {
+        loop {
+            let node = self.get_node(node_index);
+            if node.grow_state.is_none() {
+                node_index = node.parent.expect("an inner node must have a outer parent blossom");
+            } else {
+                return node_index;
+            }
+        }
     }
 
     pub fn get_grow_state(&self, node_index: CompactNodeIndex) -> CompactGrowState {
-        self.get_node(node_index).grow_state
+        self.get_node(node_index)
+            .grow_state
+            .expect("cannot get grow state of an inner node")
     }
 
     pub fn set_grow_state(
@@ -183,7 +193,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         grow_state: CompactGrowState,
         dual_module: &mut impl DualInterface,
     ) {
-        self.get_node_mut(node_index).grow_state = grow_state;
+        debug_assert!(self.get_node(node_index).is_outer_blossom(), "cannot set inner node");
+        self.get_node_mut(node_index).grow_state = Some(grow_state);
         dual_module.set_grow_state(node_index, grow_state);
     }
 
@@ -214,12 +225,30 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         primal_node_2.link.peer_touch = Some(touch_1);
         primal_node_2.link.peer_through = Some(vertex_1);
     }
+
+    pub fn temporary_match_with_link(
+        &mut self,
+        dual_module: &mut impl DualInterface,
+        node_1: CompactNodeIndex,
+        link_1: &Link,
+        node_2: CompactNodeIndex,
+    ) {
+        self.temporary_match(
+            dual_module,
+            node_1,
+            node_2,
+            link_1.touch.unwrap(),
+            link_1.peer_touch.unwrap(),
+            link_1.through.unwrap(),
+            link_1.peer_through.unwrap(),
+        );
+    }
 }
 
 impl PrimalNode {
     pub fn new() -> Self {
         Self {
-            grow_state: CompactGrowState::Grow,
+            grow_state: Some(CompactGrowState::Grow),
             parent: None,
             first_child: None,
             sibling: None,
@@ -227,27 +256,52 @@ impl PrimalNode {
         }
     }
 
+    pub fn is_outer_blossom(&self) -> bool {
+        self.grow_state.is_some()
+    }
+
     /// check if the node is not matched or not in any alternating tree
     pub fn is_free(&self) -> bool {
+        debug_assert!(self.is_outer_blossom(), "should not ask whether an inner node is free");
         !self.in_alternating_tree() && self.link.touch.is_none()
     }
 
     pub fn is_matched(&self) -> bool {
         // here we use link.touch to judge whether its matched, to distinguish two cases:
         // 1. match to another node (sibling = Some) 2. match to virtual vertex (sibling = None)
+        debug_assert!(self.is_outer_blossom(), "should not ask whether an inner node is matched");
         !self.in_alternating_tree() && self.link.touch.is_some()
     }
 
     pub fn in_alternating_tree(&self) -> bool {
+        debug_assert!(
+            self.is_outer_blossom(),
+            "should not ask whether an inner node is in an alternating tree"
+        );
         self.parent.is_some() || self.first_child.is_some()
     }
 
     pub fn remove_from_alternating_tree(&mut self) {
+        debug_assert!(
+            self.is_outer_blossom(),
+            "should not remove an inner node from alternating tree"
+        );
         self.parent = None;
         self.first_child = None;
     }
+
+    pub fn remove_from_matching(&mut self) {
+        debug_assert!(self.is_outer_blossom(), "should not remove an inner node from matching");
+        debug_assert!(self.is_matched());
+        self.sibling = None;
+        self.link.touch = None;
+        self.link.through = None;
+        self.link.peer_touch = None;
+        self.link.peer_through = None;
+    }
 }
 
+#[derive(PartialEq, Eq)]
 pub enum CompactMatchTarget {
     Peer(CompactNodeIndex),
     VirtualVertex(CompactVertexIndex),
