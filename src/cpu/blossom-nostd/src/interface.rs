@@ -58,8 +58,8 @@ pub trait PrimalInterface {
     /// resolve one obstacle
     fn resolve(&mut self, dual_module: &mut impl DualInterface, max_update_length: MaxUpdateLength);
 
-    /// return the perfect matching between nodes
-    fn iterate_perfect_matching(&mut self, func: impl FnMut(&Self, CompactNodeIndex));
+    /// return the perfect matching between nodes, note that each element is iterated only once
+    fn iterate_perfect_matching(&mut self, func: impl FnMut(&Self, CompactNodeIndex, CompactMatchTarget, &TouchingLink));
 
     /// if the node is matched with a specific virtual index; note that the node index might be outdated
     /// , so it is necessary to check for the latest node index. return true if it's broken otherwise false

@@ -54,3 +54,38 @@ macro_rules! ni {
 }
 #[allow(unused_imports)]
 pub use ni;
+
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+pub enum CompactMatchTarget {
+    Peer(CompactNodeIndex),
+    VirtualVertex(CompactVertexIndex),
+}
+
+#[derive(Clone)]
+pub struct TouchingLink {
+    /// touching through node index
+    pub touch: Option<CompactNodeIndex>,
+    /// touching through vertex
+    pub through: Option<CompactVertexIndex>,
+    /// peer touches myself through node index
+    pub peer_touch: Option<CompactNodeIndex>,
+    /// peer touches myself through vertex
+    pub peer_through: Option<CompactVertexIndex>,
+}
+
+#[cfg(any(test, feature = "std"))]
+impl std::fmt::Debug for TouchingLink {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if self.is_none() {
+            formatter.write_str("None")
+        } else {
+            formatter
+                .debug_struct("TouchingLink")
+                .field("touch", &self.touch)
+                .field("through", &self.through)
+                .field("peer_touch", &self.peer_touch)
+                .field("peer_through", &self.peer_through)
+                .finish()
+        }
+    }
+}

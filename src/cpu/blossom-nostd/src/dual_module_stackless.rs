@@ -138,7 +138,10 @@ mod tests {
         fn resolve(&mut self, _dual_module: &mut impl DualInterface, _max_update_length: MaxUpdateLength) {
             unimplemented!()
         }
-        fn iterate_perfect_matching(&mut self, _func: impl FnMut(&Self, CompactNodeIndex)) {
+        fn iterate_perfect_matching(
+            &mut self,
+            _func: impl FnMut(&Self, CompactNodeIndex, CompactMatchTarget, &TouchingLink),
+        ) {
             unimplemented!()
         }
         fn break_with_virtual_vertex(

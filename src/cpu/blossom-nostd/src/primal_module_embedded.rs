@@ -135,8 +135,12 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
     }
 
     /// return the perfect matching between nodes
-    fn iterate_perfect_matching(&mut self, func: impl FnMut(&Self, CompactNodeIndex)) {
-        unimplemented!()
+    fn iterate_perfect_matching(
+        &mut self,
+        mut func: impl FnMut(&Self, CompactNodeIndex, CompactMatchTarget, &TouchingLink),
+    ) {
+        self.nodes
+            .iterate_perfect_matching(|node_index, match_target, link| func(self, node_index, match_target, link));
     }
 
     fn break_with_virtual_vertex(
@@ -470,7 +474,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             node.first_child = None;
         }
         let mut iter_2 = node_2;
-        let mut last_link = Link {
+        let mut last_link = TouchingLink {
             touch: Some(touch_1),
             through: Some(vertex_1),
             peer_touch: Some(touch_2),

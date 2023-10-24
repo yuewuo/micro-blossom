@@ -41,19 +41,7 @@ pub struct PrimalNode {
     /// a link between another node. Depending on the state of a node, the link has different meanings:
     /// when the node is a root node, then the link is pointing to its parent;
     /// when the node is within a blossom, then the link is pointing to its sibling (the odd cycle)
-    pub link: Link,
-}
-
-#[derive(Clone)]
-pub struct Link {
-    /// touching through node index
-    pub touch: Option<CompactNodeIndex>,
-    /// touching through vertex
-    pub through: Option<CompactVertexIndex>,
-    /// peer touches myself through node index
-    pub peer_touch: Option<CompactNodeIndex>,
-    /// peer touches myself through vertex
-    pub peer_through: Option<CompactVertexIndex>,
+    pub link: TouchingLink,
 }
 
 impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
@@ -162,7 +150,6 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     ) {
         let mut child_index = Some(self.get_first_blossom_child(blossom_index));
         while child_index.is_some() {
-            println!("child_index: {child_index:?}");
             let node = self.get_node(child_index.clone().unwrap());
             let link = &node.link;
             func(
@@ -174,6 +161,11 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
             );
             child_index = node.sibling;
         }
+    }
+
+    pub fn iterate_perfect_matching(&self, mut func: impl FnMut(CompactNodeIndex, CompactMatchTarget, &TouchingLink)) {
+        // report from small index to large index
+        unimplemented!()
     }
 
     /// get the outer blossom of this possibly inner node
@@ -237,7 +229,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         &mut self,
         dual_module: &mut impl DualInterface,
         node_1: CompactNodeIndex,
-        link_1: &Link,
+        link_1: &TouchingLink,
         node_2: CompactNodeIndex,
     ) {
         self.temporary_match(
@@ -295,7 +287,7 @@ impl PrimalNode {
             parent: None,
             first_child: None,
             sibling: None,
-            link: Link::new(),
+            link: TouchingLink::new(),
         }
     }
 
@@ -344,12 +336,6 @@ impl PrimalNode {
     }
 }
 
-#[derive(PartialEq, Eq)]
-pub enum CompactMatchTarget {
-    Peer(CompactNodeIndex),
-    VirtualVertex(CompactVertexIndex),
-}
-
 impl PrimalNode {
     pub fn get_matched(&self) -> CompactMatchTarget {
         debug_assert!(self.is_matched());
@@ -361,7 +347,7 @@ impl PrimalNode {
     }
 }
 
-impl Link {
+impl TouchingLink {
     pub fn new() -> Self {
         Self {
             touch: None,
@@ -394,22 +380,5 @@ impl<const N: usize, const DOUBLE_N: usize> std::fmt::Debug for PrimalNodes<N, D
                     .collect::<std::vec::Vec<_>>(),
             )
             .finish()
-    }
-}
-
-#[cfg(any(test, feature = "std"))]
-impl std::fmt::Debug for Link {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        if self.is_none() {
-            formatter.write_str("None")
-        } else {
-            formatter
-                .debug_struct("Link")
-                .field("touch", &self.touch)
-                .field("through", &self.through)
-                .field("peer_touch", &self.peer_touch)
-                .field("peer_through", &self.peer_through)
-                .finish()
-        }
     }
 }

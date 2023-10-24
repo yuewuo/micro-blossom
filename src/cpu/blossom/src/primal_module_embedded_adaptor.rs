@@ -175,7 +175,12 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
         _interface: &DualModuleInterfacePtr,
         _dual_module: &mut D,
     ) -> IntermediateMatching {
-        unimplemented!();
+        let mut intermediate_matching = IntermediateMatching::new();
+        self.primal_module
+            .iterate_perfect_matching(|primal_module, node_index, match_target, link| {
+                println!("node_index: {node_index}, match_target: {match_target:?}, link: {link:?}");
+            });
+        intermediate_matching
     }
 }
 
