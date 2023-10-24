@@ -19,3 +19,8 @@ debug:
 	riscv32-unknown-elf-objdump -d target/$(TARGET)/debug/embedded_blossom > target/$(TARGET)/debug/embedded_blossom.s
 # objcopy
 	riscv32-unknown-elf-objcopy -O binary target/$(TARGET)/debug/embedded_blossom target/$(TARGET)/debug/embedded_blossom.bin
+
+HLS_FLAGS ?= -C overflow-checks=off -C no-vectorize-loops -C target-cpu=generic -C panic=abort -C opt-level=3
+
+hls:
+	rustc --emit=llvm-ir --crate-type=lib src/hls.rs -o target/hls.ll $(HLS_FLAGS)

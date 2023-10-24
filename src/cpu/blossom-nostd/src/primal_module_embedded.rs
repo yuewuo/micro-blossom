@@ -59,7 +59,6 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
 
     /// resolve one obstacle
     #[allow(unused_mut)]
-    // #[inline(never)]
     fn resolve(&mut self, dual_module: &mut impl DualInterface, obstacle: MaxUpdateLength) {
         debug_assert!(obstacle.is_obstacle());
         match obstacle {
@@ -71,9 +70,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
                 vertex_1,
                 vertex_2,
             } => {
-                if let Some(node_2) = node_2 {
-                    debug_assert!(node_1 != node_2, "one cannot conflict with itself");
-                }
+                debug_assert!(Some(node_1) != node_2, "one cannot conflict with itself");
                 self.nodes.check_node_index(node_1);
                 self.nodes.check_node_index(touch_1);
                 cfg_if::cfg_if! {

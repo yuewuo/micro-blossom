@@ -14,7 +14,7 @@ use riscv_rt::entry;
 
 // by default guarantees working at d=15, but can increase if needed
 // the value should be a power of 2, because otherwise it's a lot slower to initialize
-pub const MAX_NODE_NUM: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("MAX_NODE_NUM"), "612")));
+pub const MAX_NODE_NUM: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("MAX_NODE_NUM"), "32")));
 pub const DOUBLE_MAX_NODE_NUM: usize = MAX_NODE_NUM * 2;
 
 pub const RISCV_DRIVER_BASE_ADDRESS: usize = 0xF2000000;
