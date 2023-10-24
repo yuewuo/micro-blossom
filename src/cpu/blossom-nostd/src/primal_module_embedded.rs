@@ -12,6 +12,7 @@ use crate::interface::*;
 use crate::primal_nodes::*;
 use crate::util::*;
 
+// #[repr(C)]
 #[cfg_attr(any(test, feature = "std"), derive(Debug))]
 pub struct PrimalModuleEmbedded<const N: usize, const DOUBLE_N: usize> {
     /// the alternating tree nodes
@@ -603,9 +604,11 @@ mod tests {
         println!("memory overhead: {} bytes", total_size - (total_size / DOUBLE_N) * DOUBLE_N);
         cfg_if::cfg_if! {
             if #[cfg(feature="u16_index")] {
-                assert!(total_size / DOUBLE_N == 16);
+                assert_eq!(total_size / DOUBLE_N, 16 + 1);
+                assert_eq!(core::mem::size_of::<Option<PrimalNode>>(), 16);
             } else {
-                assert!(total_size / DOUBLE_N == 32);
+                assert_eq!(total_size / DOUBLE_N, 2 * (16 + 1));
+                assert_eq!(core::mem::size_of::<Option<PrimalNode>>(), 2 * 16);
             }
         }
     }

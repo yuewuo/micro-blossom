@@ -10,8 +10,8 @@ use crate::primal_module_embedded::*;
 use crate::util::*;
 
 pub struct PrimalSimpleMatch<const MAX_NODE_NUM: usize, const DOUBLE_MAX_NODE_NUM: usize> {
-    primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
-    dual_module: DualModuleStackless<DualModuleCounterDriver>,
+    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
+    pub dual_module: DualModuleStackless<DualModuleCounterDriver>,
 }
 
 impl<const MAX_NODE_NUM: usize, const DOUBLE_MAX_NODE_NUM: usize> PrimalSimpleMatch<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM> {
