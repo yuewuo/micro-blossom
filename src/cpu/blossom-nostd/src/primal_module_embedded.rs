@@ -328,7 +328,13 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
         vertex: CompactVertexIndex,
         virtual_vertex: CompactVertexIndex,
     ) {
-        unimplemented!()
+        let primal_node = self.nodes.get_node(node);
+        if primal_node.in_alternating_tree() {
+            self.augment_whole_tree(dual_module, node);
+        }
+        self.nodes
+            .temporary_match_virtual_vertex(dual_module, node, touch, vertex, virtual_vertex);
+        return;
     }
 
     /// handle an up-to-date blossom need expand event

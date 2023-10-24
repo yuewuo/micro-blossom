@@ -251,6 +251,24 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         );
     }
 
+    pub fn temporary_match_virtual_vertex(
+        &mut self,
+        dual_module: &mut impl DualInterface,
+        node: CompactNodeIndex,
+        touch: CompactNodeIndex,
+        vertex: CompactVertexIndex,
+        virtual_vertex: CompactVertexIndex,
+    ) {
+        self.set_grow_state(node, CompactGrowState::Stay, dual_module);
+        let primal_node = self.get_node_mut(node);
+        primal_node.remove_from_alternating_tree();
+        primal_node.sibling = None;
+        primal_node.link.touch = Some(touch);
+        primal_node.link.through = Some(vertex);
+        primal_node.link.peer_touch = None;
+        primal_node.link.peer_through = Some(virtual_vertex);
+    }
+
     /// allocate a blank blossom
     pub fn allocate_blossom(&mut self, first_blossom_child: CompactNodeIndex) -> CompactNodeIndex {
         assert!(self.count_blossoms < N, "blossom overflow");
