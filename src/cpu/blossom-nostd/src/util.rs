@@ -45,16 +45,6 @@ impl CompactGrowState {
     }
 }
 
-#[macro_export]
-/// node index, constructed from any numerical type
-macro_rules! ni {
-    ($value:expr) => {
-        CompactNodeIndex::new($value as CompactNodeNum).unwrap()
-    };
-}
-#[allow(unused_imports)]
-pub use ni;
-
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum CompactMatchTarget {
     Peer(CompactNodeIndex),
@@ -89,3 +79,43 @@ impl std::fmt::Debug for TouchingLink {
         }
     }
 }
+
+cfg_if::cfg_if! {
+    if #[cfg(feature="unsafe_unwrap")] {
+        /// unsafe unwrap, only take effect when `unsafe_unwrap` feature is on
+        #[macro_export]
+        macro_rules! usu {
+            ($value:expr) => {
+                unsafe { $value.unwrap_unchecked() }
+            };
+        }
+
+        #[macro_export]
+        /// unsafe node index, constructed from any numerical type
+        macro_rules! ni {
+            ($value:expr) => {
+                unsafe { CompactNodeIndex::new($value as CompactNodeNum).unwrap_unchecked() }
+            };
+        }
+    } else {
+        /// safe unwrap
+        #[macro_export]
+        macro_rules! usu {
+            ($value:expr) => {
+                $value.unwrap()
+            };
+        }
+
+        #[macro_export]
+        /// node index, constructed from any numerical type
+        macro_rules! ni {
+            ($value:expr) => {
+                CompactNodeIndex::new($value as CompactNodeNum).unwrap()
+            };
+        }
+    }
+}
+#[allow(unused_imports)]
+pub use ni;
+#[allow(unused_imports)]
+pub use usu;

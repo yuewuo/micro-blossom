@@ -76,7 +76,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     /// This function is supposed to be called multiple times, whenever a node index is reported to the primal.
     pub fn check_node_index(&mut self, node_index: CompactNodeIndex) {
         if self.is_blossom(node_index) {
-            assert!(
+            debug_assert!(
                 (node_index.get() as usize - N) < self.count_blossoms,
                 "blossoms should always be created by the primal module"
             );
@@ -109,16 +109,16 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     }
 
     pub fn get_node(&self, node_index: CompactNodeIndex) -> &PrimalNode {
-        self.buffer[node_index.get() as usize].as_ref().unwrap()
+        usu!(self.buffer[node_index.get() as usize].as_ref())
     }
 
     pub fn get_node_mut(&mut self, node_index: CompactNodeIndex) -> &mut PrimalNode {
-        self.buffer[node_index.get() as usize].as_mut().unwrap()
+        usu!(self.buffer[node_index.get() as usize].as_mut())
     }
 
     pub fn get_first_blossom_child(&self, blossom_index: CompactNodeIndex) -> CompactNodeIndex {
         debug_assert!(self.is_blossom(blossom_index) && self.has_node(blossom_index));
-        self.first_blossom_child[blossom_index.get() as usize - N].unwrap()
+        usu!(self.first_blossom_child[blossom_index.get() as usize - N])
     }
 
     pub fn get_defect(&self, defect_index: CompactNodeIndex) -> &PrimalNode {
@@ -138,8 +138,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     pub fn iterate_blossom_children(&self, blossom_index: CompactNodeIndex, mut func: impl FnMut(CompactNodeIndex)) {
         let mut child_index = Some(self.get_first_blossom_child(blossom_index));
         while child_index.is_some() {
-            func(child_index.clone().unwrap());
-            child_index = self.get_node(child_index.unwrap()).sibling;
+            func(usu!(child_index));
+            child_index = self.get_node(usu!(child_index)).sibling;
         }
     }
 
@@ -150,13 +150,13 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     ) {
         let mut child_index = Some(self.get_first_blossom_child(blossom_index));
         while child_index.is_some() {
-            let node = self.get_node(child_index.clone().unwrap());
+            let node = self.get_node(usu!(child_index));
             let link = &node.link;
             func(
-                child_index.unwrap(),
+                usu!(child_index),
                 (
-                    (link.touch.unwrap(), link.through.unwrap()),
-                    (link.peer_touch.unwrap(), link.peer_through.unwrap()),
+                    (usu!(link.touch), usu!(link.through)),
+                    (usu!(link.peer_touch), usu!(link.peer_through)),
                 ),
             );
             child_index = node.sibling;
@@ -173,7 +173,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         loop {
             let node = self.get_node(node_index);
             if node.grow_state.is_none() {
-                node_index = node.parent.expect("an inner node must have a outer parent blossom");
+                debug_assert!(node.parent.is_some(), "an inner node must have a outer parent blossom");
+                node_index = usu!(node.parent);
             } else {
                 return node_index;
             }
@@ -181,9 +182,11 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     }
 
     pub fn get_grow_state(&self, node_index: CompactNodeIndex) -> CompactGrowState {
-        self.get_node(node_index)
-            .grow_state
-            .expect("cannot get grow state of an inner node")
+        debug_assert!(
+            self.get_node(node_index).grow_state.is_some(),
+            "cannot get grow state of an inner node"
+        );
+        usu!(self.get_node(node_index).grow_state)
     }
 
     pub fn set_grow_state(
@@ -236,10 +239,10 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
             dual_module,
             node_1,
             node_2,
-            link_1.touch.unwrap(),
-            link_1.peer_touch.unwrap(),
-            link_1.through.unwrap(),
-            link_1.peer_through.unwrap(),
+            usu!(link_1.touch),
+            usu!(link_1.peer_touch),
+            usu!(link_1.through),
+            usu!(link_1.peer_through),
         );
     }
 
@@ -263,7 +266,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
 
     /// allocate a blank blossom
     pub fn allocate_blossom(&mut self, first_blossom_child: CompactNodeIndex) -> CompactNodeIndex {
-        assert!(self.count_blossoms < N, "blossom overflow");
+        debug_assert!(self.count_blossoms < N, "blossom overflow");
         self.buffer[N + self.count_blossoms] = Some(PrimalNode::new());
         self.first_blossom_child[self.count_blossoms] = Some(first_blossom_child);
         let blossom_index = ni!(N + self.count_blossoms);
@@ -342,7 +345,7 @@ impl PrimalNode {
         if let Some(node_index) = self.sibling {
             CompactMatchTarget::Peer(node_index)
         } else {
-            CompactMatchTarget::VirtualVertex(self.link.peer_through.unwrap())
+            CompactMatchTarget::VirtualVertex(usu!(self.link.peer_through))
         }
     }
 }

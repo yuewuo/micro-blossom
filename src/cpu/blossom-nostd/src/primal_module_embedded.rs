@@ -59,6 +59,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
 
     /// resolve one obstacle
     #[allow(unused_mut)]
+    // #[inline(never)]
     fn resolve(&mut self, dual_module: &mut impl DualInterface, obstacle: MaxUpdateLength) {
         debug_assert!(obstacle.is_obstacle());
         match obstacle {
@@ -71,7 +72,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
                 vertex_2,
             } => {
                 if let Some(node_2) = node_2 {
-                    assert!(node_1 != node_2, "one cannot conflict with itself");
+                    debug_assert!(node_1 != node_2, "one cannot conflict with itself");
                 }
                 self.nodes.check_node_index(node_1);
                 self.nodes.check_node_index(touch_1);
@@ -84,7 +85,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
                         node_1 = self.nodes.get_outer_blossom(node_1);
                         if let Some(some_node_2) = node_2 {
                             self.nodes.check_node_index(some_node_2);
-                            self.nodes.check_node_index(touch_2.unwrap());
+                            self.nodes.check_node_index(usu!(touch_2));
                             if self.nodes.is_blossom(some_node_2) && !self.nodes.has_node(some_node_2) {
                                 return; // outdated event
                             }
@@ -98,7 +99,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
                 );
                 if let Some(node_2) = node_2 {
                     self.nodes.check_node_index(node_2);
-                    self.nodes.check_node_index(touch_2.unwrap());
+                    self.nodes.check_node_index(usu!(touch_2));
                     debug_assert!(
                         self.nodes.get_outer_blossom(node_2) == node_2,
                         "outdated event found but feature not enabled"
@@ -112,7 +113,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
                             return; // outdated event
                         }
                     } }
-                    self.resolve_conflict(dual_module, node_1, node_2, touch_1, touch_2.unwrap(), vertex_1, vertex_2);
+                    self.resolve_conflict(dual_module, node_1, node_2, touch_1, usu!(touch_2), vertex_1, vertex_2);
                 } else {
                     cfg_if::cfg_if! { if #[cfg(feature="obstacle_potentially_outdated")] {
                         if self.nodes.get_grow_state(node_1) != CompactGrowState::Grow {
@@ -363,7 +364,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
                 "must be - node"
             );
             let parent_primal_node = self.nodes.get_node(parent_node);
-            let ancestor_node = parent_primal_node.parent.expect("- node should always have parent");
+            debug_assert!(parent_primal_node.parent.is_some(), "- node should always have parent");
+            let ancestor_node = usu!(parent_primal_node.parent);
             let link = parent_primal_node.link.clone();
             self.augment_whole_tree(dual_module, ancestor_node);
             self.nodes
@@ -395,7 +397,11 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             "must be - node"
         );
         let root_primal_node = self.nodes.get_node(root_node);
-        let child_node = root_primal_node.first_child.expect("- node is always followed by a + node");
+        debug_assert!(
+            root_primal_node.first_child.is_some(),
+            "- node is always followed by a + node"
+        );
+        let child_node = usu!(root_primal_node.first_child);
         debug_assert!(
             self.nodes.get_grow_state(child_node) == CompactGrowState::Grow,
             "must be + node"
@@ -468,7 +474,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
         let mut iter_1 = node_1;
         while iter_1 != lca {
             let node = self.nodes.get_node_mut(iter_1);
-            iter_1 = node.parent.unwrap();
+            iter_1 = usu!(node.parent);
             node.sibling = if iter_1 == lca { None } else { node.parent };
             node.parent = None;
             node.first_child = None;
@@ -500,7 +506,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             if last_node == Some(lca) {
                 break;
             }
-            iter_2 = original_parent.unwrap();
+            iter_2 = usu!(original_parent);
         }
         dual_module.create_blossom(self, blossom);
         self.nodes.set_grow_state(blossom, CompactGrowState::Grow, dual_module);
@@ -512,7 +518,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
         while node != lca {
             self.blossom_construction_transfer_children_except_for(node, previous, lca);
             previous = node;
-            node = self.nodes.get_node(node).parent.expect("cannot find lca on the way up");
+            debug_assert!(self.nodes.get_node(node).parent.is_some(), "cannot find lca on the way up");
+            node = usu!(self.nodes.get_node(node).parent);
         }
     }
 
@@ -549,7 +556,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
         match depth_1.cmp(&depth_2) {
             core::cmp::Ordering::Greater => loop {
                 let primal_node = self.nodes.get_node(node_1);
-                node_1 = primal_node.parent.expect("depth is not zero, should have parent");
+                debug_assert!(primal_node.parent.is_some(), "depth is not zero, should have parent");
+                node_1 = usu!(primal_node.parent);
                 depth_1 -= 1;
                 if depth_1 == depth_2 {
                     break;
@@ -557,7 +565,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             },
             core::cmp::Ordering::Less => loop {
                 let primal_node = self.nodes.get_node(node_2);
-                node_2 = primal_node.parent.expect("depth is not zero, should have parent");
+                debug_assert!(primal_node.parent.is_some(), "depth is not zero, should have parent");
+                node_2 = usu!(primal_node.parent);
                 depth_2 -= 1;
                 if depth_1 == depth_2 {
                     break;
@@ -574,8 +583,10 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             }
             let primal_node_1 = self.nodes.get_node(node_1);
             let primal_node_2 = self.nodes.get_node(node_2);
-            node_1 = primal_node_1.parent.expect("cannot find common parent");
-            node_2 = primal_node_2.parent.expect("cannot find common parent");
+            debug_assert!(primal_node_1.parent.is_some(), "cannot find common parent");
+            debug_assert!(primal_node_2.parent.is_some(), "cannot find common parent");
+            node_1 = usu!(primal_node_1.parent);
+            node_2 = usu!(primal_node_2.parent);
             depth -= 1;
         }
     }
