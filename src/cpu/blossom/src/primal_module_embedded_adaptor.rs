@@ -22,7 +22,7 @@ pub struct PrimalModuleEmbeddedAdaptor {
 
 /// mocking the interface of the embedded primal module
 pub struct MockDualInterface<'a, D: DualModuleImpl> {
-    index_to_ptr: &'a BTreeMap<CompactNodeIndex, DualNodePtr>,
+    index_to_ptr: &'a mut BTreeMap<CompactNodeIndex, DualNodePtr>,
     ptr_to_index: &'a mut BTreeMap<DualNodePtr, CompactNodeIndex>,
     interface_ptr: &'a DualModuleInterfacePtr,
     dual_module: &'a mut D,
@@ -58,7 +58,8 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
         let blossom_node_ptr = self
             .interface_ptr
             .create_blossom(nodes_circle, touching_children, self.dual_module);
-        self.ptr_to_index.insert(blossom_node_ptr, blossom_index);
+        self.ptr_to_index.insert(blossom_node_ptr.clone(), blossom_index);
+        self.index_to_ptr.insert(blossom_index, blossom_node_ptr);
     }
     fn expand_blossom(&mut self, _primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
         self.interface_ptr
@@ -159,7 +160,7 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
             };
             self.primal_module.resolve(
                 &mut MockDualInterface {
-                    index_to_ptr: &self.index_to_ptr,
+                    index_to_ptr: &mut self.index_to_ptr,
                     ptr_to_index: &mut self.ptr_to_index,
                     interface_ptr,
                     dual_module,

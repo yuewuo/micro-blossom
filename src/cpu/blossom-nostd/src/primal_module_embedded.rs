@@ -295,7 +295,25 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
         }
         // much less probable case: two trees touch and both are augmented
         if in_alternating_tree_1 && in_alternating_tree_2 {
-            unimplemented!();
+            let (root_1, depth_1) = self.alternating_tree_root_of(node_1);
+            let (root_2, depth_2) = self.alternating_tree_root_of(node_2);
+            if root_1 == root_2 {
+                // form a blossom inside an alternating tree
+                self.create_blossom_inside_alternating_tree(
+                    dual_module,
+                    depth_1,
+                    depth_2,
+                    node_1,
+                    node_2,
+                    touch_1,
+                    touch_2,
+                    vertex_1,
+                    vertex_2,
+                );
+            } else {
+                // augment the two alternating tree
+                unimplemented!();
+            }
             return;
         }
         unreachable!()
@@ -387,15 +405,168 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
         }
     }
 
-    pub fn alternating_tree_root_of(&self, mut node_index: CompactNodeIndex) -> CompactNodeIndex {
+    /// return (the root of the tree, the depth of this node in the tree)
+    pub fn alternating_tree_root_of(&self, mut node_index: CompactNodeIndex) -> (CompactNodeIndex, TreeDepth) {
+        let mut depth = 0;
         loop {
             let node = self.nodes.get_node(node_index);
             debug_assert!(node.is_outer_blossom());
             if let Some(parent) = node.parent {
                 node_index = parent;
+                depth += 1;
             } else {
-                return node_index;
+                return (node_index, depth);
             }
+        }
+    }
+
+    #[inline] // part of the `resolve` function, put it here for code clarity
+    fn create_blossom_inside_alternating_tree(
+        &mut self,
+        dual_module: &mut impl DualInterface,
+        depth_1: TreeDepth,
+        depth_2: TreeDepth,
+        node_1: CompactNodeIndex,
+        node_2: CompactNodeIndex,
+        touch_1: CompactNodeIndex,
+        touch_2: CompactNodeIndex,
+        vertex_1: CompactVertexIndex,
+        vertex_2: CompactVertexIndex,
+    ) {
+        debug_assert!(depth_1 % 2 == 0 && depth_2 % 2 == 0, "two nodes must be + node");
+        let (lca, depth_lca) = self.find_lowest_common_ancestor(depth_1, depth_2, node_1, node_2);
+        debug_assert!(
+            self.nodes.get_node(lca).grow_state == Some(CompactGrowState::Grow) && depth_lca % 2 == 0,
+            "least common ancestor should always be a + node in the alternating tree"
+        );
+        // allocate a new blossom
+        let blossom = self.nodes.allocate_blossom(lca);
+        // swap the lca node with the new blossom in the tree above lca
+        let primal_lca = self.nodes.get_node(lca);
+        let lca_parent = primal_lca.parent;
+        let lca_sibling = primal_lca.sibling;
+        let lca_link = primal_lca.link.clone();
+        let primal_blossom = self.nodes.get_node_mut(blossom);
+        primal_blossom.parent = lca_parent;
+        primal_blossom.sibling = lca_sibling;
+        primal_blossom.link = lca_link;
+        // walk from node_1/2 upwards to the LCA and attach all children to the blossom
+        for node in [node_1, node_2] {
+            self.blossom_construction_transfer_path_children_to_lca(node, lca);
+        }
+        // connect the two paths in an odd cycle
+        let mut iter_1 = node_1;
+        while iter_1 != lca {
+            let node = self.nodes.get_node_mut(iter_1);
+            iter_1 = node.parent.unwrap();
+            node.sibling = if iter_1 == lca { None } else { node.parent };
+            node.parent = None;
+            node.first_child = None;
+        }
+        let mut iter_2 = node_2;
+        let mut last_link = Link {
+            touch: Some(touch_1),
+            through: Some(vertex_1),
+            peer_touch: Some(touch_2),
+            peer_through: Some(vertex_2),
+        };
+        let mut last_node = if iter_1 == lca { None } else { Some(node_1) };
+        loop {
+            let node = self.nodes.get_node_mut(iter_2);
+            // reverse the link
+            let current_link = node.link.clone();
+            node.link.touch = last_link.peer_touch;
+            node.link.through = last_link.peer_through;
+            node.link.peer_touch = last_link.touch;
+            node.link.peer_through = last_link.through;
+            last_link = current_link;
+            // set up sibling
+            node.sibling = last_node;
+            // update parent
+            last_node = Some(iter_2);
+            let original_parent = node.parent;
+            node.parent = None;
+            node.first_child = None;
+            if last_node == Some(lca) {
+                break;
+            }
+            iter_2 = original_parent.unwrap();
+        }
+        dual_module.create_blossom(self, blossom);
+        self.nodes.set_grow_state(blossom, CompactGrowState::Grow, dual_module);
+    }
+
+    #[inline]
+    fn blossom_construction_transfer_path_children_to_lca(&mut self, mut node: CompactNodeIndex, lca: CompactNodeIndex) {
+        let mut previous = node;
+        while node != lca {
+            self.blossom_construction_transfer_children_except_for(node, previous, lca);
+            previous = node;
+            node = self.nodes.get_node(node).parent.expect("cannot find lca on the way up");
+        }
+    }
+
+    #[inline]
+    fn blossom_construction_transfer_children_except_for(
+        &mut self,
+        node: CompactNodeIndex,
+        except: CompactNodeIndex,
+        parent: CompactNodeIndex,
+    ) {
+        let mut child = self.nodes.get_node(node).first_child;
+        while let Some(child_index) = child {
+            if child_index != except {
+                let primal_parent = self.nodes.get_node_mut(parent);
+                let previous_first_child = primal_parent.first_child;
+                primal_parent.first_child = Some(child_index);
+                let primal_child = self.nodes.get_node_mut(child_index);
+                debug_assert_eq!(primal_child.parent, Some(node));
+                primal_child.parent = Some(parent);
+                primal_child.sibling = previous_first_child;
+            }
+            child = self.nodes.get_node(child_index).sibling;
+        }
+    }
+
+    fn find_lowest_common_ancestor(
+        &self,
+        mut depth_1: TreeDepth,
+        mut depth_2: TreeDepth,
+        mut node_1: CompactNodeIndex,
+        mut node_2: CompactNodeIndex,
+    ) -> (CompactNodeIndex, TreeDepth) {
+        // first make them the same depth
+        match depth_1.cmp(&depth_2) {
+            core::cmp::Ordering::Greater => loop {
+                let primal_node = self.nodes.get_node(node_1);
+                node_1 = primal_node.parent.expect("depth is not zero, should have parent");
+                depth_1 -= 1;
+                if depth_1 == depth_2 {
+                    break;
+                }
+            },
+            core::cmp::Ordering::Less => loop {
+                let primal_node = self.nodes.get_node(node_2);
+                node_2 = primal_node.parent.expect("depth is not zero, should have parent");
+                depth_2 -= 1;
+                if depth_1 == depth_2 {
+                    break;
+                }
+            },
+            _ => {}
+        }
+        // now they have the same depth, compare them until they're equal
+        debug_assert!(depth_1 == depth_2);
+        let mut depth = depth_1;
+        loop {
+            if node_1 == node_2 {
+                return (node_1, depth);
+            }
+            let primal_node_1 = self.nodes.get_node(node_1);
+            let primal_node_2 = self.nodes.get_node(node_2);
+            node_1 = primal_node_1.parent.expect("cannot find common parent");
+            node_2 = primal_node_2.parent.expect("cannot find common parent");
+            depth -= 1;
         }
     }
 }

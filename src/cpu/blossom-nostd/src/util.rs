@@ -24,6 +24,8 @@ cfg_if::cfg_if! {
     }
 }
 
+pub type TreeDepth = usize;
+
 #[repr(u8)]
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum CompactGrowState {
