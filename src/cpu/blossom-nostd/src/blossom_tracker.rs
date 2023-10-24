@@ -6,12 +6,12 @@
 //! A global step variable needs to be provided so that this module know what is the current dual value.
 //!
 
+use crate::heapless::binary_heap::{BinaryHeap, Min};
+use crate::heapless::Vec;
 use crate::util::*;
 use core::cmp::Ordering;
 #[cfg(any(test, feature = "std"))]
 use derivative::Derivative;
-use heapless::binary_heap::{BinaryHeap, Min};
-use heapless::Vec;
 
 // We need to maintain information about the blossoms, e.g., the dual variables of them.
 // The blossom indices have nice property that they will never decreasing.

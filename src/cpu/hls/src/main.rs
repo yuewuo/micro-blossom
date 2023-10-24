@@ -1,4 +1,4 @@
-use konst::{option, primitive::parse_usize, result::unwrap_ctx};
+// use konst::{option, primitive::parse_usize, result::unwrap_ctx};
 use micro_blossom_nostd::benchmark::primal_simple_match::*;
 use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::interface::*;
@@ -7,10 +7,11 @@ use micro_blossom_nostd::util::*;
 
 // by default guarantees working at d=15, but can increase if needed
 // the value should be a power of 2, because otherwise it's a lot slower to initialize
-pub const MAX_NODE_NUM: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(
-    option_env!("MAX_NODE_NUM"),
-    "512"
-)));
+// pub const MAX_NODE_NUM: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(
+//     option_env!("MAX_NODE_NUM"),
+//     "512"
+// )));
+pub const MAX_NODE_NUM: usize = 512;
 pub const DOUBLE_MAX_NODE_NUM: usize = MAX_NODE_NUM * 2;
 
 #[repr(C)]

@@ -106,6 +106,15 @@ continue
 # then a sequence of messages should be print to the first terminal
 ```
 
+### Install HLS toolchain
+
+```sh
+# install llvm 15.x
+wget https://apt.llvm.org/llvm.sh
+chmod +x llvm.sh
+sudo ./llvm.sh 15
+```
+
 ## Build
 
 ### Hardware
