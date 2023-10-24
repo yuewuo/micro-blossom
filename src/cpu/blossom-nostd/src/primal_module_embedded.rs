@@ -12,7 +12,6 @@ use crate::interface::*;
 use crate::primal_nodes::*;
 use crate::util::*;
 
-// #[repr(C)]
 #[cfg_attr(any(test, feature = "std"), derive(Debug))]
 pub struct PrimalModuleEmbedded<const N: usize, const DOUBLE_N: usize> {
     /// the alternating tree nodes

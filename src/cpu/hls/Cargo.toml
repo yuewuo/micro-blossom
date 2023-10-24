@@ -13,7 +13,7 @@ keywords = [
     "high-level synthesis",
 ]
 categories = ["science"]
-# default-run = "hls_blossom"
+default-run = "hls_blossom"
 rust-version = "1.69.0" # need an older version to disable the new opaque pointer feature of LLVM 17
 # see https://llvm.org/docs/OpaquePointers.html
 # LLVM 14: ...
@@ -28,14 +28,14 @@ rust-version = "1.69.0" # need an older version to disable the new opaque pointe
 [badges]
 maintenance = { status = "actively-developed" }
 
-[lib]
-name = "hls_blossom"
-path = "src/lib.rs"
-crate-type = ["lib"]
-
-# [[bin]]
+# [lib]
 # name = "hls_blossom"
-# path = "src/main.rs"
+# path = "src/lib.rs"
+# crate-type = ["lib"]
+
+[[bin]]
+name = "hls_blossom"
+path = "src/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
