@@ -117,7 +117,7 @@ impl<const N: usize> BlossomTracker<N> {
     pub fn set_speed(&mut self, node_index: CompactNodeIndex, grow_state: CompactGrowState) {
         let local_index = self.local_index_of(node_index);
         // update checkpoint timestamp to the current timestamp and update its dual value accordingly
-        if grow_state == get!(self.grow_states, local_index) {
+        if &grow_state == get!(self.grow_states, local_index) {
             return; // no need to set speed
         }
         let dual_value = self.local_get_dual_variable(local_index);
@@ -136,9 +136,9 @@ impl<const N: usize> BlossomTracker<N> {
     }
 
     fn local_get_dual_variable(&self, local_index: usize) -> CompactWeight {
-        let (timestamp, dual_value) = get!(self.checkpoints, local_index);
+        let (timestamp, dual_value) = *get!(self.checkpoints, local_index);
         let delta = (self.timestamp - timestamp) as CompactWeight;
-        let dual_value = match get!(self.grow_states, local_index) {
+        let dual_value = match *get!(self.grow_states, local_index) {
             CompactGrowState::Grow => dual_value + delta,
             CompactGrowState::Shrink => dual_value - delta,
             CompactGrowState::Stay => dual_value,

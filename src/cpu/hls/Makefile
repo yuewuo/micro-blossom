@@ -2,7 +2,7 @@ all: hls
 
 # learning from https://arewefpgayet.rs/
 
-OPT_LEVEL ?= 2
+OPT_LEVEL ?= 3
 HLS_FLAGS ?= -C opt-level=$(OPT_LEVEL) -C overflow-checks=off -C no-vectorize-loops -C target-cpu=generic -C panic=abort -C link-arg=-nostartfiles
 #  -C llvm-args="--opaque-pointers=false"
 

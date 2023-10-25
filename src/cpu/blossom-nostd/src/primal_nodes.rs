@@ -105,15 +105,15 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     }
 
     pub fn has_node(&self, node_index: CompactNodeIndex) -> bool {
-        self.buffer[node_index.get() as usize].is_some()
+        get!(self.buffer, node_index.get() as usize).is_some()
     }
 
     pub fn get_node(&self, node_index: CompactNodeIndex) -> &PrimalNode {
-        usu!(self.buffer[node_index.get() as usize].as_ref())
+        usu!(get!(self.buffer, node_index.get() as usize).as_ref())
     }
 
     pub fn get_node_mut(&mut self, node_index: CompactNodeIndex) -> &mut PrimalNode {
-        usu!(self.buffer[node_index.get() as usize].as_mut())
+        usu!(get_mut!(self.buffer, node_index.get() as usize).as_mut())
     }
 
     pub fn get_first_blossom_child(&self, blossom_index: CompactNodeIndex) -> CompactNodeIndex {

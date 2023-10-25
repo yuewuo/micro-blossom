@@ -121,7 +121,13 @@ cfg_if::cfg_if! {
         #[macro_export]
         macro_rules! get {
             ($array:expr, $index:expr) => {
-                unsafe { *($array.get_unchecked($index)) }
+                unsafe { ($array.get_unchecked($index)) }
+            };
+        }
+        #[macro_export]
+        macro_rules! get_mut {
+            ($array:expr, $index:expr) => {
+                unsafe { $array.get_unchecked_mut($index) }
             };
         }
 
@@ -135,7 +141,12 @@ cfg_if::cfg_if! {
         #[macro_export]
         macro_rules! get {
             ($array:expr, $index:expr) => {
-                $array[$index]
+                &$array[$index]
+            };
+        }
+        macro_rules! get_mut {
+            ($array:expr, $index:expr) => {
+                &mut $array[$index]
             };
         }
 
@@ -149,6 +160,8 @@ cfg_if::cfg_if! {
 }
 #[allow(unused_imports)]
 pub use get;
+#[allow(unused_imports)]
+pub use get_mut;
 #[allow(unused_imports)]
 pub use ni;
 #[allow(unused_imports)]
