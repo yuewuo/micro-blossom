@@ -32,7 +32,10 @@ u16_index = []
 i16_weight = []
 std = []
 obstacle_potentially_outdated = []
-unsafe_unwrap = []
+unsafe_unwrap = [] # still keeps the normal boundary check and possibly panic
+dangerous_unwrap = [
+    "unsafe_unwrap",
+] # remove every possible way of panic, but may lead to undefined behavior
 
 [dependencies]
 panic-halt = "0.2.0"

@@ -319,7 +319,13 @@ where
     /// ```
     pub fn push(&mut self, item: T) -> Result<(), T> {
         if self.data.is_full() {
-            return Err(item);
+            cfg_if::cfg_if! {
+                if #[cfg(feature="unsafe_unwrap")] {
+                    return Ok(());
+                } else {
+                    return Err(item);
+                }
+            }
         }
 
         unsafe { self.push_unchecked(item) }

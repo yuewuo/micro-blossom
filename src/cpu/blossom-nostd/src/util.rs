@@ -115,7 +115,43 @@ cfg_if::cfg_if! {
         }
     }
 }
+
+cfg_if::cfg_if! {
+    if #[cfg(feature="dangerous_unwrap")] {
+        #[macro_export]
+        macro_rules! get {
+            ($array:expr, $index:expr) => {
+                unsafe { *($array.get_unchecked($index)) }
+            };
+        }
+
+        #[macro_export]
+        macro_rules! set {
+            ($array:expr, $index:expr, $value:expr) => {
+                unsafe { *($array.get_unchecked_mut($index)) = $value; }
+            };
+        }
+    } else {
+        #[macro_export]
+        macro_rules! get {
+            ($array:expr, $index:expr) => {
+                $array[$index]
+            };
+        }
+
+        #[macro_export]
+        macro_rules! set {
+            ($array:expr, $index:expr, $value:expr) => {
+                $array[$index] = $value;
+            };
+        }
+    }
+}
+#[allow(unused_imports)]
+pub use get;
 #[allow(unused_imports)]
 pub use ni;
+#[allow(unused_imports)]
+pub use set;
 #[allow(unused_imports)]
 pub use usu;

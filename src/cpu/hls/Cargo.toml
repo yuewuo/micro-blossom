@@ -13,7 +13,7 @@ keywords = [
     "high-level synthesis",
 ]
 categories = ["science"]
-default-run = "hls_blossom"
+# default-run = "hls_blossom"
 
 # rustup target add --toolchain nightly riscv32i-unknown-none-elf
 # make
@@ -22,27 +22,28 @@ default-run = "hls_blossom"
 [badges]
 maintenance = { status = "actively-developed" }
 
-# [lib]
-# name = "hls_blossom"
-# path = "src/lib.rs"
-# crate-type = ["lib"]
-
-[[bin]]
+[lib]
 name = "hls_blossom"
-path = "src/main.rs"
+path = "src/lib.rs"
+crate-type = ["lib"]
+
+# [[bin]]
+# name = "hls_blossom"
+# path = "src/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# panic-halt = "0.2.0"
 micro-blossom-nostd = { path = "../blossom-nostd", version = "0.0.0", features = [
-    # "u16_index",  # it saves 2x memory but becomes 1.5x slower because of type conversion instructions 
-    # "unsafe_unwrap",
+    "u16_index",        # it saves 2x memory but becomes 1.5x slower because of type conversion instructions 
+    "dangerous_unwrap",
 ] }
 
 # see https://craigjb.com/2020/01/22/ecp5/
 [profile.release]
+panic = "abort"
 opt-level = 3
 codegen-units = 1       # better optimizations
-debug = true            # symbols are nice and they don't increase the size on Flash
 lto = true              # better optimizations and smaller binary size
 overflow-checks = false

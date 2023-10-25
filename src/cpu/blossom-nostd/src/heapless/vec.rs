@@ -247,7 +247,13 @@ impl<T, const N: usize> Vec<T, N> {
             unsafe { self.push_unchecked(item) }
             Ok(())
         } else {
-            Err(item)
+            cfg_if::cfg_if! {
+                if #[cfg(feature="unsafe_unwrap")] {
+                    Ok(())
+                } else {
+                    Err(item)
+                }
+            }
         }
     }
 

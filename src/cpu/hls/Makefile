@@ -3,15 +3,17 @@ all: hls
 # learning from https://arewefpgayet.rs/
 
 OPT_LEVEL ?= 2
-HLS_FLAGS ?= -C opt-level=$(OPT_LEVEL) -C overflow-checks=off -C no-vectorize-loops -C target-cpu=generic -C panic=abort
+HLS_FLAGS ?= -C opt-level=$(OPT_LEVEL) -C overflow-checks=off -C no-vectorize-loops -C target-cpu=generic -C panic=abort -C link-arg=-nostartfiles
 #  -C llvm-args="--opaque-pointers=false"
 
+RUSTUP_VERSION ?= nightly-2021-05-03
+# RUSTUP_VERSION ?= 1.52.0
+
 hls:
-	rustup toolchain add nightly-2021-05-03 --profile minimal
-	rustup override set nightly-2021-05-03
+	rustup toolchain add $(RUSTUP_VERSION) --profile minimal
+	rustup override set $(RUSTUP_VERSION)
 	rustc --version --verbose
 	cargo clean
 	RUSTFLAGS="--emit=llvm-ir $(HLS_FLAGS)" cargo build --release
-# cargo rustc --release -- --emit=llvm-ir -o $(HLS_FLAGS)
 	rustup override unset
-	cd target && bambu ./release/deps/hls_blossom-*.ll ./release/deps/micro_blossom_nostd-*.ll --top-fname=run_benchmark --compiler=I386_CLANG12 -O$(OPT_LEVEL) -v2
+	cd target && bambu ./release/deps/*.ll --top-fname=run_benchmark --compiler=I386_CLANG12 -O$(OPT_LEVEL) -v2

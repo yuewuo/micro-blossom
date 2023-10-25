@@ -464,8 +464,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
         primal_blossom.sibling = lca_sibling;
         primal_blossom.link = lca_link;
         // walk from node_1/2 upwards to the LCA and attach all children to the blossom
-        for node in [node_1, node_2] {
-            self.blossom_construction_transfer_path_children_to_lca(node, lca);
+        for node in &[node_1, node_2] {
+            self.blossom_construction_transfer_path_children_to_lca(*node, lca);
         }
         // connect the two paths in an odd cycle
         let mut iter_1 = node_1;
