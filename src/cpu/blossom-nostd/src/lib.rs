@@ -1,5 +1,5 @@
 #![cfg_attr(all(not(test), not(feature = "std")), no_std)]
-#![cfg_attr(feature = "rustc152", feature(option_result_unwrap_unchecked))]
+#![cfg_attr(feature = "hls", feature(option_result_unwrap_unchecked))]
 
 pub mod benchmark;
 pub mod blossom_tracker;

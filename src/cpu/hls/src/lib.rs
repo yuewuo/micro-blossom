@@ -41,30 +41,30 @@ pub const DOUBLE_MAX_NODE_NUM: usize = MAX_NODE_NUM * 2;
 //     })
 // }
 
-// #[no_mangle]
-// pub unsafe extern "C" fn run_benchmark(
-//     mut benchmarker: PrimalSimpleMatch<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
-// ) -> usize {
-//     benchmarker.clear();
-//     benchmarker.run(100);
-//     benchmarker.dual_module.driver.count_set_speed
-// }
+#[no_mangle]
+pub unsafe extern "C" fn run_benchmark(
+    mut benchmarker: PrimalSimpleMatch<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
+) -> usize {
+    benchmarker.clear();
+    benchmarker.run(100);
+    benchmarker.dual_module.driver.count_set_speed
+}
 
 // #[no_mangle]
 // pub unsafe extern "C" fn run_benchmark() -> usize {
 //     0
 // }
 
-#[no_mangle]
-pub unsafe extern "C" fn run_benchmark(
-    blossom_tracker: *mut BlossomTracker<10>,
-    node_index: CompactNodeIndex,
-) -> usize {
-    (*blossom_tracker).create_blossom(node_index);
-    (*blossom_tracker).advance_time(20);
-    (*blossom_tracker).set_speed(node_index, CompactGrowState::Shrink);
-    (*blossom_tracker).get_dual_variable(node_index) as usize
-}
+// #[no_mangle]
+// pub unsafe extern "C" fn run_benchmark(
+//     blossom_tracker: *mut BlossomTracker<10>,
+//     node_index: CompactNodeIndex,
+// ) -> usize {
+//     (*blossom_tracker).create_blossom(node_index);
+//     (*blossom_tracker).advance_time(20);
+//     (*blossom_tracker).set_speed(node_index, CompactGrowState::Shrink);
+//     (*blossom_tracker).get_dual_variable(node_index) as usize
+// }
 
 // #[inline(never)]
 // #[panic_handler]

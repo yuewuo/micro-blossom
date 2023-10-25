@@ -137,6 +137,13 @@ cfg_if::cfg_if! {
                 unsafe { *($array.get_unchecked_mut($index)) = $value; }
             };
         }
+
+        #[macro_export]
+        macro_rules! unimplemented_or_loop {
+            () => {
+                loop { }
+            };
+        }
     } else {
         #[macro_export]
         macro_rules! get {
@@ -157,6 +164,13 @@ cfg_if::cfg_if! {
                 $array[$index] = $value;
             };
         }
+
+        #[macro_export]
+        macro_rules! unimplemented_or_loop {
+            () => {
+                unimplemented!()
+            };
+        }
     }
 }
 #[allow(unused_imports)]
@@ -167,5 +181,7 @@ pub use get_mut;
 pub use ni;
 #[allow(unused_imports)]
 pub use set;
+#[allow(unused_imports)]
+pub use unimplemented_or_loop;
 #[allow(unused_imports)]
 pub use usu;

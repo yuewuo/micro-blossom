@@ -36,10 +36,18 @@ unsafe_unwrap = [] # still keeps the normal boundary check and possibly panic
 dangerous_unwrap = [
     "unsafe_unwrap",
 ] # remove every possible way of panic, but may lead to undefined behavior
-rustc152 = [] # for compiling at rust 1.52.0 nightly
+hls = [
+    "dangerous_unwrap",
+] # for compiling at rust 1.52.0 nightly and remove recursive logic
 
 [dependencies]
 derivative = { version = "2.2.0", optional = true }
 panic-halt = "0.2.0"
 cfg-if = "1.0.0"
 nonmax = { version = "0.5.3", default-features = false }
+
+[profile.release]
+opt-level = 3
+debug = true            # symbols are nice and they don't increase the size on Flash
+lto = true              # better optimizations and smaller binary size
+overflow-checks = false

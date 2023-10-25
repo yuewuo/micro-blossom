@@ -55,8 +55,9 @@ pub trait PrimalInterface {
         ),
     );
 
-    /// resolve one obstacle
-    fn resolve(&mut self, dual_module: &mut impl DualInterface, max_update_length: MaxUpdateLength);
+    /// resolve one obstacle, returning whether the obstacle is hanlded properly;
+    /// this design allows multiple level of primal module to be designed, each handling a simple subset
+    fn resolve(&mut self, dual_module: &mut impl DualInterface, max_update_length: MaxUpdateLength) -> bool;
 
     /// return the perfect matching between nodes, note that each element is iterated only once
     fn iterate_perfect_matching(&mut self, func: impl FnMut(&Self, CompactNodeIndex, CompactMatchTarget, &TouchingLink));

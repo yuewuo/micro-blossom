@@ -23,7 +23,7 @@ impl<const MAX_NODE_NUM: usize, const DOUBLE_MAX_NODE_NUM: usize> PrimalSimpleMa
     }
 
     pub fn run(&mut self, count: usize) {
-        assert!(count * 2 < MAX_NODE_NUM);
+        debug_assert!(count * 2 < MAX_NODE_NUM);
         let mut index = 0;
         for _ in 0..count {
             self.primal_module.resolve(

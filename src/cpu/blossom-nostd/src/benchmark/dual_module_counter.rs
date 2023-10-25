@@ -28,7 +28,13 @@ impl DualStacklessDriver for DualModuleCounterDriver {
         self.count_set_blossom += 1;
     }
     fn find_obstacle(&mut self) -> MaxUpdateLength {
-        unimplemented!()
+        cfg_if::cfg_if! {
+            if #[cfg(feature="dangerous_unwrap")] {
+                loop { }
+            } else {
+                unimplemented!()
+            }
+        }
     }
     fn grow(&mut self, _length: CompactWeight) {
         self.count_grow += 1;

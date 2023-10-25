@@ -83,7 +83,16 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         } else {
             self.prepare_defects_up_to(node_index);
             if get!(self.buffer, node_index.get() as usize).is_none() {
-                set!(self.buffer, node_index.get() as usize, Some(PrimalNode::new()));
+                // TODO: Bambu HLS cannot handle this, error message:
+                // opt-12: ../../../etc/clang_plugin/dumpGimple.cpp:2935:
+                // int64_t llvm::DumpGimpleRaw::TREE_INT_CST_LOW(const void *): Assertion `val.getNumWords() == 1' failed.
+                cfg_if::cfg_if! {
+                    if #[cfg(feature="hls")] {
+                        unimplemented_or_loop!()
+                    } else {
+                        set!(self.buffer, node_index.get() as usize, Some(PrimalNode::new()))
+                    }
+                }
             }
         }
     }

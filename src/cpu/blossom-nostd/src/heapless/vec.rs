@@ -248,7 +248,7 @@ impl<T, const N: usize> Vec<T, N> {
             Ok(())
         } else {
             cfg_if::cfg_if! {
-                if #[cfg(feature="unsafe_unwrap")] {
+                if #[cfg(feature="dangerous_unwrap")] {
                     Ok(())
                 } else {
                     Err(item)

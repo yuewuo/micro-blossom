@@ -320,7 +320,7 @@ where
     pub fn push(&mut self, item: T) -> Result<(), T> {
         if self.data.is_full() {
             cfg_if::cfg_if! {
-                if #[cfg(feature="unsafe_unwrap")] {
+                if #[cfg(feature="dangerous_unwrap")] {
                     return Ok(());
                 } else {
                     return Err(item);

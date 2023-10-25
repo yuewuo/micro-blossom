@@ -59,7 +59,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
 
     /// resolve one obstacle
     #[allow(unused_mut)]
-    fn resolve(&mut self, dual_module: &mut impl DualInterface, obstacle: MaxUpdateLength) {
+    fn resolve(&mut self, dual_module: &mut impl DualInterface, obstacle: MaxUpdateLength) -> bool {
         debug_assert!(obstacle.is_obstacle());
         match obstacle {
             MaxUpdateLength::Conflict {
@@ -110,14 +110,14 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
                             return; // outdated event
                         }
                     } }
-                    self.resolve_conflict(dual_module, node_1, node_2, touch_1, usu!(touch_2), vertex_1, vertex_2);
+                    self.resolve_conflict(dual_module, node_1, node_2, touch_1, usu!(touch_2), vertex_1, vertex_2)
                 } else {
                     cfg_if::cfg_if! { if #[cfg(feature="obstacle_potentially_outdated")] {
                         if self.nodes.get_grow_state(node_1) != CompactGrowState::Grow {
                             return; // outdated event
                         }
                     } }
-                    self.resolve_conflict_virtual(dual_module, node_1, touch_1, vertex_1, vertex_2);
+                    self.resolve_conflict_virtual(dual_module, node_1, touch_1, vertex_1, vertex_2)
                 }
             }
             MaxUpdateLength::BlossomNeedExpand { blossom } => {
@@ -126,9 +126,9 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
                         return; // outdated event
                     }
                 } }
-                self.resolve_blossom_need_expand(dual_module, blossom);
+                self.resolve_blossom_need_expand(dual_module, blossom)
             }
-            _ => unimplemented!(),
+            _ => unimplemented_or_loop!(),
         }
     }
 
@@ -176,7 +176,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
         touch_2: CompactNodeIndex,
         vertex_1: CompactVertexIndex,
         vertex_2: CompactVertexIndex,
-    ) {
+    ) -> bool {
         let primal_node_1 = self.nodes.get_node(node_1);
         let primal_node_2 = self.nodes.get_node(node_2);
         // this is the most probable case, so put it in the front
@@ -186,7 +186,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             // simply match them temporarily
             self.nodes
                 .temporary_match(dual_module, node_1, node_2, touch_1, touch_2, vertex_1, vertex_2);
-            return;
+            return true;
         }
         // second probable case: single node touches a temporary matched pair and become an alternating tree
         if (free_1 && primal_node_2.is_matched()) || (free_2 && primal_node_1.is_matched()) {
@@ -227,7 +227,14 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
                     );
                 }
             }
-            return;
+            return true;
+        }
+        // HLS cannot handle recursive functions for now (without an internal stack), which means
+        // the HLS primal module has to stop here
+        cfg_if::cfg_if! {
+            if #[cfg(feature="hls")] {
+                return false;
+            }
         }
         // third probable case: tree touches single vertex
         let in_alternating_tree_1 = primal_node_1.in_alternating_tree();
@@ -237,7 +244,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             self.augment_whole_tree(dual_module, in_tree_node);
             self.nodes
                 .temporary_match(dual_module, node_1, node_2, touch_1, touch_2, vertex_1, vertex_2);
-            return;
+            return true;
         }
         // fourth probable case: tree touches matched pair
         let is_matched_1 = primal_node_1.is_matched();
@@ -293,7 +300,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
                     );
                 }
             }
-            return;
+            return true;
         }
         // much less probable case: two trees touch and both are augmented
         if in_alternating_tree_1 && in_alternating_tree_2 {
@@ -314,11 +321,11 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
                 );
             } else {
                 // augment the two alternating tree
-                unimplemented!();
+                unimplemented_or_loop!()
             }
-            return;
+            return true;
         }
-        unreachable!()
+        unimplemented_or_loop!(); // unreachable
     }
 
     /// handle an up-to-date conflict virtual event
@@ -329,19 +336,19 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
         touch: CompactNodeIndex,
         vertex: CompactVertexIndex,
         virtual_vertex: CompactVertexIndex,
-    ) {
+    ) -> bool {
         let primal_node = self.nodes.get_node(node);
         if primal_node.in_alternating_tree() {
             self.augment_whole_tree(dual_module, node);
         }
         self.nodes
             .temporary_match_virtual_vertex(dual_module, node, touch, vertex, virtual_vertex);
-        return;
+        true
     }
 
     /// handle an up-to-date blossom need expand event
-    pub fn resolve_blossom_need_expand(&mut self, dual_module: &mut impl DualInterface, blossom: CompactNodeIndex) {
-        unimplemented!()
+    pub fn resolve_blossom_need_expand(&mut self, dual_module: &mut impl DualInterface, blossom: CompactNodeIndex) -> bool {
+        unimplemented_or_loop!()
     }
 
     /// for any + node, match it with another node will augment the whole tree, breaking out into several matched pairs;
