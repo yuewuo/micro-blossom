@@ -229,6 +229,24 @@ mod tests {
         primal_module_embedded_basic_standard_syndrome(7, visualize_filename, defect_vertices, 4);
     }
 
+    /// test a free node conflict with a virtual boundary
+    #[test]
+    fn primal_module_embedded_basic_2() {
+        // cargo test primal_module_embedded_basic_2 -- --nocapture
+        let visualize_filename = "primal_module_embedded_basic_2.json".to_string();
+        let defect_vertices = vec![16];
+        primal_module_embedded_basic_standard_syndrome(7, visualize_filename, defect_vertices, 1);
+    }
+
+    /// test a free node conflict with a matched node (with virtual boundary)
+    #[test]
+    fn primal_module_embedded_basic_3() {
+        // cargo test primal_module_embedded_basic_3 -- --nocapture
+        let visualize_filename = "primal_module_embedded_basic_3.json".to_string();
+        let defect_vertices = vec![16, 26];
+        primal_module_embedded_basic_standard_syndrome(7, visualize_filename, defect_vertices, 3);
+    }
+
     pub fn primal_module_embedded_basic_standard_syndrome_optional_viz(
         d: VertexNum,
         visualize_filename: Option<String>,

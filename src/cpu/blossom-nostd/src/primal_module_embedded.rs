@@ -229,8 +229,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             }
             return true;
         }
-        // HLS cannot handle recursive functions for now (without an internal stack), which means
-        // the HLS primal module has to stop here
+        // Bambu HLS cannot handle recursive functions for now (without an internal stack), which means
+        // the HLS primal module has to stop here, and report `false` to indicate it's not handled
         cfg_if::cfg_if! {
             if #[cfg(feature="hls")] {
                 return false;

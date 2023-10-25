@@ -256,7 +256,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         primal_node_1.link.peer_through = Some(vertex_2);
         let primal_node_2 = self.get_node_mut(node_2);
         primal_node_2.remove_from_alternating_tree();
-        primal_node_2.sibling = Some(node_2);
+        primal_node_2.sibling = Some(node_1);
         primal_node_2.link.touch = Some(touch_2);
         primal_node_2.link.through = Some(vertex_2);
         primal_node_2.link.peer_touch = Some(touch_1);
