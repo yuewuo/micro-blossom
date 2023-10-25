@@ -135,7 +135,7 @@ mod tests {
                 func(self, child_index);
             }
         }
-        fn resolve(&mut self, _dual_module: &mut impl DualInterface, _max_update_length: MaxUpdateLength) {
+        fn resolve(&mut self, _dual_module: &mut impl DualInterface, _max_update_length: MaxUpdateLength) -> bool {
             unimplemented!()
         }
         fn iterate_perfect_matching(
@@ -146,9 +146,9 @@ mod tests {
         }
         fn break_with_virtual_vertex(
             &mut self,
-            dual_module: &mut impl DualInterface,
-            virtual_vertex: CompactVertexIndex,
-            hint_node_index: CompactNodeIndex,
+            _dual_module: &mut impl DualInterface,
+            _virtual_vertex: CompactVertexIndex,
+            _hint_node_index: CompactNodeIndex,
         ) -> bool {
             unimplemented!()
         }

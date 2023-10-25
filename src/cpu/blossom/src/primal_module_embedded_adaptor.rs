@@ -177,8 +177,29 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
     ) -> IntermediateMatching {
         let mut intermediate_matching = IntermediateMatching::new();
         self.primal_module
-            .iterate_perfect_matching(|primal_module, node_index, match_target, link| {
+            .iterate_perfect_matching(|_primal_module, node_index, match_target, link| {
                 println!("node_index: {node_index}, match_target: {match_target:?}, link: {link:?}");
+                match match_target {
+                    CompactMatchTarget::Peer(peer_index) => intermediate_matching.peer_matchings.push((
+                        (
+                            self.index_to_ptr.get(&node_index).unwrap().clone(),
+                            self.index_to_ptr.get(&link.touch.unwrap()).unwrap().clone().downgrade(),
+                        ),
+                        (
+                            self.index_to_ptr.get(&peer_index).unwrap().clone(),
+                            self.index_to_ptr.get(&link.peer_touch.unwrap()).unwrap().clone().downgrade(),
+                        ),
+                    )),
+                    CompactMatchTarget::VirtualVertex(virtual_vertex) => {
+                        intermediate_matching.virtual_matchings.push((
+                            (
+                                self.index_to_ptr.get(&node_index).unwrap().clone(),
+                                self.index_to_ptr.get(&link.touch.unwrap()).unwrap().clone().downgrade(),
+                            ),
+                            virtual_vertex.get() as VertexIndex,
+                        ));
+                    }
+                }
             });
         intermediate_matching
     }

@@ -177,7 +177,30 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
 
     pub fn iterate_perfect_matching(&self, mut func: impl FnMut(CompactNodeIndex, CompactMatchTarget, &TouchingLink)) {
         // report from small index to large index
-        unimplemented!()
+        for index in (0..self.count_defects).chain(N..N + self.count_blossoms) {
+            let node_index = ni!(index);
+            let node = self.get_node(node_index);
+            if !node.is_outer_blossom() {
+                // only match outer blossoms
+                continue;
+            }
+            debug_assert!(
+                node.is_matched(),
+                "cannot generate perfect matching with unmatched node: {:?}",
+                node
+            );
+            if let Some(peer_index) = node.sibling {
+                if peer_index.get() > node_index.get() {
+                    func(node_index, CompactMatchTarget::Peer(peer_index), &node.link);
+                }
+            } else {
+                func(
+                    node_index,
+                    CompactMatchTarget::VirtualVertex(usu!(node.link.peer_through)),
+                    &node.link,
+                );
+            }
+        }
     }
 
     /// get the outer blossom of this possibly inner node

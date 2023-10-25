@@ -76,7 +76,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
                 cfg_if::cfg_if! {
                     if #[cfg(feature="obstacle_potentially_outdated")] {
                         if self.nodes.is_blossom(node_1) && !self.nodes.has_node(node_1) {
-                            return; // outdated event
+                            return true; // outdated event
                         }
                         // also convert the conflict to between the outer blossom
                         node_1 = self.nodes.get_outer_blossom(node_1);
@@ -84,7 +84,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
                             self.nodes.check_node_index(some_node_2);
                             self.nodes.check_node_index(usu!(touch_2));
                             if self.nodes.is_blossom(some_node_2) && !self.nodes.has_node(some_node_2) {
-                                return; // outdated event
+                                return true; // outdated event
                             }
                             node_2 = Some(self.nodes.get_outer_blossom(some_node_2));
                         }
@@ -103,18 +103,18 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
                     );
                     cfg_if::cfg_if! { if #[cfg(feature="obstacle_potentially_outdated")] {
                         if node_1 == node_2 {
-                            return; // outdated event: already in the same blossom
+                            return true; // outdated event: already in the same blossom
                         }
                         if !CompactGrowState::is_conflicting(
                                 self.nodes.get_grow_state(node_1), self.nodes.get_grow_state(node_2)) {
-                            return; // outdated event
+                            return true; // outdated event
                         }
                     } }
                     self.resolve_conflict(dual_module, node_1, node_2, touch_1, usu!(touch_2), vertex_1, vertex_2)
                 } else {
                     cfg_if::cfg_if! { if #[cfg(feature="obstacle_potentially_outdated")] {
                         if self.nodes.get_grow_state(node_1) != CompactGrowState::Grow {
-                            return; // outdated event
+                            return true; // outdated event
                         }
                     } }
                     self.resolve_conflict_virtual(dual_module, node_1, touch_1, vertex_1, vertex_2)
@@ -123,7 +123,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
             MaxUpdateLength::BlossomNeedExpand { blossom } => {
                 cfg_if::cfg_if! { if #[cfg(feature="obstacle_potentially_outdated")] {
                     if self.nodes.get_grow_state(blossom) != CompactGrowState::Shrink {
-                        return; // outdated event
+                        return true; // outdated event
                     }
                 } }
                 self.resolve_blossom_need_expand(dual_module, blossom)
@@ -480,8 +480,9 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             let node = self.nodes.get_node_mut(iter_1);
             iter_1 = usu!(node.parent);
             node.sibling = if iter_1 == lca { None } else { node.parent };
-            node.parent = None;
+            node.parent = Some(blossom);
             node.first_child = None;
+            node.grow_state = None; // mark as inside a blossom
         }
         let mut iter_2 = node_2;
         let mut last_link = TouchingLink {
@@ -505,8 +506,9 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             // update parent
             last_node = Some(iter_2);
             let original_parent = node.parent;
-            node.parent = None;
+            node.parent = Some(blossom);
             node.first_child = None;
+            node.grow_state = None;
             if last_node == Some(lca) {
                 break;
             }
