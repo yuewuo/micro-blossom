@@ -224,9 +224,9 @@ mod tests {
         // cargo test blossom_tracker_test_1 -- --nocapture
         let mut tracker = BlossomTracker::<10>::new();
         tracker.advance_time(10);
-        let BLOSSOM_BIAS: CompactNodeIndex = ni!(0x1100);
-        let node_1 = BLOSSOM_BIAS;
-        let node_2 = ni!(BLOSSOM_BIAS.get() + 1);
+        let blossom_bias: CompactNodeIndex = ni!(0x1100);
+        let node_1 = blossom_bias;
+        let node_2 = ni!(blossom_bias.get() + 1);
 
         tracker.create_blossom(node_1);
         assert_eq!(tracker.get_dual_variable(node_1), 0);

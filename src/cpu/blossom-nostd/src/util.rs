@@ -144,6 +144,7 @@ cfg_if::cfg_if! {
                 &$array[$index]
             };
         }
+        #[macro_export]
         macro_rules! get_mut {
             ($array:expr, $index:expr) => {
                 &mut $array[$index]

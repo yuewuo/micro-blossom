@@ -64,7 +64,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     fn prepare_defects_up_to(&mut self, defect_index: CompactNodeIndex) {
         if defect_index.get() as usize >= self.count_defects {
             for index in self.count_defects..=defect_index.get() as usize {
-                self.buffer[index as usize] = None;
+                set!(self.buffer, index as usize, None);
             }
             self.count_defects = defect_index.get() as usize + 1;
         }
@@ -82,8 +82,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
             );
         } else {
             self.prepare_defects_up_to(node_index);
-            if self.buffer[node_index.get() as usize].is_none() {
-                self.buffer[node_index.get() as usize] = Some(PrimalNode::new());
+            if get!(self.buffer, node_index.get() as usize).is_none() {
+                set!(self.buffer, node_index.get() as usize, Some(PrimalNode::new()));
             }
         }
     }
@@ -108,17 +108,20 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         get!(self.buffer, node_index.get() as usize).is_some()
     }
 
+    #[allow(unused_unsafe)]
     pub fn get_node(&self, node_index: CompactNodeIndex) -> &PrimalNode {
         usu!(get!(self.buffer, node_index.get() as usize).as_ref())
     }
 
+    #[allow(unused_unsafe)]
     pub fn get_node_mut(&mut self, node_index: CompactNodeIndex) -> &mut PrimalNode {
         usu!(get_mut!(self.buffer, node_index.get() as usize).as_mut())
     }
 
+    #[allow(unused_unsafe)]
     pub fn get_first_blossom_child(&self, blossom_index: CompactNodeIndex) -> CompactNodeIndex {
         debug_assert!(self.is_blossom(blossom_index) && self.has_node(blossom_index));
-        usu!(self.first_blossom_child[blossom_index.get() as usize - N])
+        usu!(get!(self.first_blossom_child, blossom_index.get() as usize - N))
     }
 
     pub fn get_defect(&self, defect_index: CompactNodeIndex) -> &PrimalNode {
@@ -267,8 +270,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     /// allocate a blank blossom
     pub fn allocate_blossom(&mut self, first_blossom_child: CompactNodeIndex) -> CompactNodeIndex {
         debug_assert!(self.count_blossoms < N, "blossom overflow");
-        self.buffer[N + self.count_blossoms] = Some(PrimalNode::new());
-        self.first_blossom_child[self.count_blossoms] = Some(first_blossom_child);
+        set!(self.buffer, N + self.count_blossoms, Some(PrimalNode::new()));
+        set!(self.first_blossom_child, self.count_blossoms, Some(first_blossom_child));
         let blossom_index = ni!(N + self.count_blossoms);
         self.count_blossoms += 1;
         blossom_index
@@ -278,8 +281,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     pub fn dispose_blossom(&mut self, blossom_index: CompactNodeIndex) {
         debug_assert!(self.is_blossom(blossom_index), "do not dispose a defect vertex");
         debug_assert!(self.has_node(blossom_index), "do not dispose twice");
-        self.buffer[blossom_index.get() as usize].as_mut().take();
-        self.first_blossom_child[blossom_index.get() as usize - N].as_mut().take();
+        set!(self.buffer, blossom_index.get() as usize, None);
+        set!(self.first_blossom_child, blossom_index.get() as usize - N, None);
     }
 }
 

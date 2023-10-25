@@ -35,9 +35,10 @@ crate-type = ["lib"]
 
 [dependencies]
 # panic-halt = "0.2.0"
-micro-blossom-nostd = { path = "../blossom-nostd", version = "0.0.0", features = [
+micro-blossom-nostd = { path = "../blossom-nostd", version = "0.0.0", default-features = false, features = [
     "u16_index",        # it saves 2x memory but becomes 1.5x slower because of type conversion instructions 
     "dangerous_unwrap",
+    "rustc152",
 ] }
 
 # see https://craigjb.com/2020/01/22/ecp5/

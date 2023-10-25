@@ -32,7 +32,7 @@ path = "src/main.rs"
 riscv-rt = "0.11.0"
 panic-halt = "0.2.0"
 heapless = "0.7.16"
-micro-blossom-nostd = { path = "../blossom-nostd", version = "0.0.0", features = [
+micro-blossom-nostd = { path = "../blossom-nostd", version = "0.0.0", default-features = false, features = [
     # "u16_index",  # it saves 2x memory but becomes 1.5x slower because of type conversion instructions 
     "unsafe_unwrap",
     "dangerous_unwrap",

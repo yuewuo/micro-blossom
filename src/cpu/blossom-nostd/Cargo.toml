@@ -27,17 +27,19 @@ crate-type = ["lib"]
 
 [features]
 # to enable a feature, use `--features xxx`
-default = []
+default = ["std"]
 u16_index = []
 i16_weight = []
-std = []
+std = ["derivative"]
 obstacle_potentially_outdated = []
 unsafe_unwrap = [] # still keeps the normal boundary check and possibly panic
 dangerous_unwrap = [
     "unsafe_unwrap",
 ] # remove every possible way of panic, but may lead to undefined behavior
+rustc152 = [] # for compiling at rust 1.52.0 nightly
 
 [dependencies]
+derivative = { version = "2.2.0", optional = true }
 panic-halt = "0.2.0"
 cfg-if = "1.0.0"
 nonmax = { version = "0.5.3", default-features = false }

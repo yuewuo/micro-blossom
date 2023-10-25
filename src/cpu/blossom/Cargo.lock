@@ -1159,7 +1159,6 @@ version = "0.0.0"
 dependencies = [
  "cfg-if",
  "derivative",
- "heapless",
  "nonmax",
  "panic-halt",
 ]
