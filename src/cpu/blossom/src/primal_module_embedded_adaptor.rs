@@ -215,32 +215,80 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
         intermediate_matching
     }
 
-    // fn perfect_matching<D: DualModuleImpl>(
-    //     &mut self,
-    //     _interface: &DualModuleInterfacePtr,
-    //     _dual_module: &mut D,
-    // ) -> PerfectMatching {
-    //     let mut perfect_matching = PerfectMatching::new();
-    //     self.primal_module
-    //         .iterate_perfect_matching(|_primal_module, node_index, match_target, _link| match match_target {
-    //             CompactMatchTarget::Peer(peer_index) => perfect_matching.peer_matchings.push((
-    //                 self.index_to_ptr.get(&node_index).unwrap().clone(),
-    //                 self.index_to_ptr.get(&peer_index).unwrap().clone(),
-    //             )),
-    //             CompactMatchTarget::VirtualVertex(virtual_vertex) => {
-    //                 perfect_matching.virtual_matchings.push((
-    //                     self.index_to_ptr.get(&node_index).unwrap().clone(),
-    //                     virtual_vertex.get() as VertexIndex,
-    //                 ));
-    //             }
-    //         });
-    //     perfect_matching
-    // }
+    fn perfect_matching<D: DualModuleImpl>(
+        &mut self,
+        _interface: &DualModuleInterfacePtr,
+        _dual_module: &mut D,
+    ) -> PerfectMatching {
+        let mut perfect_matching = PerfectMatching::new();
+        self.primal_module
+            .iterate_perfect_matching(|_primal_module, node_index, match_target, link| {
+                debug_assert_eq!(node_index, link.touch.unwrap());
+                match match_target {
+                    CompactMatchTarget::Peer(peer_index) => {
+                        debug_assert_eq!(peer_index, link.peer_touch.unwrap());
+                        perfect_matching.peer_matchings.push((
+                            self.index_to_ptr.get(&node_index).unwrap().clone(),
+                            self.index_to_ptr.get(&peer_index).unwrap().clone(),
+                        ))
+                    }
+                    CompactMatchTarget::VirtualVertex(virtual_vertex) => {
+                        debug_assert_eq!(virtual_vertex, link.peer_through.unwrap());
+                        perfect_matching.virtual_matchings.push((
+                            self.index_to_ptr.get(&node_index).unwrap().clone(),
+                            virtual_vertex.get() as VertexIndex,
+                        ));
+                    }
+                }
+            });
+        perfect_matching
+    }
 }
 
 impl FusionVisualizer for PrimalModuleEmbeddedAdaptor {
-    fn snapshot(&self, _abbrev: bool) -> serde_json::Value {
-        json!({})
+    fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+        let mut primal_nodes = Vec::<serde_json::Value>::new();
+        for (node_index, dual_node_ptr) in self.index_to_ptr.iter() {
+            let dual_index = dual_node_ptr.read_recursive().index;
+            primal_nodes.resize(dual_index + 1, json!(null));
+            if !self.primal_module.nodes.has_node(*node_index) {
+                continue;
+            }
+            let primal_node = self.primal_module.nodes.get_node(*node_index);
+            if !primal_node.is_outer_blossom() {
+                continue;
+            }
+            let parent = primal_node.parent.map(|parent| parent.get());
+            let parent_touch = primal_node.link.touch.map(|parent| parent.get());
+            let mut root_index = *node_index;
+            let mut depth = 0;
+            while self.primal_module.nodes.get_node(root_index).parent.is_some() {
+                root_index = self.primal_module.nodes.get_node(root_index).parent.unwrap();
+                depth += 1;
+            }
+            let mut children = vec![];
+            let mut children_touching = vec![];
+            let mut child = primal_node.first_child;
+            while let Some(child_index) = child {
+                let primal_child = self.primal_module.nodes.get_node(child_index);
+                children.push(child_index.get());
+                children_touching.push(primal_child.link.peer_touch.unwrap().get());
+                child = primal_child.sibling;
+            }
+            primal_nodes[dual_index] = json!({
+                if abbrev { "t" } else { "tree_node" }: json!({
+                    if abbrev { "r" } else { "root" }: root_index.get(),
+                    if abbrev { "p" } else { "parent" }: parent,
+                    if abbrev { "pt" } else { "parent_touching" }: parent_touch,
+                    if abbrev { "c" } else { "children" }: children,
+                    if abbrev { "ct" } else { "children_touching" }: children_touching,
+                    if abbrev { "d" } else { "depth" }: depth,
+                }),
+            });
+        }
+        json!({
+            "primal_nodes": primal_nodes,
+        })
     }
 }
 
@@ -356,12 +404,23 @@ mod tests {
     }
 
     /// debug a case where the blossom expansion is not implemented
+    /// cargo run --release -- benchmark 11 0.01 --code-type code-capacity-planar-code --total-rounds 10000000 --verifier fusion-serial --primal-dual-type primal-embedded --print-syndrome-pattern
     #[test]
     fn primal_module_embedded_debug_1() {
         // cargo test primal_module_embedded_debug_1 -- --nocapture
         let visualize_filename = "primal_module_embedded_debug_1.json".to_string();
         let defect_vertices = vec![49, 73, 74, 86, 97];
         primal_module_embedded_basic_standard_syndrome(11, visualize_filename, defect_vertices, 5);
+    }
+
+    /// debug a case where the perfect matching expansion is incorrect
+    /// cargo run --release -- benchmark 11 0.01 --code-type code-capacity-planar-code --total-rounds 10000000 --verifier fusion-serial --primal-dual-type primal-embedded --print-syndrome-pattern
+    #[test]
+    fn primal_module_embedded_debug_2() {
+        // cargo test primal_module_embedded_debug_2 -- --nocapture
+        let visualize_filename = "primal_module_embedded_debug_2.json".to_string();
+        let defect_vertices = vec![52, 53, 54, 63, 66, 67];
+        primal_module_embedded_basic_standard_syndrome(11, visualize_filename, defect_vertices, 4);
     }
 
     /// run randomized test cases for coverage test, with deterministic seed for reproducibility

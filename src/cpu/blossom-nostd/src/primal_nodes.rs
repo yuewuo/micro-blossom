@@ -186,13 +186,13 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         self.iterate_intermediate_matching(|mut node_index, mut match_target, link| {
             if self.is_blossom(node_index) {
                 let touch = usu!(link.touch);
-                self.iterate_blossom_matchings(touch, &mut func);
+                self.iterate_blossom_matchings(touch, node_index, &mut func);
                 node_index = touch;
             }
             if let CompactMatchTarget::Peer(peer_index) = match_target {
                 if self.is_blossom(peer_index) {
                     let peer_touch = usu!(link.peer_touch);
-                    self.iterate_blossom_matchings(peer_touch, &mut func);
+                    self.iterate_blossom_matchings(peer_touch, peer_index, &mut func);
                     match_target = CompactMatchTarget::Peer(peer_touch);
                 }
             }
@@ -201,9 +201,31 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     }
 
     #[inline]
+    fn iterate_expand_matching(
+        &self,
+        mut node_index: CompactNodeIndex,
+        mut peer_index: CompactNodeIndex,
+        link: &TouchingLink,
+        func: &mut impl FnMut(CompactNodeIndex, CompactMatchTarget, &TouchingLink),
+    ) {
+        if self.is_blossom(node_index) {
+            let touch = usu!(link.touch);
+            self.iterate_blossom_matchings(touch, node_index, func);
+            node_index = touch;
+        }
+        if self.is_blossom(peer_index) {
+            let peer_touch = usu!(link.peer_touch);
+            self.iterate_blossom_matchings(peer_touch, peer_index, func);
+            peer_index = peer_touch;
+        }
+        func(node_index, CompactMatchTarget::Peer(peer_index), link);
+    }
+
+    #[inline]
     fn iterate_blossom_matchings(
         &self,
         mut touch: CompactNodeIndex,
+        stop_at: CompactNodeIndex,
         func: &mut impl FnMut(CompactNodeIndex, CompactMatchTarget, &TouchingLink),
     ) {
         loop {
@@ -212,9 +234,20 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
                 break; // only visit inner node
             }
             let parent_blossom_index = usu!(node.parent);
-            // let first_child =
-            unimplemented!();
+            let mut inner_index = usu!(node.sibling);
+            while inner_index != touch {
+                let primal_inner = self.get_node(inner_index);
+                let peer_index = usu!(primal_inner.sibling);
+                debug_assert!(peer_index != touch, "should be an even sequence");
+                let primal_peer = self.get_node(peer_index);
+                let next_inner_index = usu!(primal_peer.sibling);
+                self.iterate_expand_matching(inner_index, peer_index, &primal_inner.link, func);
+                inner_index = next_inner_index;
+            }
             touch = parent_blossom_index;
+            if touch == stop_at {
+                break;
+            }
         }
     }
 
