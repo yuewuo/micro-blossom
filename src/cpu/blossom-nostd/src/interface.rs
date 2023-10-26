@@ -52,7 +52,7 @@ pub trait PrimalInterface {
     /// this design allows multiple level of primal module to be designed, each handling a simple subset
     fn resolve(&mut self, dual_module: &mut impl DualInterface, max_update_length: MaxUpdateLength) -> bool;
 
-    /// return the perfect matching between nodes, note that each element is iterated only once
+    /// iterate the perfect matching between defect nodes
     fn iterate_perfect_matching(&mut self, func: impl FnMut(&Self, CompactNodeIndex, CompactMatchTarget, &TouchingLink));
 
     /// if the node is matched with a specific virtual index; note that the node index might be outdated

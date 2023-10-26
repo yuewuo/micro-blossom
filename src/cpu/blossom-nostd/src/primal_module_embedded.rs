@@ -127,7 +127,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
         }
     }
 
-    /// return the perfect matching between nodes
+    #[inline]
     fn iterate_perfect_matching(
         &mut self,
         mut func: impl FnMut(&Self, CompactNodeIndex, CompactMatchTarget, &TouchingLink),
@@ -161,6 +161,16 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
 }
 
 impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
+    /// return the perfect matching between nodes
+    #[inline]
+    pub fn iterate_intermediate_matching(
+        &mut self,
+        mut func: impl FnMut(&Self, CompactNodeIndex, CompactMatchTarget, &TouchingLink),
+    ) {
+        self.nodes
+            .iterate_intermediate_matching(|node_index, match_target, link| func(self, node_index, match_target, link));
+    }
+
     /// handle an up-to-date conflict event
     pub fn resolve_conflict(
         &mut self,

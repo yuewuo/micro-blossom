@@ -147,7 +147,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         }
     }
 
-    pub fn iterate_perfect_matching(&self, mut func: impl FnMut(CompactNodeIndex, CompactMatchTarget, &TouchingLink)) {
+    #[inline]
+    pub fn iterate_intermediate_matching(&self, mut func: impl FnMut(CompactNodeIndex, CompactMatchTarget, &TouchingLink)) {
         // report from small index to large index
         for index in (0..self.count_defects).chain(N..N + self.count_blossoms) {
             let node_index = ni!(index);
@@ -174,6 +175,43 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
                     &node.link,
                 );
             }
+        }
+    }
+
+    #[inline]
+    pub fn iterate_perfect_matching(&self, mut func: impl FnMut(CompactNodeIndex, CompactMatchTarget, &TouchingLink)) {
+        self.iterate_intermediate_matching(|mut node_index, mut match_target, link| {
+            if self.is_blossom(node_index) {
+                let touch = usu!(link.touch);
+                self.iterate_blossom_matchings(touch, &mut func);
+                node_index = touch;
+            }
+            if let CompactMatchTarget::Peer(peer_index) = match_target {
+                if self.is_blossom(peer_index) {
+                    let peer_touch = usu!(link.peer_touch);
+                    self.iterate_blossom_matchings(peer_touch, &mut func);
+                    match_target = CompactMatchTarget::Peer(peer_touch);
+                }
+            }
+            func(node_index, match_target, link);
+        })
+    }
+
+    #[inline]
+    fn iterate_blossom_matchings(
+        &self,
+        mut touch: CompactNodeIndex,
+        func: &mut impl FnMut(CompactNodeIndex, CompactMatchTarget, &TouchingLink),
+    ) {
+        loop {
+            let node = self.get_node(touch);
+            if node.grow_state.is_some() {
+                break; // only visit inner node
+            }
+            let parent_blossom_index = usu!(node.parent);
+            // let first_child =
+            unimplemented!();
+            touch = parent_blossom_index;
         }
     }
 

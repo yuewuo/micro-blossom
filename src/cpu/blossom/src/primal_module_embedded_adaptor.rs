@@ -189,8 +189,8 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
         _dual_module: &mut D,
     ) -> IntermediateMatching {
         let mut intermediate_matching = IntermediateMatching::new();
-        self.primal_module
-            .iterate_perfect_matching(|_primal_module, node_index, match_target, link| match match_target {
+        self.primal_module.iterate_intermediate_matching(
+            |_primal_module, node_index, match_target, link| match match_target {
                 CompactMatchTarget::Peer(peer_index) => intermediate_matching.peer_matchings.push((
                     (
                         self.index_to_ptr.get(&node_index).unwrap().clone(),
@@ -210,9 +210,32 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
                         virtual_vertex.get() as VertexIndex,
                     ));
                 }
-            });
+            },
+        );
         intermediate_matching
     }
+
+    // fn perfect_matching<D: DualModuleImpl>(
+    //     &mut self,
+    //     _interface: &DualModuleInterfacePtr,
+    //     _dual_module: &mut D,
+    // ) -> PerfectMatching {
+    //     let mut perfect_matching = PerfectMatching::new();
+    //     self.primal_module
+    //         .iterate_perfect_matching(|_primal_module, node_index, match_target, _link| match match_target {
+    //             CompactMatchTarget::Peer(peer_index) => perfect_matching.peer_matchings.push((
+    //                 self.index_to_ptr.get(&node_index).unwrap().clone(),
+    //                 self.index_to_ptr.get(&peer_index).unwrap().clone(),
+    //             )),
+    //             CompactMatchTarget::VirtualVertex(virtual_vertex) => {
+    //                 perfect_matching.virtual_matchings.push((
+    //                     self.index_to_ptr.get(&node_index).unwrap().clone(),
+    //                     virtual_vertex.get() as VertexIndex,
+    //                 ));
+    //             }
+    //         });
+    //     perfect_matching
+    // }
 }
 
 impl FusionVisualizer for PrimalModuleEmbeddedAdaptor {
