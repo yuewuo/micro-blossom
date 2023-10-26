@@ -120,6 +120,9 @@ impl DualModuleImpl for DualModuleRTL {
                 is_defect: false,
                 node_index: None,
                 root_index: None,
+                shadow_node_index: None,
+                shadow_root_index: None,
+                shadow_speed: DualNodeGrowState::Stay,
             })
             .collect();
         // set virtual vertices
@@ -355,6 +358,11 @@ pub struct Vertex {
     pub is_defect: bool,
     pub node_index: Option<NodeIndex>, // propagated_dual_node
     pub root_index: Option<NodeIndex>, // propagated_grandson_dual_node
+    /// shadow index is usually equal to the node/root_index, but only updated when `grown==0` and `speed==Shrink`;
+    /// when this happens, it picks any peer who is growing; this allows the conflict to be detected across a zero node
+    pub shadow_node_index: Option<NodeIndex>,
+    pub shadow_root_index: Option<NodeIndex>,
+    pub shadow_speed: DualNodeGrowState,
 }
 
 impl Vertex {
@@ -365,10 +373,18 @@ impl Vertex {
             DualNodeGrowState::Grow => 1,
         }
     }
+
+    pub fn get_shadow_speed(&self) -> Weight {
+        match self.shadow_speed {
+            DualNodeGrowState::Stay => 0,
+            DualNodeGrowState::Shrink => -1,
+            DualNodeGrowState::Grow => 1,
+        }
+    }
 }
 
 impl DualPipelined for Vertex {
-    fn execute_stage(&mut self, _dual_module: &DualModuleRTL, instruction: &Instruction) {
+    fn execute_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {
         match instruction {
             Instruction::AddDefectVertex { vertex, node } => {
                 if *vertex == self.vertex_index {
@@ -393,7 +409,31 @@ impl DualPipelined for Vertex {
                     self.speed = DualNodeGrowState::Grow;
                 }
             }
-            _ => {}
+            Instruction::FindObstacle { .. } => {
+                self.shadow_node_index = self.node_index;
+                self.shadow_root_index = self.root_index;
+                self.shadow_speed = self.speed;
+                if self.speed != DualNodeGrowState::Shrink || self.grown != 0 {
+                    return;
+                }
+                // search for a growing peer
+                let growing_edge_index = self.edge_indices.iter().find(|edge_index: &&EdgeIndex| {
+                    let edge = &dual_module.edges[**edge_index];
+                    let peer_index = edge.get_peer(self.vertex_index);
+                    let peer = &dual_module.vertices[peer_index];
+                    peer.get_speed() > 0 && edge.left_growth + edge.right_growth == edge.weight
+                });
+                if growing_edge_index.is_none() {
+                    return; // in reality this won't happen
+                }
+                let edge_index = *growing_edge_index.unwrap();
+                let edge = &dual_module.edges[edge_index];
+                let peer_index = edge.get_peer(self.vertex_index);
+                let peer_vertex = &dual_module.vertices[peer_index];
+                self.shadow_node_index = peer_vertex.node_index;
+                self.shadow_root_index = peer_vertex.root_index;
+                self.shadow_speed = DualNodeGrowState::Grow;
+            }
         }
     }
 
@@ -431,46 +471,8 @@ impl DualPipelined for Vertex {
     }
 
     // generate a response
-    fn write_stage(&self, dual_module: &DualModuleRTL, _instruction: &Instruction) -> Option<Response> {
-        // only detect when y_S = 0 and delta y_S = -1, whether there are two growing peers
-        if self.speed != DualNodeGrowState::Shrink || self.grown != 0 {
-            return None;
-        }
-        // search for two growing peers
-        let (edge_index_1, edge_index_2) = {
-            let is_peer_growing = |edge_index: &&EdgeIndex| {
-                let edge = &dual_module.edges[**edge_index];
-                let peer_index = edge.get_peer(self.vertex_index);
-                let peer = &dual_module.vertices[peer_index];
-                peer.get_speed() > 0 && edge.left_growth + edge.right_growth == edge.weight
-            };
-            (
-                self.edge_indices.iter().find(is_peer_growing),       // search from beginning
-                self.edge_indices.iter().rev().find(is_peer_growing), // search from end
-            )
-        };
-        if edge_index_1 == edge_index_2 {
-            return None;
-        }
-        let edge_index_1 = edge_index_1.unwrap();
-        let edge_index_2 = edge_index_2.unwrap();
-        let edge_1 = &dual_module.edges[*edge_index_1];
-        let edge_2 = &dual_module.edges[*edge_index_2];
-        let peer_index_1 = edge_1.get_peer(self.vertex_index);
-        let peer_index_2 = edge_2.get_peer(self.vertex_index);
-        let peer_1 = &dual_module.vertices[peer_index_1];
-        let peer_2 = &dual_module.vertices[peer_index_2];
-        if peer_1.node_index == peer_2.node_index {
-            return None;
-        }
-        Some(Response::Conflict {
-            node_1: peer_1.node_index.unwrap(),
-            touch_1: peer_1.root_index.unwrap(),
-            node_2: peer_2.node_index.unwrap(),
-            touch_2: peer_2.root_index.unwrap(),
-            vertex_1: self.vertex_index,
-            vertex_2: self.vertex_index,
-        })
+    fn write_stage(&self, _dual_module: &DualModuleRTL, _instruction: &Instruction) -> Option<Response> {
+        None
     }
 }
 
@@ -540,18 +542,18 @@ impl DualPipelined for Edge {
         }
         let left_vertex = &dual_module.vertices[self.left_index];
         let right_vertex = &dual_module.vertices[self.right_index];
-        if left_vertex.node_index == right_vertex.node_index {
+        if left_vertex.shadow_node_index == right_vertex.shadow_node_index {
             return None;
         }
         let mut max_growth = Weight::MAX;
-        let left_speed = left_vertex.get_speed();
+        let left_speed = left_vertex.get_shadow_speed();
         if left_speed < 0 {
             // normally self.left_growth > 0, unless the defect vertex has yS=0, which suggests two conflicting nodes
             max_growth = std::cmp::min(max_growth, self.left_growth);
         } else if left_speed > 0 {
             max_growth = std::cmp::min(max_growth, self.weight - self.left_growth);
         }
-        let right_speed = right_vertex.get_speed();
+        let right_speed = right_vertex.get_shadow_speed();
         if right_speed < 0 {
             // normally self.left_growth > 0, unless the defect vertex has yS=0, which suggests two conflicting nodes
             max_growth = std::cmp::min(max_growth, self.right_growth);
@@ -563,11 +565,11 @@ impl DualPipelined for Edge {
             let remaining = self.weight - self.left_growth - self.right_growth;
             if remaining == 0 {
                 return Some(Response::Conflict {
-                    node_1: left_vertex.node_index.unwrap(),
-                    touch_1: left_vertex.root_index.unwrap(),
+                    node_1: left_vertex.shadow_node_index.unwrap(),
+                    touch_1: left_vertex.shadow_root_index.unwrap(),
                     vertex_1: self.left_index,
-                    node_2: right_vertex.node_index.unwrap(),
-                    touch_2: right_vertex.root_index.unwrap(),
+                    node_2: right_vertex.shadow_node_index.unwrap(),
+                    touch_2: right_vertex.shadow_root_index.unwrap(),
                     vertex_2: self.right_index,
                 });
             }

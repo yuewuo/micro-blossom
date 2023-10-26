@@ -15,8 +15,8 @@ clean-env: clean fmt clippy
 test: clean-env
 	cargo test
 
-	cargo run --release -- test dual-rtl
 	cargo run --release -- test embedded primal
+	cargo run --release -- test dual-rtl
 
 build: clean-env
 	cargo test --no-run
