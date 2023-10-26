@@ -179,10 +179,12 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         // report from small index to large index
         for index in (0..self.count_defects).chain(N..N + self.count_blossoms) {
             let node_index = ni!(index);
+            if !self.has_node(node_index) {
+                continue; // disposed blossom
+            }
             let node = self.get_node(node_index);
             if !node.is_outer_blossom() {
-                // only match outer blossoms
-                continue;
+                continue; // only match outer blossoms
             }
             debug_assert!(
                 node.is_matched(),
@@ -216,6 +218,22 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         }
     }
 
+    /// get the node index of the inner node of the most outer blossom
+    pub fn get_second_outer_blossom(&self, mut node_index: CompactNodeIndex) -> CompactNodeIndex {
+        debug_assert!(!self.get_node(node_index).is_outer_blossom(), "input must be an inner node");
+        let mut second_outer_blossom = node_index;
+        loop {
+            let node = self.get_node(node_index);
+            if node.grow_state.is_none() {
+                debug_assert!(node.parent.is_some(), "an inner node must have a outer parent blossom");
+                second_outer_blossom = node_index;
+                node_index = usu!(node.parent);
+            } else {
+                return second_outer_blossom;
+            }
+        }
+    }
+
     pub fn get_grow_state(&self, node_index: CompactNodeIndex) -> CompactGrowState {
         debug_assert!(
             self.get_node(node_index).grow_state.is_some(),
@@ -230,7 +248,6 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         grow_state: CompactGrowState,
         dual_module: &mut impl DualInterface,
     ) {
-        debug_assert!(self.get_node(node_index).is_outer_blossom(), "cannot set inner node");
         self.get_node_mut(node_index).grow_state = Some(grow_state);
         dual_module.set_grow_state(node_index, grow_state);
     }
@@ -245,6 +262,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         vertex_1: CompactVertexIndex,
         vertex_2: CompactVertexIndex,
     ) {
+        debug_assert!(self.get_node(node_1).is_outer_blossom(), "cannot match inner node");
+        debug_assert!(self.get_node(node_2).is_outer_blossom(), "cannot match inner node");
         self.set_grow_state(node_1, CompactGrowState::Stay, dual_module);
         self.set_grow_state(node_2, CompactGrowState::Stay, dual_module);
         let primal_node_1 = self.get_node_mut(node_1);
@@ -289,6 +308,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         vertex: CompactVertexIndex,
         virtual_vertex: CompactVertexIndex,
     ) {
+        debug_assert!(self.get_node(node).is_outer_blossom(), "cannot match inner node");
         self.set_grow_state(node, CompactGrowState::Stay, dual_module);
         let primal_node = self.get_node_mut(node);
         primal_node.remove_from_alternating_tree();

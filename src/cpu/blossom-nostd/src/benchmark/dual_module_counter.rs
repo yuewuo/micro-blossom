@@ -21,10 +21,10 @@ impl DualStacklessDriver for DualModuleCounterDriver {
         self.count_set_blossom = 0;
         self.count_grow = 0;
     }
-    fn set_speed(&mut self, node: CompactNodeIndex, speed: CompactGrowState) {
+    fn set_speed(&mut self, _node: CompactNodeIndex, _speed: CompactGrowState) {
         self.count_set_speed += 1;
     }
-    fn set_blossom(&mut self, node: CompactNodeIndex, blossom: CompactNodeIndex) {
+    fn set_blossom(&mut self, _node: CompactNodeIndex, _blossom: CompactNodeIndex) {
         self.count_set_blossom += 1;
     }
     fn find_obstacle(&mut self) -> MaxUpdateLength {

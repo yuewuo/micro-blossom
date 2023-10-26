@@ -30,6 +30,8 @@ pub struct MockDualInterface<'a, D: DualModuleImpl> {
 
 impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
     fn clear(&mut self) {
+        #[cfg(test)]
+        println!("[dual] clear()");
         unreachable!("should not be called")
     }
     fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
@@ -45,6 +47,10 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
                 ));
             },
         );
+        #[cfg(test)]
+        println!("[dual] create_blossom({blossom_index}) (nodes_circle: {nodes_circle:?})");
+        debug_assert!(nodes_circle.len() % 2 == 1, "must be an odd cycle");
+        debug_assert!(nodes_circle.len() > 1, "must be a cycle of at least 3 nodes");
         let mut touching_children = vec![];
         let length = links.len();
         for i in 0..length {
@@ -62,10 +68,14 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
         self.index_to_ptr.insert(blossom_index, blossom_node_ptr);
     }
     fn expand_blossom(&mut self, _primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
+        #[cfg(test)]
+        println!("[dual] expand_blossom({blossom_index})");
         self.interface_ptr
             .expand_blossom(self.index_to_ptr.get(&blossom_index).unwrap().clone(), self.dual_module);
     }
     fn set_grow_state(&mut self, node_index: CompactNodeIndex, grow_state: CompactGrowState) {
+        #[cfg(test)]
+        println!("[dual] set_grow_state({node_index}, {grow_state:?})");
         self.interface_ptr.set_grow_state(
             self.index_to_ptr.get(&node_index).unwrap(),
             match grow_state {
@@ -77,9 +87,13 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
         );
     }
     fn compute_maximum_update_length(&mut self) -> micro_blossom_nostd::interface::MaxUpdateLength {
+        #[cfg(test)]
+        println!("[dual] compute_maximum_update_length()");
         unreachable!("should not be called")
     }
     fn grow(&mut self, _length: CompactWeight) {
+        #[cfg(test)]
+        println!("[dual] grow(length)");
         unreachable!("should not be called")
     }
 }
@@ -158,6 +172,8 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
                 }
                 _ => unimplemented!(),
             };
+            #[cfg(test)]
+            println!("[primal] resolve({:?})", adapted_conflict);
             self.primal_module.resolve(
                 &mut MockDualInterface {
                     index_to_ptr: &mut self.index_to_ptr,
@@ -177,28 +193,25 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
     ) -> IntermediateMatching {
         let mut intermediate_matching = IntermediateMatching::new();
         self.primal_module
-            .iterate_perfect_matching(|_primal_module, node_index, match_target, link| {
-                println!("node_index: {node_index}, match_target: {match_target:?}, link: {link:?}");
-                match match_target {
-                    CompactMatchTarget::Peer(peer_index) => intermediate_matching.peer_matchings.push((
+            .iterate_perfect_matching(|_primal_module, node_index, match_target, link| match match_target {
+                CompactMatchTarget::Peer(peer_index) => intermediate_matching.peer_matchings.push((
+                    (
+                        self.index_to_ptr.get(&node_index).unwrap().clone(),
+                        self.index_to_ptr.get(&link.touch.unwrap()).unwrap().clone().downgrade(),
+                    ),
+                    (
+                        self.index_to_ptr.get(&peer_index).unwrap().clone(),
+                        self.index_to_ptr.get(&link.peer_touch.unwrap()).unwrap().clone().downgrade(),
+                    ),
+                )),
+                CompactMatchTarget::VirtualVertex(virtual_vertex) => {
+                    intermediate_matching.virtual_matchings.push((
                         (
                             self.index_to_ptr.get(&node_index).unwrap().clone(),
                             self.index_to_ptr.get(&link.touch.unwrap()).unwrap().clone().downgrade(),
                         ),
-                        (
-                            self.index_to_ptr.get(&peer_index).unwrap().clone(),
-                            self.index_to_ptr.get(&link.peer_touch.unwrap()).unwrap().clone().downgrade(),
-                        ),
-                    )),
-                    CompactMatchTarget::VirtualVertex(virtual_vertex) => {
-                        intermediate_matching.virtual_matchings.push((
-                            (
-                                self.index_to_ptr.get(&node_index).unwrap().clone(),
-                                self.index_to_ptr.get(&link.touch.unwrap()).unwrap().clone().downgrade(),
-                            ),
-                            virtual_vertex.get() as VertexIndex,
-                        ));
-                    }
+                        virtual_vertex.get() as VertexIndex,
+                    ));
                 }
             });
         intermediate_matching
@@ -245,6 +258,15 @@ mod tests {
         let visualize_filename = "primal_module_embedded_basic_3.json".to_string();
         let defect_vertices = vec![16, 26];
         primal_module_embedded_basic_standard_syndrome(7, visualize_filename, defect_vertices, 3);
+    }
+
+    /// test blossom shrinking and expanding
+    #[test]
+    fn primal_module_embedded_basic_4() {
+        // cargo test primal_module_embedded_basic_4 -- --nocapture
+        let visualize_filename = "primal_module_embedded_basic_4.json".to_string();
+        let defect_vertices = vec![16, 52, 65, 76, 112];
+        primal_module_embedded_basic_standard_syndrome(11, visualize_filename, defect_vertices, 10);
     }
 
     pub fn primal_module_embedded_basic_standard_syndrome_optional_viz(

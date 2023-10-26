@@ -120,8 +120,14 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
                     self.resolve_conflict_virtual(dual_module, node_1, touch_1, vertex_1, vertex_2)
                 }
             }
-            MaxUpdateLength::BlossomNeedExpand { blossom } => {
+            MaxUpdateLength::BlossomNeedExpand { mut blossom } => {
+                debug_assert!(self.nodes.is_blossom(blossom));
                 cfg_if::cfg_if! { if #[cfg(feature="obstacle_potentially_outdated")] {
+                    if !self.nodes.has_node(blossom) {
+                        return true; // outdated event
+                    }
+                    // also convert the event to the outer blossom
+                    blossom = self.nodes.get_outer_blossom(blossom);
                     if self.nodes.get_grow_state(blossom) != CompactGrowState::Shrink {
                         return true; // outdated event
                     }
@@ -348,7 +354,147 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
 
     /// handle an up-to-date blossom need expand event
     pub fn resolve_blossom_need_expand(&mut self, dual_module: &mut impl DualInterface, blossom: CompactNodeIndex) -> bool {
-        unimplemented_or_loop!()
+        dual_module.expand_blossom(self, blossom);
+        // the blossom is guaranteed to be a - node in the alternating tree, thus only 1 children
+        let blossom_primal_node = self.nodes.get_node(blossom);
+        let parent_index = usu!(blossom_primal_node.parent);
+        let child_index = usu!(blossom_primal_node.first_child);
+        let touch_to_parent = usu!(blossom_primal_node.link.touch);
+        let touch_to_child = usu!(self.nodes.get_node(child_index).link.peer_touch);
+        let inner_to_parent = self.nodes.get_second_outer_blossom(touch_to_parent);
+        let inner_to_child = self.nodes.get_second_outer_blossom(touch_to_child);
+        // find the index of the inner nodes in the odd cycle
+        let mut cycle_index_parent = None;
+        let mut cycle_index_child = None;
+        let mut cycle_index = 0;
+        let first_blossom_child = self.nodes.get_first_blossom_child(blossom);
+        let mut inner_node = Some(first_blossom_child);
+        while let Some(inner_node_index) = inner_node {
+            if inner_node_index == inner_to_parent {
+                cycle_index_parent = Some(cycle_index);
+            }
+            if inner_node_index == inner_to_child {
+                cycle_index_child = Some(cycle_index);
+            }
+            inner_node = self.nodes.get_node(inner_node_index).sibling;
+            if inner_node.is_none() {
+                self.nodes.get_node_mut(inner_node_index).sibling = Some(first_blossom_child);
+                // to form a close cycle, to ease later handling
+            }
+            cycle_index += 1;
+        }
+        debug_assert!(cycle_index % 2 == 1, "should be an odd cycle");
+        let cycle_length = cycle_index;
+        let cycle_index_parent = usu!(cycle_index_parent);
+        let cycle_index_child = usu!(cycle_index_child);
+        // there are two paths from the start to the end in the cycle: one is odd and the other is even
+        // we will match the even path internally, and then attach the odd path in the alternating tree
+        // note that in the special case where inner nodes are equal, then all the other nodes are matched internally
+        // we don't need special logic for that because all the other nodes will constitute an even path
+        let clockwise_distance = if cycle_index_child >= cycle_index_parent {
+            cycle_index_child - cycle_index_parent
+        } else {
+            (cycle_length + cycle_index_child) - cycle_index_parent
+        };
+        if clockwise_distance % 2 == 0 {
+            // attach clockwise path to the alternating tree
+            let matching_begin = usu!(self.nodes.get_node(inner_to_child).sibling);
+            let blossom_primal_node = self.nodes.get_node(blossom);
+            let to_parent_link = blossom_primal_node.link.clone();
+            let to_parent_sibling = blossom_primal_node.sibling;
+            let primal_inner_to_parent = self.nodes.get_node_mut(inner_to_parent);
+            let mut last_link = primal_inner_to_parent.link.clone();
+            let mut next_node = usu!(primal_inner_to_parent.sibling);
+            primal_inner_to_parent.link = to_parent_link;
+            primal_inner_to_parent.parent = Some(parent_index);
+            primal_inner_to_parent.sibling = to_parent_sibling;
+            primal_inner_to_parent.first_child = Some(next_node);
+            self.nodes
+                .set_grow_state(inner_to_parent, CompactGrowState::Shrink, dual_module);
+            // go along the odd path
+            let mut node = inner_to_parent;
+            let mut is_growing = true;
+            while node != inner_to_child {
+                self.nodes.set_grow_state(
+                    next_node,
+                    if is_growing {
+                        CompactGrowState::Grow
+                    } else {
+                        CompactGrowState::Shrink
+                    },
+                    dual_module,
+                );
+                let primal_next_node = self.nodes.get_node_mut(next_node);
+                let previous_link = primal_next_node.link.clone();
+                primal_next_node.link.touch = last_link.peer_touch;
+                primal_next_node.link.through = last_link.peer_through;
+                primal_next_node.link.peer_touch = last_link.touch;
+                primal_next_node.link.peer_through = last_link.through;
+                // alternating grow and shrink
+                primal_next_node.parent = Some(node);
+                // it is wrong for the last node, so need to recover later
+                let previous_sibling = usu!(primal_next_node.sibling);
+                primal_next_node.first_child = Some(previous_sibling);
+                primal_next_node.sibling = None;
+                last_link = previous_link;
+                node = next_node;
+                next_node = previous_sibling;
+                is_growing = !is_growing;
+            }
+            // fix the tail
+            let primal_inner_to_child = self.nodes.get_node_mut(inner_to_child);
+            primal_inner_to_child.first_child = Some(child_index);
+            // internally match the remaining
+            let mut matching = matching_begin;
+            while matching != inner_to_parent {
+                self.nodes.set_grow_state(matching, CompactGrowState::Stay, dual_module);
+                let primal_matching = self.nodes.get_node_mut(matching);
+                let link = primal_matching.link.clone();
+                primal_matching.parent = None;
+                primal_matching.first_child = None;
+                let peer = usu!(primal_matching.sibling);
+                debug_assert!(peer != inner_to_parent, "should not be an odd path");
+                self.nodes.set_grow_state(peer, CompactGrowState::Stay, dual_module);
+                let primal_peer = self.nodes.get_node_mut(peer);
+                primal_peer.link.touch = link.peer_touch;
+                primal_peer.link.through = link.peer_through;
+                primal_peer.link.peer_touch = link.touch;
+                primal_peer.link.peer_through = link.through;
+                primal_peer.parent = None;
+                primal_peer.first_child = None;
+                let next_matching = usu!(primal_peer.sibling);
+                primal_peer.sibling = Some(matching);
+                matching = next_matching;
+            }
+        } else {
+            // attach counter-clockwise path to the alternating tree
+            unimplemented!()
+        }
+        // fix the parent
+        let primal_parent = self.nodes.get_node_mut(parent_index);
+        debug_assert!(primal_parent.sibling.is_none(), "+ node should not have any sibling");
+        if usu!(primal_parent.first_child) == blossom {
+            primal_parent.first_child = Some(inner_to_parent);
+        } else {
+            let mut node = usu!(primal_parent.first_child);
+            loop {
+                let primal_node = self.nodes.get_node(node);
+                if primal_node.sibling == Some(blossom) {
+                    break;
+                }
+                debug_assert!(primal_node.sibling.is_some(), "cannot find the blossom in the child list");
+                node = usu!(primal_node.sibling);
+            }
+            let primal_node = self.nodes.get_node_mut(node);
+            primal_node.sibling = Some(inner_to_parent);
+        }
+        // fix the child
+        let primal_child = self.nodes.get_node_mut(child_index);
+        primal_child.parent = Some(inner_to_child);
+        debug_assert!(primal_child.sibling.is_none(), "+ node should not have any sibling");
+        // remove the blossom
+        self.nodes.dispose_blossom(blossom);
+        true
     }
 
     /// for any + node, match it with another node will augment the whole tree, breaking out into several matched pairs;
@@ -370,6 +516,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             let parent_primal_node = self.nodes.get_node(parent_node);
             debug_assert!(parent_primal_node.parent.is_some(), "- node should always have parent");
             let ancestor_node = usu!(parent_primal_node.parent);
+            debug_assert!(self.nodes.get_node(ancestor_node).is_outer_blossom());
             let link = parent_primal_node.link.clone();
             self.augment_whole_tree(dual_module, ancestor_node);
             self.nodes
@@ -472,7 +619,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
         primal_blossom.link = lca_link;
         // walk from node_1/2 upwards to the LCA and attach all children to the blossom
         for node in &[node_1, node_2] {
-            self.blossom_construction_transfer_path_children_to_lca(*node, lca);
+            self.blossom_construction_transfer_path_children_to_blossom(*node, lca, blossom);
         }
         // connect the two paths in an odd cycle
         let mut iter_1 = node_1;
@@ -491,7 +638,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             peer_touch: Some(touch_2),
             peer_through: Some(vertex_2),
         };
-        let mut last_node = if iter_1 == lca { None } else { Some(node_1) };
+        let mut last_node = if node_1 == lca { None } else { Some(node_1) };
         loop {
             let node = self.nodes.get_node_mut(iter_2);
             // reverse the link
@@ -509,7 +656,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             node.parent = Some(blossom);
             node.first_child = None;
             node.grow_state = None;
-            if last_node == Some(lca) {
+            if iter_2 == lca {
                 break;
             }
             iter_2 = usu!(original_parent);
@@ -519,10 +666,15 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
     }
 
     #[inline]
-    fn blossom_construction_transfer_path_children_to_lca(&mut self, mut node: CompactNodeIndex, lca: CompactNodeIndex) {
+    fn blossom_construction_transfer_path_children_to_blossom(
+        &mut self,
+        mut node: CompactNodeIndex,
+        lca: CompactNodeIndex,
+        blossom: CompactNodeIndex,
+    ) {
         let mut previous = node;
         while node != lca {
-            self.blossom_construction_transfer_children_except_for(node, previous, lca);
+            self.blossom_construction_transfer_children_except_for(node, previous, blossom);
             previous = node;
             debug_assert!(self.nodes.get_node(node).parent.is_some(), "cannot find lca on the way up");
             node = usu!(self.nodes.get_node(node).parent);
@@ -534,20 +686,22 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
         &mut self,
         node: CompactNodeIndex,
         except: CompactNodeIndex,
-        parent: CompactNodeIndex,
+        blossom: CompactNodeIndex,
     ) {
         let mut child = self.nodes.get_node(node).first_child;
         while let Some(child_index) = child {
             if child_index != except {
-                let primal_parent = self.nodes.get_node_mut(parent);
-                let previous_first_child = primal_parent.first_child;
-                primal_parent.first_child = Some(child_index);
+                let primal_blossom = self.nodes.get_node_mut(blossom);
+                let previous_first_child = primal_blossom.first_child;
+                primal_blossom.first_child = Some(child_index);
                 let primal_child = self.nodes.get_node_mut(child_index);
                 debug_assert_eq!(primal_child.parent, Some(node));
-                primal_child.parent = Some(parent);
+                primal_child.parent = Some(blossom);
+                child = primal_child.sibling;
                 primal_child.sibling = previous_first_child;
+            } else {
+                child = self.nodes.get_node(child_index).sibling;
             }
-            child = self.nodes.get_node(child_index).sibling;
         }
     }
 
