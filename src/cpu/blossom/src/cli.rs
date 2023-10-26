@@ -92,6 +92,8 @@ pub struct BenchmarkParameters {
 pub enum PrimalDualType {
     /// standard primal + RTL-behavior dual
     DualRTL,
+    /// embedded primal + standard dual
+    PrimalEmbedded,
     /// serial primal and dual, standard solution
     Serial,
     /// log error into a file for later fetch
@@ -102,6 +104,21 @@ pub enum PrimalDualType {
 enum TestCommands {
     /// test RTL-behavior dual module
     DualRTL {
+        /// print out the command to test
+        #[clap(short = 'c', long, action)]
+        print_command: bool,
+        /// enable visualizer
+        #[clap(short = 'v', long, action)]
+        enable_visualizer: bool,
+        /// disable the fusion verifier
+        #[clap(short = 'd', long, action)]
+        disable_fusion: bool,
+        /// enable print syndrome pattern
+        #[clap(short = 's', long, action)]
+        print_syndrome_pattern: bool,
+    },
+    /// test embedded primal module
+    PrimalEmbedded {
         /// print out the command to test
         #[clap(short = 'c', long, action)]
         print_command: bool,
@@ -281,6 +298,87 @@ impl Cli {
                     if print_syndrome_pattern {
                         command_tail.append(&mut vec![format!("--print-syndrome-pattern")]);
                     }
+                    command_tail.append(&mut vec![format!("--primal-dual-type"), format!("dual-rtl")]);
+                    for parameter in parameters.iter() {
+                        execute_in_cli(
+                            command_head.iter().chain(parameter.iter()).chain(command_tail.iter()),
+                            print_command,
+                        );
+                    }
+                }
+                TestCommands::PrimalEmbedded {
+                    print_command,
+                    enable_visualizer,
+                    disable_fusion,
+                    print_syndrome_pattern,
+                } => {
+                    let mut parameters = vec![];
+                    for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
+                        for d in [3, 7, 11, 15, 19] {
+                            parameters.push(vec![
+                                format!("{d}"),
+                                format!("{p}"),
+                                format!("--code-type"),
+                                format!("code-capacity-repetition-code"),
+                                format!("--pb-message"),
+                                format!("repetition {d} {p}"),
+                            ]);
+                        }
+                    }
+                    for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
+                        for d in [3, 7, 11, 15, 19] {
+                            parameters.push(vec![
+                                format!("{d}"),
+                                format!("{p}"),
+                                format!("--code-type"),
+                                format!("code-capacity-planar-code"),
+                                format!("--pb-message"),
+                                format!("planar {d} {p}"),
+                            ]);
+                        }
+                    }
+                    for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
+                        for d in [3, 7, 11] {
+                            parameters.push(vec![
+                                format!("{d}"),
+                                format!("{p}"),
+                                format!("--code-type"),
+                                format!("phenomenological-planar-code"),
+                                format!("--noisy-measurements"),
+                                format!("{d}"),
+                                format!("--pb-message"),
+                                format!("phenomenological {d} {p}"),
+                            ]);
+                        }
+                    }
+                    for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
+                        for d in [3, 7, 11] {
+                            parameters.push(vec![
+                                format!("{d}"),
+                                format!("{p}"),
+                                format!("--code-type"),
+                                format!("circuit-level-planar-code"),
+                                format!("--noisy-measurements"),
+                                format!("{d}"),
+                                format!("--pb-message"),
+                                format!("circuit-level {d} {p}"),
+                            ]);
+                        }
+                    }
+                    let command_head = vec![format!(""), format!("benchmark")];
+                    let mut command_tail = vec!["--total-rounds".to_string(), format!("{TEST_EACH_ROUNDS}")];
+                    if !disable_fusion {
+                        command_tail.append(&mut vec![format!("--verifier"), format!("fusion-serial")]);
+                    } else {
+                        command_tail.append(&mut vec![format!("--verifier"), format!("none")]);
+                    }
+                    if enable_visualizer {
+                        command_tail.append(&mut vec![format!("--enable-visualizer")]);
+                    }
+                    if print_syndrome_pattern {
+                        command_tail.append(&mut vec![format!("--print-syndrome-pattern")]);
+                    }
+                    command_tail.append(&mut vec![format!("--primal-dual-type"), format!("primal-embedded")]);
                     for parameter in parameters.iter() {
                         execute_in_cli(
                             command_head.iter().chain(parameter.iter()).chain(command_tail.iter()),
@@ -322,6 +420,10 @@ impl PrimalDualType {
             Self::DualRTL => {
                 assert_eq!(primal_dual_config, json!({}));
                 Box::new(SolverDualRTL::new(initializer))
+            }
+            Self::PrimalEmbedded => {
+                assert_eq!(primal_dual_config, json!({}));
+                Box::new(SolverPrimalEmbedded::new(initializer))
             }
             _ => unimplemented!(),
         }

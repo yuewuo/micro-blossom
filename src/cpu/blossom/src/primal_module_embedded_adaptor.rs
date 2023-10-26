@@ -219,7 +219,7 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
 }
 
 impl FusionVisualizer for PrimalModuleEmbeddedAdaptor {
-    fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+    fn snapshot(&self, _abbrev: bool) -> serde_json::Value {
         json!({})
     }
 }
@@ -323,8 +323,7 @@ mod tests {
         primal_module_embedded_basic_standard_syndrome(11, visualize_filename, defect_vertices, 9);
     }
 
-    /// debug a case of deadlock after changing the strategy of detecting conflicts around VertexShrinkStop;
-    /// reason: forget to check whether conflicting nodes are growing: only growing one should be reported
+    /// test complex random case
     #[test]
     fn primal_module_embedded_basic_11() {
         // cargo test primal_module_embedded_basic_11 -- --nocapture
@@ -334,6 +333,15 @@ mod tests {
             157, 169, 186, 202, 203, 204, 230, 231,
         ];
         primal_module_embedded_basic_standard_syndrome(15, visualize_filename, defect_vertices, 20);
+    }
+
+    /// debug a case where the blossom expansion is not implemented
+    #[test]
+    fn primal_module_embedded_debug_1() {
+        // cargo test primal_module_embedded_debug_1 -- --nocapture
+        let visualize_filename = "primal_module_embedded_debug_1.json".to_string();
+        let defect_vertices = vec![49, 73, 74, 86, 97];
+        primal_module_embedded_basic_standard_syndrome(11, visualize_filename, defect_vertices, 5);
     }
 
     pub fn primal_module_embedded_basic_standard_syndrome_optional_viz(

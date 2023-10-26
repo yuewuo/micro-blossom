@@ -400,18 +400,20 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
         } else {
             (cycle_length + cycle_index_child) - cycle_index_parent
         };
+        let blossom_primal_node = self.nodes.get_node(blossom);
+        let to_parent_link = blossom_primal_node.link.clone();
         if clockwise_distance % 2 == 0 {
             // attach clockwise path to the alternating tree
-            let matching_begin = usu!(self.nodes.get_node(inner_to_child).sibling);
-            let blossom_primal_node = self.nodes.get_node(blossom);
-            let to_parent_link = blossom_primal_node.link.clone();
-            let to_parent_sibling = blossom_primal_node.sibling;
+            self.expand_blossom_match_chain(
+                dual_module,
+                usu!(self.nodes.get_node(inner_to_child).sibling),
+                inner_to_parent,
+            ); // first match the clockwise even chain from inner child to inner parent
             let primal_inner_to_parent = self.nodes.get_node_mut(inner_to_parent);
             let mut last_link = primal_inner_to_parent.link.clone();
             let mut next_node = usu!(primal_inner_to_parent.sibling);
             primal_inner_to_parent.link = to_parent_link;
             primal_inner_to_parent.parent = Some(parent_index);
-            primal_inner_to_parent.sibling = to_parent_sibling;
             primal_inner_to_parent.first_child = Some(next_node);
             self.nodes
                 .set_grow_state(inner_to_parent, CompactGrowState::Shrink, dual_module);
@@ -449,30 +451,41 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             let primal_inner_to_child = self.nodes.get_node_mut(inner_to_child);
             primal_inner_to_child.first_child = Some(child_index);
             // internally match the remaining
-            let mut matching = matching_begin;
-            while matching != inner_to_parent {
-                self.nodes.set_grow_state(matching, CompactGrowState::Stay, dual_module);
-                let primal_matching = self.nodes.get_node_mut(matching);
-                let link = primal_matching.link.clone();
-                primal_matching.parent = None;
-                primal_matching.first_child = None;
-                let peer = usu!(primal_matching.sibling);
-                debug_assert!(peer != inner_to_parent, "should not be an odd path");
-                self.nodes.set_grow_state(peer, CompactGrowState::Stay, dual_module);
-                let primal_peer = self.nodes.get_node_mut(peer);
-                primal_peer.link.touch = link.peer_touch;
-                primal_peer.link.through = link.peer_through;
-                primal_peer.link.peer_touch = link.touch;
-                primal_peer.link.peer_through = link.through;
-                primal_peer.parent = None;
-                primal_peer.first_child = None;
-                let next_matching = usu!(primal_peer.sibling);
-                primal_peer.sibling = Some(matching);
-                matching = next_matching;
-            }
         } else {
             // attach counter-clockwise path to the alternating tree
-            unimplemented!()
+            self.expand_blossom_match_chain(
+                dual_module,
+                usu!(self.nodes.get_node(inner_to_parent).sibling),
+                inner_to_child,
+            ); // first match the clockwise even chain from inner parent to inner child
+            let mut node = inner_to_child;
+            let mut first_child = child_index;
+            let mut is_growing = false;
+            loop {
+                self.nodes.set_grow_state(
+                    node,
+                    if is_growing {
+                        CompactGrowState::Grow
+                    } else {
+                        CompactGrowState::Shrink
+                    },
+                    dual_module,
+                );
+                let primal_node = self.nodes.get_node_mut(node);
+                let next_node = usu!(primal_node.sibling);
+                primal_node.parent = Some(next_node); // it is wrong for the last node, so need to recover later
+                primal_node.sibling = None;
+                primal_node.first_child = Some(first_child);
+                if node == inner_to_parent {
+                    break;
+                }
+                first_child = node;
+                node = next_node;
+                is_growing = !is_growing;
+            }
+            let primal_inner_to_parent = self.nodes.get_node_mut(inner_to_parent);
+            primal_inner_to_parent.link = to_parent_link;
+            primal_inner_to_parent.parent = Some(parent_index);
         }
         // fix the parent
         debug_assert!(
@@ -487,6 +500,36 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
         // remove the blossom
         self.nodes.dispose_blossom(blossom);
         true
+    }
+
+    #[inline]
+    fn expand_blossom_match_chain(
+        &mut self,
+        dual_module: &mut impl DualInterface,
+        begin: CompactNodeIndex,
+        end: CompactNodeIndex,
+    ) {
+        let mut matching = begin;
+        while matching != end {
+            self.nodes.set_grow_state(matching, CompactGrowState::Stay, dual_module);
+            let primal_matching = self.nodes.get_node_mut(matching);
+            let link = primal_matching.link.clone();
+            primal_matching.parent = None;
+            primal_matching.first_child = None;
+            let peer = usu!(primal_matching.sibling);
+            debug_assert!(peer != end, "should not be an odd chain");
+            self.nodes.set_grow_state(peer, CompactGrowState::Stay, dual_module);
+            let primal_peer = self.nodes.get_node_mut(peer);
+            primal_peer.link.touch = link.peer_touch;
+            primal_peer.link.through = link.peer_through;
+            primal_peer.link.peer_touch = link.touch;
+            primal_peer.link.peer_through = link.through;
+            primal_peer.parent = None;
+            primal_peer.first_child = None;
+            let next_matching = usu!(primal_peer.sibling);
+            primal_peer.sibling = Some(matching);
+            matching = next_matching;
+        }
     }
 
     #[inline]
