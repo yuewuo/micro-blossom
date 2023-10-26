@@ -30,7 +30,7 @@ pub struct MockDualInterface<'a, D: DualModuleImpl> {
 
 impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
     fn clear(&mut self) {
-        #[cfg(test)]
+        #[cfg(all(test, debug_assertions))]
         println!("[dual] clear()");
         unreachable!("should not be called")
     }
@@ -47,7 +47,7 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
                 ));
             },
         );
-        #[cfg(test)]
+        #[cfg(all(test, debug_assertions))]
         println!("[dual] create_blossom({blossom_index}) (nodes_circle: {nodes_circle:?})");
         debug_assert!(nodes_circle.len() % 2 == 1, "must be an odd cycle");
         debug_assert!(nodes_circle.len() > 1, "must be a cycle of at least 3 nodes");
@@ -68,13 +68,13 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
         self.index_to_ptr.insert(blossom_index, blossom_node_ptr);
     }
     fn expand_blossom(&mut self, _primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
-        #[cfg(test)]
+        #[cfg(all(test, debug_assertions))]
         println!("[dual] expand_blossom({blossom_index})");
         self.interface_ptr
             .expand_blossom(self.index_to_ptr.get(&blossom_index).unwrap().clone(), self.dual_module);
     }
     fn set_grow_state(&mut self, node_index: CompactNodeIndex, grow_state: CompactGrowState) {
-        #[cfg(test)]
+        #[cfg(all(test, debug_assertions))]
         println!("[dual] set_grow_state({node_index}, {grow_state:?})");
         self.interface_ptr.set_grow_state(
             self.index_to_ptr.get(&node_index).unwrap(),
@@ -87,12 +87,12 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
         );
     }
     fn compute_maximum_update_length(&mut self) -> micro_blossom_nostd::interface::MaxUpdateLength {
-        #[cfg(test)]
+        #[cfg(all(test, debug_assertions))]
         println!("[dual] compute_maximum_update_length()");
         unreachable!("should not be called")
     }
     fn grow(&mut self, _length: CompactWeight) {
-        #[cfg(test)]
+        #[cfg(all(test, debug_assertions))]
         println!("[dual] grow(length)");
         unreachable!("should not be called")
     }
@@ -172,7 +172,7 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
                 }
                 _ => unimplemented!(),
             };
-            #[cfg(test)]
+            #[cfg(all(test, debug_assertions))]
             println!("[primal] resolve({:?})", adapted_conflict);
             self.primal_module.resolve(
                 &mut MockDualInterface {
@@ -342,6 +342,23 @@ mod tests {
         let visualize_filename = "primal_module_embedded_debug_1.json".to_string();
         let defect_vertices = vec![49, 73, 74, 86, 97];
         primal_module_embedded_basic_standard_syndrome(11, visualize_filename, defect_vertices, 5);
+    }
+
+    /// run randomized test cases for coverage test, with deterministic seed for reproducibility
+    #[test]
+    fn primal_module_embedded_randomized_test() {
+        // cargo test primal_module_embedded_randomized_test -- --nocapture
+        #[cfg(not(debug_assertions))]
+        crate::cli::execute_in_cli(
+            [
+                "".to_string(),
+                "test".to_string(),
+                "primal-embedded".to_string(),
+                "--use-deterministic-seed".to_string(),
+            ]
+            .iter(),
+            true,
+        );
     }
 
     pub fn primal_module_embedded_basic_standard_syndrome_optional_viz(

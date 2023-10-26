@@ -1,4 +1,4 @@
-all: test check build
+all: test coverage check build
 
 fmt:
 	cargo fmt --check
@@ -16,6 +16,7 @@ test: clean-env
 	cargo test
 
 	cargo run --release -- test dual-rtl
+	cargo run --release -- test embedded primal
 
 build: clean-env
 	cargo test --no-run
@@ -26,3 +27,9 @@ build: clean-env
 check: clean-env
 	cargo check
 	cargo check --release
+
+# test code coverage: see https://lib.rs/crates/cargo-llvm-cov
+# run in release mode to include the randomized test cases
+coverage:
+	cargo llvm-cov --release --html
+	# open target/llvm-cov/html/index.html

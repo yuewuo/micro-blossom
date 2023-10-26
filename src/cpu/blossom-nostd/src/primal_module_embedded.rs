@@ -335,7 +335,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             }
             return true;
         }
-        unimplemented_or_loop!(); // unreachable
+        unreachable!();
     }
 
     /// handle an up-to-date conflict virtual event

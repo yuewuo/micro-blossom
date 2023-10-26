@@ -7,7 +7,13 @@ use serde::Serialize;
 use serde_json::json;
 use std::env;
 
-const TEST_EACH_ROUNDS: usize = 100;
+cfg_if::cfg_if! {
+    if #[cfg(test)] {
+        const TEST_EACH_ROUNDS: usize = 20;
+    } else {
+        const TEST_EACH_ROUNDS: usize = 100;
+    }
+}
 
 #[derive(Parser, Clone)]
 #[clap(author = clap::crate_authors!(", "))]
@@ -116,6 +122,9 @@ enum TestCommands {
         /// enable print syndrome pattern
         #[clap(short = 's', long, action)]
         print_syndrome_pattern: bool,
+        /// use deterministic seed for debugging purpose
+        #[clap(long, action)]
+        use_deterministic_seed: bool,
     },
     /// test embedded primal module
     PrimalEmbedded {
@@ -131,6 +140,9 @@ enum TestCommands {
         /// enable print syndrome pattern
         #[clap(short = 's', long, action)]
         print_syndrome_pattern: bool,
+        /// use deterministic seed for debugging purpose
+        #[clap(long, action)]
+        use_deterministic_seed: bool,
     },
 }
 
@@ -231,6 +243,7 @@ impl Cli {
                     enable_visualizer,
                     disable_fusion,
                     print_syndrome_pattern,
+                    use_deterministic_seed,
                 } => {
                     let mut parameters = vec![];
                     for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
@@ -297,6 +310,9 @@ impl Cli {
                     }
                     if print_syndrome_pattern {
                         command_tail.append(&mut vec![format!("--print-syndrome-pattern")]);
+                    }
+                    if use_deterministic_seed {
+                        command_tail.append(&mut vec![format!("--use-deterministic-seed")]);
                     }
                     command_tail.append(&mut vec![format!("--primal-dual-type"), format!("dual-rtl")]);
                     for parameter in parameters.iter() {
@@ -311,6 +327,7 @@ impl Cli {
                     enable_visualizer,
                     disable_fusion,
                     print_syndrome_pattern,
+                    use_deterministic_seed,
                 } => {
                     let mut parameters = vec![];
                     for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
@@ -377,6 +394,9 @@ impl Cli {
                     }
                     if print_syndrome_pattern {
                         command_tail.append(&mut vec![format!("--print-syndrome-pattern")]);
+                    }
+                    if use_deterministic_seed {
+                        command_tail.append(&mut vec![format!("--use-deterministic-seed")]);
                     }
                     command_tail.append(&mut vec![format!("--primal-dual-type"), format!("primal-embedded")]);
                     for parameter in parameters.iter() {
