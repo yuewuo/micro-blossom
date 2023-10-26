@@ -428,14 +428,14 @@ impl<const N: usize, const DOUBLE_N: usize> std::fmt::Debug for PrimalNodes<N, D
             .field(
                 "defects",
                 &(0..self.count_defects as usize)
-                    .map(|index| &self.buffer[index])
-                    .collect::<std::vec::Vec<_>>(),
+                    .map(|index| (index, &self.buffer[index]))
+                    .collect::<std::collections::BTreeMap<_, _>>(),
             )
             .field(
                 "blossoms",
                 &(0..self.count_blossoms as usize)
-                    .map(|index| (&self.buffer[N + index], self.first_blossom_child[index]))
-                    .collect::<std::vec::Vec<_>>(),
+                    .map(|index| (N + index, (&self.buffer[N + index], self.first_blossom_child[index])))
+                    .collect::<std::collections::BTreeMap<_, _>>(),
             )
             .finish()
     }

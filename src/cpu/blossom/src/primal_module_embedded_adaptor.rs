@@ -269,6 +269,15 @@ mod tests {
         primal_module_embedded_basic_standard_syndrome(11, visualize_filename, defect_vertices, 10);
     }
 
+    /// test blossom conflicts with vertex
+    #[test]
+    fn primal_module_embedded_basic_5() {
+        // cargo test primal_module_embedded_basic_5 -- --nocapture
+        let visualize_filename = "primal_module_embedded_basic_5.json".to_string();
+        let defect_vertices = vec![39, 51, 61, 62, 63, 64, 65, 75, 87, 67];
+        primal_module_embedded_basic_standard_syndrome(11, visualize_filename, defect_vertices, 6);
+    }
+
     pub fn primal_module_embedded_basic_standard_syndrome_optional_viz(
         d: VertexNum,
         visualize_filename: Option<String>,
