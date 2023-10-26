@@ -37,16 +37,13 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
     fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
         let mut nodes_circle = vec![];
         let mut links = vec![]; // the format is different in embedded primal to easy programming
-        primal_module.iterate_blossom_children_with_touching(
-            blossom_index,
-            |_primal_module, child_index, ((touch, _through), (peer_touch, _peer_through))| {
-                nodes_circle.push(self.index_to_ptr.get(&child_index).unwrap().clone());
-                links.push((
-                    self.index_to_ptr.get(&touch).unwrap().clone().downgrade(),
-                    self.index_to_ptr.get(&peer_touch).unwrap().clone().downgrade(),
-                ));
-            },
-        );
+        primal_module.iterate_blossom_children(blossom_index, |_primal_module, child_index, link| {
+            nodes_circle.push(self.index_to_ptr.get(&child_index).unwrap().clone());
+            links.push((
+                self.index_to_ptr.get(&link.touch.unwrap()).unwrap().clone().downgrade(),
+                self.index_to_ptr.get(&link.peer_touch.unwrap()).unwrap().clone().downgrade(),
+            ));
+        });
         #[cfg(all(test, debug_assertions))]
         println!("[dual] create_blossom({blossom_index}) (nodes_circle: {nodes_circle:?})");
         debug_assert!(nodes_circle.len() % 2 == 1, "must be an odd cycle");

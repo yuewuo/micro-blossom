@@ -35,26 +35,15 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
         self.nodes.is_blossom(node_index)
     }
 
-    /// query the structure of a blossom
-    fn iterate_blossom_children(&self, blossom_index: CompactNodeIndex, mut func: impl FnMut(&Self, CompactNodeIndex)) {
-        self.nodes
-            .iterate_blossom_children(blossom_index, |node_index| func(self, node_index));
-    }
-
     /// query the structure of a blossom with detailed information of touching points
-    fn iterate_blossom_children_with_touching(
+    #[inline]
+    fn iterate_blossom_children(
         &self,
         blossom_index: CompactNodeIndex,
-        mut func: impl FnMut(
-            &Self,
-            CompactNodeIndex,
-            ((CompactNodeIndex, CompactVertexIndex), (CompactNodeIndex, CompactVertexIndex)),
-        ),
+        mut func: impl FnMut(&Self, CompactNodeIndex, &TouchingLink),
     ) {
         self.nodes
-            .iterate_blossom_children_with_touching(blossom_index, |node_index, touching_info| {
-                func(self, node_index, touching_info)
-            });
+            .iterate_blossom_children(blossom_index, |node_index, link| func(self, node_index, link));
     }
 
     /// resolve one obstacle

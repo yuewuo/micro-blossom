@@ -20,13 +20,13 @@ impl<D: DualStacklessDriver> DualInterface for DualModuleStackless<D> {
     }
 
     fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
-        primal_module.iterate_blossom_children(blossom_index, |_primal_module, child_index| {
+        primal_module.iterate_blossom_children(blossom_index, |_primal_module, child_index, _| {
             self.driver.set_blossom(child_index, blossom_index);
         })
     }
 
     fn expand_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
-        primal_module.iterate_blossom_children(blossom_index, |primal_module, child_index| {
+        primal_module.iterate_blossom_children(blossom_index, |primal_module, child_index, _| {
             self.iterative_expand_blossom(primal_module, child_index, child_index);
         });
     }
@@ -56,7 +56,7 @@ impl<D: DualStacklessDriver> DualModuleStackless<D> {
         child_index: CompactNodeIndex,
     ) {
         if primal_module.is_blossom(child_index) {
-            primal_module.iterate_blossom_children(child_index, |primal_module, grandchild_index| {
+            primal_module.iterate_blossom_children(child_index, |primal_module, grandchild_index, _| {
                 self.iterative_expand_blossom(primal_module, blossom_index, grandchild_index);
             });
         } else {
@@ -119,20 +119,13 @@ mod tests {
         fn is_blossom(&self, node_index: CompactNodeIndex) -> bool {
             !self.nodes[&node_index].children.is_empty()
         }
-        fn iterate_blossom_children_with_touching(
+        fn iterate_blossom_children(
             &self,
-            _blossom_index: CompactNodeIndex,
-            _func: impl FnMut(
-                &Self,
-                CompactNodeIndex,
-                ((CompactNodeIndex, CompactVertexIndex), (CompactNodeIndex, CompactVertexIndex)),
-            ),
+            blossom_index: CompactNodeIndex,
+            mut func: impl FnMut(&Self, CompactNodeIndex, &TouchingLink),
         ) {
-            unimplemented!()
-        }
-        fn iterate_blossom_children(&self, blossom_index: CompactNodeIndex, mut func: impl FnMut(&Self, CompactNodeIndex)) {
             for &child_index in self.nodes[&blossom_index].children.iter() {
-                func(self, child_index);
+                func(self, child_index, &TouchingLink::new());
             }
         }
         fn resolve(&mut self, _dual_module: &mut impl DualInterface, _max_update_length: MaxUpdateLength) -> bool {

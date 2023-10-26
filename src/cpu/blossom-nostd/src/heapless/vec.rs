@@ -5,7 +5,7 @@ use core::{cmp::Ordering, convert::TryFrom, fmt, hash, iter::FromIterator, mem::
 /// # Examples
 ///
 /// ```
-/// use heapless::Vec;
+/// use micro_blossom_nostd::heapless::Vec;
 ///
 ///
 /// // A vector with a fixed capacity of 8 elements allocated on the stack
@@ -48,7 +48,7 @@ impl<T, const N: usize> Vec<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use heapless::Vec;
+    /// use micro_blossom_nostd::heapless::Vec;
     ///
     /// // allocate the vector on the stack
     /// let mut x: Vec<u8, 16> = Vec::new();
@@ -73,7 +73,7 @@ impl<T, const N: usize> Vec<T, N> {
     /// This is equivalent to the following code:
     ///
     /// ```
-    /// use heapless::Vec;
+    /// use micro_blossom_nostd::heapless::Vec;
     ///
     /// let mut v: Vec<u8, 16> = Vec::new();
     /// v.extend_from_slice(&[1, 2, 3]).unwrap();
@@ -120,7 +120,7 @@ impl<T, const N: usize> Vec<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use heapless::Vec;
+    /// use micro_blossom_nostd::heapless::Vec;
     /// let buffer: Vec<u8, 5> = Vec::from_slice(&[1, 2, 3, 5, 8]).unwrap();
     /// assert_eq!(buffer.as_slice(), &[1, 2, 3, 5, 8]);
     /// ```
@@ -136,7 +136,7 @@ impl<T, const N: usize> Vec<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use heapless::Vec;
+    /// use micro_blossom_nostd::heapless::Vec;
     /// let buffer: Vec<u8, 42> = Vec::from_slice(&[1, 2, 3, 5, 8]).unwrap();
     /// let array: [u8; 5] = buffer.into_array().unwrap();
     /// assert_eq!(array, [1, 2, 3, 5, 8]);
@@ -163,7 +163,7 @@ impl<T, const N: usize> Vec<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use heapless::Vec;
+    /// use micro_blossom_nostd::heapless::Vec;
     /// let mut buffer: Vec<u8, 5> = Vec::from_slice(&[1, 2, 3, 5, 8]).unwrap();
     /// buffer[0] = 9;
     /// assert_eq!(buffer.as_slice(), &[9, 2, 3, 5, 8]);
@@ -206,7 +206,7 @@ impl<T, const N: usize> Vec<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use heapless::Vec;
+    /// use micro_blossom_nostd::heapless::Vec;
     ///
     /// let mut vec = Vec::<u8, 8>::new();
     /// vec.push(1).unwrap();
@@ -373,7 +373,7 @@ impl<T, const N: usize> Vec<T, N> {
     ///
     /// ```no_run
     /// # #![allow(dead_code)]
-    /// use heapless::Vec;
+    /// use micro_blossom_nostd::heapless::Vec;
     ///
     /// # // This is just a minimal skeleton for the doc example;
     /// # // don't use this as a starting point for a real library.
@@ -415,7 +415,7 @@ impl<T, const N: usize> Vec<T, N> {
     ///
     /// ```
     /// use core::iter::FromIterator;
-    /// use heapless::Vec;
+    /// use micro_blossom_nostd::heapless::Vec;
     ///
     /// let mut vec = Vec::<Vec<u8, 3>, 3>::from_iter(
     ///     [
@@ -455,8 +455,8 @@ impl<T, const N: usize> Vec<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use heapless::Vec;
-    ///// use heapless::consts::*;
+    /// use micro_blossom_nostd::heapless::Vec;
+    ///// use micro_blossom_nostd::heaplessconsts::*;
     ///
     /// let mut v: Vec<_, 8> = Vec::new();
     /// v.push("foo").unwrap();
@@ -488,7 +488,7 @@ impl<T, const N: usize> Vec<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use heapless::Vec;
+    /// use micro_blossom_nostd::heapless::Vec;
     ///
     /// let mut v: Vec<_, 8> = Vec::new();
     /// v.push("foo").unwrap();
@@ -531,7 +531,7 @@ impl<T, const N: usize> Vec<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use heapless::Vec;
+    /// use micro_blossom_nostd::heapless::Vec;
     ///
     /// let v: Vec<_, 8> = Vec::from_slice(b"abc").unwrap();
     /// assert_eq!(v.starts_with(b""), true);
@@ -554,7 +554,7 @@ impl<T, const N: usize> Vec<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use heapless::Vec;
+    /// use micro_blossom_nostd::heapless::Vec;
     ///
     /// let v: Vec<_, 8> = Vec::from_slice(b"abc").unwrap();
     /// assert_eq!(v.ends_with(b""), true);
@@ -582,7 +582,7 @@ impl<T, const N: usize> Vec<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use heapless::Vec;
+    /// use micro_blossom_nostd::heapless::Vec;
     ///
     /// let mut vec: Vec<_, 8> = Vec::from_slice(&[1, 2, 3]).unwrap();
     /// vec.insert(1, 4);
@@ -638,7 +638,7 @@ impl<T, const N: usize> Vec<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use heapless::Vec;
+    /// use micro_blossom_nostd::heapless::Vec;
     ///
     /// let mut v: Vec<_, 8> = Vec::from_slice(&[1, 2, 3]).unwrap();
     /// assert_eq!(v.remove(1), 2);
@@ -676,7 +676,7 @@ impl<T, const N: usize> Vec<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use heapless::Vec;
+    /// use micro_blossom_nostd::heapless::Vec;
     ///
     /// let mut vec: Vec<_, 8> = Vec::from_slice(&[1, 2, 3, 4]).unwrap();
     /// vec.retain(|&x| x % 2 == 0);
@@ -687,7 +687,7 @@ impl<T, const N: usize> Vec<T, N> {
     /// external state may be used to decide which elements to keep.
     ///
     /// ```
-    /// use heapless::Vec;
+    /// use micro_blossom_nostd::heapless::Vec;
     ///
     /// let mut vec: Vec<_, 8> = Vec::from_slice(&[1, 2, 3, 4, 5]).unwrap();
     /// let keep = [false, true, true, false, true];
@@ -711,7 +711,7 @@ impl<T, const N: usize> Vec<T, N> {
     /// # Examples
     ///
     /// ```
-    /// use heapless::Vec;
+    /// use micro_blossom_nostd::heapless::Vec;
     ///
     /// let mut vec: Vec<_, 8> = Vec::from_slice(&[1, 2, 3, 4]).unwrap();
     /// vec.retain_mut(|x| if *x <= 3 {

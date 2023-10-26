@@ -133,44 +133,16 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         usu!(get!(self.first_blossom_child, blossom_index.get() as usize - N))
     }
 
-    pub fn get_defect(&self, defect_index: CompactNodeIndex) -> &PrimalNode {
-        debug_assert!(!self.is_blossom(defect_index));
-        debug_assert!(
-            (defect_index.get() as usize) < self.count_defects,
-            "cannot get an uninitialized defect node"
-        );
-        self.get_node(defect_index)
-    }
-
-    pub fn get_blossom(&self, blossom_index: CompactNodeIndex) -> &PrimalNode {
-        debug_assert!(self.is_blossom(blossom_index));
-        self.get_node(blossom_index)
-    }
-
-    pub fn iterate_blossom_children(&self, blossom_index: CompactNodeIndex, mut func: impl FnMut(CompactNodeIndex)) {
-        let mut child_index = Some(self.get_first_blossom_child(blossom_index));
-        while child_index.is_some() {
-            func(usu!(child_index));
-            child_index = self.get_node(usu!(child_index)).sibling;
-        }
-    }
-
-    pub fn iterate_blossom_children_with_touching(
+    #[inline]
+    pub fn iterate_blossom_children(
         &self,
         blossom_index: CompactNodeIndex,
-        mut func: impl FnMut(CompactNodeIndex, ((CompactNodeIndex, CompactVertexIndex), (CompactNodeIndex, CompactVertexIndex))),
+        mut func: impl FnMut(CompactNodeIndex, &TouchingLink),
     ) {
         let mut child_index = Some(self.get_first_blossom_child(blossom_index));
         while child_index.is_some() {
             let node = self.get_node(usu!(child_index));
-            let link = &node.link;
-            func(
-                usu!(child_index),
-                (
-                    (usu!(link.touch), usu!(link.through)),
-                    (usu!(link.peer_touch), usu!(link.peer_through)),
-                ),
-            );
+            func(usu!(child_index), &node.link);
             child_index = node.sibling;
         }
     }
@@ -188,8 +160,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
             }
             debug_assert!(
                 node.is_matched(),
-                "cannot generate perfect matching with unmatched node: {:?}",
-                node
+                "cannot generate perfect matching with unmatched node: {}",
+                node_index
             );
             if let Some(peer_index) = node.sibling {
                 if peer_index.get() > node_index.get() {

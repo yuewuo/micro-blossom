@@ -60,7 +60,7 @@ impl private::Sealed for Min {}
 /// normally only possible through `Cell`, `RefCell`, global state, I/O, or unsafe code.
 ///
 /// ```
-/// use heapless::binary_heap::{BinaryHeap, Max};
+/// use micro_blossom_nostd::heapless::binary_heap::{BinaryHeap, Max};
 ///
 /// let mut heap: BinaryHeap<_, Max, 8> = BinaryHeap::new();
 ///
@@ -108,7 +108,7 @@ impl<T, K, const N: usize> BinaryHeap<T, K, N> {
     /// Creates an empty BinaryHeap as a $K-heap.
     ///
     /// ```
-    /// use heapless::binary_heap::{BinaryHeap, Max};
+    /// use micro_blossom_nostd::heapless::binary_heap::{BinaryHeap, Max};
     ///
     /// // allocate the binary heap on the stack
     /// let mut heap: BinaryHeap<_, Max, 8> = BinaryHeap::new();
@@ -139,7 +139,7 @@ where
     /// Drops all items from the binary heap.
     ///
     /// ```
-    /// use heapless::binary_heap::{BinaryHeap, Max};
+    /// use micro_blossom_nostd::heapless::binary_heap::{BinaryHeap, Max};
     ///
     /// let mut heap: BinaryHeap<_, Max, 8> = BinaryHeap::new();
     /// heap.push(1).unwrap();
@@ -158,7 +158,7 @@ where
     /// Returns the length of the binary heap.
     ///
     /// ```
-    /// use heapless::binary_heap::{BinaryHeap, Max};
+    /// use micro_blossom_nostd::heapless::binary_heap::{BinaryHeap, Max};
     ///
     /// let mut heap: BinaryHeap<_, Max, 8> = BinaryHeap::new();
     /// heap.push(1).unwrap();
@@ -173,7 +173,7 @@ where
     /// Checks if the binary heap is empty.
     ///
     /// ```
-    /// use heapless::binary_heap::{BinaryHeap, Max};
+    /// use micro_blossom_nostd::heapless::binary_heap::{BinaryHeap, Max};
     ///
     /// let mut heap: BinaryHeap<_, Max, 8> = BinaryHeap::new();
     ///
@@ -192,7 +192,7 @@ where
     /// Returns an iterator visiting all values in the underlying vector, in arbitrary order.
     ///
     /// ```
-    /// use heapless::binary_heap::{BinaryHeap, Max};
+    /// use micro_blossom_nostd::heapless::binary_heap::{BinaryHeap, Max};
     ///
     /// let mut heap: BinaryHeap<_, Max, 8> = BinaryHeap::new();
     /// heap.push(1).unwrap();
@@ -222,7 +222,7 @@ where
     /// None if it is empty.
     ///
     /// ```
-    /// use heapless::binary_heap::{BinaryHeap, Max};
+    /// use micro_blossom_nostd::heapless::binary_heap::{BinaryHeap, Max};
     ///
     /// let mut heap: BinaryHeap<_, Max, 8> = BinaryHeap::new();
     /// assert_eq!(heap.peek(), None);
@@ -247,7 +247,7 @@ where
     /// Basic usage:
     ///
     /// ```
-    /// use heapless::binary_heap::{BinaryHeap, Max};
+    /// use micro_blossom_nostd::heapless::binary_heap::{BinaryHeap, Max};
     ///
     /// let mut heap: BinaryHeap<_, Max, 8> = BinaryHeap::new();
     /// assert!(heap.peek_mut().is_none());
@@ -274,7 +274,7 @@ where
     /// returns it, or None if it is empty.
     ///
     /// ```
-    /// use heapless::binary_heap::{BinaryHeap, Max};
+    /// use micro_blossom_nostd::heapless::binary_heap::{BinaryHeap, Max};
     ///
     /// let mut heap: BinaryHeap<_, Max, 8> = BinaryHeap::new();
     /// heap.push(1).unwrap();
@@ -307,7 +307,7 @@ where
     /// Pushes an item onto the binary heap.
     ///
     /// ```
-    /// use heapless::binary_heap::{BinaryHeap, Max};
+    /// use micro_blossom_nostd::heapless::binary_heap::{BinaryHeap, Max};
     ///
     /// let mut heap: BinaryHeap<_, Max, 8> = BinaryHeap::new();
     /// heap.push(3).unwrap();

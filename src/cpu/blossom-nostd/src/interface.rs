@@ -39,20 +39,13 @@ pub trait PrimalInterface {
     /// query if a node is a blossom node
     fn is_blossom(&self, node_index: CompactNodeIndex) -> bool;
 
-    /// query the structure of a blossom
-    fn iterate_blossom_children(&self, blossom_index: CompactNodeIndex, func: impl FnMut(&Self, CompactNodeIndex));
-
     /// query the detailed structure of a blossom including the data of the touching information;
     /// the format is (node, ((touch, through), (peer_touch, peer_through))), (peer, ......;
     /// this is different
-    fn iterate_blossom_children_with_touching(
+    fn iterate_blossom_children(
         &self,
         blossom_index: CompactNodeIndex,
-        func: impl FnMut(
-            &Self,
-            CompactNodeIndex,
-            ((CompactNodeIndex, CompactVertexIndex), (CompactNodeIndex, CompactVertexIndex)),
-        ),
+        func: impl FnMut(&Self, CompactNodeIndex, &TouchingLink),
     );
 
     /// resolve one obstacle, returning whether the obstacle is hanlded properly;
