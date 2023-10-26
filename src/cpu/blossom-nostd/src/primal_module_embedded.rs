@@ -328,7 +328,10 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
                 );
             } else {
                 // augment the two alternating tree
-                unimplemented_or_loop!()
+                self.augment_whole_tree(dual_module, node_1);
+                self.augment_whole_tree(dual_module, node_2);
+                self.nodes
+                    .temporary_match(dual_module, node_1, node_2, touch_1, touch_2, vertex_1, vertex_2);
             }
             return true;
         }

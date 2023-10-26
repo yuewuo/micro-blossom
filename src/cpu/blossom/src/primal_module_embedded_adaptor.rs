@@ -278,6 +278,24 @@ mod tests {
         primal_module_embedded_basic_standard_syndrome(11, visualize_filename, defect_vertices, 6);
     }
 
+    /// test cascaded blossom
+    #[test]
+    fn primal_module_embedded_basic_6() {
+        // cargo test primal_module_embedded_basic_6 -- --nocapture
+        let visualize_filename = "primal_module_embedded_basic_6.json".to_string();
+        let defect_vertices = vec![39, 51, 61, 62, 63, 64, 65, 75, 87];
+        primal_module_embedded_basic_standard_syndrome(11, visualize_filename, defect_vertices, 6);
+    }
+
+    /// test two alternating trees conflict with each other
+    #[test]
+    fn primal_module_embedded_basic_7() {
+        // cargo test primal_module_embedded_basic_7 -- --nocapture
+        let visualize_filename = "primal_module_embedded_basic_7.json".to_string();
+        let defect_vertices = vec![37, 61, 63, 66, 68, 44];
+        primal_module_embedded_basic_standard_syndrome(11, visualize_filename, defect_vertices, 7);
+    }
+
     pub fn primal_module_embedded_basic_standard_syndrome_optional_viz(
         d: VertexNum,
         visualize_filename: Option<String>,
