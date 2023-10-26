@@ -296,6 +296,46 @@ mod tests {
         primal_module_embedded_basic_standard_syndrome(11, visualize_filename, defect_vertices, 7);
     }
 
+    /// test an alternating tree touches a virtual boundary
+    #[test]
+    fn primal_module_embedded_basic_8() {
+        // cargo test primal_module_embedded_basic_8 -- --nocapture
+        let visualize_filename = "primal_module_embedded_basic_8.json".to_string();
+        let defect_vertices = vec![61, 64, 67];
+        primal_module_embedded_basic_standard_syndrome(11, visualize_filename, defect_vertices, 5);
+    }
+
+    /// test a matched node (with virtual boundary) conflicts with an alternating tree
+    #[test]
+    fn primal_module_embedded_basic_9() {
+        // cargo test primal_module_embedded_basic_9 -- --nocapture
+        let visualize_filename = "primal_module_embedded_basic_9.json".to_string();
+        let defect_vertices = vec![60, 63, 66, 30];
+        primal_module_embedded_basic_standard_syndrome(11, visualize_filename, defect_vertices, 6);
+    }
+
+    /// test the error pattern in the paper
+    #[test]
+    fn primal_module_embedded_basic_10() {
+        // cargo test primal_module_embedded_basic_10 -- --nocapture
+        let visualize_filename = "primal_module_embedded_basic_10.json".to_string();
+        let defect_vertices = vec![39, 52, 63, 90, 100];
+        primal_module_embedded_basic_standard_syndrome(11, visualize_filename, defect_vertices, 9);
+    }
+
+    /// debug a case of deadlock after changing the strategy of detecting conflicts around VertexShrinkStop;
+    /// reason: forget to check whether conflicting nodes are growing: only growing one should be reported
+    #[test]
+    fn primal_module_embedded_basic_11() {
+        // cargo test primal_module_embedded_basic_11 -- --nocapture
+        let visualize_filename = "primal_module_embedded_basic_11.json".to_string();
+        let defect_vertices = vec![
+            13, 29, 52, 53, 58, 60, 71, 74, 76, 87, 96, 107, 112, 118, 121, 122, 134, 137, 141, 145, 152, 153, 154, 156,
+            157, 169, 186, 202, 203, 204, 230, 231,
+        ];
+        primal_module_embedded_basic_standard_syndrome(15, visualize_filename, defect_vertices, 20);
+    }
+
     pub fn primal_module_embedded_basic_standard_syndrome_optional_viz(
         d: VertexNum,
         visualize_filename: Option<String>,
