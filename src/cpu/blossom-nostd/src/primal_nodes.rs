@@ -139,11 +139,14 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         blossom_index: CompactNodeIndex,
         mut func: impl FnMut(CompactNodeIndex, &TouchingLink),
     ) {
-        let mut child_index = Some(self.get_first_blossom_child(blossom_index));
-        while child_index.is_some() {
-            let node = self.get_node(usu!(child_index));
-            func(usu!(child_index), &node.link);
-            child_index = node.sibling;
+        let first_child = self.get_first_blossom_child(blossom_index);
+        let first_child_node = self.get_node(first_child);
+        func(first_child, &first_child_node.link);
+        let mut child_index = usu!(first_child_node.sibling);
+        while child_index != first_child {
+            let node = self.get_node(child_index);
+            func(child_index, &node.link);
+            child_index = usu!(node.sibling);
         }
     }
 

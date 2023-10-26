@@ -369,21 +369,23 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
         // find the index of the inner nodes in the odd cycle
         let mut cycle_index_parent = None;
         let mut cycle_index_child = None;
-        let mut cycle_index = 0;
         let first_blossom_child = self.nodes.get_first_blossom_child(blossom);
-        let mut inner_node = Some(first_blossom_child);
-        while let Some(inner_node_index) = inner_node {
-            if inner_node_index == inner_to_parent {
+        if first_blossom_child == inner_to_parent {
+            cycle_index_parent = Some(0);
+        }
+        if first_blossom_child == inner_to_child {
+            cycle_index_child = Some(0);
+        }
+        let mut inner_node = usu!(self.nodes.get_node(first_blossom_child).sibling);
+        let mut cycle_index = 1;
+        while inner_node != first_blossom_child {
+            if inner_node == inner_to_parent {
                 cycle_index_parent = Some(cycle_index);
             }
-            if inner_node_index == inner_to_child {
+            if inner_node == inner_to_child {
                 cycle_index_child = Some(cycle_index);
             }
-            inner_node = self.nodes.get_node(inner_node_index).sibling;
-            if inner_node.is_none() {
-                self.nodes.get_node_mut(inner_node_index).sibling = Some(first_blossom_child);
-                // to form a close cycle, to ease later handling
-            }
+            inner_node = usu!(self.nodes.get_node(inner_node).sibling);
             cycle_index += 1;
         }
         debug_assert!(cycle_index % 2 == 1, "should be an odd cycle");
@@ -682,7 +684,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
         while iter_1 != lca {
             let node = self.nodes.get_node_mut(iter_1);
             iter_1 = usu!(node.parent);
-            node.sibling = if iter_1 == lca { None } else { node.parent };
+            node.sibling = node.parent;
             node.parent = Some(blossom);
             node.first_child = None;
             node.grow_state = None; // mark as inside a blossom
@@ -694,7 +696,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             peer_touch: Some(touch_2),
             peer_through: Some(vertex_2),
         };
-        let mut last_node = if node_1 == lca { None } else { Some(node_1) };
+        let mut last_node = Some(node_1);
         loop {
             let node = self.nodes.get_node_mut(iter_2);
             // reverse the link
