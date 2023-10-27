@@ -9,11 +9,13 @@ case class DualConfig(
     var weightBits: Int = 30,
     var graph: SingleGraph = null,
     var broadcastDelay: Int = 1,
-    var convergecastDelay: Int = 1
+    var convergecastDelay: Int = 1,
+    var contextDepth: Int = 1 // how many different contexts are supported
 ) {
   def vertexNum = graph.vertex_num.toInt
   def edgeNum = graph.weighted_edges.length.toInt
   def instructionBits = 2 * vertexBits + 2
+  def contextBits = log2Up(contextDepth)
 
   def this(filename: String) = {
     this()
@@ -96,5 +98,6 @@ case class DualConfig(
     assert(weightBits <= 30)
     assert(weightBits > 0)
     assert(weightBits + 2 <= instructionBits)
+    assert(contextDepth > 0)
   }
 }
