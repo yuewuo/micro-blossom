@@ -10,10 +10,10 @@ case class EdgeOutput(config: DualConfig) extends Bundle {
 case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   val io = new Bundle {
     val instruction = in(Instruction(config))
-    val opcode = out(Bits(2 bits))
+    val opCode = out(Bits(2 bits))
     val edgeOutputs = out(Vec.fill(2)(EdgeOutput(config)))
     val vertexInputs = in(Vec.fill(2)(VertexOutput(config)))
   }
 
-  io.opcode := io.instruction.opcode
+  io.opCode := io.instruction.sliceOf(io.instruction.opCode1)
 }

@@ -60,26 +60,28 @@ object Architecture {
   }
 }
 
-case class OpCode() extends Bundle {
-  val value = Bits(2 bits)
+case class OpCode() extends Bits {
+  setWidth(2)
+  // assert(getBitsWidth == 2)
 }
 
 object OpCode {
-  def SetSpeed = B"00"
-  def SetBlossom = B"01"
-  def Match = B"11"
-  def Grow = B"10"
+  def SetSpeed = B"2'00"
+  def SetBlossom = B"2'01"
+  def Match = B"2'11"
+  def Grow = B"2'10"
 }
 
-case class CompactGrowState() extends Bundle {
-  val value = Bits(2 bits)
-  def isStay = value == B"00"
-  def isGrow = value == B"01"
-  def isShrink = value == B"10"
+case class Speed() extends Bits {
+  setWidth(2)
+  // assert(getBitsWidth == 2)
+  def isStay = this == B"2'00"
+  def isGrow = this == B"2'01"
+  def isShrink = this == B"2'10"
 }
 
-object CompactGrowState {
-  def Stay = B"00"
-  def Grow = B"01"
-  def Shrink = B"10"
+object Speed {
+  def Stay = B"2'00"
+  def Grow = B"2'01"
+  def Shrink = B"2'10"
 }

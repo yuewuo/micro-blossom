@@ -10,7 +10,7 @@ object DualAcceleratorState extends SpinalEnum {
 
 case class DualAccelerator(config: DualConfig) extends Component {
   val io = new Bundle {
-    val instruction = in(Bits(32 bits))
+    val instruction = in(Instruction())
     val state = out(DualAcceleratorState())
   }
 
