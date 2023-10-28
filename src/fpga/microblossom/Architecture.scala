@@ -59,3 +59,27 @@ object Architecture {
     def Grow = B"10"
   }
 }
+
+case class OpCode() extends Bundle {
+  val value = Bits(2 bits)
+}
+
+object OpCode {
+  def SetSpeed = B"00"
+  def SetBlossom = B"01"
+  def Match = B"11"
+  def Grow = B"10"
+}
+
+case class CompactGrowState() extends Bundle {
+  val value = Bits(2 bits)
+  def isStay = value == B"00"
+  def isGrow = value == B"01"
+  def isShrink = value == B"10"
+}
+
+object CompactGrowState {
+  def Stay = B"00"
+  def Grow = B"01"
+  def Shrink = B"10"
+}

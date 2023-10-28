@@ -5,6 +5,7 @@ import spinal.lib._
 import spinal.core.sim._
 import org.scalatest.funsuite.AnyFunSuite
 import microblossom._
+import cats.instances.either
 
 case class LearnMem() extends Component {
   val io = new Bundle {
