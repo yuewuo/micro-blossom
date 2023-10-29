@@ -33,8 +33,6 @@ case class DualConfig(
     fitGraph(minimizeBits)
   } else if (graph != null) {
     fitGraph(minimizeBits)
-  } else {
-    throw new Exception("mush provide a graph")
   }
 
   // fit the bits to a specific decoding graph and construct connections
@@ -52,8 +50,8 @@ case class DualConfig(
       if (vertexBits * 2 < weightBits) {
         vertexBits = (weightBits + 1) / 2 // expand vertexBits so that the instruction can hold the maximum length
       }
-      if (vertexBits < 4) {
-        vertexBits = 4 // at least 4 bits to support all instructions
+      if (vertexBits < 5) {
+        vertexBits = 5 // at least 5 bits to support all instructions
       }
     }
     // build vertex to neighbor edge mapping

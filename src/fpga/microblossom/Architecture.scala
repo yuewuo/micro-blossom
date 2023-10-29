@@ -12,9 +12,9 @@ import spinal.core._
  * |                  Node[14:0]                |                  Blossom[14:0]             |2'b01| SetBlossom
  * |               Vertex_1[14:0]               |                 Vertex_2[14:0]             |2'b11| Match
  * |                                        Length[29:0]                                     |2'b10| Grow
- * |                                                          RegionPreference   | 3'b000 | 3'b100 | FindObstacle
- * |                                                              Address        | 3'b001 | 3'b100 | ClearAccumulator
- * |                                                             EdgeIndex       | 3'b010 | 3'b100 | AccumulateEdge
+ * |            RegionPreference[14:0]          |                                | 3'b000 | 3'b100 | FindObstacle
+ * |                Address[14:0]               |                                | 3'b001 | 3'b100 | ClearAccumulator
+ * |               EdgeIndex[14:0]              |                                | 3'b010 | 3'b100 | AccumulateEdge
  * |                                     Reserved                                | 3'b011 | 3'b100 | Reserved
  * |                                         0                                   | 3'b100 | 3'b100 | Reset
  * |                  Time[14:0]                |           Channel[10:0]        | 3'b101 | 3'b100 | LoadSyndromeExternal
@@ -51,14 +51,6 @@ import spinal.core._
  */
 
 // note: use `def` instead of `val` to define hardware constant, see https://github.com/SpinalHDL/SpinalHDL/issues/294
-object Architecture {
-  object OpCode1 {
-    def SetSpeed = B"00"
-    def SetBlossom = B"01"
-    def Match = B"11"
-    def Grow = B"10"
-  }
-}
 
 case class OpCode() extends Bits {
   setWidth(2)

@@ -19,38 +19,56 @@ object InstructionIO extends Instruction(DualConfig()) {
 case class Instruction(config: DualConfig = DualConfig()) extends Bits {
   setWidth(config.instructionBits)
 
-  def connect(instruction: Instruction): Unit = {
-    assert(instruction.getWidth == 32) // the instruction must be 32 bits
-    sliceOf(opCode1) := instruction.sliceOf(instruction.opCode1)
-    switch(sliceOf(opCode1)) {
-      is(Architecture.OpCode1.SetSpeed) {
-        this(1 + config.vertexBits downto 2) := instruction(1 + config.vertexBits downto 2)
-        this(1 + 2 * config.vertexBits downto 2 + config.vertexBits) := instruction(
-          16 + config.vertexBits downto 17
-        )
+  def widthConvertedFrom(instruction: Instruction): Unit = {
+    opCode := instruction.opCode
+    when(instruction.opCode === OpCode.SetBlossom) {
+      field1 := instruction.field1.resized
+      field2 := instruction.field2.resized
+
+    } elsewhen (instruction.opCode === OpCode.Match) {
+      field1 := instruction.field1.resized
+      field2 := instruction.field2.resized
+    } elsewhen (instruction.opCode === OpCode.SetSpeed) {
+      field1 := instruction.field1.resized
+      when(instruction.isExtended === B"0") {
+        speed := instruction.speed
+        setSpeedZero.clearAll()
+      } otherwise {
+        extendedField2 := instruction.extendedField2.resized
+        extendedOpCode := instruction.extendedOpCode
+        isExtended := instruction.isExtended
       }
+    } otherwise {
+      length := instruction.length.resized
     }
   }
 
-  def opCode1 = Field(1, 0)
-  def sliceOf(field: Field): Bits = {
-    this(field.msb downto field.lsb)
+  val opCodeRange = BitRange(1, 0)
+  def opCode = sliceOf(opCodeRange)
+  val isExtendedRange = BitRange(2, 2)
+  def isExtended = sliceOf(isExtendedRange)
+  val extendedOpCodeRange = BitRange(5, 3)
+  def extendedOpCode = sliceOf(extendedOpCodeRange)
+  val lengthRange = BitRange(config.instructionBits - 1, 2)
+  def length = sliceOf(lengthRange)
+  val field1Range = BitRange(config.instructionBits - 1, config.instructionBits - config.vertexBits)
+  def field1 = sliceOf(field1Range)
+  val field2Range = BitRange(config.instructionBits - config.vertexBits - 1, 2)
+  def field2 = sliceOf(field2Range)
+  val extendedField2Range = BitRange(config.instructionBits - config.vertexBits - 1, 6)
+  def extendedField2 = sliceOf(extendedField2Range)
+  val speedRange =
+    BitRange(config.instructionBits - config.vertexBits - 1, config.instructionBits - config.vertexBits - 2)
+  def speed = sliceOf(speedRange)
+  def setSpeedZeroRange = BitRange(config.instructionBits - config.vertexBits - 3, 2)
+  def setSpeedZero = sliceOf(setSpeedZeroRange)
+
+  def sliceOf(range: BitRange): Bits = {
+    this(range.msb downto range.lsb)
   }
-
-  // def opCode = this(1 downto 0)
-  // def field1 = this(config.instructionBits - 1 downto config.instructionBits - config.vertexBits)
-  // def field2 = this(config.instructionBits - config.vertexBits - 1 downto 2)
-  // def speed = this(config.instructionBits - config.vertexBits - 1 downto config.instructionBits - config.vertexBits - 2)
-  // def length = this(config.instructionBits - 1 downto 2)
-
-  def delayed = {
-    val instruction = Instruction(config)
-    instruction.assignFromBits(RegNext(asBits))
-    instruction
-  }
-
-  // def
 
 }
 
-case class Field(msb: Int, lsb: Int) {}
+case class BitRange(msb: Int, lsb: Int) {
+  assert(msb >= lsb)
+}

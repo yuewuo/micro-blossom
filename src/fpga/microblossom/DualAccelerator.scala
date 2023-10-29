@@ -3,6 +3,7 @@ package microblossom
 import spinal.core._
 import spinal.lib._
 import util._
+import org.scalatest.funsuite.AnyFunSuite
 
 object DualAcceleratorState extends SpinalEnum {
   val Normal, Busy, InstructionError = newElement()
@@ -14,14 +15,16 @@ case class DualAccelerator(config: DualConfig) extends Component {
     val state = out(DualAcceleratorState())
   }
 
-  val instructionReg = RegNext(io.instruction)
+  val instructionReg = Instruction()
+  instructionReg.assignFromBits(RegNext(io.instruction.asBits))
 
   io.state := DualAcceleratorState.Normal
 
   val broadcastMessage = Instruction(config)
 
-  broadcastMessage.connect(io.instruction)
-  val broadcastInstruction = Delay(RegNext(broadcastMessage), config.broadcastDelay)
+  broadcastMessage.widthConvertedFrom(io.instruction)
+  val broadcastInstruction = Instruction(config)
+  broadcastInstruction.assignFromBits(Delay(RegNext(broadcastMessage.asBits), config.broadcastDelay))
 
   // instantiate vertices and edges
   val vertices = Seq
@@ -54,4 +57,14 @@ case class DualAccelerator(config: DualConfig) extends Component {
 
   // TODO: gather the results in a tree structure. tip: use reduceBalancedTree function
   // https://spinalhdl.github.io/SpinalDoc-RTD/master/SpinalHDL/Data%20types/Vec.html#lib-helper-functions
+}
+
+// sbt 'testOnly *DualAcceleratorTest'
+class DualAcceleratorTest extends AnyFunSuite {
+
+  test("construct accelerator from file") {
+    val config = DualConfig(filename = "./resources/graphs/example_repetition_code.json")
+    Config.spinal.generateVerilog(DualAccelerator(config))
+  }
+
 }

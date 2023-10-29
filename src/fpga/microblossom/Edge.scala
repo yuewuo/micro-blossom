@@ -15,5 +15,5 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
     val vertexInputs = in(Vec.fill(2)(VertexOutput(config)))
   }
 
-  io.opCode := io.instruction.sliceOf(io.instruction.opCode1)
+  io.opCode := io.instruction.opCode
 }
