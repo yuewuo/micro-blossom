@@ -6,7 +6,7 @@ import util._
 
 // defines the I/O interface: it's always 32 bit width
 object InstructionIO extends Instruction(DualConfig()) {
-  assert(InstructionIO.config.instructionBits == 32)
+  assert(InstructionIO.config.instructionSpec.numBits == 32)
 
   /* helper functions for simulation purpose */
   def setSpeed(node: UInt, speed: Speed): Bits = {
@@ -17,7 +17,7 @@ object InstructionIO extends Instruction(DualConfig()) {
 }
 
 case class Instruction(config: DualConfig = DualConfig()) extends Bits {
-  setWidth(config.instructionBits)
+  setWidth(config.instructionSpec.numBits)
 
   def widthConvertedFrom(instruction: Instruction): Unit = {
     opCode := instruction.opCode
@@ -66,26 +66,32 @@ case class BitRange(msb: Int, lsb: Int) {
 }
 
 case class InstructionSpec(config: DualConfig) {
-  val opCodeRange = BitRange(1, 0)
-  val isExtendedRange = BitRange(2, 2)
-  val extendedOpCodeRange = BitRange(5, 3)
-  val lengthRange = BitRange(config.instructionBits - 1, 2)
-  val field1Range = BitRange(config.instructionBits - 1, config.instructionBits - config.vertexBits)
-  val field2Range = BitRange(config.instructionBits - config.vertexBits - 1, 2)
-  val extendedField2Range = BitRange(config.instructionBits - config.vertexBits - 1, 6)
-  val speedRange =
-    BitRange(config.instructionBits - config.vertexBits - 1, config.instructionBits - config.vertexBits - 2)
-  def setSpeedZeroRange = BitRange(config.instructionBits - config.vertexBits - 3, 2)
+  def numBits = 2 * config.vertexBits + 2
 
-  def generateMaskedValueFor(range: BitRange, value: Int): Int = {
+  def opCodeRange = BitRange(1, 0)
+  def isExtendedRange = BitRange(2, 2)
+  def extendedOpCodeRange = BitRange(5, 3)
+  def lengthRange = BitRange(numBits - 1, 2)
+  def field1Range = BitRange(numBits - 1, numBits - config.vertexBits)
+  def field2Range = BitRange(numBits - config.vertexBits - 1, 2)
+  def extendedField2Range = BitRange(numBits - config.vertexBits - 1, 6)
+  def speedRange =
+    BitRange(numBits - config.vertexBits - 1, numBits - config.vertexBits - 2)
+  def setSpeedZeroRange = BitRange(numBits - config.vertexBits - 3, 2)
+
+  def generateMaskedValueFor(range: BitRange, value: Long): Long = {
     assert(range.numBits > 0)
     assert(value >= 0)
     val maxValue = 1 << range.numBits
     assert(value < maxValue)
     value << range.lsb
   }
-  def generateSetSpeed(node: Int, speed: Int): Int = {
+  def generateSetSpeed(node: Long, speed: Long): Long = {
     generateMaskedValueFor(opCodeRange, OpCode.SetSpeed) |
       generateMaskedValueFor(field1Range, node) | generateMaskedValueFor(speedRange, speed)
+  }
+
+  def sanityCheck() = {
+    assert(config.weightBits + 2 <= numBits)
   }
 }

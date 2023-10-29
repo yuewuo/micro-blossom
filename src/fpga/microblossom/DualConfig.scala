@@ -16,7 +16,7 @@ case class DualConfig(
 ) {
   def vertexNum = graph.vertex_num.toInt
   def edgeNum = graph.weighted_edges.length.toInt
-  def instructionBits = 2 * vertexBits + 2
+  def instructionSpec = InstructionSpec(this)
   def contextBits = log2Up(contextDepth)
   private val incidentEdges = collection.mutable.Map[Int, Seq[Int]]()
 
@@ -101,7 +101,7 @@ case class DualConfig(
     assert(vertexBits > 0)
     assert(weightBits <= 30)
     assert(weightBits > 0)
-    assert(weightBits + 2 <= instructionBits)
     assert(contextDepth > 0)
+    instructionSpec.sanityCheck()
   }
 }

@@ -121,43 +121,85 @@ class VertexTest extends AnyFunSuite {
     Config.spinal.generateVerilog(Vertex(config, 0))
   }
 
-  test("no context switch") {
+  test("test pipeline registers") {
     // gtkwave simWorkspace/Vertex/testA.fst
     val config = DualConfig(filename = "./resources/graphs/example_repetition_code.json", minimizeBits = false)
     val instructionSpec = InstructionSpec(config)
     config.sanityCheck()
-    Config.sim.compile(Vertex(config, 0)).doSim("testA") { dut =>
-      dut.clockDomain.forkStimulus(period = 10)
+    Config.sim
+      .compile({
+        val dut = Vertex(config, 0)
+        dut.executeValid.simPublic()
+        dut.executeInstruction.simPublic()
+        dut.updateValid.simPublic()
+        dut.updateInstruction.simPublic()
+        dut.writeValid.simPublic()
+        dut.writeInstruction.simPublic()
+        dut
+      })
+      .doSim("testA") { dut =>
+        dut.clockDomain.forkStimulus(period = 10)
 
-      dut.io.valid #= false
-      for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
+        dut.io.valid #= false
+        dut.io.instruction #= 0
+        for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
-      dut.clockDomain.waitSampling()
-      dut.io.valid #= true
-      dut.io.instruction #= instructionSpec.generateSetSpeed(0, Speed.Grow)
-      // dut.io.instruction #= dut.io.instruction.generateSetSpeed(0, Speed.Grow)
-      //  InstructionIO.SetSpeed(0, Speed.Grow).toInt
-      // dut.io.instruction.opCode #= 0
-      // dut.io.instruction.setSpeed(0, Speed.Grow)
+        dut.clockDomain.waitSampling()
+        dut.io.valid #= true
+        val setSpeedInstruction = instructionSpec.generateSetSpeed(0, Speed.Grow)
+        dut.io.instruction #= setSpeedInstruction
 
-      // dut.io.instruction.raw #= InstructionIO.SetSpeed(0, Speed.Grow).toInt
+        dut.clockDomain.waitSampling()
+        dut.io.valid #= false
+        dut.io.instruction #= 0
+        sleep(1)
+        assert(dut.io.valid.toBoolean == false)
+        assert(dut.io.instruction.toLong == 0)
+        assert(dut.executeValid.toBoolean == true)
+        assert(dut.executeInstruction.toLong == setSpeedInstruction)
+        assert(dut.updateValid.toBoolean == false)
+        assert(dut.updateInstruction.toLong == 0)
+        assert(dut.writeValid.toBoolean == false)
+        assert(dut.writeInstruction.toLong == 0)
+        // assert(dut.executeInstruction.toLong == setSpeedInstruction)
+        // assert(dut.updateInstruction.toLong == 0)
+        // assert(dut.writeInstruction.toLong == 0)
 
-      dut.clockDomain.waitSampling()
-      dut.io.valid #= false
+        dut.clockDomain.waitSampling()
+        sleep(1)
+        assert(dut.io.valid.toBoolean == false)
+        assert(dut.io.instruction.toLong == 0)
+        assert(dut.executeValid.toBoolean == false)
+        assert(dut.executeInstruction.toLong == 0)
+        assert(dut.updateValid.toBoolean == true)
+        assert(dut.updateInstruction.toLong == setSpeedInstruction)
+        assert(dut.writeValid.toBoolean == false)
+        assert(dut.writeInstruction.toLong == 0)
 
-      // dut.clockDomain.waitSampling()
-      // dut.io.write #= false
-      // dut.io.readAddress #= 0x33
-      // sleep(1)
-      // assert(dut.io.readValue.toInt == 0x1234)
+        dut.clockDomain.waitSampling()
+        sleep(1)
+        assert(dut.io.valid.toBoolean == false)
+        assert(dut.io.instruction.toLong == 0)
+        assert(dut.executeValid.toBoolean == false)
+        assert(dut.executeInstruction.toLong == 0)
+        assert(dut.updateValid.toBoolean == false)
+        assert(dut.updateInstruction.toLong == 0)
+        assert(dut.writeValid.toBoolean == true)
+        assert(dut.writeInstruction.toLong == setSpeedInstruction)
 
-      // dut.clockDomain.waitSampling()
-      // dut.io.read #= false
-      // sleep(1)
-      // assert(dut.io.readValue.toInt == 0x5678)
+        dut.clockDomain.waitSampling()
+        sleep(1)
+        assert(dut.io.valid.toBoolean == false)
+        assert(dut.io.instruction.toLong == 0)
+        assert(dut.executeValid.toBoolean == false)
+        assert(dut.executeInstruction.toLong == 0)
+        assert(dut.updateValid.toBoolean == false)
+        assert(dut.updateInstruction.toLong == 0)
+        assert(dut.writeValid.toBoolean == false)
+        assert(dut.writeInstruction.toLong == 0)
 
-      for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
-    }
+        for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
+      }
   }
 
 }

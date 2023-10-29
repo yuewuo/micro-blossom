@@ -65,9 +65,6 @@ object OpCode {
 
 case class Speed() extends Bits {
   setWidth(2)
-  def isStay = this == B"2'00"
-  def isGrow = this == B"2'01"
-  def isShrink = this == B"2'10"
 }
 
 object Speed {
