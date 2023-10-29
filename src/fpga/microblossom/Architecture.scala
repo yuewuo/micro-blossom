@@ -54,26 +54,24 @@ import spinal.core._
 
 case class OpCode() extends Bits {
   setWidth(2)
-  // assert(getBitsWidth == 2)
 }
 
 object OpCode {
-  def SetSpeed = B"2'00"
-  def SetBlossom = B"2'01"
-  def Match = B"2'11"
-  def Grow = B"2'10"
+  def SetSpeed = Integer.parseInt("00", 2)
+  def SetBlossom = Integer.parseInt("01", 2)
+  def Match = Integer.parseInt("11", 2)
+  def Grow = Integer.parseInt("10", 2)
 }
 
 case class Speed() extends Bits {
   setWidth(2)
-  // assert(getBitsWidth == 2)
   def isStay = this == B"2'00"
   def isGrow = this == B"2'01"
   def isShrink = this == B"2'10"
 }
 
 object Speed {
-  def Stay = B"2'00"
-  def Grow = B"2'01"
-  def Shrink = B"2'10"
+  def Stay = Integer.parseInt("00", 2)
+  def Grow = Integer.parseInt("01", 2)
+  def Shrink = Integer.parseInt("10", 2)
 }

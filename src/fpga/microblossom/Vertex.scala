@@ -124,6 +124,7 @@ class VertexTest extends AnyFunSuite {
   test("no context switch") {
     // gtkwave simWorkspace/Vertex/testA.fst
     val config = DualConfig(filename = "./resources/graphs/example_repetition_code.json", minimizeBits = false)
+    val instructionSpec = InstructionSpec(config)
     config.sanityCheck()
     Config.sim.compile(Vertex(config, 0)).doSim("testA") { dut =>
       dut.clockDomain.forkStimulus(period = 10)
@@ -133,9 +134,10 @@ class VertexTest extends AnyFunSuite {
 
       dut.clockDomain.waitSampling()
       dut.io.valid #= true
-      // dut.io.instruction.raw #= InstructionIO.SetSpeed(0, Speed.Grow).toInt
+      dut.io.instruction #= instructionSpec.generateSetSpeed(0, Speed.Grow)
+      // dut.io.instruction #= dut.io.instruction.generateSetSpeed(0, Speed.Grow)
+      //  InstructionIO.SetSpeed(0, Speed.Grow).toInt
       // dut.io.instruction.opCode #= 0
-      dut.io.instruction #= 0
       // dut.io.instruction.setSpeed(0, Speed.Grow)
 
       // dut.io.instruction.raw #= InstructionIO.SetSpeed(0, Speed.Grow).toInt
