@@ -19,27 +19,33 @@ object InstructionIO extends Instruction(DualConfig()) {
 case class Instruction(config: DualConfig = DualConfig()) extends Bits {
   setWidth(config.instructionSpec.numBits)
 
-  def widthConvertedFrom(instruction: Instruction): Unit = {
+  def widthConvertedFrom(instruction: Instruction) = {
     opCode := instruction.opCode
-    when(instruction.opCode === OpCode.SetBlossom) {
-      field1 := instruction.field1.resized
-      field2 := instruction.field2.resized
-
-    } elsewhen (instruction.opCode === OpCode.Match) {
-      field1 := instruction.field1.resized
-      field2 := instruction.field2.resized
-    } elsewhen (instruction.opCode === OpCode.SetSpeed) {
-      field1 := instruction.field1.resized
-      when(instruction.isExtended === B"0") {
-        speed := instruction.speed
-        setSpeedZero.clearAll()
-      } otherwise {
-        extendedField2 := instruction.extendedField2.resized
-        extendedOpCode := instruction.extendedOpCode
-        isExtended := instruction.isExtended
+    switch(instruction.opCode.asUInt) {
+      is(OpCode.SetBlossom) {
+        field1 := instruction.field1.resized // node
+        field2 := instruction.field2.resized // blossom
       }
-    } otherwise {
-      length := instruction.length.resized
+      is(OpCode.Match) {
+        field1 := instruction.field1.resized // vertex_1
+        field2 := instruction.field2.resized // vertex_2
+      }
+      is(OpCode.SetSpeed) {
+        when(instruction.isExtended === B"0") {
+          field1 := instruction.field1.resized
+          speed := instruction.speed
+          setSpeedZero.clearAll()
+        } otherwise {
+          field1 := instruction.field1.resized
+          extendedField2 := instruction.extendedField2.resized
+          extendedOpCode := instruction.extendedOpCode
+          isExtended := instruction.isExtended
+        }
+      }
+      is(OpCode.Grow) {
+        length := instruction.length.resized
+        if (config.weightBits < 2 * config.vertexBits) { growZero.clearAll() }
+      }
     }
   }
 
@@ -48,8 +54,11 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
   def isExtended = sliceOf(spec.isExtendedRange)
   def extendedOpCode = sliceOf(spec.extendedOpCodeRange)
   def length = sliceOf(spec.lengthRange)
+  def growZero = if (config.weightBits < 2 * config.vertexBits) sliceOf(spec.growZeroRange) else null
+  def payload = sliceOf(spec.payloadRange)
   def field1 = sliceOf(spec.field1Range)
   def field2 = sliceOf(spec.field2Range)
+  def extendedPayload = sliceOf(spec.extendedPayloadRange)
   def extendedField2 = sliceOf(spec.extendedField2Range)
   def speed = sliceOf(spec.speedRange)
   def setSpeedZero = sliceOf(spec.setSpeedZeroRange)
@@ -59,7 +68,8 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
   }
 
   def isSetSpeed(): Bool = (opCode === OpCode.SetSpeed) && (this(2) === False)
-
+  def isSetBlossom(): Bool = (opCode === OpCode.SetBlossom)
+  def isGrow(): Bool = (opCode === OpCode.Grow)
 }
 
 case class BitRange(msb: Int, lsb: Int) {
@@ -73,9 +83,12 @@ case class InstructionSpec(config: DualConfig) {
   def opCodeRange = BitRange(1, 0)
   def isExtendedRange = BitRange(2, 2)
   def extendedOpCodeRange = BitRange(5, 3)
-  def lengthRange = BitRange(numBits - 1, 2)
+  def lengthRange = BitRange(config.weightBits + 1, 2)
+  def growZeroRange = BitRange(numBits - 1, config.weightBits + 2)
+  def payloadRange = BitRange(numBits - 1, 2)
   def field1Range = BitRange(numBits - 1, numBits - config.vertexBits)
   def field2Range = BitRange(numBits - config.vertexBits - 1, 2)
+  def extendedPayloadRange = BitRange(numBits, 6)
   def extendedField2Range = BitRange(numBits - config.vertexBits - 1, 6)
   def speedRange =
     BitRange(numBits - config.vertexBits - 1, numBits - config.vertexBits - 2)

@@ -16,7 +16,7 @@ case class VertexPersistent(config: DualConfig) extends Bundle {
 
 case class VertexOutput(config: DualConfig) extends Bundle {
   // fetch stage
-  val speed = Bits(2 bits)
+
   // execute stage
 
   // update stage
@@ -48,6 +48,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
 
   val executeValid = Bool
   val executeState = VertexPersistent(config)
+  val executeResult = VertexPersistent(config)
   val executeInstruction = Instruction(config)
   val executeContextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 
@@ -80,17 +81,25 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   pipelineIndex += 1;
 
   // execute stage
+  executeResult := executeState
   when(executeValid) {
     when(executeInstruction.isSetSpeed) {
       when(executeState.node === executeInstruction.field1) {
-        executeState.speed := executeInstruction.speed
+        executeResult.speed := executeInstruction.speed
       }
     }
+    when(executeInstruction.isSetBlossom) {
+      when(executeState.node === executeInstruction.field1 || executeState.root === executeInstruction.field1) {
+        executeResult.node := executeInstruction.field2
+        executeResult.speed := Speed.Grow
+      }
+    }
+    when(executeInstruction.isGrow) {}
   }
 
   updateValid := RegNext(executeValid) init False
   updateInstruction.assignFromBits(RegNext(executeInstruction.asBits))
-  updateState := RegNext(executeState)
+  updateState := RegNext(executeResult)
   if (config.contextBits > 0) updateContextId := RegNext(executeContextId)
   pipelineIndex += 1;
 

@@ -484,6 +484,8 @@ pub struct Edge {
     pub right_index: VertexIndex,
     pub left_growth: Weight,
     pub right_growth: Weight,
+    /// information that is passed to neighboring vertex
+    // pub 
 }
 
 impl Edge {
