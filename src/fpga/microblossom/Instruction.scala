@@ -72,6 +72,7 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
   def isSetBlossom(): Bool = (opCode === OpCode.SetBlossom)
   def isGrow(): Bool = (opCode === OpCode.Grow)
   def isAddDefect(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.AddDefectVertex)
+  def isFindObstacle(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.FindObstacle)
 }
 
 case class BitRange(msb: Int, lsb: Int) {

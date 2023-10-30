@@ -16,10 +16,8 @@ case class VertexPersistent(config: DualConfig) extends Bundle {
 }
 
 case class VertexOutput(config: DualConfig) extends Bundle {
-  // fetch stage
-
   // execute stage
-
+  val executeGrown = Bits(config.weightBits bits)
   // update stage
 
   // write stage
@@ -37,8 +35,8 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
     val valid = in Bool ()
     val instruction = in(Instruction(config))
     val contextId = (config.contextBits > 0) generate (in UInt (config.contextBits bits))
-    // val vertexOutputs = out(Vec.fill(config.numIncidentEdgeOf(vertexIndex))(VertexOutput(config)))
-    // val edgeInputs = in(Vec.fill(config.numIncidentEdgeOf(vertexIndex))(EdgeOutput(config)))
+    val vertexOutputs = out(Vec.fill(config.numIncidentEdgeOf(vertexIndex))(VertexOutput(config)))
+    val edgeInputs = in(Vec.fill(config.numIncidentEdgeOf(vertexIndex))(EdgeOutput(config)))
   }
 
   private var pipelineIndex = 0;
@@ -63,7 +61,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   val writeInstruction = Instruction(config)
   val writeContextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 
-  // fetch stage (optional)
+  // fetch stage
   var ram: Mem[VertexPersistent] = null
   var register = Reg(VertexPersistent(config))
   if (config.contextBits > 0) {
@@ -121,6 +119,10 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
       }
     }
   }
+  for (edgeIndex <- config.incidentEdgesOf(vertexIndex)) {
+    val localIndexOfEdge = config.localIndexOfEdge(vertexIndex, edgeIndex)
+    io.vertexOutputs(localIndexOfEdge).executeGrown := executeResult.grown
+  }
 
   updateValid := RegNext(executeValid) init False
   updateInstruction.assignFromBits(RegNext(executeInstruction.asBits))
@@ -150,10 +152,6 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
     }
   }
   pipelineIndex += 1;
-
-  // also generate response in write stage
-
-  // there are 4 stages: fetch, execute, update, write
 
   def pipelineStages = pipelineIndex
 }

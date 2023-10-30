@@ -80,6 +80,9 @@ case class DualConfig(
   def incidentEdgesOf(vertexIndex: Int): Seq[Int] = {
     return incidentEdges(vertexIndex)
   }
+  def incidentVerticesOf(edgeIndex: Int): Seq[Int] = {
+    return Seq(graph.weighted_edges(edgeIndex).l.toInt, graph.weighted_edges(edgeIndex).r.toInt)
+  }
   def localIndexOfEdge(vertexIndex: Int, edgeIndex: Int): Int = {
     for ((localEdgeIndex, localIndex) <- incidentEdges(vertexIndex).zipWithIndex) {
       if (localEdgeIndex == edgeIndex) {

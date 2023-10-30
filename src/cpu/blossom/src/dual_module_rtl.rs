@@ -380,6 +380,13 @@ impl Vertex {
             DualNodeGrowState::Grow => 1,
         }
     }
+
+    pub fn get_updated_grown(&self, instruction: &Instruction) -> Weight {
+        match instruction {
+            Instruction::Grow { length } => self.grown + self.get_speed() * length,
+            _ => self.grown,
+        }
+    }
 }
 
 impl DualPipelined for Vertex {
@@ -396,8 +403,8 @@ impl DualPipelined for Vertex {
                     self.speed = DualNodeGrowState::Grow;
                 }
             }
-            Instruction::Grow { length } => {
-                self.grown += self.get_speed() * length;
+            Instruction::Grow { .. } => {
+                self.grown = self.get_updated_grown(instruction);
                 assert!(self.grown >= 0);
             }
             Instruction::AddDefectVertex { vertex, node } => {
@@ -416,7 +423,7 @@ impl DualPipelined for Vertex {
         match instruction {
             Instruction::Grow { .. } | Instruction::SetSpeed { .. } | Instruction::SetBlossom { .. } => {
                 // is there any growing peer trying to propagate to this node?
-                let propagating_peer: Option<&Vertex> = {
+                let propagating_peer: Option<&Vertex> = if self.grown == 0 {
                     // find a peer node with positive growth and fully-grown edge
                     self.edge_indices
                         .iter()
@@ -424,7 +431,7 @@ impl DualPipelined for Vertex {
                             let edge = &dual_module.edges[edge_index];
                             let peer_index = edge.get_peer(self.vertex_index);
                             let peer = &dual_module.vertices[peer_index];
-                            if edge.is_tight_from(dual_module, peer_index) && peer.speed == DualNodeGrowState::Grow {
+                            if edge.is_tight && peer.speed == DualNodeGrowState::Grow {
                                 Some(peer)
                             } else {
                                 None
@@ -432,6 +439,8 @@ impl DualPipelined for Vertex {
                         })
                         .reduce(|a, b| a.or(b))
                         .unwrap()
+                } else {
+                    None
                 };
                 // is this node contributing to at least one
                 if !self.is_defect && !self.is_virtual && self.grown == 0 {
@@ -487,7 +496,7 @@ pub struct Edge {
     pub weight: Weight,
     pub left_index: VertexIndex,
     pub right_index: VertexIndex,
-    /// information that is passed to neighboring vertex
+    /// information passing to neighboring vertex
     pub is_tight: bool,
 }
 
@@ -501,34 +510,19 @@ impl Edge {
             panic!("vertex is not incident to the edge, cannot get peer")
         }
     }
-
-    pub fn is_tight_from(&self, dual_module: &DualModuleRTL, vertex: VertexIndex) -> bool {
-        if vertex == self.left_index {
-            let left_vertex = &dual_module.vertices[self.left_index];
-            left_vertex.grown >= self.weight
-        } else if vertex == self.right_index {
-            let right_vertex = &dual_module.vertices[self.right_index];
-            right_vertex.grown >= self.weight
-        } else {
-            panic!("invalid input: vertex is not incident to the edge")
-        }
-    }
 }
 
 impl DualPipelined for Edge {
     // compute the next register values
     #[allow(clippy::single_match)]
-    fn execute_stage(&mut self, dual_module: &DualModuleRTL, _instruction: &Instruction) {
+    fn execute_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {
         let left_vertex = &dual_module.vertices[self.left_index];
         let right_vertex = &dual_module.vertices[self.right_index];
-        self.is_tight = left_vertex.grown + right_vertex.grown >= self.weight;
+        self.is_tight =
+            left_vertex.get_updated_grown(instruction) + right_vertex.get_updated_grown(instruction) >= self.weight;
     }
 
-    fn update_stage(&mut self, dual_module: &DualModuleRTL, _instruction: &Instruction) {
-        let left_vertex = &dual_module.vertices[self.left_index];
-        let right_vertex = &dual_module.vertices[self.right_index];
-        self.is_tight = left_vertex.grown + right_vertex.grown >= self.weight;
-    }
+    fn update_stage(&mut self, _dual_module: &DualModuleRTL, _instruction: &Instruction) {}
 
     // generate a response
     #[allow(clippy::comparison_chain)]
