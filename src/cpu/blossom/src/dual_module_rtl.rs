@@ -139,8 +139,7 @@ impl DualModuleImpl for DualModuleRTL {
                 weight,
                 left_index: i,
                 right_index: j,
-                left_growth: 0,
-                right_growth: 0,
+                is_tight: false,
             });
             for vertex_index in [i, j] {
                 self.vertices[vertex_index].edge_indices.push(edge_index);
@@ -384,7 +383,7 @@ impl Vertex {
 }
 
 impl DualPipelined for Vertex {
-    fn execute_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {
+    fn execute_stage(&mut self, _dual_module: &DualModuleRTL, instruction: &Instruction) {
         match instruction {
             Instruction::AddDefectVertex { vertex, node } => {
                 if *vertex == self.vertex_index {
@@ -409,6 +408,44 @@ impl DualPipelined for Vertex {
                     self.speed = DualNodeGrowState::Grow;
                 }
             }
+            _ => {}
+        }
+    }
+
+    fn update_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {
+        match instruction {
+            Instruction::Grow { .. } | Instruction::SetSpeed { .. } | Instruction::SetBlossom { .. } => {
+                // is there any growing peer trying to propagate to this node?
+                let propagating_peer: Option<&Vertex> = {
+                    // find a peer node with positive growth and fully-grown edge
+                    self.edge_indices
+                        .iter()
+                        .map(|&edge_index| {
+                            let edge = &dual_module.edges[edge_index];
+                            let peer_index = edge.get_peer(self.vertex_index);
+                            let peer = &dual_module.vertices[peer_index];
+                            if edge.is_tight_from(dual_module, peer_index) && peer.speed == DualNodeGrowState::Grow {
+                                Some(peer)
+                            } else {
+                                None
+                            }
+                        })
+                        .reduce(|a, b| a.or(b))
+                        .unwrap()
+                };
+                // is this node contributing to at least one
+                if !self.is_defect && !self.is_virtual && self.grown == 0 {
+                    if let Some(peer) = propagating_peer {
+                        self.node_index = peer.node_index;
+                        self.root_index = peer.root_index;
+                        self.speed = peer.speed;
+                    } else {
+                        self.node_index = None;
+                        self.root_index = None;
+                        self.speed = DualNodeGrowState::Stay;
+                    }
+                }
+            }
             Instruction::FindObstacle { .. } => {
                 self.shadow_node_index = self.node_index;
                 self.shadow_root_index = self.root_index;
@@ -421,7 +458,7 @@ impl DualPipelined for Vertex {
                     let edge = &dual_module.edges[**edge_index];
                     let peer_index = edge.get_peer(self.vertex_index);
                     let peer = &dual_module.vertices[peer_index];
-                    peer.get_speed() > 0 && edge.left_growth + edge.right_growth == edge.weight
+                    peer.get_speed() > 0 && edge.is_tight
                 });
                 if growing_edge_index.is_none() {
                     return; // in reality this won't happen
@@ -434,39 +471,7 @@ impl DualPipelined for Vertex {
                 self.shadow_root_index = peer_vertex.root_index;
                 self.shadow_speed = DualNodeGrowState::Grow;
             }
-        }
-    }
-
-    fn update_stage(&mut self, dual_module: &DualModuleRTL, _instruction: &Instruction) {
-        // is there any growing peer trying to propagate to this node?
-        let propagating_peer: Option<&Vertex> = {
-            // find a peer node with positive growth and fully-grown edge
-            self.edge_indices
-                .iter()
-                .map(|&edge_index| {
-                    let edge = &dual_module.edges[edge_index];
-                    let peer_index = edge.get_peer(self.vertex_index);
-                    let peer = &dual_module.vertices[peer_index];
-                    if edge.is_tight_from(peer_index) && peer.speed == DualNodeGrowState::Grow {
-                        Some(peer)
-                    } else {
-                        None
-                    }
-                })
-                .reduce(|a, b| a.or(b))
-                .unwrap()
-        };
-        // is this node contributing to at least one
-        if !self.is_defect && !self.is_virtual && self.grown == 0 {
-            if let Some(peer) = propagating_peer {
-                self.node_index = peer.node_index;
-                self.root_index = peer.root_index;
-                self.speed = peer.speed;
-            } else {
-                self.node_index = None;
-                self.root_index = None;
-                self.speed = DualNodeGrowState::Stay;
-            }
+            _ => {}
         }
     }
 
@@ -482,17 +487,11 @@ pub struct Edge {
     pub weight: Weight,
     pub left_index: VertexIndex,
     pub right_index: VertexIndex,
-    pub left_growth: Weight,
-    pub right_growth: Weight,
     /// information that is passed to neighboring vertex
-    // pub 
+    pub is_tight: bool,
 }
 
 impl Edge {
-    pub fn is_tight(&self) -> bool {
-        self.left_growth + self.right_growth >= self.weight
-    }
-
     pub fn get_peer(&self, vertex: VertexIndex) -> VertexIndex {
         if vertex == self.left_index {
             self.right_index
@@ -503,11 +502,13 @@ impl Edge {
         }
     }
 
-    pub fn is_tight_from(&self, vertex: VertexIndex) -> bool {
+    pub fn is_tight_from(&self, dual_module: &DualModuleRTL, vertex: VertexIndex) -> bool {
         if vertex == self.left_index {
-            self.left_growth == self.weight
+            let left_vertex = &dual_module.vertices[self.left_index];
+            left_vertex.grown >= self.weight
         } else if vertex == self.right_index {
-            self.right_growth == self.weight
+            let right_vertex = &dual_module.vertices[self.right_index];
+            right_vertex.grown >= self.weight
         } else {
             panic!("invalid input: vertex is not incident to the edge")
         }
@@ -517,24 +518,17 @@ impl Edge {
 impl DualPipelined for Edge {
     // compute the next register values
     #[allow(clippy::single_match)]
-    fn execute_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {
-        match instruction {
-            Instruction::Grow { length } => {
-                let left_vertex = &dual_module.vertices[self.left_index];
-                let right_vertex = &dual_module.vertices[self.right_index];
-                if left_vertex.node_index != right_vertex.node_index {
-                    self.left_growth += left_vertex.get_speed() * length;
-                    self.right_growth += right_vertex.get_speed() * length;
-                    assert!(self.left_growth >= 0);
-                    assert!(self.right_growth >= 0);
-                    assert!(self.left_growth + self.right_growth <= self.weight);
-                }
-            }
-            _ => {}
-        }
+    fn execute_stage(&mut self, dual_module: &DualModuleRTL, _instruction: &Instruction) {
+        let left_vertex = &dual_module.vertices[self.left_index];
+        let right_vertex = &dual_module.vertices[self.right_index];
+        self.is_tight = left_vertex.grown + right_vertex.grown >= self.weight;
     }
 
-    fn update_stage(&mut self, _dual_module: &DualModuleRTL, _instruction: &Instruction) {}
+    fn update_stage(&mut self, dual_module: &DualModuleRTL, _instruction: &Instruction) {
+        let left_vertex = &dual_module.vertices[self.left_index];
+        let right_vertex = &dual_module.vertices[self.right_index];
+        self.is_tight = left_vertex.grown + right_vertex.grown >= self.weight;
+    }
 
     // generate a response
     #[allow(clippy::comparison_chain)]
@@ -551,20 +545,20 @@ impl DualPipelined for Edge {
         let left_speed = left_vertex.get_shadow_speed();
         if left_speed < 0 {
             // normally self.left_growth > 0, unless the defect vertex has yS=0, which suggests two conflicting nodes
-            max_growth = std::cmp::min(max_growth, self.left_growth);
+            max_growth = std::cmp::min(max_growth, left_vertex.grown);
         } else if left_speed > 0 {
-            max_growth = std::cmp::min(max_growth, self.weight - self.left_growth);
+            max_growth = std::cmp::min(max_growth, self.weight - left_vertex.grown);
         }
         let right_speed = right_vertex.get_shadow_speed();
         if right_speed < 0 {
             // normally self.left_growth > 0, unless the defect vertex has yS=0, which suggests two conflicting nodes
-            max_growth = std::cmp::min(max_growth, self.right_growth);
+            max_growth = std::cmp::min(max_growth, right_vertex.grown);
         } else if right_speed > 0 {
-            max_growth = std::cmp::min(max_growth, self.weight - self.right_growth);
+            max_growth = std::cmp::min(max_growth, self.weight - right_vertex.grown);
         }
         let joint_speed = left_speed + right_speed;
         if joint_speed > 0 {
-            let remaining = self.weight - self.left_growth - self.right_growth;
+            let remaining = self.weight - left_vertex.grown - right_vertex.grown;
             if remaining == 0 {
                 return Some(Response::Conflict {
                     node_1: left_vertex.shadow_node_index.unwrap(),
@@ -612,12 +606,14 @@ impl FusionVisualizer for DualModuleRTL {
             .edges
             .iter()
             .map(|edge| {
+                let left_vertex = &self.vertices[edge.left_index];
+                let right_vertex = &self.vertices[edge.right_index];
                 let mut value = json!({
                     if abbrev { "w" } else { "weight" }: edge.weight,
                     if abbrev { "l" } else { "left" }: edge.left_index,
                     if abbrev { "r" } else { "right" }: edge.right_index,
-                    if abbrev { "lg" } else { "left_growth" }: edge.left_growth,
-                    if abbrev { "rg" } else { "right_growth" }: edge.right_growth,
+                    if abbrev { "lg" } else { "left_growth" }: left_vertex.grown,
+                    if abbrev { "rg" } else { "right_growth" }: right_vertex.grown,
                 });
                 let left_vertex = &self.vertices[edge.left_index];
                 let right_vertex = &self.vertices[edge.right_index];
