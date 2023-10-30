@@ -385,27 +385,27 @@ impl Vertex {
 impl DualPipelined for Vertex {
     fn execute_stage(&mut self, _dual_module: &DualModuleRTL, instruction: &Instruction) {
         match instruction {
-            Instruction::AddDefectVertex { vertex, node } => {
-                if *vertex == self.vertex_index {
-                    self.is_defect = true;
-                    self.speed = DualNodeGrowState::Grow;
-                    self.root_index = Some(*node);
-                    self.node_index = Some(*node);
-                }
-            }
             Instruction::SetSpeed { node, speed } => {
                 if Some(*node) == self.node_index {
                     self.speed = *speed;
+                }
+            }
+            Instruction::SetBlossom { node, blossom } => {
+                if Some(*node) == self.node_index || Some(*node) == self.root_index {
+                    self.node_index = Some(*blossom);
+                    self.speed = DualNodeGrowState::Grow;
                 }
             }
             Instruction::Grow { length } => {
                 self.grown += self.get_speed() * length;
                 assert!(self.grown >= 0);
             }
-            Instruction::SetBlossom { node, blossom } => {
-                if Some(*node) == self.node_index || Some(*node) == self.root_index {
-                    self.node_index = Some(*blossom);
+            Instruction::AddDefectVertex { vertex, node } => {
+                if *vertex == self.vertex_index {
+                    self.is_defect = true;
                     self.speed = DualNodeGrowState::Grow;
+                    self.root_index = Some(*node);
+                    self.node_index = Some(*node);
                 }
             }
             _ => {}

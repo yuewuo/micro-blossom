@@ -31,7 +31,7 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
         field2 := instruction.field2.resized // vertex_2
       }
       is(OpCode.SetSpeed) {
-        when(instruction.isExtended === B"0") {
+        when(instruction.extensionIndicator === B"0") {
           field1 := instruction.field1.resized
           speed := instruction.speed
           setSpeedZero.clearAll()
@@ -39,7 +39,7 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
           field1 := instruction.field1.resized
           extendedField2 := instruction.extendedField2.resized
           extendedOpCode := instruction.extendedOpCode
-          isExtended := instruction.isExtended
+          extensionIndicator := instruction.extensionIndicator
         }
       }
       is(OpCode.Grow) {
@@ -51,7 +51,7 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
 
   val spec = InstructionSpec(config)
   def opCode = sliceOf(spec.opCodeRange)
-  def isExtended = sliceOf(spec.isExtendedRange)
+  def extensionIndicator = sliceOf(spec.extensionIndicatorRange)
   def extendedOpCode = sliceOf(spec.extendedOpCodeRange)
   def length = sliceOf(spec.lengthRange)
   def growZero = if (config.weightBits < 2 * config.vertexBits) sliceOf(spec.growZeroRange) else null
@@ -67,9 +67,11 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
     this(range.msb downto range.lsb)
   }
 
-  def isSetSpeed(): Bool = (opCode === OpCode.SetSpeed) && (this(2) === False)
+  def isSetSpeed(): Bool = (opCode === OpCode.SetSpeed) && (extensionIndicator.asBool === False)
+  def isExtended(): Bool = (opCode === OpCode.SetSpeed) && (extensionIndicator.asBool === True)
   def isSetBlossom(): Bool = (opCode === OpCode.SetBlossom)
   def isGrow(): Bool = (opCode === OpCode.Grow)
+  def isAddDefect(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.AddDefectVertex)
 }
 
 case class BitRange(msb: Int, lsb: Int) {
@@ -81,7 +83,7 @@ case class InstructionSpec(config: DualConfig) {
   def numBits = 2 * config.vertexBits + 2
 
   def opCodeRange = BitRange(1, 0)
-  def isExtendedRange = BitRange(2, 2)
+  def extensionIndicatorRange = BitRange(2, 2)
   def extendedOpCodeRange = BitRange(5, 3)
   def lengthRange = BitRange(config.weightBits + 1, 2)
   def growZeroRange = BitRange(numBits - 1, config.weightBits + 2)
@@ -109,4 +111,6 @@ case class InstructionSpec(config: DualConfig) {
   def sanityCheck() = {
     assert(config.weightBits + 2 <= numBits)
   }
+
+  def IndexNone = (1 << config.vertexBits) - 1
 }

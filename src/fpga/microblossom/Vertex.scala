@@ -12,6 +12,7 @@ case class VertexPersistent(config: DualConfig) extends Bundle {
   val root = Bits(config.vertexBits bits)
   val isVirtual = Bool()
   val isDefect = Bool()
+  val grown = Bits(config.weightBits bits)
 }
 
 case class VertexOutput(config: DualConfig) extends Bundle {
@@ -94,7 +95,31 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
         executeResult.speed := Speed.Grow
       }
     }
-    when(executeInstruction.isGrow) {}
+    when(executeInstruction.isGrow) {
+      switch(executeState.speed.asUInt) {
+        is(Speed.Grow) {
+          executeResult.grown := (executeState.grown.asUInt + executeInstruction.length.asUInt).asBits
+        }
+        is(Speed.Shrink) {
+          executeResult.grown := (executeState.grown.asUInt - executeInstruction.length.asUInt).asBits
+        }
+      }
+    }
+    if (config.supportAddDefectVertex) {
+      when(executeInstruction.isAddDefect) {
+        when(executeInstruction.field1 === vertexIndex) {
+          executeResult.isDefect := True
+          executeResult.speed := Speed.Grow
+          assert(
+            assertion = executeState.node =/= config.instructionSpec.IndexNone,
+            message = "Cannot set a vertex to defect when it's already occupied",
+            severity = ERROR
+          )
+          executeResult.node := executeInstruction.extendedField2.resized
+          executeResult.root := executeInstruction.extendedField2.resized
+        }
+      }
+    }
   }
 
   updateValid := RegNext(executeValid) init False

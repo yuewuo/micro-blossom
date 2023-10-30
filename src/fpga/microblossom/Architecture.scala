@@ -63,6 +63,21 @@ object OpCode {
   def Grow = Integer.parseInt("10", 2)
 }
 
+case class ExtendedOpCode() extends Bits {
+  setWidth(3)
+}
+
+object ExtendedOpCode {
+  def FindObstacle = Integer.parseInt("000", 2)
+  def ClearAccumulator = Integer.parseInt("001", 2)
+  def AccumulateEdge = Integer.parseInt("010", 2)
+  def Reserved = Integer.parseInt("011", 2)
+  def Reset = Integer.parseInt("100", 2)
+  def LoadSyndromeExternal = Integer.parseInt("101", 2)
+  def AddDefectVertex = Integer.parseInt("0110", 2)
+  def Reserved2 = Integer.parseInt("111", 2)
+}
+
 case class Speed() extends Bits {
   setWidth(2)
 }

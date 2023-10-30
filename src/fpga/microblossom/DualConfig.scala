@@ -7,10 +7,13 @@ import io.circe.parser.decode
 case class DualConfig(
     var vertexBits: Int = 15,
     var weightBits: Int = 30,
-    var graph: SingleGraph = null,
     var broadcastDelay: Int = 1,
     var convergecastDelay: Int = 1,
     var contextDepth: Int = 1, // how many different contexts are supported
+    // optional features
+    val supportAddDefectVertex: Boolean = true,
+    // load graph either from parameter or from file
+    var graph: SingleGraph = null,
     val filename: String = null,
     val minimizeBits: Boolean = true
 ) {
