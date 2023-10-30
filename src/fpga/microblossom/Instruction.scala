@@ -73,6 +73,7 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
   def isGrow(): Bool = (opCode === OpCode.Grow)
   def isAddDefect(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.AddDefectVertex)
   def isFindObstacle(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.FindObstacle)
+  def isReset(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.Reset)
 }
 
 case class BitRange(msb: Int, lsb: Int) {
@@ -108,10 +109,16 @@ case class InstructionSpec(config: DualConfig) {
     generateMaskedValueFor(opCodeRange, OpCode.SetSpeed) |
       generateMaskedValueFor(field1Range, node) | generateMaskedValueFor(speedRange, speed)
   }
+  def generateExtendedSuffix(extendedOpCode: Long): Long = {
+    generateMaskedValueFor(opCodeRange, OpCode.SetSpeed) |
+      generateMaskedValueFor(extensionIndicatorRange, 1) |
+      generateMaskedValueFor(extendedOpCodeRange, extendedOpCode)
+  }
+  def generateReset(): Long = {
+    generateExtendedSuffix(ExtendedOpCode.Reset)
+  }
 
   def sanityCheck() = {
     assert(config.weightBits + 2 <= numBits)
   }
-
-  def IndexNone = (1 << config.vertexBits) - 1
 }

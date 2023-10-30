@@ -1,6 +1,7 @@
 package microblossom
 
 import spinal.core._
+import spinal.lib._
 import microblossom._
 import spinal.core.sim._
 import org.scalatest.funsuite.AnyFunSuite
@@ -10,23 +11,39 @@ case class VertexPersistent(config: DualConfig) extends Bundle {
   val speed = Speed()
   val node = Bits(config.vertexBits bits)
   val root = Bits(config.vertexBits bits)
-  val isVirtual = Bool()
-  val isDefect = Bool()
+  val isVirtual = Bool
+  val isDefect = Bool
   val grown = Bits(config.weightBits bits)
+
+}
+
+object VertexPersistent {
+  def resetValue(config: DualConfig): VertexPersistent = {
+    val reset = VertexPersistent(config)
+    reset.speed := Speed.Stay
+    reset.node := config.IndexNone
+    reset.root := config.IndexNone
+    reset.isVirtual := False
+    reset.isDefect := False
+    reset.grown := 0
+    reset
+  }
 }
 
 case class VertexOutput(config: DualConfig) extends Bundle {
   // execute stage
   val executeGrown = Bits(config.weightBits bits)
   // update stage
-
+  val updateNode = Bits(config.vertexBits bits)
+  val updateRoot = Bits(config.vertexBits bits)
+  val updateSpeed = Speed()
   // write stage
 }
 
-case class Vertex2() extends Component {
-  val io = new Bundle {
-    val opcode = out(Bits(2 bits))
-  }
+case class VertexPropagator(config: DualConfig) extends Bundle {
+  val valid = Bool
+  val node = Bits(config.vertexBits bits)
+  val root = Bits(config.vertexBits bits)
 }
 
 case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
@@ -53,6 +70,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
 
   val updateValid = Bool
   val updateState = VertexPersistent(config)
+  val updateResult = VertexPersistent(config)
   val updateInstruction = Instruction(config)
   val updateContextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 
@@ -109,7 +127,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
           executeResult.isDefect := True
           executeResult.speed := Speed.Grow
           assert(
-            assertion = executeState.node =/= config.instructionSpec.IndexNone,
+            assertion = executeState.node =/= config.IndexNone,
             message = "Cannot set a vertex to defect when it's already occupied",
             severity = ERROR
           )
@@ -131,10 +149,42 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   pipelineIndex += 1;
 
   // update stage
+  updateResult := updateState
+  when(executeValid) {
+    when(executeInstruction.isGrow || executeInstruction.isSetSpeed || executeInstruction.isSetBlossom()) {
+      val propagators = Vec.fill(config.incidentEdgesOf(vertexIndex).length)(VertexPropagator(config))
+      for (edgeIndex <- config.incidentEdgesOf(vertexIndex)) {
+        val localIndexOfEdge = config.localIndexOfEdge(vertexIndex, edgeIndex)
+        propagators(localIndexOfEdge).node := io.edgeInputs(localIndexOfEdge).updatePeerNode
+        propagators(localIndexOfEdge).root := io.edgeInputs(localIndexOfEdge).updatePeerRoot
+        propagators(localIndexOfEdge).valid := (
+          io.edgeInputs(localIndexOfEdge).updatePeerSpeed === Speed.Grow
+        ) && (io.edgeInputs(localIndexOfEdge).updateIsTight)
+      }
+      val selectedPropagator = propagators.reduceBalancedTree((l, r) => Mux(l.valid, l, r))
+      when(!updateState.isDefect && !updateState.isVirtual && updateState.grown === 0) {
+        when(selectedPropagator.valid) {
+          updateResult.node := selectedPropagator.node
+          updateResult.root := selectedPropagator.root
+          updateResult.speed := Speed.Grow
+        } otherwise {
+          updateResult.node := config.IndexNone
+          updateResult.root := config.IndexNone
+          updateResult.speed := Speed.Stay
+        }
+      }
+    }
+  }
+  for (edgeIndex <- config.incidentEdgesOf(vertexIndex)) {
+    val localIndexOfEdge = config.localIndexOfEdge(vertexIndex, edgeIndex)
+    io.vertexOutputs(localIndexOfEdge).updateNode := updateState.node
+    io.vertexOutputs(localIndexOfEdge).updateRoot := updateState.root
+    io.vertexOutputs(localIndexOfEdge).updateSpeed := updateState.speed
+  }
 
   writeValid := RegNext(updateValid) init False
   writeInstruction.assignFromBits(RegNext(updateInstruction.asBits))
-  writeState := RegNext(updateState)
+  writeState := Mux(updateInstruction.isReset, VertexPersistent.resetValue(config), RegNext(updateResult))
   if (config.contextBits > 0) writeContextId := RegNext(updateContextId)
   pipelineIndex += 1;
 

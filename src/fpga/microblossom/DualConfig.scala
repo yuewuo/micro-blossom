@@ -21,6 +21,7 @@ case class DualConfig(
   def edgeNum = graph.weighted_edges.length.toInt
   def instructionSpec = InstructionSpec(this)
   def contextBits = log2Up(contextDepth)
+  def IndexNone = (1 << vertexBits) - 1
   private val incidentEdges = collection.mutable.Map[Int, Seq[Int]]()
 
   if (filename != null) {
@@ -48,7 +49,7 @@ case class DualConfig(
       vertexBits = Util.bitsToHold(max_node_num)
       val max_weight = graph.weighted_edges.map(e => e.w).max
       assert(max_weight > 0)
-      weightBits = Util.bitsToHold(max_weight.toInt)
+      weightBits = Util.bitsToHold(max_weight.toInt * graph.weighted_edges.length)
       assert(weightBits <= 30)
       if (vertexBits * 2 < weightBits) {
         vertexBits = (weightBits + 1) / 2 // expand vertexBits so that the instruction can hold the maximum length
@@ -82,6 +83,12 @@ case class DualConfig(
   }
   def incidentVerticesOf(edgeIndex: Int): Seq[Int] = {
     return Seq(graph.weighted_edges(edgeIndex).l.toInt, graph.weighted_edges(edgeIndex).r.toInt)
+  }
+  def incidentVerticesPairsOf(edgeIndex: Int): Seq[Seq[Int]] = {
+    return Seq(
+      Seq(graph.weighted_edges(edgeIndex).l.toInt, graph.weighted_edges(edgeIndex).r.toInt),
+      Seq(graph.weighted_edges(edgeIndex).r.toInt, graph.weighted_edges(edgeIndex).l.toInt)
+    )
   }
   def localIndexOfEdge(vertexIndex: Int, edgeIndex: Int): Int = {
     for ((localEdgeIndex, localIndex) <- incidentEdges(vertexIndex).zipWithIndex) {

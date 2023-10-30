@@ -447,7 +447,7 @@ impl DualPipelined for Vertex {
                     if let Some(peer) = propagating_peer {
                         self.node_index = peer.node_index;
                         self.root_index = peer.root_index;
-                        self.speed = peer.speed;
+                        self.speed = DualNodeGrowState::Grow;
                     } else {
                         self.node_index = None;
                         self.root_index = None;
