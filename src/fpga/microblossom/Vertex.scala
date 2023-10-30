@@ -8,6 +8,10 @@ import org.scalatest.funsuite.AnyFunSuite
 // persistent state of a vertex
 case class VertexPersistent(config: DualConfig) extends Bundle {
   val speed = Speed()
+  val node = Bits(config.vertexBits bits)
+  val root = Bits(config.vertexBits bits)
+  val isVirtual = Bool()
+  val isDefect = Bool()
 }
 
 case class VertexOutput(config: DualConfig) extends Bundle {
@@ -42,24 +46,24 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
    * pipeline input signals
    */
 
-  val executeValid = Bool()
+  val executeValid = Bool
   val executeState = VertexPersistent(config)
   val executeInstruction = Instruction(config)
   val executeContextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 
-  val updateValid = Bool()
+  val updateValid = Bool
   val updateState = VertexPersistent(config)
   val updateInstruction = Instruction(config)
   val updateContextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 
-  val writeValid = Bool()
+  val writeValid = Bool
   val writeState = VertexPersistent(config)
   val writeInstruction = Instruction(config)
   val writeContextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 
   // fetch stage (optional)
   var ram: Mem[VertexPersistent] = null
-  var register = VertexPersistent(config)
+  var register = Reg(VertexPersistent(config))
   if (config.contextBits > 0) {
     // fetch stage, delay the instruction
     ram = Mem(VertexPersistent(config), config.contextDepth)
@@ -67,17 +71,24 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
       address = io.contextId,
       enable = io.valid
     )
+    executeContextId := RegNext(io.contextId)
   } else {
-    executeState := RegNextWhen(register, io.valid)
+    executeState := RegNext(register)
   }
-  executeValid := RegNext(io.valid)
+  executeValid := RegNext(io.valid) init False
   executeInstruction.assignFromBits(RegNext(io.instruction.asBits))
-  if (config.contextBits > 0) executeContextId := RegNext(io.contextId)
   pipelineIndex += 1;
 
   // execute stage
+  when(executeValid) {
+    when(executeInstruction.isSetSpeed) {
+      when(executeState.node === executeInstruction.field1) {
+        executeState.speed := executeInstruction.speed
+      }
+    }
+  }
 
-  updateValid := RegNext(executeValid)
+  updateValid := RegNext(executeValid) init False
   updateInstruction.assignFromBits(RegNext(executeInstruction.asBits))
   updateState := RegNext(executeState)
   if (config.contextBits > 0) updateContextId := RegNext(executeContextId)
@@ -85,23 +96,26 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
 
   // update stage
 
-  writeValid := RegNext(updateValid)
+  writeValid := RegNext(updateValid) init False
   writeInstruction.assignFromBits(RegNext(updateInstruction.asBits))
   writeState := RegNext(updateState)
   if (config.contextBits > 0) writeContextId := RegNext(updateContextId)
   pipelineIndex += 1;
 
   // write stage
+
   if (config.contextBits > 0) {
     ram.write(
       address = writeContextId,
       data = writeState,
       enable = writeValid
     )
-    pipelineIndex += 1;
   } else {
-    register := writeState
+    when(writeValid) {
+      register := writeState
+    }
   }
+  pipelineIndex += 1;
 
   // also generate response in write stage
 
@@ -115,8 +129,8 @@ class VertexTest extends AnyFunSuite {
 
   test("construct a Vertex") {
     val config = DualConfig(filename = "./resources/graphs/example_repetition_code.json")
-    config.contextDepth = 1024 // fit in a single Block RAM of 36 kbits in 36-bit mode
-    // config.contextDepth = 1 // no context switch
+    // config.contextDepth = 1024 // fit in a single Block RAM of 36 kbits in 36-bit mode
+    config.contextDepth = 1 // no context switch
     config.sanityCheck()
     Config.spinal.generateVerilog(Vertex(config, 0))
   }
@@ -135,18 +149,23 @@ class VertexTest extends AnyFunSuite {
         dut.updateInstruction.simPublic()
         dut.writeValid.simPublic()
         dut.writeInstruction.simPublic()
+        dut.register.simPublic()
         dut
       })
       .doSim("testA") { dut =>
-        dut.clockDomain.forkStimulus(period = 10)
-
         dut.io.valid #= false
         dut.io.instruction #= 0
+        dut.clockDomain.forkStimulus(period = 10)
+        dut.clockDomain.waitSampling()
+
+        dut.register.speed #= Speed.Stay
+        val nodeIndex = 6
+        dut.register.node #= nodeIndex
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
         dut.clockDomain.waitSampling()
         dut.io.valid #= true
-        val setSpeedInstruction = instructionSpec.generateSetSpeed(0, Speed.Grow)
+        val setSpeedInstruction = instructionSpec.generateSetSpeed(nodeIndex, Speed.Grow)
         dut.io.instruction #= setSpeedInstruction
 
         dut.clockDomain.waitSampling()
@@ -197,6 +216,7 @@ class VertexTest extends AnyFunSuite {
         assert(dut.updateInstruction.toLong == 0)
         assert(dut.writeValid.toBoolean == false)
         assert(dut.writeInstruction.toLong == 0)
+        assert(dut.register.speed.toInt == Speed.Grow)
 
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
       }

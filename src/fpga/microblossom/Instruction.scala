@@ -58,6 +58,8 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
     this(range.msb downto range.lsb)
   }
 
+  def isSetSpeed(): Bool = (opCode === OpCode.SetSpeed) && (this(2) === False)
+
 }
 
 case class BitRange(msb: Int, lsb: Int) {
