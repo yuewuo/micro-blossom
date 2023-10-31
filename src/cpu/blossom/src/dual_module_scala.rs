@@ -63,9 +63,11 @@ impl ScalaDriver {
         assert_eq!(line, "DualHost v0.0.1, ask for decoding graph\n", "handshake error");
         // in simulation, positions doesn't matter because it's not going to affect the timing constraint
         let micro_blossom = MicroBlossomSingle::new_initializer_only(initializer);
-        let micro_blossom_str = serde_json::to_string(&micro_blossom).unwrap();
-        println!("micro_blossom_str: {micro_blossom_str:?}");
-        write!(writer, "{}\n", micro_blossom_str)?;
+        write!(writer, "{}\n", serde_json::to_string(&micro_blossom).unwrap())?;
+        line.clear();
+        reader.read_line(&mut line)?;
+        assert_eq!(line, "simulation started\n");
+        reader.read_line(&mut line)?; // ignore the next message about waveform location
 
         std::thread::sleep(std::time::Duration::from_millis(1000));
         Ok(Self { child, reader, writer })

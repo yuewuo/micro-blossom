@@ -82,7 +82,6 @@ class DualAcceleratorTest extends AnyFunSuite {
   test("test pipeline registers") {
     // gtkwave simWorkspace/DualAccelerator/testA.fst
     val config = DualConfig(filename = "./resources/graphs/code_capacity_d3.json", minimizeBits = false)
-    val instructionSpec = InstructionSpec(config)
     config.sanityCheck()
     Config.sim
       .compile({
