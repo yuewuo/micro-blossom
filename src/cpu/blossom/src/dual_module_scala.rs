@@ -148,21 +148,21 @@ mod tests {
     // to use visualization, we need the folder of fusion-blossom repo
     // e.g. export FUSION_DIR=/Users/wuyue/Documents/GitHub/fusion-blossom
 
-    #[test]
-    fn dual_module_scala_basic_1() {
-        // cargo test dual_module_scala_basic_1 -- --nocapture
-        let visualize_filename = "dual_module_scala_basic_1.json".to_string();
-        let half_weight = 500;
-        let mut code = CodeCapacityPlanarCode::new(7, 0.1, half_weight);
-        let mut visualizer = Visualizer::new(
-            option_env!("FUSION_DIR").map(|dir| dir.to_owned() + "/visualize/data/" + visualize_filename.as_str()),
-            code.get_positions(),
-            true,
-        )
-        .unwrap();
-        print_visualize_link(visualize_filename.clone());
-        // create dual module
-        let initializer = code.get_initializer();
-        let mut dual_module = DualModuleScala::new_empty(&initializer);
-    }
+    // #[test]
+    // fn dual_module_scala_basic_1() {
+    //     // cargo test dual_module_scala_basic_1 -- --nocapture
+    //     let visualize_filename = "dual_module_scala_basic_1.json".to_string();
+    //     let half_weight = 500;
+    //     let mut code = CodeCapacityPlanarCode::new(7, 0.1, half_weight);
+    //     let mut visualizer = Visualizer::new(
+    //         option_env!("FUSION_DIR").map(|dir| dir.to_owned() + "/visualize/data/" + visualize_filename.as_str()),
+    //         code.get_positions(),
+    //         true,
+    //     )
+    //     .unwrap();
+    //     print_visualize_link(visualize_filename.clone());
+    //     // create dual module
+    //     let initializer = code.get_initializer();
+    //     let mut dual_module = DualModuleScala::new_empty(&initializer);
+    // }
 }

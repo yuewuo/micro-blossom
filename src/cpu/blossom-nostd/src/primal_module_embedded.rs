@@ -27,7 +27,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
 }
 
 impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbedded<N, DOUBLE_N> {
-    fn clear(&mut self) {
+    fn reset(&mut self) {
         self.nodes.clear();
     }
 
@@ -48,10 +48,10 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
 
     /// resolve one obstacle
     #[allow(unused_mut)]
-    fn resolve(&mut self, dual_module: &mut impl DualInterface, obstacle: MaxUpdateLength) -> bool {
+    fn resolve(&mut self, dual_module: &mut impl DualInterface, obstacle: CompactObstacle) -> bool {
         debug_assert!(obstacle.is_obstacle());
         match obstacle {
-            MaxUpdateLength::Conflict {
+            CompactObstacle::Conflict {
                 mut node_1,
                 mut node_2,
                 touch_1,
@@ -109,7 +109,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
                     self.resolve_conflict_virtual(dual_module, node_1, touch_1, vertex_1, vertex_2)
                 }
             }
-            MaxUpdateLength::BlossomNeedExpand { mut blossom } => {
+            CompactObstacle::BlossomNeedExpand { mut blossom } => {
                 debug_assert!(self.nodes.is_blossom(blossom));
                 cfg_if::cfg_if! { if #[cfg(feature="obstacle_potentially_outdated")] {
                     if !self.nodes.has_node(blossom) {

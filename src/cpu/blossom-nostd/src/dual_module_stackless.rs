@@ -7,13 +7,12 @@ use crate::interface::*;
 use crate::util::*;
 
 pub trait DualStacklessDriver {
-    fn clear(&mut self);
+    fn reset(&mut self);
     fn set_speed(&mut self, is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState);
     /// just to inform a blossom has been created; no need to do anything
     fn on_blossom_created(&mut self, _blossom: CompactNodeIndex) {}
     fn set_blossom(&mut self, node: CompactNodeIndex, blossom: CompactNodeIndex);
-    fn find_obstacle(&mut self) -> MaxUpdateLength;
-    fn grow(&mut self, length: CompactWeight);
+    fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight);
 }
 
 pub struct DualModuleStackless<D: DualStacklessDriver> {
@@ -21,8 +20,8 @@ pub struct DualModuleStackless<D: DualStacklessDriver> {
 }
 
 impl<D: DualStacklessDriver> DualInterface for DualModuleStackless<D> {
-    fn clear(&mut self) {
-        self.driver.clear();
+    fn reset(&mut self) {
+        self.driver.reset();
     }
 
     fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
@@ -42,12 +41,8 @@ impl<D: DualStacklessDriver> DualInterface for DualModuleStackless<D> {
         self.driver.set_speed(is_blossom, node_index, grow_state);
     }
 
-    fn compute_maximum_update_length(&mut self) -> MaxUpdateLength {
+    fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
         self.driver.find_obstacle()
-    }
-
-    fn grow(&mut self, length: CompactWeight) {
-        self.driver.grow(length);
     }
 }
 
@@ -122,7 +117,7 @@ mod tests {
     }
 
     impl PrimalInterface for MockPrimal {
-        fn clear(&mut self) {}
+        fn reset(&mut self) {}
         fn is_blossom(&self, node_index: CompactNodeIndex) -> bool {
             !self.nodes[&node_index].children.is_empty()
         }
@@ -135,7 +130,7 @@ mod tests {
                 func(self, child_index, &TouchingLink::new());
             }
         }
-        fn resolve(&mut self, _dual_module: &mut impl DualInterface, _max_update_length: MaxUpdateLength) -> bool {
+        fn resolve(&mut self, _dual_module: &mut impl DualInterface, _max_update_length: CompactObstacle) -> bool {
             unimplemented!()
         }
         fn iterate_perfect_matching(
@@ -183,7 +178,7 @@ mod tests {
     pub struct MockDualDriver {
         pub verbose: bool, // whether print every log
         pub logs: Vec<String>,
-        pub pending_obstacles: VecDeque<MaxUpdateLength>,
+        pub pending_obstacles: VecDeque<(CompactObstacle, CompactWeight)>,
     }
 
     impl MockDualDriver {
@@ -210,8 +205,8 @@ mod tests {
     }
 
     impl DualStacklessDriver for MockDualDriver {
-        fn clear(&mut self) {
-            self.log(format!("clear()"));
+        fn reset(&mut self) {
+            self.log(format!("reset()"));
         }
         fn set_speed(&mut self, is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState) {
             self.log(format!("set_speed({is_blossom}, {node}, {speed:?})"));
@@ -219,12 +214,9 @@ mod tests {
         fn set_blossom(&mut self, node: CompactNodeIndex, blossom: CompactNodeIndex) {
             self.log(format!("set_blossom({node}, {blossom})"));
         }
-        fn find_obstacle(&mut self) -> MaxUpdateLength {
+        fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
             self.log(format!("find_obstacle()"));
             self.pending_obstacles.pop_front().unwrap()
-        }
-        fn grow(&mut self, length: CompactWeight) {
-            self.log(format!("grow({length})"));
         }
     }
 }

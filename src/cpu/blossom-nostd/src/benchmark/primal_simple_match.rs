@@ -28,7 +28,7 @@ impl<const MAX_NODE_NUM: usize, const DOUBLE_MAX_NODE_NUM: usize> PrimalSimpleMa
         for _ in 0..count {
             self.primal_module.resolve(
                 &mut self.dual_module,
-                MaxUpdateLength::Conflict {
+                CompactObstacle::Conflict {
                     node_1: ni!(index),
                     node_2: Some(ni!(index + 1)),
                     touch_1: ni!(index),
@@ -41,8 +41,8 @@ impl<const MAX_NODE_NUM: usize, const DOUBLE_MAX_NODE_NUM: usize> PrimalSimpleMa
         }
     }
 
-    pub fn clear(&mut self) {
-        self.primal_module.clear();
-        self.dual_module.clear();
+    pub fn reset(&mut self) {
+        self.primal_module.reset();
+        self.dual_module.reset();
     }
 }

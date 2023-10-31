@@ -9,7 +9,7 @@
 use crate::util::*;
 
 #[derive(Debug)]
-pub enum MaxUpdateLength {
+pub enum CompactObstacle {
     /// nothing to do
     None,
     /// a non-negative growth
@@ -34,7 +34,7 @@ pub enum MaxUpdateLength {
 
 pub trait PrimalInterface {
     /// reset the primal module
-    fn clear(&mut self);
+    fn reset(&mut self);
 
     /// query if a node is a blossom node
     fn is_blossom(&self, node_index: CompactNodeIndex) -> bool;
@@ -48,9 +48,9 @@ pub trait PrimalInterface {
         func: impl FnMut(&Self, CompactNodeIndex, &TouchingLink),
     );
 
-    /// resolve one obstacle, returning whether the obstacle is hanlded properly;
+    /// resolve one obstacle, returning whether the obstacle is handled properly;
     /// this design allows multiple level of primal module to be designed, each handling a simple subset
-    fn resolve(&mut self, dual_module: &mut impl DualInterface, max_update_length: MaxUpdateLength) -> bool;
+    fn resolve(&mut self, dual_module: &mut impl DualInterface, max_update_length: CompactObstacle) -> bool;
 
     /// iterate the perfect matching between defect nodes
     fn iterate_perfect_matching(&mut self, func: impl FnMut(&Self, CompactNodeIndex, CompactMatchTarget, &TouchingLink));
@@ -67,7 +67,7 @@ pub trait PrimalInterface {
 
 pub trait DualInterface {
     /// reset the dual module
-    fn clear(&mut self);
+    fn reset(&mut self);
 
     /// create a blossom
     fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex);
@@ -78,15 +78,20 @@ pub trait DualInterface {
     /// set the speed of a node
     fn set_speed(&mut self, is_blossom: bool, node_index: CompactNodeIndex, grow_state: CompactGrowState);
 
-    /// compute the maximum length to update, or to find an obstacle
-    fn compute_maximum_update_length(&mut self) -> MaxUpdateLength;
-
-    /// grow a specific length; however in an offloaded system, this should never be called from software
-    fn grow(&mut self, length: CompactWeight);
+    /// find an obstacle and return the amount of growth from last return
+    fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight);
 }
 
-impl MaxUpdateLength {
+impl CompactObstacle {
     pub fn is_obstacle(&self) -> bool {
         !(matches!(self, Self::None) || matches!(self, Self::GrowLength { .. }))
+    }
+
+    pub fn is_none(&self) -> bool {
+        matches!(self, Self::None)
+    }
+
+    pub fn is_finite_growth(&self) -> bool {
+        matches!(self, Self::GrowLength { .. })
     }
 }

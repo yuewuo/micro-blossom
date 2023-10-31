@@ -16,7 +16,7 @@ pub struct DualModuleCounterDriver {
 }
 
 impl DualStacklessDriver for DualModuleCounterDriver {
-    fn clear(&mut self) {
+    fn reset(&mut self) {
         self.count_set_speed = 0;
         self.count_set_blossom = 0;
         self.count_grow = 0;
@@ -27,17 +27,8 @@ impl DualStacklessDriver for DualModuleCounterDriver {
     fn set_blossom(&mut self, _node: CompactNodeIndex, _blossom: CompactNodeIndex) {
         self.count_set_blossom += 1;
     }
-    fn find_obstacle(&mut self) -> MaxUpdateLength {
-        cfg_if::cfg_if! {
-            if #[cfg(feature="dangerous_unwrap")] {
-                loop { }
-            } else {
-                unimplemented!()
-            }
-        }
-    }
-    fn grow(&mut self, _length: CompactWeight) {
-        self.count_grow += 1;
+    fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
+        unimplemented_or_loop!()
     }
 }
 

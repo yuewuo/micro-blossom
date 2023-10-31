@@ -29,9 +29,9 @@ pub struct MockDualInterface<'a, D: DualModuleImpl> {
 }
 
 impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
-    fn clear(&mut self) {
+    fn reset(&mut self) {
         #[cfg(all(test, debug_assertions))]
-        println!("[dual] clear()");
+        println!("[dual] reset()");
         unreachable!("should not be called")
     }
     fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
@@ -83,14 +83,9 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
             self.dual_module,
         );
     }
-    fn compute_maximum_update_length(&mut self) -> micro_blossom_nostd::interface::MaxUpdateLength {
+    fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
         #[cfg(all(test, debug_assertions))]
-        println!("[dual] compute_maximum_update_length()");
-        unreachable!("should not be called")
-    }
-    fn grow(&mut self, _length: CompactWeight) {
-        #[cfg(all(test, debug_assertions))]
-        println!("[dual] grow(length)");
+        println!("[dual] find_obstacle()");
         unreachable!("should not be called")
     }
 }
@@ -106,7 +101,7 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
     }
 
     fn clear(&mut self) {
-        self.primal_module.clear();
+        self.primal_module.reset();
         self.index_to_ptr.clear();
         self.ptr_to_index.clear();
     }
@@ -134,27 +129,19 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
             if debug_resolve_only_one && current_conflict_index > 1 {
                 break;
             }
-            if matches!(
-                conflict,
-                fusion_blossom::dual_module::MaxUpdateLength::VertexShrinkStop { .. }
-            ) {
+            if matches!(conflict, MaxUpdateLength::VertexShrinkStop { .. }) {
                 continue; // there is no need to handle it
             }
             let adapted_conflict = match conflict {
-                fusion_blossom::dual_module::MaxUpdateLength::Conflicting((node_1, touch_1), (node_2, touch_2)) => {
-                    micro_blossom_nostd::interface::MaxUpdateLength::Conflict {
-                        node_1: *self.ptr_to_index.get(&node_1).unwrap(),
-                        node_2: Some(*self.ptr_to_index.get(&node_2).unwrap()),
-                        touch_1: *self.ptr_to_index.get(&touch_1).unwrap(),
-                        touch_2: Some(*self.ptr_to_index.get(&touch_2).unwrap()),
-                        vertex_1: ni!(0),
-                        vertex_2: ni!(0),
-                    }
-                }
-                fusion_blossom::dual_module::MaxUpdateLength::TouchingVirtual(
-                    (node, touch),
-                    (virtual_vertex, _is_mirror),
-                ) => micro_blossom_nostd::interface::MaxUpdateLength::Conflict {
+                MaxUpdateLength::Conflicting((node_1, touch_1), (node_2, touch_2)) => CompactObstacle::Conflict {
+                    node_1: *self.ptr_to_index.get(&node_1).unwrap(),
+                    node_2: Some(*self.ptr_to_index.get(&node_2).unwrap()),
+                    touch_1: *self.ptr_to_index.get(&touch_1).unwrap(),
+                    touch_2: Some(*self.ptr_to_index.get(&touch_2).unwrap()),
+                    vertex_1: ni!(0),
+                    vertex_2: ni!(0),
+                },
+                MaxUpdateLength::TouchingVirtual((node, touch), (virtual_vertex, _is_mirror)) => CompactObstacle::Conflict {
                     node_1: *self.ptr_to_index.get(&node).unwrap(),
                     node_2: None,
                     touch_1: *self.ptr_to_index.get(&touch).unwrap(),
@@ -162,11 +149,9 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
                     vertex_1: ni!(0),
                     vertex_2: ni!(virtual_vertex),
                 },
-                fusion_blossom::dual_module::MaxUpdateLength::BlossomNeedExpand(blossom_node) => {
-                    micro_blossom_nostd::interface::MaxUpdateLength::BlossomNeedExpand {
-                        blossom: *self.ptr_to_index.get(&blossom_node).unwrap(),
-                    }
-                }
+                MaxUpdateLength::BlossomNeedExpand(blossom_node) => CompactObstacle::BlossomNeedExpand {
+                    blossom: *self.ptr_to_index.get(&blossom_node).unwrap(),
+                },
                 _ => unimplemented!(),
             };
             #[cfg(all(test, debug_assertions))]

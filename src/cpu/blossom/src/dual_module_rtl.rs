@@ -12,6 +12,7 @@ use fusion_blossom::dual_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::blossom_tracker::*;
+use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
 use serde_json::json;
 
@@ -291,6 +292,32 @@ impl DualModuleImpl for DualModuleRTL {
     fn prepare_nodes_shrink(&mut self, _nodes_circle: &[DualNodePtr]) -> &mut Vec<SyncRequest> {
         self.sync_requests.clear();
         &mut self.sync_requests
+    }
+}
+
+impl DualInterface for DualModuleRTL {
+    fn reset(&mut self) {
+        self.clear();
+    }
+
+    /// create a blossom
+    fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
+        unimplemented!()
+    }
+
+    /// expand a blossom
+    fn expand_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
+        unimplemented!()
+    }
+
+    /// set the speed of a node
+    fn set_speed(&mut self, is_blossom: bool, node_index: CompactNodeIndex, grow_state: CompactGrowState) {
+        unimplemented!()
+    }
+
+    /// find an obstacle and return the amount of growth from last return
+    fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
+        unimplemented!()
     }
 }
 

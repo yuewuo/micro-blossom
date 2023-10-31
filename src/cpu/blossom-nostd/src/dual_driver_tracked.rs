@@ -9,14 +9,21 @@ use crate::dual_module_stackless::*;
 use crate::interface::*;
 use crate::util::*;
 
-struct DualDriverTracked<D: DualStacklessDriver, const N: usize> {
+pub trait DualTrackedDriver {
+    /// with `DualDriverTracked`, the driver doesn't need to report any `BlossomNeedExpand` obstacles.
+    /// the external driver should not grow more than this value before returning, to accommodate with this offloading.
+    fn set_maximum_growth(&mut self, length: CompactWeight);
+}
+
+struct DualDriverTracked<D: DualStacklessDriver + DualTrackedDriver, const N: usize> {
     pub driver: D,
     pub blossom_tracker: BlossomTracker<N>,
 }
 
-impl<D: DualStacklessDriver, const N: usize> DualStacklessDriver for DualDriverTracked<D, N> {
-    fn clear(&mut self) {
-        self.driver.clear();
+impl<D: DualStacklessDriver + DualTrackedDriver, const N: usize> DualStacklessDriver for DualDriverTracked<D, N> {
+    fn reset(&mut self) {
+        self.driver.reset();
+        self.driver.set_maximum_growth(CompactWeight::MAX);
         self.blossom_tracker.clear();
     }
 
@@ -24,6 +31,12 @@ impl<D: DualStacklessDriver, const N: usize> DualStacklessDriver for DualDriverT
         self.driver.set_speed(is_blossom, node, speed);
         if is_blossom {
             self.blossom_tracker.set_speed(node, speed);
+            if speed == CompactGrowState::Shrink {
+                // prevent the driver to over grow
+                if let Some((length, _blossom)) = self.blossom_tracker.get_maximum_growth() {
+                    self.driver.set_maximum_growth(length);
+                }
+            }
         }
     }
 
@@ -35,26 +48,22 @@ impl<D: DualStacklessDriver, const N: usize> DualStacklessDriver for DualDriverT
         self.driver.set_blossom(node, blossom);
     }
 
-    fn find_obstacle(&mut self) -> MaxUpdateLength {
-        let mut max_update_length = self.driver.find_obstacle();
-        if matches!(max_update_length, MaxUpdateLength::GrowLength { .. } | MaxUpdateLength::None) {
+    fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
+        let (mut obstacle, mut grown) = self.driver.find_obstacle();
+        while obstacle.is_finite_growth() {
             if let Some((length, blossom)) = self.blossom_tracker.get_maximum_growth() {
                 if length == 0 {
-                    max_update_length = MaxUpdateLength::BlossomNeedExpand { blossom };
+                    return (CompactObstacle::BlossomNeedExpand { blossom }, grown);
                 } else {
-                    if let MaxUpdateLength::GrowLength { length: original_length } = &mut max_update_length {
-                        *original_length = std::cmp::min(*original_length, length)
-                    } else {
-                        max_update_length = MaxUpdateLength::GrowLength { length }
-                    }
+                    self.driver.set_maximum_growth(length);
                 }
+            } else {
+                self.driver.set_maximum_growth(CompactWeight::MAX);
             }
+            let (inc_obstacle, inc_grown) = self.driver.find_obstacle();
+            obstacle = inc_obstacle;
+            grown += inc_grown;
         }
-        max_update_length
-    }
-
-    fn grow(&mut self, length: CompactWeight) {
-        self.driver.grow(length);
-        self.blossom_tracker.advance_time(length as CompactTimestamp);
+        (obstacle, grown)
     }
 }
