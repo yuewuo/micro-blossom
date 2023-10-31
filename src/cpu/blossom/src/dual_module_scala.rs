@@ -16,6 +16,7 @@ use std::io::prelude::*;
 use std::io::{BufReader, LineWriter};
 use std::net::{TcpListener, TcpStream};
 use std::process::{Child, Command};
+use wait_timeout::ChildExt;
 
 #[derive(Derivative)]
 #[derivative(Debug)]
@@ -28,6 +29,7 @@ pub struct DualModuleScala {
 }
 
 pub struct ScalaDriver {
+    pub port: u16,
     pub child: Child,
     pub reader: BufReader<TcpStream>,
     pub writer: LineWriter<TcpStream>,
@@ -36,10 +38,30 @@ pub struct ScalaDriver {
 // https://stackoverflow.com/questions/30538004/how-do-i-ensure-that-a-spawned-child-process-is-killed-if-my-app-panics
 impl Drop for ScalaDriver {
     fn drop(&mut self) {
-        // You can check std::thread::panicking() here
-        match self.child.kill() {
-            Err(e) => println!("Could not kill Scala process: {}", e),
-            Ok(_) => println!("Successfully killed Scala process"),
+        let need_to_kill: bool = (|| {
+            if write!(self.writer, "quit\n").is_ok() {
+                let wait_time = std::time::Duration::from_millis(1000);
+                if let Ok(Some(status)) = self.child.wait_timeout(wait_time) {
+                    return !status.success();
+                }
+            }
+            true
+        })();
+        if need_to_kill {
+            match self.child.kill() {
+                Err(e) => println!("Could not kill Scala process: {}", e),
+                Ok(_) => println!("Successfully killed Scala process"),
+            }
+        } else {
+            println!("Scala process quit normally");
+        }
+        match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/rtl", self.port)) {
+            Err(e) => println!("Could not remove rtl folder: {}", e),
+            Ok(_) => println!("Successfully remove rtl folder"),
+        }
+        match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/verilator", self.port)) {
+            Err(e) => println!("Could not remove verilator folder: {}", e),
+            Ok(_) => println!("Successfully remove verilator folder"),
         }
     }
 }
@@ -64,13 +86,16 @@ impl ScalaDriver {
         // in simulation, positions doesn't matter because it's not going to affect the timing constraint
         let micro_blossom = MicroBlossomSingle::new_initializer_only(initializer);
         write!(writer, "{}\n", serde_json::to_string(&micro_blossom).unwrap())?;
+        write!(writer, "{}\n", if cfg!(test) { "with waveform" } else { "no waveform" })?;
         line.clear();
         reader.read_line(&mut line)?;
         assert_eq!(line, "simulation started\n");
-        reader.read_line(&mut line)?; // ignore the next message about waveform location
-
-        std::thread::sleep(std::time::Duration::from_millis(1000));
-        Ok(Self { child, reader, writer })
+        Ok(Self {
+            port,
+            child,
+            reader,
+            writer,
+        })
     }
 }
 
