@@ -20,7 +20,7 @@ class DualConfigTest extends AnyFunSuite {
   }
 
   test("construct config from file") {
-    val config = new DualConfig(filename = "./resources/graphs/example_repetition_code.json")
+    val config = new DualConfig(filename = "./resources/graphs/code_capacity_d3.json")
     config.sanityCheck()
     assert(config.localIndexOfEdge(vertexIndex = 0, edgeIndex = 0) == 0)
     assert(config.localIndexOfEdge(vertexIndex = 1, edgeIndex = 0) == 0)

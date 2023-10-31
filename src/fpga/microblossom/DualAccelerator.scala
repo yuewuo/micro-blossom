@@ -73,7 +73,7 @@ case class DualAccelerator(config: DualConfig) extends Component {
 class DualAcceleratorTest extends AnyFunSuite {
 
   test("construct accelerator from file") {
-    // val config = DualConfig(filename = "./resources/graphs/example_repetition_code.json")
+    // val config = DualConfig(filename = "./resources/graphs/code_capacity_d3.json")
     // val config = DualConfig(filename = "./resources/graphs/example_code_capacity_planar_d5.json")
     val config = DualConfig(filename = "./resources/graphs/example_phenomenological_rotated_d5.json")
     Config.spinal.generateVerilog(DualAccelerator(config))
@@ -81,7 +81,7 @@ class DualAcceleratorTest extends AnyFunSuite {
 
   test("test pipeline registers") {
     // gtkwave simWorkspace/DualAccelerator/testA.fst
-    val config = DualConfig(filename = "./resources/graphs/example_repetition_code.json", minimizeBits = false)
+    val config = DualConfig(filename = "./resources/graphs/code_capacity_d3.json", minimizeBits = false)
     val instructionSpec = InstructionSpec(config)
     config.sanityCheck()
     Config.sim
