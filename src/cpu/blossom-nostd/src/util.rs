@@ -144,6 +144,13 @@ cfg_if::cfg_if! {
                 loop { }
             };
         }
+
+        #[macro_export]
+        macro_rules! unreachable_or_loop {
+            () => {
+                loop { }
+            };
+        }
     } else {
         #[macro_export]
         macro_rules! get {
@@ -171,6 +178,13 @@ cfg_if::cfg_if! {
                 unimplemented!()
             };
         }
+
+        #[macro_export]
+        macro_rules! unreachable_or_loop {
+            () => {
+                unreachable!()
+            };
+        }
     }
 }
 #[allow(unused_imports)]
@@ -183,5 +197,7 @@ pub use ni;
 pub use set;
 #[allow(unused_imports)]
 pub use unimplemented_or_loop;
+#[allow(unused_imports)]
+pub use unreachable_or_loop;
 #[allow(unused_imports)]
 pub use usu;

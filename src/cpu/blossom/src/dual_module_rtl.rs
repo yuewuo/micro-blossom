@@ -233,15 +233,9 @@ impl DualModuleImpl for DualModuleRTL {
         let return_value = self
             .execute_instruction(Instruction::FindObstacle { region_preference: 0 })
             .unwrap();
-        let maximum_growth_blossom_hit_zero = self.blossom_tracker.get_maximum_growth();
+
         let mut max_update_length = match return_value {
-            Response::NonZeroGrow { mut length } => {
-                if let Some((blossom_length, _)) = &maximum_growth_blossom_hit_zero {
-                    let blossom_length: Weight = (*blossom_length).try_into().unwrap();
-                    length = std::cmp::min(length, blossom_length);
-                }
-                MaxUpdateLength::NonZeroGrow((length, false))
-            }
+            Response::NonZeroGrow { length } => MaxUpdateLength::NonZeroGrow((length, false)),
             Response::Conflict {
                 node_1,
                 node_2,
@@ -271,10 +265,12 @@ impl DualModuleImpl for DualModuleRTL {
             Response::BlossomNeedExpand { blossom } => MaxUpdateLength::BlossomNeedExpand(self.nodes[blossom].clone()),
         };
         // get blossom expand event from blossom tracker, only when no other conflicts are detected
-        if matches!(max_update_length, MaxUpdateLength::NonZeroGrow { .. }) {
-            if let Some((length, blossom_index)) = maximum_growth_blossom_hit_zero {
+        if let MaxUpdateLength::NonZeroGrow((original_length, _)) = max_update_length {
+            if let Some((length, blossom_index)) = self.blossom_tracker.get_maximum_growth() {
                 if length == 0 {
                     max_update_length = MaxUpdateLength::BlossomNeedExpand(self.nodes[blossom_index.get() as usize].clone());
+                } else if (length as Weight) < original_length {
+                    max_update_length = MaxUpdateLength::NonZeroGrow((length as Weight, false));
                 }
             }
         }

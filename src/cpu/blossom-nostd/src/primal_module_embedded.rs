@@ -155,7 +155,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
             return false;
         }
         node.remove_from_matching();
-        self.nodes.set_grow_state(node_index, CompactGrowState::Grow, dual_module);
+        self.nodes.set_speed(node_index, CompactGrowState::Grow, dual_module);
         true
     }
 }
@@ -203,9 +203,9 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
                 };
             match matched_primal_node.get_matched() {
                 CompactMatchTarget::Peer(leaf_node) => {
-                    self.nodes.set_grow_state(free_node, CompactGrowState::Grow, dual_module);
-                    self.nodes.set_grow_state(matched_node, CompactGrowState::Shrink, dual_module);
-                    self.nodes.set_grow_state(leaf_node, CompactGrowState::Grow, dual_module);
+                    self.nodes.set_speed(free_node, CompactGrowState::Grow, dual_module);
+                    self.nodes.set_speed(matched_node, CompactGrowState::Shrink, dual_module);
+                    self.nodes.set_speed(leaf_node, CompactGrowState::Grow, dual_module);
                     let free_primal_node = self.nodes.get_node_mut(free_node);
                     free_primal_node.first_child = Some(matched_node);
                     let matched_primal_node = self.nodes.get_node_mut(matched_node);
@@ -270,9 +270,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             };
             match matched_primal_node.get_matched() {
                 CompactMatchTarget::Peer(matched_peer_node) => {
-                    self.nodes.set_grow_state(matched_node, CompactGrowState::Shrink, dual_module);
-                    self.nodes
-                        .set_grow_state(matched_peer_node, CompactGrowState::Grow, dual_module);
+                    self.nodes.set_speed(matched_node, CompactGrowState::Shrink, dual_module);
+                    self.nodes.set_speed(matched_peer_node, CompactGrowState::Grow, dual_module);
                     // set the matched peer to leaf
                     let matched_peer_primal_node = self.nodes.get_node_mut(matched_peer_node);
                     matched_peer_primal_node.parent = Some(matched_node);
@@ -416,13 +415,12 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             primal_inner_to_parent.link = to_parent_link;
             primal_inner_to_parent.parent = Some(parent_index);
             primal_inner_to_parent.first_child = Some(next_node);
-            self.nodes
-                .set_grow_state(inner_to_parent, CompactGrowState::Shrink, dual_module);
+            self.nodes.set_speed(inner_to_parent, CompactGrowState::Shrink, dual_module);
             // go along the odd path
             let mut node = inner_to_parent;
             let mut is_growing = true;
             while node != inner_to_child {
-                self.nodes.set_grow_state(
+                self.nodes.set_speed(
                     next_node,
                     if is_growing {
                         CompactGrowState::Grow
@@ -463,7 +461,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             let mut first_child = child_index;
             let mut is_growing = false;
             loop {
-                self.nodes.set_grow_state(
+                self.nodes.set_speed(
                     node,
                     if is_growing {
                         CompactGrowState::Grow
@@ -512,14 +510,14 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
     ) {
         let mut matching = begin;
         while matching != end {
-            self.nodes.set_grow_state(matching, CompactGrowState::Stay, dual_module);
+            self.nodes.set_speed(matching, CompactGrowState::Stay, dual_module);
             let primal_matching = self.nodes.get_node_mut(matching);
             let link = primal_matching.link.clone();
             primal_matching.parent = None;
             primal_matching.first_child = None;
             let peer = usu!(primal_matching.sibling);
             debug_assert!(peer != end, "should not be an odd chain");
-            self.nodes.set_grow_state(peer, CompactGrowState::Stay, dual_module);
+            self.nodes.set_speed(peer, CompactGrowState::Stay, dual_module);
             let primal_peer = self.nodes.get_node_mut(peer);
             primal_peer.link.touch = link.peer_touch;
             primal_peer.link.through = link.peer_through;
@@ -720,7 +718,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             iter_2 = usu!(original_parent);
         }
         dual_module.create_blossom(self, blossom);
-        self.nodes.set_grow_state(blossom, CompactGrowState::Grow, dual_module);
+        self.nodes.set_speed(blossom, CompactGrowState::Grow, dual_module);
     }
 
     #[inline]

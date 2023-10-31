@@ -288,14 +288,14 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         usu!(self.get_node(node_index).grow_state)
     }
 
-    pub fn set_grow_state(
+    pub fn set_speed(
         &mut self,
         node_index: CompactNodeIndex,
         grow_state: CompactGrowState,
         dual_module: &mut impl DualInterface,
     ) {
         self.get_node_mut(node_index).grow_state = Some(grow_state);
-        dual_module.set_grow_state(node_index, grow_state);
+        dual_module.set_speed(self.is_blossom(node_index), node_index, grow_state);
     }
 
     pub fn temporary_match(
@@ -310,8 +310,8 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     ) {
         debug_assert!(self.get_node(node_1).is_outer_blossom(), "cannot match inner node");
         debug_assert!(self.get_node(node_2).is_outer_blossom(), "cannot match inner node");
-        self.set_grow_state(node_1, CompactGrowState::Stay, dual_module);
-        self.set_grow_state(node_2, CompactGrowState::Stay, dual_module);
+        self.set_speed(node_1, CompactGrowState::Stay, dual_module);
+        self.set_speed(node_2, CompactGrowState::Stay, dual_module);
         let primal_node_1 = self.get_node_mut(node_1);
         primal_node_1.remove_from_alternating_tree();
         primal_node_1.sibling = Some(node_2);
@@ -355,7 +355,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         virtual_vertex: CompactVertexIndex,
     ) {
         debug_assert!(self.get_node(node).is_outer_blossom(), "cannot match inner node");
-        self.set_grow_state(node, CompactGrowState::Stay, dual_module);
+        self.set_speed(node, CompactGrowState::Stay, dual_module);
         let primal_node = self.get_node_mut(node);
         primal_node.remove_from_alternating_tree();
         primal_node.sibling = None;

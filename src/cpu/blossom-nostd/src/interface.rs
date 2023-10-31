@@ -76,7 +76,7 @@ pub trait DualInterface {
     fn expand_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex);
 
     /// set the speed of a node
-    fn set_grow_state(&mut self, node_index: CompactNodeIndex, grow_state: CompactGrowState);
+    fn set_speed(&mut self, is_blossom: bool, node_index: CompactNodeIndex, grow_state: CompactGrowState);
 
     /// compute the maximum length to update, or to find an obstacle
     fn compute_maximum_update_length(&mut self) -> MaxUpdateLength;

@@ -21,7 +21,7 @@ impl DualStacklessDriver for DualModuleCounterDriver {
         self.count_set_blossom = 0;
         self.count_grow = 0;
     }
-    fn set_speed(&mut self, _node: CompactNodeIndex, _speed: CompactGrowState) {
+    fn set_speed(&mut self, _is_blossom: bool, _node: CompactNodeIndex, _speed: CompactGrowState) {
         self.count_set_speed += 1;
     }
     fn set_blossom(&mut self, _node: CompactNodeIndex, _blossom: CompactNodeIndex) {

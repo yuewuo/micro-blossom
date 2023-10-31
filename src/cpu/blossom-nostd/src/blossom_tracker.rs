@@ -114,6 +114,14 @@ impl<const N: usize> BlossomTracker<N> {
         self.grow_states.push(CompactGrowState::Grow).ok().unwrap();
     }
 
+    pub fn create_blossom_if_not_exists(&mut self, node_index: CompactNodeIndex) {
+        if self.checkpoints.is_empty()
+            || node_index.get() == self.first_index.get() + self.checkpoints.len() as CompactNodeNum
+        {
+            self.create_blossom(node_index);
+        }
+    }
+
     pub fn set_speed(&mut self, node_index: CompactNodeIndex, grow_state: CompactGrowState) {
         let local_index = self.local_index_of(node_index);
         // update checkpoint timestamp to the current timestamp and update its dual value accordingly

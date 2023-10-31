@@ -70,7 +70,7 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
         self.interface_ptr
             .expand_blossom(self.index_to_ptr.get(&blossom_index).unwrap().clone(), self.dual_module);
     }
-    fn set_grow_state(&mut self, node_index: CompactNodeIndex, grow_state: CompactGrowState) {
+    fn set_speed(&mut self, _is_blossom: bool, node_index: CompactNodeIndex, grow_state: CompactGrowState) {
         #[cfg(all(test, debug_assertions))]
         println!("[dual] set_grow_state({node_index}, {grow_state:?})");
         self.interface_ptr.set_grow_state(

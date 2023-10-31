@@ -1,15 +1,21 @@
+//! Dual Module Stackless
+//!
+//! a dual module implementation that removes the need to maintain a stack of blossom structure
+//!
+
 use crate::interface::*;
 use crate::util::*;
 
 pub trait DualStacklessDriver {
     fn clear(&mut self);
-    fn set_speed(&mut self, node: CompactNodeIndex, speed: CompactGrowState);
+    fn set_speed(&mut self, is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState);
+    /// just to inform a blossom has been created; no need to do anything
+    fn on_blossom_created(&mut self, _blossom: CompactNodeIndex) {}
     fn set_blossom(&mut self, node: CompactNodeIndex, blossom: CompactNodeIndex);
     fn find_obstacle(&mut self) -> MaxUpdateLength;
     fn grow(&mut self, length: CompactWeight);
 }
 
-/// a dual module implementation that removes the need to maintain a stack of blossom structure
 pub struct DualModuleStackless<D: DualStacklessDriver> {
     pub driver: D,
 }
@@ -22,7 +28,8 @@ impl<D: DualStacklessDriver> DualInterface for DualModuleStackless<D> {
     fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
         primal_module.iterate_blossom_children(blossom_index, |_primal_module, child_index, _| {
             self.driver.set_blossom(child_index, blossom_index);
-        })
+        });
+        self.driver.on_blossom_created(blossom_index);
     }
 
     fn expand_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
@@ -31,8 +38,8 @@ impl<D: DualStacklessDriver> DualInterface for DualModuleStackless<D> {
         });
     }
 
-    fn set_grow_state(&mut self, node_index: CompactNodeIndex, grow_state: CompactGrowState) {
-        self.driver.set_speed(node_index, grow_state);
+    fn set_speed(&mut self, is_blossom: bool, node_index: CompactNodeIndex, grow_state: CompactGrowState) {
+        self.driver.set_speed(is_blossom, node_index, grow_state);
     }
 
     fn compute_maximum_update_length(&mut self) -> MaxUpdateLength {
@@ -206,8 +213,8 @@ mod tests {
         fn clear(&mut self) {
             self.log(format!("clear()"));
         }
-        fn set_speed(&mut self, node: CompactNodeIndex, speed: CompactGrowState) {
-            self.log(format!("set_speed({node}, {speed:?})"));
+        fn set_speed(&mut self, is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState) {
+            self.log(format!("set_speed({is_blossom}, {node}, {speed:?})"));
         }
         fn set_blossom(&mut self, node: CompactNodeIndex, blossom: CompactNodeIndex) {
             self.log(format!("set_blossom({node}, {blossom})"));
