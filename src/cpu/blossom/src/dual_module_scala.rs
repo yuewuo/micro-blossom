@@ -6,11 +6,8 @@
 use crate::dual_module_adaptor::*;
 use crate::resources::*;
 use crate::util::*;
-use derivative::Derivative;
-use fusion_blossom::dual_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
-use micro_blossom_nostd::blossom_tracker::*;
 use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::interface::*;
@@ -105,31 +102,34 @@ impl DualModuleScalaDriver {
 
 impl DualStacklessDriver for DualModuleScalaDriver {
     fn reset(&mut self) {
-        unimplemented!()
+        write!(self.writer, "reset()\n").unwrap();
     }
     fn set_speed(&mut self, _is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState) {
-        unimplemented!()
+        write!(self.writer, "set_speed({node}, {speed:?})\n").unwrap();
     }
     fn set_blossom(&mut self, node: CompactNodeIndex, blossom: CompactNodeIndex) {
-        unimplemented!()
+        write!(self.writer, "set_blossom({node}, {blossom})\n").unwrap();
     }
     fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
+        write!(self.writer, "find_obstacle()\n").unwrap();
         unimplemented!()
     }
     fn add_defect(&mut self, vertex: CompactVertexIndex, node: CompactNodeIndex) {
-        unimplemented!()
+        write!(self.writer, "add_defect({vertex}, {node})\n").unwrap();
     }
 }
 
 impl DualTrackedDriver for DualModuleScalaDriver {
     fn set_maximum_growth(&mut self, length: CompactWeight) {
-        unimplemented!()
+        write!(self.writer, "set_maximum_growth({length})\n").unwrap();
     }
 }
 
 impl FusionVisualizer for DualModuleScalaDriver {
     #[allow(clippy::unnecessary_cast)]
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+        write!(self.writer, "snapshot({abbrev})\n").unwrap();
+        unimplemented!();
         json!({})
     }
 }

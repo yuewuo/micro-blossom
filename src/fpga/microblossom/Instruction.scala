@@ -4,20 +4,9 @@ import spinal.core._
 import spinal.lib._
 import util._
 
-// defines the I/O interface: it's always 32 bit width
-object InstructionIO extends Instruction(DualConfig()) {
-  assert(InstructionIO.config.instructionSpec.numBits == 32)
-
-  /* helper functions for simulation purpose */
-  def setSpeed(node: UInt, speed: Speed): Bits = {
-    B(32 bits, (31 downto 17) -> node.resized)
-    // opCode #= OpCode.SetSpeed.value.toInt
-    // field1 #= node.toInt
-  }
-}
-
 case class Instruction(config: DualConfig = DualConfig()) extends Bits {
-  setWidth(config.instructionSpec.numBits)
+  val spec = config.instructionSpec
+  setWidth(spec.numBits)
 
   def widthConvertedFrom(instruction: Instruction) = {
     opCode := instruction.opCode
@@ -49,7 +38,6 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
     }
   }
 
-  val spec = InstructionSpec(config)
   def opCode = sliceOf(spec.opCodeRange)
   def extensionIndicator = sliceOf(spec.extensionIndicatorRange)
   def extendedOpCode = sliceOf(spec.extendedOpCodeRange)
@@ -79,6 +67,14 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
 case class BitRange(msb: Int, lsb: Int) {
   assert(msb >= lsb)
   def numBits = msb - lsb + 1
+
+  def masked(value: Long): Long = {
+    assert(numBits > 0)
+    assert(value >= 0)
+    val maxValue = 1 << numBits
+    assert(value < maxValue)
+    value << lsb
+  }
 }
 
 case class InstructionSpec(config: DualConfig) {
@@ -98,24 +94,20 @@ case class InstructionSpec(config: DualConfig) {
     BitRange(numBits - config.vertexBits - 1, numBits - config.vertexBits - 2)
   def setSpeedZeroRange = BitRange(numBits - config.vertexBits - 3, 2)
 
-  def generateMaskedValueFor(range: BitRange, value: Long): Long = {
-    assert(range.numBits > 0)
-    assert(value >= 0)
-    val maxValue = 1 << range.numBits
-    assert(value < maxValue)
-    value << range.lsb
-  }
   def generateSetSpeed(node: Long, speed: Long): Long = {
-    generateMaskedValueFor(opCodeRange, OpCode.SetSpeed) |
-      generateMaskedValueFor(field1Range, node) | generateMaskedValueFor(speedRange, speed)
+    opCodeRange.masked(OpCode.SetSpeed) | field1Range.masked(node) | speedRange.masked(speed)
+  }
+  def generateSetBlossom(node: Long, blossom: Long): Long = {
+    opCodeRange.masked(OpCode.SetBlossom) | field1Range.masked(node) | speedRange.masked(blossom)
   }
   def generateExtendedSuffix(extendedOpCode: Long): Long = {
-    generateMaskedValueFor(opCodeRange, OpCode.SetSpeed) |
-      generateMaskedValueFor(extensionIndicatorRange, 1) |
-      generateMaskedValueFor(extendedOpCodeRange, extendedOpCode)
+    opCodeRange.masked(OpCode.SetSpeed) | extensionIndicatorRange.masked(1) | extendedOpCodeRange.masked(extendedOpCode)
   }
   def generateReset(): Long = {
     generateExtendedSuffix(ExtendedOpCode.Reset)
+  }
+  def generateFindObstacle(): Long = {
+    generateExtendedSuffix(ExtendedOpCode.FindObstacle)
   }
 
   def sanityCheck() = {

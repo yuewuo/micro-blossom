@@ -28,10 +28,10 @@ import spinal.core._
  * |31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10  9  8  7  6  5  4  3  2  1  0|
  * |                                        Length[29:0]                                     |2'b00| NonZeroGrow
  * |                Node_1[14:0]                |                  Node_2[14:0]              |2'b01| Conflict(part 1)
- * |               Touch_1[14:0]                |                 Touch_2[14:0]              |2'b01| Conflict(part 2)
- * |               Vertex_1[14:0]               |                 Vertex_2[14:0]             |2'b01| Conflict(part 3)
- * |                Blossom[14:0]               |                                           0|2'b11| BlossomNeedExpand
- * |                                                                             | 3'b111 | 3'b100 | Reserved
+ * |               Touch_1[14:0]                |                 Touch_2[14:0]              |2'bxx| Conflict(part 2)
+ * |               Vertex_1[14:0]               |                 Vertex_2[14:0]             |2'bxx| Conflict(part 3)
+ * |                Blossom[14:0]               |                                           0|2'b10| BlossomNeedExpand
+ * |                                                                                         |2'b11| Reserved
  * -------------------------------------------------------------------------------------------------
  *
  *
@@ -86,4 +86,15 @@ object Speed {
   def Stay = Integer.parseInt("00", 2)
   def Grow = Integer.parseInt("01", 2)
   def Shrink = Integer.parseInt("10", 2)
+}
+
+case class RspCode() extends Bits {
+  setWidth(2)
+}
+
+object RspCode {
+  def NonZeroGrow = Integer.parseInt("00", 2)
+  def Conflict = Integer.parseInt("01", 2)
+  def BlossomNeedExpand = Integer.parseInt("10", 2)
+  def Reserved = Integer.parseInt("11", 2)
 }

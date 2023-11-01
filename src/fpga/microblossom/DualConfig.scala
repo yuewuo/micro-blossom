@@ -20,6 +20,7 @@ case class DualConfig(
   def vertexNum = graph.vertex_num.toInt
   def edgeNum = graph.weighted_edges.length.toInt
   def instructionSpec = InstructionSpec(this)
+  def obstacleSpec = ObstacleSpec(this)
   def contextBits = log2Up(contextDepth)
   def IndexNone = (1 << vertexBits) - 1
   private val incidentEdges = collection.mutable.Map[Int, Seq[Int]]()
@@ -46,10 +47,10 @@ case class DualConfig(
     assert(vertexNum > 0)
     if (minimizeBits) {
       val max_node_num = vertexNum * 2
-      vertexBits = Util.bitsToHold(max_node_num)
+      vertexBits = log2Up(max_node_num)
       val max_weight = graph.weighted_edges.map(e => e.w).max
       assert(max_weight > 0)
-      weightBits = Util.bitsToHold(max_weight.toInt * graph.weighted_edges.length)
+      weightBits = log2Up(max_weight.toInt * graph.weighted_edges.length)
       assert(weightBits <= 30)
       if (vertexBits * 2 < weightBits) {
         vertexBits = (weightBits + 1) / 2 // expand vertexBits so that the instruction can hold the maximum length

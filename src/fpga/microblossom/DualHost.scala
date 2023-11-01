@@ -50,12 +50,12 @@ object DualHost extends App {
       .workspacePath(workspacePath)
       .workspaceName(port.toString)
 
-    response = inStream.readLine()
+    var command = inStream.readLine()
     var withWaveform = false
-    if (response == "with waveform") {
+    if (command == "with waveform") {
       simConfig.withFstWave
       withWaveform = true
-    } else if (response == "no waveform") {} else {
+    } else if (command == "no waveform") {} else {
       throw new IllegalArgumentException
     }
 
@@ -78,29 +78,57 @@ object DualHost extends App {
           println("waveform disabled")
         }
 
-        dut.io.valid #= false
-        dut.io.instruction #= 0
+        dut.io.input.valid #= false
+        dut.io.input.instruction #= 0
         dut.clockDomain.forkStimulus(period = 10)
 
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
         dut.clockDomain.waitSampling()
-        dut.io.valid #= true
-        dut.io.instruction #= dut.config.instructionSpec.generateReset()
+        dut.io.input.valid #= true
+        dut.io.input.instruction #= dut.config.instructionSpec.generateReset()
 
         dut.clockDomain.waitSampling()
-        dut.io.valid #= false
-        dut.io.instruction #= 0
+        dut.io.input.valid #= false
+        dut.io.input.instruction #= 0
 
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
+
+        def execute(instruction: Long) = {
+          dut.io.input.valid #= true
+          dut.io.input.instruction #= instruction
+          dut.clockDomain.waitSampling()
+          dut.io.input.valid #= false
+          for (idx <- 0 to 2) { dut.clockDomain.waitSampling() }
+          sleep(1)
+        }
 
         // start hosting the commands
         breakable {
           while (true) {
-            response = inStream.readLine()
-            if (response == "quit") {
+            command = inStream.readLine()
+            if (command == "quit") {
               println("requested quit, breaking...")
               break
+            } else if (command == "reset()") {
+              // TODO
+            } else if (command.startsWith("set_speed(")) {
+              val parameters = command.substring("set_speed(".length, command.length - 1).split(", ")
+              assert(parameters.length == 2)
+              val node = parameters(0).toInt
+              val speed = if (parameters(1) == "Grow") { Speed.Grow }
+              else if (parameters(1) == "Shrink") { Speed.Shrink }
+              else { Speed.Stay }
+              execute(dut.io.input.instruction.spec.generateSetSpeed(node, speed))
+            } else if (command.startsWith("set_blossom(")) {
+              val parameters = command.substring("set_blossom(".length, command.length - 1).split(", ")
+              assert(parameters.length == 2)
+              val node = parameters(0).toInt
+              val blossom = parameters(1).toInt
+              execute(dut.io.input.instruction.spec.generateSetBlossom(node, blossom))
+            } else if (command == "find_obstacle()") {
+              execute(dut.io.input.instruction.spec.generateFindObstacle())
+              // TODO: send back the observed obstacle and the grown value
             }
           }
         }

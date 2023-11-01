@@ -16,22 +16,27 @@ case class BroadcastMessage(config: DualConfig) extends Bundle {
   val contextId = (config.contextBits > 0) generate (in UInt (config.contextBits bits))
 }
 
+case class ConvergecastMessage(config: DualConfig) extends Bundle {
+  val valid = Bool
+  val obstacle = Obstacle(config)
+  val contextId = (config.contextBits > 0) generate (in UInt (config.contextBits bits))
+}
+
 case class DualAccelerator(config: DualConfig) extends Component {
   val io = new Bundle {
-    val valid = in(Bool)
-    val instruction = in(Instruction())
-    val contextId = (config.contextBits > 0) generate (in UInt (config.contextBits bits))
+    val input = in(BroadcastMessage(DualConfig()))
     val state = out(DualAcceleratorState())
+    val output = out(ConvergecastMessage(DualConfig()))
   }
 
   val instructionReg = Instruction()
-  instructionReg.assignFromBits(RegNext(io.instruction.asBits))
+  instructionReg.assignFromBits(RegNext(io.input.instruction.asBits))
 
   io.state := DualAcceleratorState.Normal
 
   val broadcastMessage = Instruction(config)
 
-  broadcastMessage.widthConvertedFrom(io.instruction)
+  broadcastMessage.widthConvertedFrom(io.input.instruction)
   val broadcastInstruction = Instruction(config)
   broadcastInstruction.assignFromBits(Delay(RegNext(broadcastMessage.asBits), config.broadcastDelay))
 
@@ -92,17 +97,17 @@ class DualAcceleratorTest extends AnyFunSuite {
         dut
       })
       .doSim("testA") { dut =>
-        dut.io.valid #= false
+        dut.io.input.valid #= false
         dut.clockDomain.forkStimulus(period = 10)
 
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
         dut.clockDomain.waitSampling()
-        dut.io.valid #= true
-        dut.io.instruction #= dut.config.instructionSpec.generateReset()
+        dut.io.input.valid #= true
+        dut.io.input.instruction #= dut.config.instructionSpec.generateReset()
 
         dut.clockDomain.waitSampling()
-        dut.io.valid #= false
+        dut.io.input.valid #= false
 
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
       }
