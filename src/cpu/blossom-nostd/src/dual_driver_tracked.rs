@@ -15,7 +15,7 @@ pub trait DualTrackedDriver {
     fn set_maximum_growth(&mut self, length: CompactWeight);
 }
 
-struct DualDriverTracked<D: DualStacklessDriver + DualTrackedDriver, const N: usize> {
+pub struct DualDriverTracked<D: DualStacklessDriver + DualTrackedDriver, const N: usize> {
     pub driver: D,
     pub blossom_tracker: BlossomTracker<N>,
 }
@@ -44,6 +44,14 @@ impl<D: DualStacklessDriver + DualTrackedDriver, const N: usize> DualStacklessDr
         self.blossom_tracker.create_blossom(blossom);
     }
 
+    fn on_blossom_expanded(&mut self, blossom: CompactNodeIndex) {
+        self.blossom_tracker.set_speed(blossom, CompactGrowState::Stay);
+    }
+
+    fn on_blossom_absorbed_into_blossom(&mut self, child: CompactNodeIndex) {
+        self.blossom_tracker.set_speed(child, CompactGrowState::Stay);
+    }
+
     fn set_blossom(&mut self, node: CompactNodeIndex, blossom: CompactNodeIndex) {
         self.driver.set_blossom(node, blossom);
     }
@@ -53,6 +61,7 @@ impl<D: DualStacklessDriver + DualTrackedDriver, const N: usize> DualStacklessDr
         while obstacle.is_finite_growth() {
             if let Some((length, blossom)) = self.blossom_tracker.get_maximum_growth() {
                 if length == 0 {
+                    self.blossom_tracker.advance_time(grown as CompactTimestamp);
                     return (CompactObstacle::BlossomNeedExpand { blossom }, grown);
                 } else {
                     self.driver.set_maximum_growth(length);
@@ -64,6 +73,20 @@ impl<D: DualStacklessDriver + DualTrackedDriver, const N: usize> DualStacklessDr
             obstacle = inc_obstacle;
             grown += inc_grown;
         }
+        self.blossom_tracker.advance_time(grown as CompactTimestamp);
         (obstacle, grown)
+    }
+
+    fn add_defect(&mut self, vertex: CompactVertexIndex, node: CompactNodeIndex) {
+        self.driver.add_defect(vertex, node);
+    }
+}
+
+impl<D: DualStacklessDriver + DualTrackedDriver, const N: usize> DualDriverTracked<D, N> {
+    pub fn new(driver: D) -> Self {
+        Self {
+            driver,
+            blossom_tracker: BlossomTracker::new(),
+        }
     }
 }

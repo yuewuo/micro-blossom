@@ -30,6 +30,9 @@ impl DualStacklessDriver for DualModuleCounterDriver {
     fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
         unimplemented_or_loop!()
     }
+    fn add_defect(&mut self, _vertex: CompactVertexIndex, _node: CompactNodeIndex) {
+        unimplemented_or_loop!()
+    }
 }
 
 impl DualModuleCounterDriver {

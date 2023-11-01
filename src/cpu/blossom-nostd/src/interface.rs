@@ -80,6 +80,9 @@ pub trait DualInterface {
 
     /// find an obstacle and return the amount of growth from last return
     fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight);
+
+    /// add a defect at given vertex
+    fn add_defect(&mut self, vertex: CompactVertexIndex, node: CompactNodeIndex);
 }
 
 impl CompactObstacle {

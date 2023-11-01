@@ -88,6 +88,9 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
         println!("[dual] find_obstacle()");
         unreachable!("should not be called")
     }
+    fn add_defect(&mut self, _vertex: CompactVertexIndex, _node: CompactNodeIndex) {
+        unimplemented_or_loop!()
+    }
 }
 
 impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {

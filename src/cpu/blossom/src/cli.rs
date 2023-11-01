@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use fusion_blossom::cli::{ExampleCodeType, RunnableBenchmarkParameters, Verifier};
 use fusion_blossom::mwpm_solver::*;
 use fusion_blossom::util::*;
+use lazy_static::lazy_static;
 use serde::Serialize;
 use serde_json::json;
 use std::env;
@@ -100,6 +101,8 @@ pub enum PrimalDualType {
     DualRTL,
     /// embedded primal + standard dual
     PrimalEmbedded,
+    /// embedded primal + RTL-behavior dual
+    EmbeddedRTL,
     /// serial primal and dual, standard solution
     Serial,
     /// log error into a file for later fetch
@@ -128,6 +131,24 @@ enum TestCommands {
     },
     /// test embedded primal module
     PrimalEmbedded {
+        /// print out the command to test
+        #[clap(short = 'c', long, action)]
+        print_command: bool,
+        /// enable visualizer
+        #[clap(short = 'v', long, action)]
+        enable_visualizer: bool,
+        /// disable the fusion verifier
+        #[clap(short = 'd', long, action)]
+        disable_fusion: bool,
+        /// enable print syndrome pattern
+        #[clap(short = 's', long, action)]
+        print_syndrome_pattern: bool,
+        /// use deterministic seed for debugging purpose
+        #[clap(long, action)]
+        use_deterministic_seed: bool,
+    },
+    /// test embedded primal module + RTL-behavior dual module, bypassing the dual interface
+    EmbeddedRTL {
         /// print out the command to test
         #[clap(short = 'c', long, action)]
         print_command: bool,
@@ -230,6 +251,65 @@ impl From<BenchmarkParameters> for RunnableBenchmarkParameters {
     }
 }
 
+lazy_static! {
+    static ref RANDOMIZED_TEST_PARAMETERS: Vec<Vec<String>> = {
+        let mut parameters = vec![];
+        for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
+            for d in [3, 7, 11, 15, 19] {
+                parameters.push(vec![
+                    format!("{d}"),
+                    format!("{p}"),
+                    format!("--code-type"),
+                    format!("code-capacity-repetition-code"),
+                    format!("--pb-message"),
+                    format!("repetition {d} {p}"),
+                ]);
+            }
+        }
+        for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
+            for d in [3, 7, 11, 15, 19] {
+                parameters.push(vec![
+                    format!("{d}"),
+                    format!("{p}"),
+                    format!("--code-type"),
+                    format!("code-capacity-planar-code"),
+                    format!("--pb-message"),
+                    format!("planar {d} {p}"),
+                ]);
+            }
+        }
+        for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
+            for d in [3, 7, 11] {
+                parameters.push(vec![
+                    format!("{d}"),
+                    format!("{p}"),
+                    format!("--code-type"),
+                    format!("phenomenological-planar-code"),
+                    format!("--noisy-measurements"),
+                    format!("{d}"),
+                    format!("--pb-message"),
+                    format!("phenomenological {d} {p}"),
+                ]);
+            }
+        }
+        for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
+            for d in [3, 7, 11] {
+                parameters.push(vec![
+                    format!("{d}"),
+                    format!("{p}"),
+                    format!("--code-type"),
+                    format!("circuit-level-planar-code"),
+                    format!("--noisy-measurements"),
+                    format!("{d}"),
+                    format!("--pb-message"),
+                    format!("circuit-level {d} {p}"),
+                ]);
+            }
+        }
+        parameters
+    };
+}
+
 impl Cli {
     pub fn run(self) {
         match self.command {
@@ -245,59 +325,6 @@ impl Cli {
                     print_syndrome_pattern,
                     use_deterministic_seed,
                 } => {
-                    let mut parameters = vec![];
-                    for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
-                        for d in [3, 7, 11, 15, 19] {
-                            parameters.push(vec![
-                                format!("{d}"),
-                                format!("{p}"),
-                                format!("--code-type"),
-                                format!("code-capacity-repetition-code"),
-                                format!("--pb-message"),
-                                format!("repetition {d} {p}"),
-                            ]);
-                        }
-                    }
-                    for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
-                        for d in [3, 7, 11, 15, 19] {
-                            parameters.push(vec![
-                                format!("{d}"),
-                                format!("{p}"),
-                                format!("--code-type"),
-                                format!("code-capacity-planar-code"),
-                                format!("--pb-message"),
-                                format!("planar {d} {p}"),
-                            ]);
-                        }
-                    }
-                    for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
-                        for d in [3, 7, 11] {
-                            parameters.push(vec![
-                                format!("{d}"),
-                                format!("{p}"),
-                                format!("--code-type"),
-                                format!("phenomenological-planar-code"),
-                                format!("--noisy-measurements"),
-                                format!("{d}"),
-                                format!("--pb-message"),
-                                format!("phenomenological {d} {p}"),
-                            ]);
-                        }
-                    }
-                    for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
-                        for d in [3, 7, 11] {
-                            parameters.push(vec![
-                                format!("{d}"),
-                                format!("{p}"),
-                                format!("--code-type"),
-                                format!("circuit-level-planar-code"),
-                                format!("--noisy-measurements"),
-                                format!("{d}"),
-                                format!("--pb-message"),
-                                format!("circuit-level {d} {p}"),
-                            ]);
-                        }
-                    }
                     let command_head = vec![format!(""), format!("benchmark")];
                     let mut command_tail = vec!["--total-rounds".to_string(), format!("{TEST_EACH_ROUNDS}")];
                     if !disable_fusion {
@@ -315,7 +342,7 @@ impl Cli {
                         command_tail.append(&mut vec![format!("--use-deterministic-seed")]);
                     }
                     command_tail.append(&mut vec![format!("--primal-dual-type"), format!("dual-rtl")]);
-                    for parameter in parameters.iter() {
+                    for parameter in RANDOMIZED_TEST_PARAMETERS.iter() {
                         execute_in_cli(
                             command_head.iter().chain(parameter.iter()).chain(command_tail.iter()),
                             print_command,
@@ -329,59 +356,6 @@ impl Cli {
                     print_syndrome_pattern,
                     use_deterministic_seed,
                 } => {
-                    let mut parameters = vec![];
-                    for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
-                        for d in [3, 7, 11, 15, 19] {
-                            parameters.push(vec![
-                                format!("{d}"),
-                                format!("{p}"),
-                                format!("--code-type"),
-                                format!("code-capacity-repetition-code"),
-                                format!("--pb-message"),
-                                format!("repetition {d} {p}"),
-                            ]);
-                        }
-                    }
-                    for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
-                        for d in [3, 7, 11, 15, 19] {
-                            parameters.push(vec![
-                                format!("{d}"),
-                                format!("{p}"),
-                                format!("--code-type"),
-                                format!("code-capacity-planar-code"),
-                                format!("--pb-message"),
-                                format!("planar {d} {p}"),
-                            ]);
-                        }
-                    }
-                    for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
-                        for d in [3, 7, 11] {
-                            parameters.push(vec![
-                                format!("{d}"),
-                                format!("{p}"),
-                                format!("--code-type"),
-                                format!("phenomenological-planar-code"),
-                                format!("--noisy-measurements"),
-                                format!("{d}"),
-                                format!("--pb-message"),
-                                format!("phenomenological {d} {p}"),
-                            ]);
-                        }
-                    }
-                    for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
-                        for d in [3, 7, 11] {
-                            parameters.push(vec![
-                                format!("{d}"),
-                                format!("{p}"),
-                                format!("--code-type"),
-                                format!("circuit-level-planar-code"),
-                                format!("--noisy-measurements"),
-                                format!("{d}"),
-                                format!("--pb-message"),
-                                format!("circuit-level {d} {p}"),
-                            ]);
-                        }
-                    }
                     let command_head = vec![format!(""), format!("benchmark")];
                     let mut command_tail = vec!["--total-rounds".to_string(), format!("{TEST_EACH_ROUNDS}")];
                     if !disable_fusion {
@@ -399,7 +373,38 @@ impl Cli {
                         command_tail.append(&mut vec![format!("--use-deterministic-seed")]);
                     }
                     command_tail.append(&mut vec![format!("--primal-dual-type"), format!("primal-embedded")]);
-                    for parameter in parameters.iter() {
+                    for parameter in RANDOMIZED_TEST_PARAMETERS.iter() {
+                        execute_in_cli(
+                            command_head.iter().chain(parameter.iter()).chain(command_tail.iter()),
+                            print_command,
+                        );
+                    }
+                }
+                TestCommands::EmbeddedRTL {
+                    print_command,
+                    enable_visualizer,
+                    disable_fusion,
+                    print_syndrome_pattern,
+                    use_deterministic_seed,
+                } => {
+                    let command_head = vec![format!(""), format!("benchmark")];
+                    let mut command_tail = vec!["--total-rounds".to_string(), format!("{TEST_EACH_ROUNDS}")];
+                    if !disable_fusion {
+                        command_tail.append(&mut vec![format!("--verifier"), format!("fusion-serial")]);
+                    } else {
+                        command_tail.append(&mut vec![format!("--verifier"), format!("none")]);
+                    }
+                    if enable_visualizer {
+                        command_tail.append(&mut vec![format!("--enable-visualizer")]);
+                    }
+                    if print_syndrome_pattern {
+                        command_tail.append(&mut vec![format!("--print-syndrome-pattern")]);
+                    }
+                    if use_deterministic_seed {
+                        command_tail.append(&mut vec![format!("--use-deterministic-seed")]);
+                    }
+                    command_tail.append(&mut vec![format!("--primal-dual-type"), format!("embedded-rtl")]);
+                    for parameter in RANDOMIZED_TEST_PARAMETERS.iter() {
                         execute_in_cli(
                             command_head.iter().chain(parameter.iter()).chain(command_tail.iter()),
                             print_command,
@@ -444,6 +449,10 @@ impl PrimalDualType {
             Self::PrimalEmbedded => {
                 assert_eq!(primal_dual_config, json!({}));
                 Box::new(SolverPrimalEmbedded::new(initializer))
+            }
+            Self::EmbeddedRTL => {
+                assert_eq!(primal_dual_config, json!({}));
+                Box::new(SolverEmbeddedRTL::new(initializer))
             }
             _ => unimplemented!(),
         }

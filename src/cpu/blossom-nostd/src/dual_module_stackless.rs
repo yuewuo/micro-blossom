@@ -9,10 +9,13 @@ use crate::util::*;
 pub trait DualStacklessDriver {
     fn reset(&mut self);
     fn set_speed(&mut self, is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState);
-    /// just to inform a blossom has been created; no need to do anything
-    fn on_blossom_created(&mut self, _blossom: CompactNodeIndex) {}
     fn set_blossom(&mut self, node: CompactNodeIndex, blossom: CompactNodeIndex);
     fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight);
+    fn add_defect(&mut self, vertex: CompactVertexIndex, node: CompactNodeIndex);
+    /// just to inform a blossom has been created; no need to do anything
+    fn on_blossom_created(&mut self, _blossom: CompactNodeIndex) {}
+    fn on_blossom_expanded(&mut self, _blossom: CompactNodeIndex) {}
+    fn on_blossom_absorbed_into_blossom(&mut self, _child: CompactNodeIndex) {}
 }
 
 pub struct DualModuleStackless<D: DualStacklessDriver> {
@@ -21,28 +24,55 @@ pub struct DualModuleStackless<D: DualStacklessDriver> {
 
 impl<D: DualStacklessDriver> DualInterface for DualModuleStackless<D> {
     fn reset(&mut self) {
+        #[cfg(any(test, feature = "std"))]
+        if option_env!("PRINT_DUAL_CALLS").is_some() {
+            println!("reset()");
+        }
         self.driver.reset();
     }
 
     fn create_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
-        primal_module.iterate_blossom_children(blossom_index, |_primal_module, child_index, _| {
+        #[cfg(any(test, feature = "std"))]
+        if option_env!("PRINT_DUAL_CALLS").is_some() {
+            println!("create_blossom({blossom_index})");
+        }
+        primal_module.iterate_blossom_children(blossom_index, |primal_module, child_index, _| {
+            if primal_module.is_blossom(child_index) {
+                self.driver.on_blossom_absorbed_into_blossom(child_index);
+            }
             self.driver.set_blossom(child_index, blossom_index);
         });
         self.driver.on_blossom_created(blossom_index);
     }
 
     fn expand_blossom(&mut self, primal_module: &impl PrimalInterface, blossom_index: CompactNodeIndex) {
+        #[cfg(any(test, feature = "std"))]
+        if option_env!("PRINT_DUAL_CALLS").is_some() {
+            println!("expand_blossom({blossom_index})");
+        }
         primal_module.iterate_blossom_children(blossom_index, |primal_module, child_index, _| {
             self.iterative_expand_blossom(primal_module, child_index, child_index);
         });
+        self.driver.on_blossom_expanded(blossom_index);
     }
 
     fn set_speed(&mut self, is_blossom: bool, node_index: CompactNodeIndex, grow_state: CompactGrowState) {
+        #[cfg(any(test, feature = "std"))]
+        if option_env!("PRINT_DUAL_CALLS").is_some() {
+            println!(
+                "set_speed({node_index}({}), {grow_state:?})",
+                if is_blossom { "blossom" } else { "defect" }
+            );
+        }
         self.driver.set_speed(is_blossom, node_index, grow_state);
     }
 
     fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
         self.driver.find_obstacle()
+    }
+
+    fn add_defect(&mut self, vertex: CompactVertexIndex, node: CompactNodeIndex) {
+        self.driver.add_defect(vertex, node);
     }
 }
 
@@ -217,6 +247,9 @@ mod tests {
         fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
             self.log(format!("find_obstacle()"));
             self.pending_obstacles.pop_front().unwrap()
+        }
+        fn add_defect(&mut self, vertex: CompactVertexIndex, node: CompactNodeIndex) {
+            self.log(format!("add_defect({vertex}, {node})"));
         }
     }
 }

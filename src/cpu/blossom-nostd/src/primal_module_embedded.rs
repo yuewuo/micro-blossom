@@ -718,7 +718,6 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
             iter_2 = usu!(original_parent);
         }
         dual_module.create_blossom(self, blossom);
-        self.nodes.set_speed(blossom, CompactGrowState::Grow, dual_module);
     }
 
     #[inline]
