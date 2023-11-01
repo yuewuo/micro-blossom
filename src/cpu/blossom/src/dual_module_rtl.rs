@@ -7,6 +7,7 @@
 //! This is supposed to be an algorithm design for Micro Blossom.
 //!
 
+use crate::dual_module_adaptor::*;
 use crate::util::*;
 use fusion_blossom::dual_module::*;
 use fusion_blossom::util::*;
@@ -18,81 +19,22 @@ use micro_blossom_nostd::util::*;
 use serde_json::json;
 
 #[derive(Debug)]
-pub struct DualModuleRTL {
+pub struct DualModuleRTLDriver {
     pub initializer: SolverInitializer,
     pub vertices: Vec<Vertex>,
     pub edges: Vec<Edge>,
     pub maximum_growth: Weight,
 }
 
-/// mocking the interface of the embedded primal module
-#[derive(Debug)]
-pub struct MockPrimalInterface<'a> {
-    pub nodes: &'a mut Vec<DualNodePtr>,
-}
+pub type DualModuleRTL = DualModuleStackless<DualDriverTracked<DualModuleRTLDriver, MAX_NODE_NUM>>;
 
-impl<'a> PrimalInterface for MockPrimalInterface<'a> {
-    fn reset(&mut self) {
-        unreachable!("should not be called")
-    }
-    fn is_blossom(&self, node_index: CompactNodeIndex) -> bool {
-        self.nodes[node_index.get() as usize].read_recursive().class.is_blossom()
-    }
-    fn iterate_blossom_children(
-        &self,
-        blossom_index: CompactNodeIndex,
-        mut func: impl FnMut(&Self, CompactNodeIndex, &TouchingLink),
-    ) {
-        match &self.nodes[blossom_index.get() as usize].read_recursive().class {
-            DualNodeClass::Blossom {
-                nodes_circle,
-                touching_children,
-            } => {
-                for (idx, node_weak) in nodes_circle.iter().enumerate() {
-                    let peer_index = node_weak.upgrade_force().read_recursive().index;
-                    let touch = touching_children[idx].1.upgrade_force().read_recursive().index;
-                    let peer_touch = touching_children[(idx + 1) % nodes_circle.len()]
-                        .0
-                        .upgrade_force()
-                        .read_recursive()
-                        .index;
-                    let link = TouchingLink {
-                        touch: Some(ni!(touch)),
-                        through: Some(ni!(0)),
-                        peer_touch: Some(ni!(peer_touch)),
-                        peer_through: Some(ni!(0)),
-                    };
-                    func(self, ni!(peer_index), &link);
-                }
-            }
-            _ => unreachable!(),
-        }
-    }
-    fn resolve(&mut self, _dual_module: &mut impl DualInterface, _max_update_length: CompactObstacle) -> bool {
-        unreachable!("should not be called")
-    }
-    fn iterate_perfect_matching(&mut self, _func: impl FnMut(&Self, CompactNodeIndex, CompactMatchTarget, &TouchingLink)) {
-        unreachable!("should not be called")
-    }
-    fn break_with_virtual_vertex(
-        &mut self,
-        _dual_module: &mut impl DualInterface,
-        _virtual_vertex: CompactVertexIndex,
-        _hint_node_index: CompactNodeIndex,
-    ) -> bool {
-        unreachable!("should not be called")
+impl DualInterfaceWithInitializer for DualModuleRTL {
+    fn new_with_initializer(initializer: &SolverInitializer) -> Self {
+        DualModuleStackless::new(DualDriverTracked::new(DualModuleRTLDriver::new_empty(initializer)))
     }
 }
 
-pub struct DualModuleRTLAdaptor {
-    // always reconstruct the whole graph when reset
-    pub dual_module: DualModuleStackless<DualDriverTracked<DualModuleRTL, MAX_NODE_NUM>>,
-    /// the nodes that interact with dual module interface
-    pub nodes: Vec<DualNodePtr>,
-    /// temporary list of synchronize requests, not used until hardware fusion
-    pub sync_requests: Vec<SyncRequest>,
-    pub grown: Weight,
-}
+pub type DualModuleRTLAdaptor = DualModuleAdaptor<DualModuleRTL>;
 
 #[derive(Debug)]
 pub enum Instruction {
@@ -161,116 +103,6 @@ pub fn get_blossom_roots(dual_node_ptr: &DualNodePtr) -> Vec<NodeIndex> {
     }
 }
 
-impl DualModuleImpl for DualModuleRTLAdaptor {
-    fn new_empty(initializer: &SolverInitializer) -> Self {
-        Self {
-            dual_module: DualModuleStackless::new(DualDriverTracked::new(DualModuleRTL::new_empty(initializer))),
-            nodes: vec![],
-            sync_requests: vec![],
-            grown: 0,
-        }
-    }
-
-    fn clear(&mut self) {
-        self.dual_module.reset();
-        // clear nodes
-        self.nodes.clear();
-        self.grown = 0;
-    }
-
-    fn add_dual_node(&mut self, dual_node_ptr: &DualNodePtr) {
-        let node = dual_node_ptr.read_recursive();
-        assert_eq!(node.index, self.nodes.len());
-        self.nodes.push(dual_node_ptr.clone());
-        match &node.class {
-            DualNodeClass::Blossom { .. } => {
-                self.dual_module
-                    .create_blossom(&mut MockPrimalInterface { nodes: &mut self.nodes }, ni!(node.index));
-            }
-            DualNodeClass::DefectVertex { defect_index } => {
-                self.dual_module.add_defect(ni!(*defect_index), ni!(node.index));
-            }
-        }
-    }
-
-    fn remove_blossom(&mut self, dual_node_ptr: DualNodePtr) {
-        // remove blossom is expensive because the vertices doesn't remember all the chain of blossom
-        let node = dual_node_ptr.read_recursive();
-        self.dual_module
-            .expand_blossom(&mut MockPrimalInterface { nodes: &mut self.nodes }, ni!(node.index));
-    }
-
-    fn set_grow_state(&mut self, dual_node_ptr: &DualNodePtr, grow_state: DualNodeGrowState) {
-        let node = dual_node_ptr.read_recursive();
-        self.dual_module.set_speed(
-            node.class.is_blossom(),
-            ni!(node.index),
-            match grow_state {
-                DualNodeGrowState::Grow => CompactGrowState::Grow,
-                DualNodeGrowState::Shrink => CompactGrowState::Shrink,
-                DualNodeGrowState::Stay => CompactGrowState::Stay,
-            },
-        );
-    }
-
-    fn compute_maximum_update_length(&mut self) -> GroupMaxUpdateLength {
-        assert!(
-            self.grown == 0,
-            "must clear grown value before next round, to make sure interface is notified; see `SolverDualRTL` for more info"
-        );
-        let (obstacle, grown) = self.dual_module.find_obstacle();
-        self.grown = grown as Weight;
-        let max_update_length = match obstacle {
-            CompactObstacle::GrowLength { length } => MaxUpdateLength::NonZeroGrow((length as Weight, false)),
-            CompactObstacle::Conflict {
-                node_1,
-                node_2,
-                touch_1,
-                touch_2,
-                vertex_1: _,
-                vertex_2,
-            } => {
-                if node_2.is_some() {
-                    MaxUpdateLength::Conflicting(
-                        (
-                            self.nodes[node_1.get() as usize].clone(),
-                            self.nodes[touch_1.get() as usize].clone(),
-                        ),
-                        (
-                            self.nodes[node_2.unwrap().get() as usize].clone(),
-                            self.nodes[touch_2.unwrap().get() as usize].clone(),
-                        ),
-                    )
-                } else {
-                    MaxUpdateLength::TouchingVirtual(
-                        (
-                            self.nodes[node_1.get() as usize].clone(),
-                            self.nodes[touch_1.get() as usize].clone(),
-                        ),
-                        (vertex_2.get() as VertexIndex, false),
-                    )
-                }
-            }
-            CompactObstacle::BlossomNeedExpand { blossom } => {
-                MaxUpdateLength::BlossomNeedExpand(self.nodes[blossom.get() as usize].clone())
-            }
-            CompactObstacle::None => MaxUpdateLength::NonZeroGrow((Weight::MAX, false)),
-        };
-        let mut group_max_update_length = GroupMaxUpdateLength::new();
-        group_max_update_length.add(max_update_length);
-        group_max_update_length
-    }
-
-    fn grow(&mut self, _length: Weight) {
-        unimplemented!("RTL dual module doesn't allow explicit grow command")
-    }
-
-    fn prepare_nodes_shrink(&mut self, _nodes_circle: &[DualNodePtr]) -> &mut Vec<SyncRequest> {
-        self.sync_requests.clear();
-        &mut self.sync_requests
-    }
-}
-
 macro_rules! pipeline_staged {
     ($dual_module:ident, $instruction:ident, $stage_name:ident) => {
         let vertices_next = $dual_module
@@ -296,7 +128,7 @@ macro_rules! pipeline_staged {
     };
 }
 
-impl DualModuleRTL {
+impl DualModuleRTLDriver {
     pub fn new_empty(initializer: &SolverInitializer) -> Self {
         let mut behavior = Self {
             initializer: initializer.clone(),
@@ -366,7 +198,7 @@ impl DualModuleRTL {
     }
 }
 
-impl DualStacklessDriver for DualModuleRTL {
+impl DualStacklessDriver for DualModuleRTLDriver {
     fn reset(&mut self) {
         self.clear();
     }
@@ -452,7 +284,7 @@ impl DualStacklessDriver for DualModuleRTL {
     }
 }
 
-impl DualTrackedDriver for DualModuleRTL {
+impl DualTrackedDriver for DualModuleRTLDriver {
     fn set_maximum_growth(&mut self, length: CompactWeight) {
         self.maximum_growth = length as Weight;
     }
@@ -460,13 +292,13 @@ impl DualTrackedDriver for DualModuleRTL {
 
 pub trait DualPipelined {
     /// load data from BRAM (optional)
-    fn load_stage(&mut self, _dual_module: &DualModuleRTL, _instruction: &Instruction) {}
+    fn load_stage(&mut self, _dual_module: &DualModuleRTLDriver, _instruction: &Instruction) {}
     /// execute growth and respond to speed and blossom updates
-    fn execute_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction);
+    fn execute_stage(&mut self, dual_module: &DualModuleRTLDriver, instruction: &Instruction);
     /// update the node according to the updated speed and length after growth
-    fn update_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction);
+    fn update_stage(&mut self, dual_module: &DualModuleRTLDriver, instruction: &Instruction);
     /// generate a response after the update stage (and optionally, write back to memory)
-    fn write_stage(&self, dual_module: &DualModuleRTL, instruction: &Instruction) -> Option<Response>;
+    fn write_stage(&self, dual_module: &DualModuleRTLDriver, instruction: &Instruction) -> Option<Response>;
 }
 
 #[derive(Clone, Debug)]
@@ -512,7 +344,7 @@ impl Vertex {
 }
 
 impl DualPipelined for Vertex {
-    fn execute_stage(&mut self, _dual_module: &DualModuleRTL, instruction: &Instruction) {
+    fn execute_stage(&mut self, _dual_module: &DualModuleRTLDriver, instruction: &Instruction) {
         match instruction {
             Instruction::SetSpeed { node, speed } => {
                 if Some(*node) == self.node_index {
@@ -546,7 +378,7 @@ impl DualPipelined for Vertex {
         }
     }
 
-    fn update_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {
+    fn update_stage(&mut self, dual_module: &DualModuleRTLDriver, instruction: &Instruction) {
         match instruction {
             Instruction::Grow { .. } | Instruction::SetSpeed { .. } | Instruction::SetBlossom { .. } => {
                 // is there any growing peer trying to propagate to this node?
@@ -612,7 +444,7 @@ impl DualPipelined for Vertex {
     }
 
     // generate a response
-    fn write_stage(&self, _dual_module: &DualModuleRTL, _instruction: &Instruction) -> Option<Response> {
+    fn write_stage(&self, _dual_module: &DualModuleRTLDriver, _instruction: &Instruction) -> Option<Response> {
         None
     }
 }
@@ -642,18 +474,18 @@ impl Edge {
 impl DualPipelined for Edge {
     // compute the next register values
     #[allow(clippy::single_match)]
-    fn execute_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {
+    fn execute_stage(&mut self, dual_module: &DualModuleRTLDriver, instruction: &Instruction) {
         let left_vertex = &dual_module.vertices[self.left_index];
         let right_vertex = &dual_module.vertices[self.right_index];
         self.is_tight =
             left_vertex.get_updated_grown(instruction) + right_vertex.get_updated_grown(instruction) >= self.weight;
     }
 
-    fn update_stage(&mut self, _dual_module: &DualModuleRTL, _instruction: &Instruction) {}
+    fn update_stage(&mut self, _dual_module: &DualModuleRTLDriver, _instruction: &Instruction) {}
 
     // generate a response
     #[allow(clippy::comparison_chain)]
-    fn write_stage(&self, dual_module: &DualModuleRTL, instruction: &Instruction) -> Option<Response> {
+    fn write_stage(&self, dual_module: &DualModuleRTLDriver, instruction: &Instruction) -> Option<Response> {
         if !matches!(instruction, Instruction::FindObstacle { .. }) {
             return None;
         }
@@ -703,7 +535,7 @@ impl FusionVisualizer for DualModuleRTLAdaptor {
     }
 }
 
-impl FusionVisualizer for DualModuleRTL {
+impl FusionVisualizer for DualModuleRTLDriver {
     #[allow(clippy::unnecessary_cast)]
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
         let vertices: Vec<serde_json::Value> = self
@@ -779,12 +611,15 @@ impl FusionVisualizer for DualModuleRTL {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use crate::mwpm_solver::*;
     use fusion_blossom::example_codes::*;
     use fusion_blossom::mwpm_solver::*;
     use fusion_blossom::primal_module::*;
+
+    // to use visualization, we need the folder of fusion-blossom repo
+    // e.g. export FUSION_DIR=/Users/wuyue/Documents/GitHub/fusion-blossom
 
     #[test]
     fn dual_module_rtl_adaptor_basic_1() {
@@ -793,9 +628,6 @@ mod tests {
         let defect_vertices = vec![18, 26, 34];
         dual_module_rtl_adaptor_basic_standard_syndrome(7, visualize_filename, defect_vertices);
     }
-
-    // to use visualization, we need the folder of fusion-blossom repo
-    // e.g. export FUSION_DIR=/Users/wuyue/Documents/GitHub/fusion-blossom
 
     // phenomena: index out of bound error
     // command: cargo run --release -- benchmark 7 0.15 --code-type code-capacity-repetition-code --pb-message 'repetition 7 0.1' --total-rounds 1000000 --verifier fusion-serial --use-deterministic-seed --starting-iteration 472872 --print-syndrome-pattern

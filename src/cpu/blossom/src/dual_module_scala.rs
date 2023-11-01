@@ -3,6 +3,7 @@
 //! This dual module will spawn a Scala program that compiles and runs a given decoding graph
 //!
 
+use crate::dual_module_adaptor::*;
 use crate::resources::*;
 use crate::util::*;
 use derivative::Derivative;
@@ -10,6 +11,9 @@ use fusion_blossom::dual_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::blossom_tracker::*;
+use micro_blossom_nostd::dual_driver_tracked::*;
+use micro_blossom_nostd::dual_module_stackless::*;
+use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
 use serde_json::json;
 use std::io::prelude::*;
@@ -18,25 +22,25 @@ use std::net::{TcpListener, TcpStream};
 use std::process::{Child, Command};
 use wait_timeout::ChildExt;
 
-#[derive(Derivative)]
-#[derivative(Debug)]
-pub struct DualModuleScala {
-    #[derivative(Debug = "ignore")]
-    pub scala_driver: ScalaDriver,
-    pub blossom_tracker: Box<BlossomTracker<MAX_NODE_NUM>>,
-    /// temporary list of synchronize requests, not used until hardware fusion
-    pub sync_requests: Vec<SyncRequest>,
-}
-
-pub struct ScalaDriver {
+pub struct DualModuleScalaDriver {
     pub port: u16,
     pub child: Child,
     pub reader: BufReader<TcpStream>,
     pub writer: LineWriter<TcpStream>,
 }
 
+pub type DualModuleScala = DualModuleStackless<DualDriverTracked<DualModuleScalaDriver, MAX_NODE_NUM>>;
+
+impl DualInterfaceWithInitializer for DualModuleScala {
+    fn new_with_initializer(initializer: &SolverInitializer) -> Self {
+        DualModuleStackless::new(DualDriverTracked::new(DualModuleScalaDriver::new(initializer).unwrap()))
+    }
+}
+
+pub type DualModuleScalaAdaptor = DualModuleAdaptor<DualModuleScala>;
+
 // https://stackoverflow.com/questions/30538004/how-do-i-ensure-that-a-spawned-child-process-is-killed-if-my-app-panics
-impl Drop for ScalaDriver {
+impl Drop for DualModuleScalaDriver {
     fn drop(&mut self) {
         let need_to_kill: bool = (|| {
             if write!(self.writer, "quit\n").is_ok() {
@@ -66,7 +70,7 @@ impl Drop for ScalaDriver {
     }
 }
 
-impl ScalaDriver {
+impl DualModuleScalaDriver {
     pub fn new(initializer: &SolverInitializer) -> std::io::Result<Self> {
         let hostname = "127.0.0.1";
         let listener = TcpListener::bind(format!("{hostname}:0"))?;
@@ -99,70 +103,64 @@ impl ScalaDriver {
     }
 }
 
-impl DualModuleImpl for DualModuleScala {
-    fn new_empty(initializer: &SolverInitializer) -> Self {
-        let mut dual_module = Self {
-            scala_driver: ScalaDriver::new(initializer).unwrap(),
-            blossom_tracker: Box::new(BlossomTracker::new()),
-            sync_requests: vec![],
-        };
-        dual_module.clear();
-        dual_module
-    }
-
-    fn clear(&mut self) {
+impl DualStacklessDriver for DualModuleScalaDriver {
+    fn reset(&mut self) {
         unimplemented!()
     }
-
-    fn add_dual_node(&mut self, dual_node_ptr: &DualNodePtr) {
+    fn set_speed(&mut self, _is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState) {
         unimplemented!()
     }
-
-    fn remove_blossom(&mut self, dual_node_ptr: DualNodePtr) {
+    fn set_blossom(&mut self, node: CompactNodeIndex, blossom: CompactNodeIndex) {
         unimplemented!()
     }
-
-    fn set_grow_state(&mut self, dual_node_ptr: &DualNodePtr, grow_state: DualNodeGrowState) {
+    fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
         unimplemented!()
     }
-
-    fn compute_maximum_update_length(&mut self) -> GroupMaxUpdateLength {
+    fn add_defect(&mut self, vertex: CompactVertexIndex, node: CompactNodeIndex) {
         unimplemented!()
     }
+}
 
-    fn grow(&mut self, length: Weight) {
+impl DualTrackedDriver for DualModuleScalaDriver {
+    fn set_maximum_growth(&mut self, length: CompactWeight) {
         unimplemented!()
     }
+}
 
-    fn prepare_nodes_shrink(&mut self, _nodes_circle: &[DualNodePtr]) -> &mut Vec<SyncRequest> {
-        self.sync_requests.clear();
-        &mut self.sync_requests
+impl FusionVisualizer for DualModuleScalaDriver {
+    #[allow(clippy::unnecessary_cast)]
+    fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+        json!({})
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fusion_blossom::example_codes::*;
+    use crate::dual_module_rtl::tests::*;
+    use crate::mwpm_solver::*;
 
     // to use visualization, we need the folder of fusion-blossom repo
     // e.g. export FUSION_DIR=/Users/wuyue/Documents/GitHub/fusion-blossom
 
-    // #[test]
-    // fn dual_module_scala_basic_1() {
-    //     // cargo test dual_module_scala_basic_1 -- --nocapture
-    //     let visualize_filename = "dual_module_scala_basic_1.json".to_string();
-    //     let half_weight = 500;
-    //     let mut code = CodeCapacityPlanarCode::new(7, 0.1, half_weight);
-    //     let mut visualizer = Visualizer::new(
-    //         option_env!("FUSION_DIR").map(|dir| dir.to_owned() + "/visualize/data/" + visualize_filename.as_str()),
-    //         code.get_positions(),
-    //         true,
-    //     )
-    //     .unwrap();
-    //     print_visualize_link(visualize_filename.clone());
-    //     // create dual module
-    //     let initializer = code.get_initializer();
-    //     let mut dual_module = DualModuleScala::new_empty(&initializer);
-    // }
+    #[test]
+    fn dual_module_scala_basic_1() {
+        // cargo test dual_module_scala_basic_1 -- --nocapture
+        let visualize_filename = "dual_module_scala_basic_1.json".to_string();
+        let defect_vertices = vec![18, 26, 34];
+        dual_module_scala_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    }
+
+    pub fn dual_module_scala_basic_standard_syndrome(
+        d: VertexNum,
+        visualize_filename: String,
+        defect_vertices: Vec<VertexIndex>,
+    ) -> SolverDualScala {
+        dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
+            d,
+            Some(visualize_filename),
+            defect_vertices,
+            |initializer| SolverDualScala::new(initializer),
+        )
+    }
 }
