@@ -58,10 +58,10 @@ impl<D: DualStacklessDriver + DualTrackedDriver, const N: usize> DualStacklessDr
 
     fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
         let (mut obstacle, mut grown) = self.driver.find_obstacle();
+        self.blossom_tracker.advance_time(grown as CompactTimestamp);
         while obstacle.is_finite_growth() {
             if let Some((length, blossom)) = self.blossom_tracker.get_maximum_growth() {
                 if length == 0 {
-                    self.blossom_tracker.advance_time(grown as CompactTimestamp);
                     return (CompactObstacle::BlossomNeedExpand { blossom }, grown);
                 } else {
                     self.driver.set_maximum_growth(length);
@@ -70,10 +70,10 @@ impl<D: DualStacklessDriver + DualTrackedDriver, const N: usize> DualStacklessDr
                 self.driver.set_maximum_growth(CompactWeight::MAX);
             }
             let (inc_obstacle, inc_grown) = self.driver.find_obstacle();
+            self.blossom_tracker.advance_time(inc_grown as CompactTimestamp);
             obstacle = inc_obstacle;
             grown += inc_grown;
         }
-        self.blossom_tracker.advance_time(grown as CompactTimestamp);
         (obstacle, grown)
     }
 

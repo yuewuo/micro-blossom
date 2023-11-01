@@ -350,12 +350,14 @@ impl DualModuleRTLBehavior {
     fn execute_instruction(&mut self, instruction: Instruction) -> Option<Response> {
         pipeline_staged!(self, instruction, execute_stage);
         pipeline_staged!(self, instruction, update_stage);
-        self.vertices
+        let response = self
+            .vertices
             .iter()
             .map(|vertex| vertex.write_stage(self, &instruction))
             .chain(self.edges.iter().map(|edge| edge.write_stage(self, &instruction)))
             .reduce(Response::reduce)
-            .unwrap()
+            .unwrap();
+        response
     }
 }
 
@@ -392,14 +394,10 @@ impl DualStacklessDriver for DualModuleRTLBehavior {
                     } else {
                         let length = std::cmp::min(length, self.maximum_growth);
                         if length == 0 {
-                            return (
-                                CompactObstacle::GrowLength {
-                                    length: length as CompactWeight,
-                                },
-                                grown as CompactWeight,
-                            );
+                            return (CompactObstacle::GrowLength { length: 0 }, grown as CompactWeight);
                         } else {
                             self.execute_instruction(Instruction::Grow { length });
+                            self.maximum_growth -= length;
                             grown += length;
                         }
                     }
@@ -1197,7 +1195,7 @@ mod tests {
         // cargo test dual_module_rtl_embedded_basic_1 -- --nocapture
         let visualize_filename = "dual_module_rtl_embedded_basic_1.json".to_string();
         let defect_vertices = vec![18, 26, 34];
-        dual_module_rtl_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+        dual_module_rtl_embedded_basic_standard_syndrome(7, visualize_filename, defect_vertices);
     }
 
     /// test a free node conflict with a virtual boundary
@@ -1206,7 +1204,7 @@ mod tests {
         // cargo test dual_module_rtl_embedded_basic_2 -- --nocapture
         let visualize_filename = "dual_module_rtl_embedded_basic_2.json".to_string();
         let defect_vertices = vec![16];
-        dual_module_rtl_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+        dual_module_rtl_embedded_basic_standard_syndrome(7, visualize_filename, defect_vertices);
     }
 
     /// test a free node conflict with a matched node (with virtual boundary)
@@ -1215,16 +1213,16 @@ mod tests {
         // cargo test dual_module_rtl_embedded_basic_3 -- --nocapture
         let visualize_filename = "dual_module_rtl_embedded_basic_3.json".to_string();
         let defect_vertices = vec![16, 26];
-        dual_module_rtl_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+        dual_module_rtl_embedded_basic_standard_syndrome(7, visualize_filename, defect_vertices);
     }
 
     /// infinite loop reporting `obstacle: BlossomNeedExpand { blossom: 3000 }`
     #[test]
     fn dual_module_rtl_embedded_debug_1() {
-        // cargo test dual_module_rtl_embedded_debug_1 -- --nocapture
+        // PRINT_DUAL_CALLS=1 cargo test dual_module_rtl_embedded_debug_1 -- --nocapture
         let visualize_filename = "dual_module_rtl_embedded_debug_1.json".to_string();
         let defect_vertices = vec![1, 9, 17, 19, 33];
-        dual_module_rtl_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+        dual_module_rtl_embedded_basic_standard_syndrome(7, visualize_filename, defect_vertices);
     }
 
     /// infinite loop
@@ -1234,26 +1232,30 @@ mod tests {
     /// shrinking, despite that it is essentially at the `Stay` state implicitly.
     #[test]
     fn dual_module_rtl_embedded_debug_2() {
-        // cargo test dual_module_rtl_embedded_debug_2 -- --nocapture
+        // PRINT_DUAL_CALLS=1 cargo test dual_module_rtl_embedded_debug_2 -- --nocapture
         let visualize_filename = "dual_module_rtl_embedded_debug_2.json".to_string();
         let defect_vertices = vec![64, 66, 67, 77, 79, 90, 91, 99, 100, 101, 102, 112, 125];
-        dual_module_rtl_basic_standard_syndrome(11, visualize_filename, defect_vertices);
+        dual_module_rtl_embedded_basic_standard_syndrome(11, visualize_filename, defect_vertices);
     }
 
     /// assertion failed: self.grown >= 0', src/dual_module_rtl.rs:527:17
+    /// the reason is the blossom tracker is not informed some incremental grown values and thus
+    /// call `set_maximum_growth` with wrong parameters
     #[test]
     fn dual_module_rtl_embedded_debug_3() {
-        // cargo test dual_module_rtl_embedded_debug_3 -- --nocapture
+        // PRINT_DUAL_CALLS=1 cargo test dual_module_rtl_embedded_debug_3 -- --nocapture
         let visualize_filename = "dual_module_rtl_embedded_debug_3.json".to_string();
         let defect_vertices = vec![29, 69, 88, 89, 91, 94, 108, 110, 111, 112, 113, 130, 131, 132, 150];
-        dual_module_rtl_basic_standard_syndrome(19, visualize_filename, defect_vertices);
+        dual_module_rtl_embedded_basic_standard_syndrome(19, visualize_filename, defect_vertices);
+        // dual_module_rtl_original_basic_standard_syndrome(19, visualize_filename, defect_vertices);
     }
 
-    pub fn dual_module_rtl_basic_standard_syndrome_optional_viz(
+    pub fn dual_module_rtl_embedded_basic_standard_syndrome_optional_viz<Solver: PrimalDualSolver + Sized>(
         d: VertexNum,
         visualize_filename: Option<String>,
         defect_vertices: Vec<VertexIndex>,
-    ) -> SolverEmbeddedRTL {
+        constructor: impl FnOnce(&SolverInitializer) -> Solver,
+    ) -> Solver {
         println!("{defect_vertices:?}");
         let half_weight = 500;
         let mut code = CodeCapacityPlanarCode::new(d, 0.1, half_weight);
@@ -1274,7 +1276,7 @@ mod tests {
         let initializer = code.get_initializer();
         code.set_defect_vertices(&defect_vertices);
         let syndrome = code.get_syndrome();
-        let mut solver = SolverEmbeddedRTL::new(&initializer);
+        let mut solver = constructor(&initializer);
         solver.solve_visualizer(&syndrome, visualizer.as_mut());
         let subgraph = solver.subgraph_visualizer(visualizer.as_mut());
         let mut standard_solver = SolverSerial::new(&initializer);
@@ -1289,11 +1291,29 @@ mod tests {
         solver
     }
 
-    pub fn dual_module_rtl_basic_standard_syndrome(
+    pub fn dual_module_rtl_embedded_basic_standard_syndrome(
         d: VertexNum,
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
     ) -> SolverEmbeddedRTL {
-        dual_module_rtl_basic_standard_syndrome_optional_viz(d, Some(visualize_filename), defect_vertices)
+        dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
+            d,
+            Some(visualize_filename),
+            defect_vertices,
+            |initializer| SolverEmbeddedRTL::new(initializer),
+        )
+    }
+
+    pub fn dual_module_rtl_original_basic_standard_syndrome(
+        d: VertexNum,
+        visualize_filename: String,
+        defect_vertices: Vec<VertexIndex>,
+    ) -> SolverDualRTL {
+        dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
+            d,
+            Some(visualize_filename),
+            defect_vertices,
+            |initializer| SolverDualRTL::new(initializer),
+        )
     }
 }
