@@ -17,7 +17,7 @@ use micro_blossom_nostd::util::*;
 use serde_json::json;
 
 pub struct SolverDualRTL {
-    dual_module: DualModuleRTL,
+    dual_module: DualModuleRTLAdaptor,
     primal_module: PrimalModuleSerialPtr,
     interface_ptr: DualModuleInterfacePtr,
     subgraph_builder: SubGraphBuilder,
@@ -35,7 +35,7 @@ impl FusionVisualizer for SolverDualRTL {
 impl SolverDualRTL {
     pub fn new(initializer: &SolverInitializer) -> Self {
         Self {
-            dual_module: DualModuleRTL::new_empty(initializer),
+            dual_module: DualModuleRTLAdaptor::new_empty(initializer),
             primal_module: PrimalModuleSerialPtr::new_empty(initializer),
             interface_ptr: DualModuleInterfacePtr::new_empty(),
             subgraph_builder: SubGraphBuilder::new(initializer),
@@ -50,7 +50,7 @@ impl PrimalDualSolver for SolverDualRTL {
         self.interface_ptr.clear();
         self.subgraph_builder.clear();
     }
-    fn solve_visualizer(&mut self, syndrome_pattern: &SyndromePattern, visualizer: Option<&mut Visualizer>) {
+    fn solve_visualizer(&mut self, syndrome_pattern: &SyndromePattern, mut visualizer: Option<&mut Visualizer>) {
         if !syndrome_pattern.erasures.is_empty() {
             assert!(
                 syndrome_pattern.dynamic_weights.is_empty(),
@@ -61,8 +61,38 @@ impl PrimalDualSolver for SolverDualRTL {
         if !syndrome_pattern.dynamic_weights.is_empty() {
             self.subgraph_builder.load_dynamic_weights(&syndrome_pattern.dynamic_weights);
         }
-        self.primal_module
-            .solve_visualizer(&self.interface_ptr, syndrome_pattern, &mut self.dual_module, visualizer);
+        self.primal_module.solve_step_callback(
+            &self.interface_ptr,
+            syndrome_pattern,
+            &mut self.dual_module,
+            |interface, dual_module, primal_module, group_max_update_length| {
+                #[cfg(test)]
+                println!("group_max_update_length: {:?}", group_max_update_length);
+                assert!(
+                    group_max_update_length.get_none_zero_growth().is_none(),
+                    "dual RTL never reports this"
+                );
+                if dual_module.grown > 0 {
+                    interface.notify_grown(dual_module.grown);
+                }
+                dual_module.grown = 0;
+                let first_conflict = format!("{:?}", group_max_update_length.peek().unwrap());
+                if let Some(visualizer) = visualizer.as_mut() {
+                    visualizer
+                        .snapshot_combined(
+                            format!("resolve {first_conflict}"),
+                            vec![interface, dual_module, primal_module],
+                        )
+                        .unwrap();
+                }
+            },
+        );
+
+        if let Some(visualizer) = visualizer.as_mut() {
+            visualizer
+                .snapshot_combined("solved".to_string(), vec![&self.interface_ptr, &self.dual_module, self])
+                .unwrap();
+        }
     }
     fn perfect_matching_visualizer(&mut self, visualizer: Option<&mut Visualizer>) -> PerfectMatching {
         let perfect_matching = self
@@ -201,7 +231,7 @@ impl PrimalDualSolver for SolverPrimalEmbedded {
 }
 
 pub struct SolverEmbeddedRTL {
-    dual_module: DualModuleStackless<DualDriverTracked<DualModuleRTLBehavior, MAX_NODE_NUM>>,
+    dual_module: DualModuleStackless<DualDriverTracked<DualModuleRTL, MAX_NODE_NUM>>,
     primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
     subgraph_builder: SubGraphBuilder,
     defect_nodes: Vec<VertexIndex>,
@@ -218,7 +248,7 @@ impl FusionVisualizer for SolverEmbeddedRTL {
 impl SolverEmbeddedRTL {
     pub fn new(initializer: &SolverInitializer) -> Self {
         Self {
-            dual_module: DualModuleStackless::new(DualDriverTracked::new(DualModuleRTLBehavior::new_empty(initializer))),
+            dual_module: DualModuleStackless::new(DualDriverTracked::new(DualModuleRTL::new_empty(initializer))),
             primal_module: PrimalModuleEmbedded::new(),
             subgraph_builder: SubGraphBuilder::new(initializer),
             defect_nodes: vec![],

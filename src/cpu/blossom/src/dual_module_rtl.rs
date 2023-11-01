@@ -11,7 +11,6 @@ use crate::util::*;
 use fusion_blossom::dual_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
-use micro_blossom_nostd::blossom_tracker::*;
 use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::interface::*;
@@ -19,21 +18,80 @@ use micro_blossom_nostd::util::*;
 use serde_json::json;
 
 #[derive(Debug)]
-pub struct DualModuleRTLBehavior {
+pub struct DualModuleRTL {
     pub initializer: SolverInitializer,
     pub vertices: Vec<Vertex>,
     pub edges: Vec<Edge>,
     pub maximum_growth: Weight,
 }
 
+/// mocking the interface of the embedded primal module
 #[derive(Debug)]
-pub struct DualModuleRTL {
+pub struct MockPrimalInterface<'a> {
+    pub nodes: &'a mut Vec<DualNodePtr>,
+}
+
+impl<'a> PrimalInterface for MockPrimalInterface<'a> {
+    fn reset(&mut self) {
+        unreachable!("should not be called")
+    }
+    fn is_blossom(&self, node_index: CompactNodeIndex) -> bool {
+        self.nodes[node_index.get() as usize].read_recursive().class.is_blossom()
+    }
+    fn iterate_blossom_children(
+        &self,
+        blossom_index: CompactNodeIndex,
+        mut func: impl FnMut(&Self, CompactNodeIndex, &TouchingLink),
+    ) {
+        match &self.nodes[blossom_index.get() as usize].read_recursive().class {
+            DualNodeClass::Blossom {
+                nodes_circle,
+                touching_children,
+            } => {
+                for (idx, node_weak) in nodes_circle.iter().enumerate() {
+                    let peer_index = node_weak.upgrade_force().read_recursive().index;
+                    let touch = touching_children[idx].1.upgrade_force().read_recursive().index;
+                    let peer_touch = touching_children[(idx + 1) % nodes_circle.len()]
+                        .0
+                        .upgrade_force()
+                        .read_recursive()
+                        .index;
+                    let link = TouchingLink {
+                        touch: Some(ni!(touch)),
+                        through: Some(ni!(0)),
+                        peer_touch: Some(ni!(peer_touch)),
+                        peer_through: Some(ni!(0)),
+                    };
+                    func(self, ni!(peer_index), &link);
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+    fn resolve(&mut self, _dual_module: &mut impl DualInterface, _max_update_length: CompactObstacle) -> bool {
+        unreachable!("should not be called")
+    }
+    fn iterate_perfect_matching(&mut self, _func: impl FnMut(&Self, CompactNodeIndex, CompactMatchTarget, &TouchingLink)) {
+        unreachable!("should not be called")
+    }
+    fn break_with_virtual_vertex(
+        &mut self,
+        _dual_module: &mut impl DualInterface,
+        _virtual_vertex: CompactVertexIndex,
+        _hint_node_index: CompactNodeIndex,
+    ) -> bool {
+        unreachable!("should not be called")
+    }
+}
+
+pub struct DualModuleRTLAdaptor {
     // always reconstruct the whole graph when reset
-    pub behavior: DualModuleRTLBehavior,
+    pub dual_module: DualModuleStackless<DualDriverTracked<DualModuleRTL, MAX_NODE_NUM>>,
+    /// the nodes that interact with dual module interface
     pub nodes: Vec<DualNodePtr>,
-    pub blossom_tracker: Box<BlossomTracker<MAX_NODE_NUM>>,
     /// temporary list of synchronize requests, not used until hardware fusion
     pub sync_requests: Vec<SyncRequest>,
+    pub grown: Weight,
 }
 
 #[derive(Debug)]
@@ -103,22 +161,21 @@ pub fn get_blossom_roots(dual_node_ptr: &DualNodePtr) -> Vec<NodeIndex> {
     }
 }
 
-impl DualModuleImpl for DualModuleRTL {
+impl DualModuleImpl for DualModuleRTLAdaptor {
     fn new_empty(initializer: &SolverInitializer) -> Self {
         Self {
-            behavior: DualModuleRTLBehavior::new_empty(initializer),
+            dual_module: DualModuleStackless::new(DualDriverTracked::new(DualModuleRTL::new_empty(initializer))),
             nodes: vec![],
-            blossom_tracker: Box::new(BlossomTracker::new()),
             sync_requests: vec![],
+            grown: 0,
         }
     }
 
     fn clear(&mut self) {
-        self.behavior.clear();
+        self.dual_module.reset();
         // clear nodes
         self.nodes.clear();
-        // clear tracker
-        self.blossom_tracker.clear();
+        self.grown = 0;
     }
 
     fn add_dual_node(&mut self, dual_node_ptr: &DualNodePtr) {
@@ -126,30 +183,12 @@ impl DualModuleImpl for DualModuleRTL {
         assert_eq!(node.index, self.nodes.len());
         self.nodes.push(dual_node_ptr.clone());
         match &node.class {
-            DualNodeClass::Blossom { nodes_circle, .. } => {
-                self.blossom_tracker
-                    .create_blossom(micro_blossom_nostd::util::ni!(node.index));
-                // creating blossom is cheap
-                for weak_ptr in nodes_circle.iter() {
-                    let child_node_ptr = weak_ptr.upgrade_force();
-                    let child_node = child_node_ptr.read_recursive();
-                    self.execute_instruction(Instruction::SetBlossom {
-                        node: child_node.index,
-                        blossom: node.index,
-                    });
-                    if matches!(child_node.class, DualNodeClass::Blossom { .. }) {
-                        self.blossom_tracker
-                            .set_speed(micro_blossom_nostd::util::ni!(child_node.index), CompactGrowState::Stay);
-                    }
-                }
-                // TODO: use priority queue to track shrinking blossom constraint
+            DualNodeClass::Blossom { .. } => {
+                self.dual_module
+                    .create_blossom(&mut MockPrimalInterface { nodes: &mut self.nodes }, ni!(node.index));
             }
             DualNodeClass::DefectVertex { defect_index } => {
-                assert!(!self.behavior.vertices[*defect_index].is_defect, "cannot set defect twice");
-                self.execute_instruction(Instruction::AddDefectVertex {
-                    vertex: *defect_index,
-                    node: node.index,
-                });
+                self.dual_module.add_defect(ni!(*defect_index), ni!(node.index));
             }
         }
     }
@@ -157,101 +196,73 @@ impl DualModuleImpl for DualModuleRTL {
     fn remove_blossom(&mut self, dual_node_ptr: DualNodePtr) {
         // remove blossom is expensive because the vertices doesn't remember all the chain of blossom
         let node = dual_node_ptr.read_recursive();
-        let nodes_circle = match &node.class {
-            DualNodeClass::Blossom { nodes_circle, .. } => nodes_circle.clone(),
-            _ => unreachable!(),
-        };
-        self.blossom_tracker
-            .set_speed(micro_blossom_nostd::util::ni!(node.index), CompactGrowState::Stay);
-        for weak_ptr in nodes_circle.iter() {
-            let node_ptr = weak_ptr.upgrade_force();
-            let roots = get_blossom_roots(&node_ptr);
-            let blossom_index = node_ptr.read_recursive().index;
-            for &root_index in roots.iter() {
-                self.execute_instruction(Instruction::SetBlossom {
-                    node: root_index,
-                    blossom: blossom_index,
-                });
-            }
-        }
+        self.dual_module
+            .expand_blossom(&mut MockPrimalInterface { nodes: &mut self.nodes }, ni!(node.index));
     }
 
     fn set_grow_state(&mut self, dual_node_ptr: &DualNodePtr, grow_state: DualNodeGrowState) {
         let node = dual_node_ptr.read_recursive();
-        let node_index = dual_node_ptr.read_recursive().index;
-        if matches!(node.class, DualNodeClass::Blossom { .. }) {
-            self.blossom_tracker.set_speed(
-                micro_blossom_nostd::util::ni!(node_index),
-                match grow_state {
-                    DualNodeGrowState::Grow => CompactGrowState::Grow,
-                    DualNodeGrowState::Shrink => CompactGrowState::Shrink,
-                    DualNodeGrowState::Stay => CompactGrowState::Stay,
-                },
-            );
-        }
-        self.execute_instruction(Instruction::SetSpeed {
-            node: node_index,
-            speed: grow_state,
-        });
+        self.dual_module.set_speed(
+            node.class.is_blossom(),
+            ni!(node.index),
+            match grow_state {
+                DualNodeGrowState::Grow => CompactGrowState::Grow,
+                DualNodeGrowState::Shrink => CompactGrowState::Shrink,
+                DualNodeGrowState::Stay => CompactGrowState::Stay,
+            },
+        );
     }
 
     fn compute_maximum_update_length(&mut self) -> GroupMaxUpdateLength {
-        let return_value = self
-            .execute_instruction(Instruction::FindObstacle { region_preference: 0 })
-            .unwrap();
-
-        let mut max_update_length = match return_value {
-            Response::NonZeroGrow { length } => MaxUpdateLength::NonZeroGrow((length, false)),
-            Response::Conflict {
+        assert!(
+            self.grown == 0,
+            "must clear grown value before next round, to make sure interface is notified; see `SolverDualRTL` for more info"
+        );
+        let (obstacle, grown) = self.dual_module.find_obstacle();
+        self.grown = grown as Weight;
+        let max_update_length = match obstacle {
+            CompactObstacle::GrowLength { length } => MaxUpdateLength::NonZeroGrow((length as Weight, false)),
+            CompactObstacle::Conflict {
                 node_1,
                 node_2,
                 touch_1,
                 touch_2,
-                vertex_1,
+                vertex_1: _,
                 vertex_2,
             } => {
-                if node_1 != VIRTUAL_NODE_INDEX && node_2 != VIRTUAL_NODE_INDEX {
+                if node_2.is_some() {
                     MaxUpdateLength::Conflicting(
-                        (self.nodes[node_1].clone(), self.nodes[touch_1].clone()),
-                        (self.nodes[node_2].clone(), self.nodes[touch_2].clone()),
+                        (
+                            self.nodes[node_1.get() as usize].clone(),
+                            self.nodes[touch_1.get() as usize].clone(),
+                        ),
+                        (
+                            self.nodes[node_2.unwrap().get() as usize].clone(),
+                            self.nodes[touch_2.unwrap().get() as usize].clone(),
+                        ),
                     )
                 } else {
-                    assert!(node_1 != VIRTUAL_NODE_INDEX || node_2 != VIRTUAL_NODE_INDEX);
-                    let (node, touch, virtual_vertex) = if node_1 != VIRTUAL_NODE_INDEX {
-                        (node_1, touch_1, vertex_2)
-                    } else {
-                        (node_2, touch_2, vertex_1)
-                    };
                     MaxUpdateLength::TouchingVirtual(
-                        (self.nodes[node].clone(), self.nodes[touch].clone()),
-                        (virtual_vertex, false),
+                        (
+                            self.nodes[node_1.get() as usize].clone(),
+                            self.nodes[touch_1.get() as usize].clone(),
+                        ),
+                        (vertex_2.get() as VertexIndex, false),
                     )
                 }
             }
-            Response::BlossomNeedExpand { blossom } => MaxUpdateLength::BlossomNeedExpand(self.nodes[blossom].clone()),
-        };
-        // get blossom expand event from blossom tracker, only when no other conflicts are detected
-        if let MaxUpdateLength::NonZeroGrow((original_length, _)) = max_update_length {
-            if let Some((length, blossom_index)) = self.blossom_tracker.get_maximum_growth() {
-                if length == 0 {
-                    max_update_length = MaxUpdateLength::BlossomNeedExpand(self.nodes[blossom_index.get() as usize].clone());
-                } else if (length as Weight) < original_length {
-                    max_update_length = MaxUpdateLength::NonZeroGrow((length as Weight, false));
-                }
+            CompactObstacle::BlossomNeedExpand { blossom } => {
+                MaxUpdateLength::BlossomNeedExpand(self.nodes[blossom.get() as usize].clone())
             }
-        }
-        if let MaxUpdateLength::NonZeroGrow((length, _)) = &max_update_length {
-            assert!(*length > 0);
-        }
+            CompactObstacle::None => MaxUpdateLength::NonZeroGrow((Weight::MAX, false)),
+        };
         let mut group_max_update_length = GroupMaxUpdateLength::new();
         group_max_update_length.add(max_update_length);
         group_max_update_length
     }
 
-    fn grow(&mut self, length: Weight) {
-        assert!(length > 0, "RTL design doesn't allow negative growth");
-        self.blossom_tracker.advance_time(length.try_into().unwrap());
-        self.execute_instruction(Instruction::Grow { length });
+    fn grow(&mut self, _length: Weight) {
+        unimplemented!("RTL dual module doesn't allow explicit grow command")
     }
 
     fn prepare_nodes_shrink(&mut self, _nodes_circle: &[DualNodePtr]) -> &mut Vec<SyncRequest> {
@@ -286,12 +297,6 @@ macro_rules! pipeline_staged {
 }
 
 impl DualModuleRTL {
-    fn execute_instruction(&mut self, instruction: Instruction) -> Option<Response> {
-        self.behavior.execute_instruction(instruction)
-    }
-}
-
-impl DualModuleRTLBehavior {
     pub fn new_empty(initializer: &SolverInitializer) -> Self {
         let mut behavior = Self {
             initializer: initializer.clone(),
@@ -361,7 +366,7 @@ impl DualModuleRTLBehavior {
     }
 }
 
-impl DualStacklessDriver for DualModuleRTLBehavior {
+impl DualStacklessDriver for DualModuleRTL {
     fn reset(&mut self) {
         self.clear();
     }
@@ -447,7 +452,7 @@ impl DualStacklessDriver for DualModuleRTLBehavior {
     }
 }
 
-impl DualTrackedDriver for DualModuleRTLBehavior {
+impl DualTrackedDriver for DualModuleRTL {
     fn set_maximum_growth(&mut self, length: CompactWeight) {
         self.maximum_growth = length as Weight;
     }
@@ -455,13 +460,13 @@ impl DualTrackedDriver for DualModuleRTLBehavior {
 
 pub trait DualPipelined {
     /// load data from BRAM (optional)
-    fn load_stage(&mut self, _dual_module: &DualModuleRTLBehavior, _instruction: &Instruction) {}
+    fn load_stage(&mut self, _dual_module: &DualModuleRTL, _instruction: &Instruction) {}
     /// execute growth and respond to speed and blossom updates
-    fn execute_stage(&mut self, dual_module: &DualModuleRTLBehavior, instruction: &Instruction);
+    fn execute_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction);
     /// update the node according to the updated speed and length after growth
-    fn update_stage(&mut self, dual_module: &DualModuleRTLBehavior, instruction: &Instruction);
+    fn update_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction);
     /// generate a response after the update stage (and optionally, write back to memory)
-    fn write_stage(&self, dual_module: &DualModuleRTLBehavior, instruction: &Instruction) -> Option<Response>;
+    fn write_stage(&self, dual_module: &DualModuleRTL, instruction: &Instruction) -> Option<Response>;
 }
 
 #[derive(Clone, Debug)]
@@ -507,7 +512,7 @@ impl Vertex {
 }
 
 impl DualPipelined for Vertex {
-    fn execute_stage(&mut self, _dual_module: &DualModuleRTLBehavior, instruction: &Instruction) {
+    fn execute_stage(&mut self, _dual_module: &DualModuleRTL, instruction: &Instruction) {
         match instruction {
             Instruction::SetSpeed { node, speed } => {
                 if Some(*node) == self.node_index {
@@ -541,7 +546,7 @@ impl DualPipelined for Vertex {
         }
     }
 
-    fn update_stage(&mut self, dual_module: &DualModuleRTLBehavior, instruction: &Instruction) {
+    fn update_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {
         match instruction {
             Instruction::Grow { .. } | Instruction::SetSpeed { .. } | Instruction::SetBlossom { .. } => {
                 // is there any growing peer trying to propagate to this node?
@@ -607,7 +612,7 @@ impl DualPipelined for Vertex {
     }
 
     // generate a response
-    fn write_stage(&self, _dual_module: &DualModuleRTLBehavior, _instruction: &Instruction) -> Option<Response> {
+    fn write_stage(&self, _dual_module: &DualModuleRTL, _instruction: &Instruction) -> Option<Response> {
         None
     }
 }
@@ -637,18 +642,18 @@ impl Edge {
 impl DualPipelined for Edge {
     // compute the next register values
     #[allow(clippy::single_match)]
-    fn execute_stage(&mut self, dual_module: &DualModuleRTLBehavior, instruction: &Instruction) {
+    fn execute_stage(&mut self, dual_module: &DualModuleRTL, instruction: &Instruction) {
         let left_vertex = &dual_module.vertices[self.left_index];
         let right_vertex = &dual_module.vertices[self.right_index];
         self.is_tight =
             left_vertex.get_updated_grown(instruction) + right_vertex.get_updated_grown(instruction) >= self.weight;
     }
 
-    fn update_stage(&mut self, _dual_module: &DualModuleRTLBehavior, _instruction: &Instruction) {}
+    fn update_stage(&mut self, _dual_module: &DualModuleRTL, _instruction: &Instruction) {}
 
     // generate a response
     #[allow(clippy::comparison_chain)]
-    fn write_stage(&self, dual_module: &DualModuleRTLBehavior, instruction: &Instruction) -> Option<Response> {
+    fn write_stage(&self, dual_module: &DualModuleRTL, instruction: &Instruction) -> Option<Response> {
         if !matches!(instruction, Instruction::FindObstacle { .. }) {
             return None;
         }
@@ -692,13 +697,13 @@ impl DualPipelined for Edge {
     }
 }
 
-impl FusionVisualizer for DualModuleRTL {
+impl FusionVisualizer for DualModuleRTLAdaptor {
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
-        self.behavior.snapshot(abbrev)
+        self.dual_module.driver.driver.snapshot(abbrev)
     }
 }
 
-impl FusionVisualizer for DualModuleRTLBehavior {
+impl FusionVisualizer for DualModuleRTL {
     #[allow(clippy::unnecessary_cast)]
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
         let vertices: Vec<serde_json::Value> = self
@@ -781,400 +786,16 @@ mod tests {
     use fusion_blossom::mwpm_solver::*;
     use fusion_blossom::primal_module::*;
 
+    #[test]
+    fn dual_module_rtl_adaptor_basic_1() {
+        // cargo test dual_module_rtl_adaptor_basic_1 -- --nocapture
+        let visualize_filename = "dual_module_rtl_adaptor_basic_1.json".to_string();
+        let defect_vertices = vec![18, 26, 34];
+        dual_module_rtl_adaptor_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    }
+
     // to use visualization, we need the folder of fusion-blossom repo
     // e.g. export FUSION_DIR=/Users/wuyue/Documents/GitHub/fusion-blossom
-
-    #[test]
-    fn dual_module_rtl_basic_1() {
-        // cargo test dual_module_rtl_basic_1 -- --nocapture
-        let visualize_filename = "dual_module_rtl_basic_1.json".to_string();
-        let half_weight = 500;
-        let mut code = CodeCapacityPlanarCode::new(7, 0.1, half_weight);
-        let mut visualizer = Visualizer::new(
-            option_env!("FUSION_DIR").map(|dir| dir.to_owned() + "/visualize/data/" + visualize_filename.as_str()),
-            code.get_positions(),
-            true,
-        )
-        .unwrap();
-        print_visualize_link(visualize_filename.clone());
-        // create dual module
-        let initializer = code.get_initializer();
-        let mut dual_module = DualModuleRTL::new_empty(&initializer);
-        // a simple syndrome
-        code.vertices[19].is_defect = true;
-        code.vertices[25].is_defect = true;
-        let interface_ptr = DualModuleInterfacePtr::new_load(&code.get_syndrome(), &mut dual_module);
-        visualizer
-            .snapshot_combined("syndrome".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        // create dual nodes and grow them by half length
-        let dual_node_19_ptr = interface_ptr.read_recursive().nodes[0].clone().unwrap();
-        let dual_node_25_ptr = interface_ptr.read_recursive().nodes[1].clone().unwrap();
-        dual_module.grow(half_weight);
-        visualizer
-            .snapshot_combined("grow to 0.5".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        dual_module.grow(half_weight);
-        visualizer
-            .snapshot_combined("grow to 1".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        dual_module.grow(half_weight);
-        visualizer
-            .snapshot_combined("grow to 1.5".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        // set to shrink
-        dual_module.set_grow_state(&dual_node_19_ptr, DualNodeGrowState::Shrink);
-        dual_module.set_grow_state(&dual_node_25_ptr, DualNodeGrowState::Shrink);
-        dual_module.grow(half_weight);
-        visualizer
-            .snapshot_combined("shrink to 1".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        dual_module.grow(half_weight);
-        visualizer
-            .snapshot_combined("shrink to 0.5".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        dual_module.grow(half_weight);
-        visualizer
-            .snapshot_combined("shrink to 0".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-    }
-
-    #[test]
-    fn dual_module_rtl_blossom_basics() {
-        // cargo test dual_module_rtl_blossom_basics -- --nocapture
-        let visualize_filename = "dual_module_rtl_blossom_basics.json".to_string();
-        let half_weight = 500;
-        let mut code = CodeCapacityPlanarCode::new(7, 0.1, half_weight);
-        let mut visualizer = Visualizer::new(
-            option_env!("FUSION_DIR").map(|dir| dir.to_owned() + "/visualize/data/" + visualize_filename.as_str()),
-            code.get_positions(),
-            true,
-        )
-        .unwrap();
-        print_visualize_link(visualize_filename.clone());
-        // create dual module
-        let initializer = code.get_initializer();
-        let mut dual_module = DualModuleRTL::new_empty(&initializer);
-        // try to work on a simple syndrome
-        code.vertices[19].is_defect = true;
-        code.vertices[26].is_defect = true;
-        code.vertices[35].is_defect = true;
-        let interface_ptr = DualModuleInterfacePtr::new_load(&code.get_syndrome(), &mut dual_module);
-        visualizer
-            .snapshot_combined("syndrome".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        // create dual nodes and grow them by half length
-        let dual_node_19_ptr = interface_ptr.read_recursive().nodes[0].clone().unwrap();
-        let dual_node_26_ptr = interface_ptr.read_recursive().nodes[1].clone().unwrap();
-        let dual_node_35_ptr = interface_ptr.read_recursive().nodes[2].clone().unwrap();
-        interface_ptr.grow(2 * half_weight, &mut dual_module);
-        assert_eq!(interface_ptr.sum_dual_variables(), 6 * half_weight);
-        visualizer
-            .snapshot_combined("before create blossom".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        let nodes_circle = vec![dual_node_19_ptr.clone(), dual_node_26_ptr.clone(), dual_node_35_ptr.clone()];
-        interface_ptr.set_grow_state(&dual_node_26_ptr, DualNodeGrowState::Shrink, &mut dual_module);
-        let dual_node_blossom = interface_ptr.create_blossom(nodes_circle, vec![], &mut dual_module);
-        interface_ptr.grow(half_weight, &mut dual_module);
-        assert_eq!(interface_ptr.sum_dual_variables(), 7 * half_weight);
-        visualizer
-            .snapshot_combined("blossom grow half weight".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        interface_ptr.grow(half_weight, &mut dual_module);
-        assert_eq!(interface_ptr.sum_dual_variables(), 8 * half_weight);
-        visualizer
-            .snapshot_combined("blossom grow half weight".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        interface_ptr.grow(half_weight, &mut dual_module);
-        assert_eq!(interface_ptr.sum_dual_variables(), 9 * half_weight);
-        visualizer
-            .snapshot_combined("blossom grow half weight".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        interface_ptr.set_grow_state(&dual_node_blossom, DualNodeGrowState::Shrink, &mut dual_module);
-        interface_ptr.grow(half_weight, &mut dual_module);
-        assert_eq!(interface_ptr.sum_dual_variables(), 8 * half_weight);
-        visualizer
-            .snapshot_combined("blossom shrink half weight".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        interface_ptr.grow(2 * half_weight, &mut dual_module);
-        assert_eq!(interface_ptr.sum_dual_variables(), 6 * half_weight);
-        visualizer
-            .snapshot_combined("blossom shrink weight".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        interface_ptr.expand_blossom(dual_node_blossom, &mut dual_module);
-        interface_ptr.set_grow_state(&dual_node_19_ptr, DualNodeGrowState::Shrink, &mut dual_module);
-        interface_ptr.set_grow_state(&dual_node_26_ptr, DualNodeGrowState::Shrink, &mut dual_module);
-        interface_ptr.set_grow_state(&dual_node_35_ptr, DualNodeGrowState::Shrink, &mut dual_module);
-        interface_ptr.grow(half_weight, &mut dual_module);
-        assert_eq!(interface_ptr.sum_dual_variables(), 3 * half_weight);
-        visualizer
-            .snapshot_combined(
-                "individual shrink half weight".to_string(),
-                vec![&interface_ptr, &dual_module],
-            )
-            .unwrap();
-    }
-
-    #[test]
-    fn dual_module_rtl_stop_reason_1() {
-        // cargo test dual_module_rtl_stop_reason_1 -- --nocapture
-        let visualize_filename = "dual_module_rtl_stop_reason_1.json".to_string();
-        let half_weight = 500;
-        let mut code = CodeCapacityPlanarCode::new(7, 0.1, half_weight);
-        let mut visualizer = Visualizer::new(
-            option_env!("FUSION_DIR").map(|dir| dir.to_owned() + "/visualize/data/" + visualize_filename.as_str()),
-            code.get_positions(),
-            true,
-        )
-        .unwrap();
-        print_visualize_link(visualize_filename.clone());
-        // create dual module
-        let initializer = code.get_initializer();
-        let mut dual_module = DualModuleRTL::new_empty(&initializer);
-        // try to work on a simple syndrome
-        code.vertices[19].is_defect = true;
-        code.vertices[25].is_defect = true;
-        let interface_ptr = DualModuleInterfacePtr::new_load(&code.get_syndrome(), &mut dual_module);
-        visualizer
-            .snapshot_combined("syndrome".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        // create dual nodes and grow them by half length
-        let dual_node_19_ptr = interface_ptr.read_recursive().nodes[0].clone().unwrap();
-        let dual_node_25_ptr = interface_ptr.read_recursive().nodes[1].clone().unwrap();
-        // grow the maximum
-        let group_max_update_length = dual_module.compute_maximum_update_length();
-        assert_eq!(
-            group_max_update_length.get_none_zero_growth(),
-            Some(2 * half_weight),
-            "unexpected: {:?}",
-            group_max_update_length
-        );
-        interface_ptr.grow(2 * half_weight, &mut dual_module);
-        assert_eq!(interface_ptr.sum_dual_variables(), 4 * half_weight);
-        visualizer
-            .snapshot_combined("grow".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        // grow the maximum
-        let group_max_update_length = dual_module.compute_maximum_update_length();
-        assert_eq!(
-            group_max_update_length.get_none_zero_growth(),
-            Some(half_weight),
-            "unexpected: {:?}",
-            group_max_update_length
-        );
-        interface_ptr.grow(half_weight, &mut dual_module);
-        assert_eq!(interface_ptr.sum_dual_variables(), 6 * half_weight);
-        visualizer
-            .snapshot_combined("grow".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        // cannot grow anymore, find out the reason
-        let group_max_update_length = dual_module.compute_maximum_update_length();
-        assert!(
-            group_max_update_length
-                .peek()
-                .unwrap()
-                .is_conflicting(&dual_node_19_ptr, &dual_node_25_ptr),
-            "unexpected: {:?}",
-            group_max_update_length
-        );
-    }
-
-    #[test]
-    fn dual_module_rtl_stop_reason_2() {
-        // cargo test dual_module_rtl_stop_reason_2 -- --nocapture
-        let visualize_filename = "dual_module_rtl_stop_reason_2.json".to_string();
-        let half_weight = 500;
-        let mut code = CodeCapacityPlanarCode::new(7, 0.1, half_weight);
-        let mut visualizer = Visualizer::new(
-            option_env!("FUSION_DIR").map(|dir| dir.to_owned() + "/visualize/data/" + visualize_filename.as_str()),
-            code.get_positions(),
-            true,
-        )
-        .unwrap();
-        print_visualize_link(visualize_filename.clone());
-        // create dual module
-        let initializer = code.get_initializer();
-        let mut dual_module = DualModuleRTL::new_empty(&initializer);
-        // try to work on a simple syndrome
-        code.vertices[18].is_defect = true;
-        code.vertices[26].is_defect = true;
-        code.vertices[34].is_defect = true;
-        let interface_ptr = DualModuleInterfacePtr::new_load(&code.get_syndrome(), &mut dual_module);
-        visualizer
-            .snapshot_combined("syndrome".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        // create dual nodes and grow them by half length
-        let dual_node_18_ptr = interface_ptr.read_recursive().nodes[0].clone().unwrap();
-        let dual_node_26_ptr = interface_ptr.read_recursive().nodes[1].clone().unwrap();
-        let dual_node_34_ptr = interface_ptr.read_recursive().nodes[2].clone().unwrap();
-        // grow the maximum
-        let group_max_update_length = dual_module.compute_maximum_update_length();
-        assert_eq!(
-            group_max_update_length.get_none_zero_growth(),
-            Some(half_weight),
-            "unexpected: {:?}",
-            group_max_update_length
-        );
-        interface_ptr.grow(half_weight, &mut dual_module);
-        assert_eq!(interface_ptr.sum_dual_variables(), 3 * half_weight);
-        visualizer
-            .snapshot_combined("grow".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        // cannot grow anymore, find out the reason
-        let group_max_update_length = dual_module.compute_maximum_update_length();
-        assert!(
-            group_max_update_length
-                .peek()
-                .unwrap()
-                .is_conflicting(&dual_node_18_ptr, &dual_node_26_ptr)
-                || group_max_update_length
-                    .peek()
-                    .unwrap()
-                    .is_conflicting(&dual_node_26_ptr, &dual_node_34_ptr),
-            "unexpected: {:?}",
-            group_max_update_length
-        );
-        // first match 18 and 26
-        interface_ptr.set_grow_state(&dual_node_18_ptr, DualNodeGrowState::Stay, &mut dual_module);
-        interface_ptr.set_grow_state(&dual_node_26_ptr, DualNodeGrowState::Stay, &mut dual_module);
-        // cannot grow anymore, find out the reason
-        let group_max_update_length = dual_module.compute_maximum_update_length();
-        assert!(
-            group_max_update_length
-                .peek()
-                .unwrap()
-                .is_conflicting(&dual_node_26_ptr, &dual_node_34_ptr),
-            "unexpected: {:?}",
-            group_max_update_length
-        );
-        // 34 touches 26, so it will grow the tree by absorbing 18 and 26
-        interface_ptr.set_grow_state(&dual_node_18_ptr, DualNodeGrowState::Grow, &mut dual_module);
-        interface_ptr.set_grow_state(&dual_node_26_ptr, DualNodeGrowState::Shrink, &mut dual_module);
-        // grow the maximum
-        let group_max_update_length = dual_module.compute_maximum_update_length();
-        assert_eq!(
-            group_max_update_length.get_none_zero_growth(),
-            Some(half_weight),
-            "unexpected: {:?}",
-            group_max_update_length
-        );
-        interface_ptr.grow(half_weight, &mut dual_module);
-        assert_eq!(interface_ptr.sum_dual_variables(), 4 * half_weight);
-        visualizer
-            .snapshot_combined("grow".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        // cannot grow anymore, find out the reason
-        let group_max_update_length = dual_module.compute_maximum_update_length();
-        assert!(
-            group_max_update_length
-                .peek()
-                .unwrap()
-                .is_conflicting(&dual_node_18_ptr, &dual_node_34_ptr),
-            "unexpected: {:?}",
-            group_max_update_length
-        );
-        // for a blossom because 18 and 34 come from the same alternating tree
-        let dual_node_blossom = interface_ptr.create_blossom(
-            vec![dual_node_18_ptr.clone(), dual_node_26_ptr.clone(), dual_node_34_ptr.clone()],
-            vec![],
-            &mut dual_module,
-        );
-        // grow the maximum
-        let group_max_update_length = dual_module.compute_maximum_update_length();
-        assert_eq!(
-            group_max_update_length.get_none_zero_growth(),
-            Some(2 * half_weight),
-            "unexpected: {:?}",
-            group_max_update_length
-        );
-        interface_ptr.grow(2 * half_weight, &mut dual_module);
-        assert_eq!(interface_ptr.sum_dual_variables(), 6 * half_weight);
-        visualizer
-            .snapshot_combined("grow blossom".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        // grow the maximum
-        let group_max_update_length = dual_module.compute_maximum_update_length();
-        assert_eq!(
-            group_max_update_length.get_none_zero_growth(),
-            Some(2 * half_weight),
-            "unexpected: {:?}",
-            group_max_update_length
-        );
-        interface_ptr.grow(2 * half_weight, &mut dual_module);
-        assert_eq!(interface_ptr.sum_dual_variables(), 8 * half_weight);
-        visualizer
-            .snapshot_combined("grow blossom".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        // cannot grow anymore, find out the reason
-        let group_max_update_length = dual_module.compute_maximum_update_length();
-        assert!(
-            group_max_update_length.peek().unwrap().get_touching_virtual() == Some((dual_node_blossom.clone(), 23))
-                || group_max_update_length.peek().unwrap().get_touching_virtual() == Some((dual_node_blossom.clone(), 39)),
-            "unexpected: {:?}",
-            group_max_update_length
-        );
-        // blossom touches virtual boundary, so it's matched
-        interface_ptr.set_grow_state(&dual_node_blossom, DualNodeGrowState::Stay, &mut dual_module);
-        let group_max_update_length = dual_module.compute_maximum_update_length();
-        assert!(
-            group_max_update_length.is_empty(),
-            "unexpected: {:?}",
-            group_max_update_length
-        );
-        // also test the reverse procedure: shrinking and expanding blossom
-        interface_ptr.set_grow_state(&dual_node_blossom, DualNodeGrowState::Shrink, &mut dual_module);
-        let group_max_update_length = dual_module.compute_maximum_update_length();
-        assert_eq!(
-            group_max_update_length.get_none_zero_growth(),
-            Some(2 * half_weight),
-            "unexpected: {:?}",
-            group_max_update_length
-        );
-        interface_ptr.grow(2 * half_weight, &mut dual_module);
-        assert_eq!(interface_ptr.sum_dual_variables(), 6 * half_weight);
-        visualizer
-            .snapshot_combined("shrink blossom".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        // before expand
-        interface_ptr.set_grow_state(&dual_node_blossom, DualNodeGrowState::Shrink, &mut dual_module);
-        let group_max_update_length = dual_module.compute_maximum_update_length();
-        assert_eq!(
-            group_max_update_length.get_none_zero_growth(),
-            Some(2 * half_weight),
-            "unexpected: {:?}",
-            group_max_update_length
-        );
-        interface_ptr.grow(2 * half_weight, &mut dual_module);
-        assert_eq!(interface_ptr.sum_dual_variables(), 4 * half_weight);
-        visualizer
-            .snapshot_combined("shrink blossom".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-        // cannot shrink anymore, find out the reason
-        let group_max_update_length = dual_module.compute_maximum_update_length();
-        assert!(
-            group_max_update_length.peek().unwrap() == &MaxUpdateLength::BlossomNeedExpand(dual_node_blossom.clone()),
-            "unexpected: {:?}",
-            group_max_update_length
-        );
-        // expand blossom
-        interface_ptr.expand_blossom(dual_node_blossom, &mut dual_module);
-        // regain access to underlying nodes
-        interface_ptr.set_grow_state(&dual_node_18_ptr, DualNodeGrowState::Shrink, &mut dual_module);
-        interface_ptr.set_grow_state(&dual_node_26_ptr, DualNodeGrowState::Grow, &mut dual_module);
-        interface_ptr.set_grow_state(&dual_node_34_ptr, DualNodeGrowState::Shrink, &mut dual_module);
-        let group_max_update_length = dual_module.compute_maximum_update_length();
-        assert_eq!(
-            group_max_update_length.get_none_zero_growth(),
-            Some(2 * half_weight),
-            "unexpected: {:?}",
-            group_max_update_length
-        );
-        interface_ptr.grow(2 * half_weight, &mut dual_module);
-        assert_eq!(interface_ptr.sum_dual_variables(), 2 * half_weight);
-        visualizer
-            .snapshot_combined("shrink".to_string(), vec![&interface_ptr, &dual_module])
-            .unwrap();
-    }
 
     // phenomena: index out of bound error
     // command: cargo run --release -- benchmark 7 0.15 --code-type code-capacity-repetition-code --pb-message 'repetition 7 0.1' --total-rounds 1000000 --verifier fusion-serial --use-deterministic-seed --starting-iteration 472872 --print-syndrome-pattern
@@ -1247,7 +868,7 @@ mod tests {
         let visualize_filename = "dual_module_rtl_embedded_debug_3.json".to_string();
         let defect_vertices = vec![29, 69, 88, 89, 91, 94, 108, 110, 111, 112, 113, 130, 131, 132, 150];
         dual_module_rtl_embedded_basic_standard_syndrome(19, visualize_filename, defect_vertices);
-        // dual_module_rtl_original_basic_standard_syndrome(19, visualize_filename, defect_vertices);
+        // dual_module_rtl_adaptor_basic_standard_syndrome(19, visualize_filename, defect_vertices);
     }
 
     pub fn dual_module_rtl_embedded_basic_standard_syndrome_optional_viz<Solver: PrimalDualSolver + Sized>(
@@ -1304,7 +925,7 @@ mod tests {
         )
     }
 
-    pub fn dual_module_rtl_original_basic_standard_syndrome(
+    pub fn dual_module_rtl_adaptor_basic_standard_syndrome(
         d: VertexNum,
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
