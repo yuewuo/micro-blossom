@@ -46,6 +46,12 @@ case class VertexPropagator(config: DualConfig) extends Bundle {
   val root = Bits(config.vertexBits bits)
 }
 
+case class VertexShadow(config: DualConfig) extends Bundle {
+  val speed = Speed()
+  val node = Bits(config.vertexBits bits)
+  val root = Bits(config.vertexBits bits)
+}
+
 case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   // printf("hello\n");
   val io = new Bundle {
@@ -71,11 +77,13 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   val updateValid = Bool
   val updateState = VertexPersistent(config)
   val updateResult = VertexPersistent(config)
+  val updateResultShadow = VertexShadow(config)
   val updateInstruction = Instruction(config)
   val updateContextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 
   val writeValid = Bool
   val writeState = VertexPersistent(config)
+  val writeShadow = VertexShadow(config)
   val writeInstruction = Instruction(config)
   val writeContextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 
@@ -150,18 +158,21 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
 
   // update stage
   updateResult := updateState
+  updateResultShadow.node := updateState.node
+  updateResultShadow.root := updateState.root
+  updateResultShadow.speed := updateState.speed
+  val propagators = Vec.fill(config.incidentEdgesOf(vertexIndex).length)(VertexPropagator(config))
+  for (edgeIndex <- config.incidentEdgesOf(vertexIndex)) {
+    val localIndexOfEdge = config.localIndexOfEdge(vertexIndex, edgeIndex)
+    propagators(localIndexOfEdge).node := io.edgeInputs(localIndexOfEdge).updatePeerNode
+    propagators(localIndexOfEdge).root := io.edgeInputs(localIndexOfEdge).updatePeerRoot
+    propagators(localIndexOfEdge).valid := (
+      io.edgeInputs(localIndexOfEdge).updatePeerSpeed === Speed.Grow
+    ) && (io.edgeInputs(localIndexOfEdge).updateIsTight)
+  }
+  val selectedPropagator = propagators.reduceBalancedTree((l, r) => Mux(l.valid, l, r))
   when(executeValid) {
-    when(executeInstruction.isGrow || executeInstruction.isSetSpeed || executeInstruction.isSetBlossom()) {
-      val propagators = Vec.fill(config.incidentEdgesOf(vertexIndex).length)(VertexPropagator(config))
-      for (edgeIndex <- config.incidentEdgesOf(vertexIndex)) {
-        val localIndexOfEdge = config.localIndexOfEdge(vertexIndex, edgeIndex)
-        propagators(localIndexOfEdge).node := io.edgeInputs(localIndexOfEdge).updatePeerNode
-        propagators(localIndexOfEdge).root := io.edgeInputs(localIndexOfEdge).updatePeerRoot
-        propagators(localIndexOfEdge).valid := (
-          io.edgeInputs(localIndexOfEdge).updatePeerSpeed === Speed.Grow
-        ) && (io.edgeInputs(localIndexOfEdge).updateIsTight)
-      }
-      val selectedPropagator = propagators.reduceBalancedTree((l, r) => Mux(l.valid, l, r))
+    when(executeInstruction.isGrow || executeInstruction.isSetSpeed || executeInstruction.isSetBlossom) {
       when(!updateState.isDefect && !updateState.isVirtual && updateState.grown === 0) {
         when(selectedPropagator.valid) {
           updateResult.node := selectedPropagator.node
@@ -171,6 +182,15 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
           updateResult.node := config.IndexNone
           updateResult.root := config.IndexNone
           updateResult.speed := Speed.Stay
+        }
+      }
+    }
+    when(executeInstruction.isFindObstacle) {
+      when(updateState.speed === Speed.Shrink && updateState.grown === 0) {
+        when(selectedPropagator.valid) {
+          updateResult.node := selectedPropagator.node
+          updateResult.root := selectedPropagator.root
+          updateResult.speed := Speed.Grow
         }
       }
     }

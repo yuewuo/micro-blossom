@@ -17,9 +17,14 @@ use std::io::prelude::*;
 use std::io::{BufReader, LineWriter};
 use std::net::{TcpListener, TcpStream};
 use std::process::{Child, Command};
+use std::sync::Mutex;
 use wait_timeout::ChildExt;
 
 pub struct DualModuleScalaDriver {
+    pub link: Mutex<Link>,
+}
+
+pub struct Link {
     pub port: u16,
     pub child: Child,
     pub reader: BufReader<TcpStream>,
@@ -40,27 +45,33 @@ pub type DualModuleScalaAdaptor = DualModuleAdaptor<DualModuleScala>;
 impl Drop for DualModuleScalaDriver {
     fn drop(&mut self) {
         let need_to_kill: bool = (|| {
-            if write!(self.writer, "quit\n").is_ok() {
+            if write!(self.link.lock().unwrap().writer, "quit\n").is_ok() {
                 let wait_time = std::time::Duration::from_millis(1000);
-                if let Ok(Some(status)) = self.child.wait_timeout(wait_time) {
+                if let Ok(Some(status)) = self.link.lock().unwrap().child.wait_timeout(wait_time) {
                     return !status.success();
                 }
             }
             true
         })();
         if need_to_kill {
-            match self.child.kill() {
+            match self.link.lock().unwrap().child.kill() {
                 Err(e) => println!("Could not kill Scala process: {}", e),
                 Ok(_) => println!("Successfully killed Scala process"),
             }
         } else {
             println!("Scala process quit normally");
         }
-        match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/rtl", self.port)) {
+        match std::fs::remove_dir_all(format!(
+            "../../../simWorkspace/dualHost/{}/rtl",
+            self.link.lock().unwrap().port
+        )) {
             Err(e) => println!("Could not remove rtl folder: {}", e),
             Ok(_) => println!("Successfully remove rtl folder"),
         }
-        match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/verilator", self.port)) {
+        match std::fs::remove_dir_all(format!(
+            "../../../simWorkspace/dualHost/{}/verilator",
+            self.link.lock().unwrap().port
+        )) {
             Err(e) => println!("Could not remove verilator folder: {}", e),
             Ok(_) => println!("Successfully remove verilator folder"),
         }
@@ -92,43 +103,45 @@ impl DualModuleScalaDriver {
         reader.read_line(&mut line)?;
         assert_eq!(line, "simulation started\n");
         Ok(Self {
-            port,
-            child,
-            reader,
-            writer,
+            link: Mutex::new(Link {
+                port,
+                child,
+                reader,
+                writer,
+            }),
         })
     }
 }
 
 impl DualStacklessDriver for DualModuleScalaDriver {
     fn reset(&mut self) {
-        write!(self.writer, "reset()\n").unwrap();
+        write!(self.link.lock().unwrap().writer, "reset()\n").unwrap();
     }
     fn set_speed(&mut self, _is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState) {
-        write!(self.writer, "set_speed({node}, {speed:?})\n").unwrap();
+        write!(self.link.lock().unwrap().writer, "set_speed({node}, {speed:?})\n").unwrap();
     }
     fn set_blossom(&mut self, node: CompactNodeIndex, blossom: CompactNodeIndex) {
-        write!(self.writer, "set_blossom({node}, {blossom})\n").unwrap();
+        write!(self.link.lock().unwrap().writer, "set_blossom({node}, {blossom})\n").unwrap();
     }
     fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
-        write!(self.writer, "find_obstacle()\n").unwrap();
+        write!(self.link.lock().unwrap().writer, "find_obstacle()\n").unwrap();
         unimplemented!()
     }
     fn add_defect(&mut self, vertex: CompactVertexIndex, node: CompactNodeIndex) {
-        write!(self.writer, "add_defect({vertex}, {node})\n").unwrap();
+        write!(self.link.lock().unwrap().writer, "add_defect({vertex}, {node})\n").unwrap();
     }
 }
 
 impl DualTrackedDriver for DualModuleScalaDriver {
     fn set_maximum_growth(&mut self, length: CompactWeight) {
-        write!(self.writer, "set_maximum_growth({length})\n").unwrap();
+        write!(self.link.lock().unwrap().writer, "set_maximum_growth({length})\n").unwrap();
     }
 }
 
 impl FusionVisualizer for DualModuleScalaDriver {
     #[allow(clippy::unnecessary_cast)]
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
-        write!(self.writer, "snapshot({abbrev})\n").unwrap();
+        write!(self.link.lock().unwrap().writer, "snapshot({abbrev})\n").unwrap();
         unimplemented!();
         json!({})
     }

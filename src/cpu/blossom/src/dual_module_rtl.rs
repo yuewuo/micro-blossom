@@ -379,28 +379,28 @@ impl DualPipelined for Vertex {
     }
 
     fn update_stage(&mut self, dual_module: &DualModuleRTLDriver, instruction: &Instruction) {
+        // is there any growing peer trying to propagate to this node?
+        let propagating_peer: Option<&Vertex> = if self.grown == 0 {
+            // find a peer node with positive growth and fully-grown edge
+            self.edge_indices
+                .iter()
+                .map(|&edge_index| {
+                    let edge = &dual_module.edges[edge_index];
+                    let peer_index = edge.get_peer(self.vertex_index);
+                    let peer = &dual_module.vertices[peer_index];
+                    if edge.is_tight && peer.speed == DualNodeGrowState::Grow {
+                        Some(peer)
+                    } else {
+                        None
+                    }
+                })
+                .reduce(|a, b| a.or(b))
+                .unwrap()
+        } else {
+            None
+        };
         match instruction {
             Instruction::Grow { .. } | Instruction::SetSpeed { .. } | Instruction::SetBlossom { .. } => {
-                // is there any growing peer trying to propagate to this node?
-                let propagating_peer: Option<&Vertex> = if self.grown == 0 {
-                    // find a peer node with positive growth and fully-grown edge
-                    self.edge_indices
-                        .iter()
-                        .map(|&edge_index| {
-                            let edge = &dual_module.edges[edge_index];
-                            let peer_index = edge.get_peer(self.vertex_index);
-                            let peer = &dual_module.vertices[peer_index];
-                            if edge.is_tight && peer.speed == DualNodeGrowState::Grow {
-                                Some(peer)
-                            } else {
-                                None
-                            }
-                        })
-                        .reduce(|a, b| a.or(b))
-                        .unwrap()
-                } else {
-                    None
-                };
                 // is this node contributing to at least one
                 if !self.is_defect && !self.is_virtual && self.grown == 0 {
                     if let Some(peer) = propagating_peer {
@@ -418,26 +418,13 @@ impl DualPipelined for Vertex {
                 self.shadow_node_index = self.node_index;
                 self.shadow_root_index = self.root_index;
                 self.shadow_speed = self.speed;
-                if self.speed != DualNodeGrowState::Shrink || self.grown != 0 {
-                    return;
+                if self.speed == DualNodeGrowState::Shrink && self.grown == 0 {
+                    if let Some(peer) = propagating_peer {
+                        self.shadow_node_index = peer.node_index;
+                        self.shadow_root_index = peer.root_index;
+                        self.shadow_speed = DualNodeGrowState::Grow;
+                    }
                 }
-                // search for a growing peer
-                let growing_edge_index = self.edge_indices.iter().find(|edge_index: &&EdgeIndex| {
-                    let edge = &dual_module.edges[**edge_index];
-                    let peer_index = edge.get_peer(self.vertex_index);
-                    let peer = &dual_module.vertices[peer_index];
-                    peer.get_speed() > 0 && edge.is_tight
-                });
-                if growing_edge_index.is_none() {
-                    return; // in reality this won't happen
-                }
-                let edge_index = *growing_edge_index.unwrap();
-                let edge = &dual_module.edges[edge_index];
-                let peer_index = edge.get_peer(self.vertex_index);
-                let peer_vertex = &dual_module.vertices[peer_index];
-                self.shadow_node_index = peer_vertex.node_index;
-                self.shadow_root_index = peer_vertex.root_index;
-                self.shadow_speed = DualNodeGrowState::Grow;
             }
             _ => {}
         }
