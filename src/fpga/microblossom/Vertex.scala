@@ -29,7 +29,7 @@ object VertexPersistent {
   }
 }
 
-case class VertexOutput(config: DualConfig) extends Bundle {
+case class VertexFeed(config: DualConfig) extends Bundle {
   // execute stage
   val executeGrown = UInt(config.weightBits bits)
   // update stage
@@ -56,8 +56,8 @@ case class VertexShadow(config: DualConfig) extends Bundle {
 case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   val io = new Bundle {
     val input = in(BroadcastMessage(config))
-    val vertexOutputs = out(Vec.fill(config.numIncidentEdgeOf(vertexIndex))(VertexOutput(config)))
-    val edgeInputs = in(Vec.fill(config.numIncidentEdgeOf(vertexIndex))(EdgeOutput(config)))
+    val vertexFeeds = out(Vec.fill(config.numIncidentEdgeOf(vertexIndex))(VertexFeed(config)))
+    val edgeIns = in(Vec.fill(config.numIncidentEdgeOf(vertexIndex))(EdgeFeed(config)))
   }
 
   private var pipelineIndex = 0
@@ -145,7 +145,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   }
   for (edgeIndex <- config.incidentEdgesOf(vertexIndex)) {
     val localIndexOfEdge = config.localIndexOfEdge(vertexIndex, edgeIndex)
-    io.vertexOutputs(localIndexOfEdge).executeGrown := executeResult.grown
+    io.vertexFeeds(localIndexOfEdge).executeGrown := executeResult.grown
   }
 
   updateValid := RegNext(executeValid) init False
@@ -162,11 +162,11 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   val propagators = Vec.fill(config.incidentEdgesOf(vertexIndex).length)(VertexPropagator(config))
   for (edgeIndex <- config.incidentEdgesOf(vertexIndex)) {
     val localIndexOfEdge = config.localIndexOfEdge(vertexIndex, edgeIndex)
-    propagators(localIndexOfEdge).node := io.edgeInputs(localIndexOfEdge).updatePeerNode
-    propagators(localIndexOfEdge).root := io.edgeInputs(localIndexOfEdge).updatePeerRoot
+    propagators(localIndexOfEdge).node := io.edgeIns(localIndexOfEdge).updatePeerNode
+    propagators(localIndexOfEdge).root := io.edgeIns(localIndexOfEdge).updatePeerRoot
     propagators(localIndexOfEdge).valid := (
-      io.edgeInputs(localIndexOfEdge).updatePeerSpeed === Speed.Grow
-    ) && (io.edgeInputs(localIndexOfEdge).updateIsTight)
+      io.edgeIns(localIndexOfEdge).updatePeerSpeed === Speed.Grow
+    ) && (io.edgeIns(localIndexOfEdge).updateIsTight)
   }
   val selectedPropagator = propagators.reduceBalancedTree((l, r) => Mux(l.valid, l, r))
   when(executeValid) {
@@ -195,9 +195,9 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   }
   for (edgeIndex <- config.incidentEdgesOf(vertexIndex)) {
     val localIndexOfEdge = config.localIndexOfEdge(vertexIndex, edgeIndex)
-    io.vertexOutputs(localIndexOfEdge).updateNode := updateState.node
-    io.vertexOutputs(localIndexOfEdge).updateRoot := updateState.root
-    io.vertexOutputs(localIndexOfEdge).updateSpeed := updateState.speed
+    io.vertexFeeds(localIndexOfEdge).updateNode := updateState.node
+    io.vertexFeeds(localIndexOfEdge).updateRoot := updateState.root
+    io.vertexFeeds(localIndexOfEdge).updateSpeed := updateState.speed
   }
 
   writeValid := RegNext(updateValid) init False
@@ -210,8 +210,8 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   // write stage
   for (edgeIndex <- config.incidentEdgesOf(vertexIndex)) {
     val localIndexOfEdge = config.localIndexOfEdge(vertexIndex, edgeIndex)
-    io.vertexOutputs(localIndexOfEdge).writeShadow := writeShadow
-    io.vertexOutputs(localIndexOfEdge).writeGrown := writeState.grown
+    io.vertexFeeds(localIndexOfEdge).writeShadow := writeShadow
+    io.vertexFeeds(localIndexOfEdge).writeGrown := writeState.grown
   }
 
   if (config.contextBits > 0) {

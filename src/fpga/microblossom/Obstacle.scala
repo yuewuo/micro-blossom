@@ -12,10 +12,10 @@ case class Obstacle(config: DualConfig = DualConfig()) extends Bits {
     rspCode := obstacle.rspCode
     switch(obstacle.rspCode.asUInt) {
       is(RspCode.NonZeroGrow) {
-        length := obstacle.length.resized
+        sliceOf(spec.lengthRange) := obstacle.length.asBits.resized
         if (spec.numBits > obstacle.spec.numBits) {
           // extending length should also extend the MSB
-          when(obstacle.length.asUInt === obstacle.length.asUInt.maxValue) {
+          when(obstacle.length === obstacle.length.maxValue) {
             length(length.getWidth - 1 downto obstacle.length.getWidth).setAll()
           }
         }
@@ -29,7 +29,7 @@ case class Obstacle(config: DualConfig = DualConfig()) extends Bits {
         field5 := obstacle.field5.resized
         field6 := obstacle.field6.resized
         if (spec.numBits > obstacle.spec.numBits) {
-          when(obstacle.length.asUInt === obstacle.length.asUInt.maxValue) {
+          when(obstacle.length === obstacle.length.maxValue) {
             field1(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
             field2(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
             field3(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
@@ -44,7 +44,7 @@ case class Obstacle(config: DualConfig = DualConfig()) extends Bits {
   }
 
   def rspCode = sliceOf(spec.rspCodeRange)
-  def length = sliceOf(spec.lengthRange)
+  def length = sliceOf(spec.lengthRange).asUInt
   def lengthZero = if (config.weightBits < 6 * config.vertexBits) sliceOf(spec.lengthZeroRange) else null
   def payload = sliceOf(spec.payloadRange)
   def field1 = sliceOf(spec.field1Range)
@@ -98,5 +98,24 @@ case class ObstacleSpec(config: DualConfig) {
       field1Range.dynMasked(node1).resize(numBits) | field2Range.dynMasked(node2).resize(numBits) |
       field3Range.dynMasked(touch1).resize(numBits) | field4Range.dynMasked(touch2).resize(numBits) |
       field5Range.dynMasked(vertex1).resize(numBits) | field6Range.dynMasked(vertex2).resize(numBits)
+  }
+
+  // reduce function without considering `BlossomNeedExpand`
+  def reduceSimple(left: Obstacle, right: Obstacle): Obstacle = {
+    Mux(
+      left.isConflict,
+      left,
+      Mux(
+        right.isConflict,
+        right, {
+          assert(
+            assertion = left.isNonZeroGrow && right.isNonZeroGrow,
+            message = "simple reduce function does not consider more obstacles",
+            severity = ERROR
+          )
+          Mux(left.length < right.length, left, right)
+        }
+      )
+    )
   }
 }

@@ -81,8 +81,8 @@ case class DualAccelerator(config: DualConfig, topConfig: DualConfig = DualConfi
       val edge = edges(edgeIndex)
       val localIndexOfVertex = config.localIndexOfVertex(edgeIndex, vertexIndex)
       val localIndexOfEdge = config.localIndexOfEdge(vertexIndex, edgeIndex)
-      vertex.io.vertexOutputs(localIndexOfEdge) <> edge.io.vertexInputs(localIndexOfVertex)
-      vertex.io.edgeInputs(localIndexOfEdge) <> edge.io.edgeOutputs(localIndexOfVertex)
+      vertex.io.vertexFeeds(localIndexOfEdge) <> edge.io.vertexIns(localIndexOfVertex)
+      vertex.io.edgeIns(localIndexOfEdge) <> edge.io.edgeFeeds(localIndexOfVertex)
     }
   }
 

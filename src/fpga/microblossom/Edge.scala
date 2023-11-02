@@ -19,7 +19,7 @@ object EdgePersistent {
   }
 }
 
-case class EdgeOutput(config: DualConfig) extends Bundle {
+case class EdgeFeed(config: DualConfig) extends Bundle {
   // execute stage
 
   // update stage
@@ -35,13 +35,13 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   val io = new Bundle {
     val input = in(BroadcastMessage(config))
     val output = out(ConvergecastMessage(config))
-    val edgeOutputs = out(Vec.fill(2)(EdgeOutput(config)))
-    val vertexInputs = in(Vec.fill(2)(VertexOutput(config)))
+    val edgeFeeds = out(Vec.fill(2)(EdgeFeed(config)))
+    val vertexIns = in(Vec.fill(2)(VertexFeed(config)))
   }
 
   private var pipelineIndex = 0
-  val left = io.vertexInputs(0)
-  val right = io.vertexInputs(1)
+  val left = io.vertexIns(0)
+  val right = io.vertexIns(1)
 
   /*
    * pipeline input signals
@@ -87,6 +87,7 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   } else {
     executeState := RegNext(register)
   }
+  executeValid := RegNext(io.input.valid)
   executeIsFindObstacle := RegNext(io.input.valid && io.input.instruction.isFindObstacle) init False
   executeIsReset := RegNext(io.input.valid && io.input.instruction.isReset) init False
   pipelineIndex += 1
@@ -102,10 +103,10 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
     val peerIndex = pair(1)
     val localIndexOfVertex = config.localIndexOfVertex(edgeIndex, vertexIndex)
     val localIndexOfPeer = config.localIndexOfVertex(edgeIndex, peerIndex)
-    io.edgeOutputs(localIndexOfVertex).updateIsTight := updateIsTight
-    io.edgeOutputs(localIndexOfVertex).updatePeerNode := io.vertexInputs(localIndexOfPeer).updateNode
-    io.edgeOutputs(localIndexOfVertex).updatePeerRoot := io.vertexInputs(localIndexOfPeer).updateRoot
-    io.edgeOutputs(localIndexOfVertex).updatePeerSpeed := io.vertexInputs(localIndexOfPeer).updateSpeed
+    io.edgeFeeds(localIndexOfVertex).updateIsTight := updateIsTight
+    io.edgeFeeds(localIndexOfVertex).updatePeerNode := io.vertexIns(localIndexOfPeer).updateNode
+    io.edgeFeeds(localIndexOfVertex).updatePeerRoot := io.vertexIns(localIndexOfPeer).updateRoot
+    io.edgeFeeds(localIndexOfVertex).updatePeerSpeed := io.vertexIns(localIndexOfPeer).updateSpeed
   }
   updateValid := RegNext(executeValid) init False
   updateIsFindObstacle := RegNext(executeIsFindObstacle)
