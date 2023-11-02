@@ -8,6 +8,25 @@ case class Obstacle(config: DualConfig = DualConfig()) extends Bits {
   val spec = config.obstacleSpec
   setWidth(spec.numBits)
 
+  def connectFields(obstacle: Obstacle) = {
+    field1 := obstacle.field1.resized
+    field2 := obstacle.field2.resized
+    field3 := obstacle.field3.resized
+    field4 := obstacle.field4.resized
+    field5 := obstacle.field5.resized
+    field6 := obstacle.field6.resized
+    if (spec.numBits > obstacle.spec.numBits) {
+      when(obstacle.length === obstacle.length.maxValue) {
+        field1(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
+        field2(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
+        field3(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
+        field4(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
+        field5(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
+        field6(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
+      }
+    }
+  }
+
   def widthConvertedFrom(obstacle: Obstacle) = {
     rspCode := obstacle.rspCode
     switch(obstacle.rspCode.asUInt) {
@@ -21,24 +40,14 @@ case class Obstacle(config: DualConfig = DualConfig()) extends Bits {
         }
         if (config.weightBits < 6 * config.vertexBits) { lengthZero.clearAll() }
       }
-      default {
-        field1 := obstacle.field1.resized
-        field2 := obstacle.field2.resized
-        field3 := obstacle.field3.resized
-        field4 := obstacle.field4.resized
-        field5 := obstacle.field5.resized
-        field6 := obstacle.field6.resized
-        if (spec.numBits > obstacle.spec.numBits) {
-          when(obstacle.length === obstacle.length.maxValue) {
-            field1(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
-            field2(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
-            field3(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
-            field4(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
-            field5(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
-            field6(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
-          }
-        }
-        field6
+      is(RspCode.BlossomNeedExpand) {
+        connectFields(obstacle)
+      }
+      is(RspCode.Conflict) {
+        connectFields(obstacle)
+      }
+      is(RspCode.Reserved) {
+        connectFields(obstacle)
       }
     }
   }
@@ -100,22 +109,4 @@ case class ObstacleSpec(config: DualConfig) {
       field5Range.dynMasked(vertex1).resize(numBits) | field6Range.dynMasked(vertex2).resize(numBits)
   }
 
-  // reduce function without considering `BlossomNeedExpand`
-  def reduceSimple(left: Obstacle, right: Obstacle): Obstacle = {
-    Mux(
-      left.isConflict,
-      left,
-      Mux(
-        right.isConflict,
-        right, {
-          assert(
-            assertion = left.isNonZeroGrow && right.isNonZeroGrow,
-            message = "simple reduce function does not consider more obstacles",
-            severity = ERROR
-          )
-          Mux(left.length < right.length, left, right)
-        }
-      )
-    )
-  }
 }

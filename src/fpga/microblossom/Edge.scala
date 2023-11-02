@@ -190,7 +190,7 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
           B(config.incidentVerticesOf(edgeIndex)(0)),
           B(config.incidentVerticesOf(edgeIndex)(1))
         ),
-      config.obstacleSpec.dynNonZeroGrow(maxGrowth).resized
+      config.obstacleSpec.dynNonZeroGrow(maxGrowth)
     )
   )
   if (config.contextBits > 0) io.output.contextId := writeContextId

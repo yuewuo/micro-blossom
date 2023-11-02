@@ -30,32 +30,15 @@ case class DualAccelerator(config: DualConfig, topConfig: DualConfig = DualConfi
   }
 
   io.state := DualAcceleratorState.Normal
-  io.output.valid := False
-  io.output.obstacle := 0
-  if (config.contextBits > 0) {
-    io.output.contextId := 0
-  }
 
   // width conversion
   val broadcastMessage = BroadcastMessage(config)
   broadcastMessage.instruction.widthConvertedFrom(io.input.instruction)
   broadcastMessage.valid := io.input.valid
-  if (config.contextBits > 0) {
-    broadcastMessage.contextId := io.input.contextId
-  }
+  if (config.contextBits > 0) { broadcastMessage.contextId := io.input.contextId }
 
   // delay the signal so that the synthesizer can automatically balancing the registers
-  val broadcastRegInserted = BroadcastMessage(config)
-  broadcastRegInserted.instruction.assignFromBits(
-    Delay(RegNext(broadcastMessage.instruction.asBits), config.broadcastDelay)
-  )
-  broadcastRegInserted.valid := Delay(RegNext(io.input.valid), config.broadcastDelay)
-  if (config.contextBits > 0) {
-    broadcastRegInserted.contextId := Delay(
-      RegNext(io.input.contextId),
-      config.broadcastDelay
-    )
-  }
+  val broadcastRegInserted = Delay(RegNext(broadcastMessage), config.broadcastDelay)
 
   // instantiate vertices and edges
   val vertices = Seq
@@ -70,8 +53,10 @@ case class DualAccelerator(config: DualConfig, topConfig: DualConfig = DualConfi
     .range(0, config.edgeNum)
     .map(edgeIndex => new Edge(config, edgeIndex))
 
+  val edgeOutputs = Vec.fill(config.edgeNum)(ConvergecastMessage(config))
   edges.foreach(edge => {
     edge.io.input := broadcastRegInserted
+    edgeOutputs(edge.edgeIndex) := edge.io.output
   })
 
   // connect the vertices and edges
@@ -86,8 +71,34 @@ case class DualAccelerator(config: DualConfig, topConfig: DualConfig = DualConfi
     }
   }
 
-  // TODO: gather the results in a tree structure. tip: use reduceBalancedTree function
-  // https://spinalhdl.github.io/SpinalDoc-RTD/master/SpinalHDL/Data%20types/Vec.html#lib-helper-functions
+  // gather the results in a tree structure
+  val edgeOutput = ConvergecastMessage(config)
+  edgeOutput := edgeOutputs.reduceBalancedTree((left, right) => {
+    Mux(
+      left.obstacle.isConflict,
+      left,
+      Mux(
+        right.obstacle.isConflict,
+        right, {
+          assert(
+            assertion = left.obstacle.isNonZeroGrow && right.obstacle.isNonZeroGrow,
+            message = "simple reduce function does not consider more obstacles",
+            severity = ERROR
+          )
+          Mux(left.obstacle.length < right.obstacle.length, left, right)
+        }
+      )
+    )
+  })
+
+  // delay the signal so that the synthesizer can automatically balancing the registers
+  val edgeOutputRegInserted = Delay(RegNext(edgeOutput), config.convergecastDelay)
+
+  // width conversion
+  io.output.obstacle.widthConvertedFrom(edgeOutputRegInserted.obstacle)
+  io.output.valid := edgeOutputRegInserted.valid
+  if (config.contextBits > 0) { io.output.contextId := edgeOutputRegInserted.contextId }
+
 }
 
 // sbt 'testOnly *DualAcceleratorTest'
