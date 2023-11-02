@@ -23,6 +23,7 @@ case class DualConfig(
   def obstacleSpec = ObstacleSpec(this)
   def contextBits = log2Up(contextDepth)
   def IndexNone = (1 << vertexBits) - 1
+  def readLatency = broadcastDelay + convergecastDelay + 5 // from sending the command to receiving the obstacle
   private val incidentEdges = collection.mutable.Map[Int, Seq[Int]]()
 
   if (filename != null) {

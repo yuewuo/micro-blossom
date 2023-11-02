@@ -84,24 +84,7 @@ object DualHost extends App {
 
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
-        dut.clockDomain.waitSampling()
-        dut.io.input.valid #= true
-        dut.io.input.instruction #= dut.config.instructionSpec.generateReset()
-
-        dut.clockDomain.waitSampling()
-        dut.io.input.valid #= false
-        dut.io.input.instruction #= 0
-
-        for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
-
-        def execute(instruction: Long) = {
-          dut.io.input.valid #= true
-          dut.io.input.instruction #= instruction
-          dut.clockDomain.waitSampling()
-          dut.io.input.valid #= false
-          for (idx <- 0 to 2) { dut.clockDomain.waitSampling() }
-          sleep(1)
-        }
+        dut.simExecute(config.instructionSpec.generateReset())
 
         // start hosting the commands
         breakable {
@@ -111,7 +94,7 @@ object DualHost extends App {
               println("requested quit, breaking...")
               break
             } else if (command == "reset()") {
-              // TODO
+              dut.simExecute(config.instructionSpec.generateReset())
             } else if (command.startsWith("set_speed(")) {
               val parameters = command.substring("set_speed(".length, command.length - 1).split(", ")
               assert(parameters.length == 2)
@@ -119,16 +102,32 @@ object DualHost extends App {
               val speed = if (parameters(1) == "Grow") { Speed.Grow }
               else if (parameters(1) == "Shrink") { Speed.Shrink }
               else { Speed.Stay }
-              execute(dut.io.input.instruction.spec.generateSetSpeed(node, speed))
+              dut.simExecute(config.instructionSpec.generateSetSpeed(node, speed))
             } else if (command.startsWith("set_blossom(")) {
               val parameters = command.substring("set_blossom(".length, command.length - 1).split(", ")
               assert(parameters.length == 2)
               val node = parameters(0).toInt
               val blossom = parameters(1).toInt
-              execute(dut.io.input.instruction.spec.generateSetBlossom(node, blossom))
+              dut.simExecute(config.instructionSpec.generateSetBlossom(node, blossom))
             } else if (command == "find_obstacle()") {
-              execute(dut.io.input.instruction.spec.generateFindObstacle())
-              // TODO: send back the observed obstacle and the grown value
+              val obstacle = dut.simExecute(config.instructionSpec.generateFindObstacle())
+              val reader = ObstacleReader(config, obstacle)
+              if (reader.rspCode == RspCode.NonZeroGrow) {
+                outStream.println("NonZeroGrow(%d)".format(reader.length))
+              } else if (reader.rspCode == RspCode.Conflict) {
+                outStream.println(
+                  "Conflict(%d, %d, %d, %d, %d, %d)"
+                    .format(reader.field1, reader.field2, reader.field3, reader.field4, reader.field5, reader.field6)
+                )
+              } else {
+                throw new IllegalArgumentException
+              }
+            } else if (command.startsWith("add_defect(")) {
+              val parameters = command.substring("add_defect(".length, command.length - 1).split(", ")
+              assert(parameters.length == 2)
+              val vertex = parameters(0).toInt
+              val node = parameters(1).toInt
+              dut.simExecute(config.instructionSpec.generateAddDefect(vertex, node))
             }
           }
         }

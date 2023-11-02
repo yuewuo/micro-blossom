@@ -5,6 +5,7 @@ import spinal.lib._
 import util._
 import spinal.core.sim._
 import org.scalatest.funsuite.AnyFunSuite
+import spinal.lib.bus.bmb.Bmb
 
 object DualAcceleratorState extends SpinalEnum {
   val Normal, Busy, InstructionError = newElement()
@@ -99,6 +100,16 @@ case class DualAccelerator(config: DualConfig, topConfig: DualConfig = DualConfi
   io.output.valid := edgeOutputRegInserted.valid
   if (config.contextBits > 0) { io.output.contextId := edgeOutputRegInserted.contextId }
 
+  def simExecute(instruction: Long): BigInt = {
+    io.input.valid #= true
+    io.input.instruction #= instruction
+    clockDomain.waitSampling()
+    io.input.valid #= false
+    for (idx <- 0 to (config.readLatency - 1)) { clockDomain.waitSampling() }
+    sleep(1)
+    io.output.obstacle.toBigInt
+  }
+
 }
 
 // sbt 'testOnly *DualAcceleratorTest'
@@ -129,14 +140,13 @@ class DualAcceleratorTest extends AnyFunSuite {
 
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
-        dut.clockDomain.waitSampling()
-        dut.io.input.valid #= true
-        dut.io.input.instruction #= dut.config.instructionSpec.generateReset()
-
-        dut.clockDomain.waitSampling()
-        dut.io.input.valid #= false
-
-        for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
+        dut.simExecute(config.instructionSpec.generateReset())
+        dut.simExecute(config.instructionSpec.generateAddDefect(0, 0))
+        var obstacle = dut.simExecute(config.instructionSpec.generateFindObstacle())
+        assert(obstacle == 100 << 2) // at most grow 100
+        val reader = ObstacleReader(config, obstacle)
+        assert(reader.rspCode == RspCode.NonZeroGrow)
+        assert(reader.length == 100)
       }
   }
 }

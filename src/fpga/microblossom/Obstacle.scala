@@ -110,3 +110,23 @@ case class ObstacleSpec(config: DualConfig) {
   }
 
 }
+
+case class ObstacleReader(config: DualConfig, obstacle: BigInt) {
+  val spec = config.obstacleSpec
+
+  def sliceOf(range: BitRange): BigInt = {
+    val mask = (BigInt(1) << (range.msb - range.lsb + 1)) - 1
+    mask & (obstacle >> range.lsb)
+  }
+
+  def rspCode = sliceOf(spec.rspCodeRange)
+  def length = sliceOf(spec.lengthRange)
+  def lengthZero = if (config.weightBits < 6 * config.vertexBits) sliceOf(spec.lengthZeroRange) else null
+  def payload = sliceOf(spec.payloadRange)
+  def field1 = sliceOf(spec.field1Range)
+  def field2 = sliceOf(spec.field2Range)
+  def field3 = sliceOf(spec.field3Range)
+  def field4 = sliceOf(spec.field4Range)
+  def field5 = sliceOf(spec.field5Range)
+  def field6 = sliceOf(spec.field6Range)
+}
