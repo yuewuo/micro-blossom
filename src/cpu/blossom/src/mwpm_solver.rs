@@ -489,7 +489,6 @@ impl PrimalDualSolver for SolverDualScala {
         let perfect_matching = self.perfect_matching();
         self.subgraph_builder.load_perfect_matching(&perfect_matching);
         let subgraph = self.subgraph_builder.get_subgraph();
-        println!("subgraph: {subgraph:?}");
         if let Some(visualizer) = visualizer {
             visualizer
                 .snapshot_combined(

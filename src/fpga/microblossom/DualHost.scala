@@ -93,7 +93,7 @@ object DualHost extends App {
         breakable {
           while (true) {
             command = inStream.readLine()
-            println("[%d] %s".format(cycleCounter, command))
+            // println("[%d] %s".format(cycleCounter, command))
             if (command == "quit") {
               println("requested quit, breaking...")
               break

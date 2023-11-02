@@ -169,7 +169,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
     ) && (io.edgeIns(localIndexOfEdge).updateIsTight)
   }
   val selectedPropagator = propagators.reduceBalancedTree((l, r) => Mux(l.valid, l, r))
-  when(executeValid) {
+  when(updateValid) {
     when(executeInstruction.isGrow || executeInstruction.isSetSpeed || executeInstruction.isSetBlossom) {
       when(!updateState.isDefect && !updateState.isVirtual && updateState.grown === 0) {
         when(selectedPropagator.valid) {

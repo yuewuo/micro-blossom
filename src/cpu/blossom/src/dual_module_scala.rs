@@ -134,7 +134,7 @@ impl DualStacklessDriver for DualModuleScalaDriver {
         write!(self.link.lock().unwrap().writer, "find_obstacle()\n").unwrap();
         let mut line = String::new();
         self.link.lock().unwrap().reader.read_line(&mut line).unwrap();
-        println!("find_obstacle -> {}", line);
+        // println!("find_obstacle -> {}", line);
         if line.starts_with("NonZeroGrow(") {
             let (length, grown) = scan_fmt!(&line, "NonZeroGrow({d}), {d}", Weight, Weight).unwrap();
             (
@@ -214,6 +214,9 @@ mod tests {
     // to use visualization, we need the folder of fusion-blossom repo
     // e.g. export FUSION_DIR=/Users/wuyue/Documents/GitHub/fusion-blossom
 
+    /// reported the wrong virtual matching;
+    /// reason: vertex 1 should have been propagated by its neighbor 0 but it's not
+    /// reason: mis-type `when(updateValid) {` to `when(executeValid) {`
     #[test]
     fn dual_module_scala_basic_1() {
         // cargo test dual_module_scala_basic_1 -- --nocapture
@@ -234,7 +237,7 @@ mod tests {
             |initializer| {
                 SolverDualScala::new_with_name(
                     initializer,
-                    visualize_filename.as_str().strip_suffix(".json").unwrap().to_string(),
+                    visualize_filename.as_str().trim_end_matches(".json").to_string(),
                 )
             },
         )
