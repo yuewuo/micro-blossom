@@ -5,7 +5,7 @@ import spinal.lib._
 import util._
 import spinal.core.sim._
 import org.scalatest.funsuite.AnyFunSuite
-import spinal.lib.bus.bmb.Bmb
+import scala.util.control.Breaks._
 
 object DualAcceleratorState extends SpinalEnum {
   val Normal, Busy, InstructionError = newElement()
@@ -110,6 +110,30 @@ case class DualAccelerator(config: DualConfig, topConfig: DualConfig = DualConfi
     io.output.obstacle.toBigInt
   }
 
+  // a temporary solution without primal offloading
+  def simFindObstacle(maxGrowth: Long): (BigInt, Long) = {
+    var obstacle = simExecute(config.instructionSpec.generateFindObstacle())
+    var reader = ObstacleReader(config, obstacle)
+    var grown = 0.toLong
+    breakable {
+      while (reader.rspCode == RspCode.NonZeroGrow) {
+        var length = reader.length.toLong
+        if (length + grown > maxGrowth) {
+          length = maxGrowth - grown
+        }
+        if (length == 0) {
+          obstacle = config.obstacleSpec.generateNonZeroGrow(0)
+          break
+        }
+        grown += length
+        simExecute(config.instructionSpec.generateGrow(length))
+        obstacle = simExecute(config.instructionSpec.generateFindObstacle())
+        reader = ObstacleReader(config, obstacle)
+      }
+    }
+    (obstacle, grown)
+  }
+
 }
 
 // sbt 'testOnly *DualAcceleratorTest'
@@ -117,8 +141,8 @@ class DualAcceleratorTest extends AnyFunSuite {
 
   test("construct accelerator from file") {
     // val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
-    // val config = DualConfig(filename = "./resources/graphs/example_code_capacity_planar_d5.json")
-    val config = DualConfig(filename = "./resources/graphs/example_phenomenological_rotated_d5.json")
+    val config = DualConfig(filename = "./resources/graphs/example_code_capacity_planar_d5.json")
+    // val config = DualConfig(filename = "./resources/graphs/example_phenomenological_rotated_d5.json")
     Config.spinal.generateVerilog(DualAccelerator(config))
   }
 
@@ -143,10 +167,35 @@ class DualAcceleratorTest extends AnyFunSuite {
         dut.simExecute(config.instructionSpec.generateReset())
         dut.simExecute(config.instructionSpec.generateAddDefect(0, 0))
         var obstacle = dut.simExecute(config.instructionSpec.generateFindObstacle())
+
         assert(obstacle == 100 << 2) // at most grow 100
         val reader = ObstacleReader(config, obstacle)
         assert(reader.rspCode == RspCode.NonZeroGrow)
         assert(reader.length == 100)
+
+        dut.simExecute(config.instructionSpec.generateGrow(30))
+        var obstacle2 = dut.simExecute(config.instructionSpec.generateFindObstacle())
+        val reader2 = ObstacleReader(config, obstacle2)
+        assert(reader2.rspCode == RspCode.NonZeroGrow)
+        assert(reader2.length == 70)
+
+        val (obstacle3, grown3) = dut.simFindObstacle(50)
+        val reader3 = ObstacleReader(config, obstacle3)
+        assert(grown3 == 50)
+        assert(reader3.rspCode == RspCode.NonZeroGrow)
+        assert(reader3.length == 0)
+
+        val (obstacle4, grown4) = dut.simFindObstacle(1000)
+        val reader4 = ObstacleReader(config, obstacle4)
+        assert(grown4 == 20)
+        assert(reader4.rspCode == RspCode.Conflict)
+        assert(reader4.field1 == 0) // node1
+        assert(reader4.field2 == config.IndexNone) // node2 (here it's virtual)
+        assert(reader4.field3 == 0) // touch1
+        assert(reader4.field4 == config.IndexNone) // touch2 (here it's virtual)
+        assert(reader4.field5 == 0) // vertex1
+        assert(reader4.field6 == 1) // vertex2
+
       }
   }
 }

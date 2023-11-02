@@ -125,7 +125,15 @@ impl DualStacklessDriver for DualModuleScalaDriver {
     }
     fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
         write!(self.link.lock().unwrap().writer, "find_obstacle()\n").unwrap();
-        unimplemented!()
+        let mut line = String::new();
+        self.link.lock().unwrap().reader.read_line(&mut line).unwrap();
+        if line.starts_with("NonZeroGrow(") {
+            unimplemented!()
+        } else if line.starts_with("Conflict(") {
+            unimplemented!()
+        } else {
+            unreachable!()
+        }
     }
     fn add_defect(&mut self, vertex: CompactVertexIndex, node: CompactNodeIndex) {
         write!(self.link.lock().unwrap().writer, "add_defect({vertex}, {node})\n").unwrap();

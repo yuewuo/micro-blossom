@@ -118,6 +118,9 @@ case class InstructionSpec(config: DualConfig) {
     generateExtendedSuffix(ExtendedOpCode.AddDefectVertex) | field1Range.masked(vertex) |
       extendedField2Range.masked(node)
   }
+  def generateGrow(length: Long): Long = {
+    opCodeRange.masked(OpCode.Grow) | lengthRange.masked(length)
+  }
 
   def sanityCheck() = {
     assert(config.weightBits + 2 <= numBits)

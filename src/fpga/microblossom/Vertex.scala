@@ -133,7 +133,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
           executeResult.isDefect := True
           executeResult.speed := Speed.Grow
           assert(
-            assertion = executeState.node =/= config.IndexNone,
+            assertion = executeState.node === config.IndexNone,
             message = "Cannot set a vertex to defect when it's already occupied",
             severity = ERROR
           )
