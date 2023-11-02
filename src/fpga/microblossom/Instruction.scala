@@ -103,7 +103,7 @@ case class InstructionSpec(config: DualConfig) {
     opCodeRange.masked(OpCode.SetSpeed) | field1Range.masked(node) | speedRange.masked(speed)
   }
   def generateSetBlossom(node: Long, blossom: Long): Long = {
-    opCodeRange.masked(OpCode.SetBlossom) | field1Range.masked(node) | speedRange.masked(blossom)
+    opCodeRange.masked(OpCode.SetBlossom) | field1Range.masked(node) | field2Range.masked(blossom)
   }
   def generateExtendedSuffix(extendedOpCode: Long): Long = {
     opCodeRange.masked(OpCode.SetSpeed) | extensionIndicatorRange.masked(1) | extendedOpCodeRange.masked(extendedOpCode)

@@ -342,5 +342,12 @@ object DualAcceleratorDebug1 extends App {
 
       println(dut.simSnapshot().noSpacesSortKeys)
 
+      dut.simExecute(ioConfig.instructionSpec.generateSetBlossom(0, 3000))
+      dut.simExecute(ioConfig.instructionSpec.generateSetBlossom(1, 3000))
+      dut.simExecute(ioConfig.instructionSpec.generateSetBlossom(2, 3000))
+      dut.simExecute(ioConfig.instructionSpec.generateSetSpeed(3, Speed.Shrink))
+
+      for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
+
     }
 }

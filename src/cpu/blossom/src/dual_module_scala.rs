@@ -225,6 +225,22 @@ mod tests {
         dual_module_scala_basic_standard_syndrome(3, visualize_filename, defect_vertices);
     }
 
+    #[test]
+    fn dual_module_scala_basic_2() {
+        // cargo test dual_module_scala_basic_2 -- --nocapture
+        let visualize_filename = "dual_module_scala_basic_2.json".to_string();
+        let defect_vertices = vec![18, 26, 34];
+        dual_module_scala_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    }
+
+    #[test]
+    fn dual_module_scala_basic_3() {
+        // cargo test dual_module_scala_basic_3 -- --nocapture
+        let visualize_filename = "dual_module_scala_basic_3.json".to_string();
+        let defect_vertices = vec![16, 26];
+        dual_module_scala_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    }
+
     pub fn dual_module_scala_basic_standard_syndrome(
         d: VertexNum,
         visualize_filename: String,
