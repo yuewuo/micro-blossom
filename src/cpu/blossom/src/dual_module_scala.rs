@@ -63,13 +63,21 @@ impl Drop for DualModuleScalaDriver {
         } else {
             println!("Scala process quit normally");
         }
-        match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/rtl", self.host_name)) {
-            Err(e) => println!("Could not remove rtl folder: {}", e),
-            Ok(_) => println!("Successfully remove rtl folder"),
-        }
-        match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/verilator", self.host_name)) {
-            Err(e) => println!("Could not remove verilator folder: {}", e),
-            Ok(_) => println!("Successfully remove verilator folder"),
+        if cfg!(test) {
+            // only delete binary but keep original waveforms
+            match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/rtl", self.host_name)) {
+                Err(e) => println!("Could not remove rtl folder: {}", e),
+                Ok(_) => println!("Successfully remove rtl folder"),
+            }
+            match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/verilator", self.host_name)) {
+                Err(e) => println!("Could not remove verilator folder: {}", e),
+                Ok(_) => println!("Successfully remove verilator folder"),
+            }
+        } else {
+            match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}", self.host_name)) {
+                Err(e) => println!("Could not remove build folder: {}", e),
+                Ok(_) => println!("Successfully remove build folder"),
+            }
         }
     }
 }
@@ -113,7 +121,7 @@ impl DualModuleScalaDriver {
     pub fn new(initializer: &SolverInitializer) -> std::io::Result<Self> {
         let host_name = rand::thread_rng()
             .sample_iter(&Alphanumeric)
-            .take(8)
+            .take(16)
             .map(char::from)
             .collect();
         Self::new_with_name(initializer, host_name)
