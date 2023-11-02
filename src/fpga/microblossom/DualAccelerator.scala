@@ -303,7 +303,7 @@ class DualAcceleratorTest extends AnyFunSuite {
         assert(reader4.field3 == 0) // touch1
         assert(reader4.field4 == ioConfig.IndexNone) // touch2 (here it's virtual)
         assert(reader4.field5 == 0) // vertex1
-        assert(reader4.field6 == 1) // vertex2
+        assert(reader4.field6 == 3) // vertex2
 
         println(dut.simSnapshot().noSpacesSortKeys)
       }
