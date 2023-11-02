@@ -13,8 +13,7 @@ case class VertexPersistent(config: DualConfig) extends Bundle {
   val root = Bits(config.vertexBits bits)
   val isVirtual = Bool
   val isDefect = Bool
-  val grown = Bits(config.weightBits bits)
-
+  val grown = UInt(config.weightBits bits)
 }
 
 object VertexPersistent {
@@ -32,12 +31,14 @@ object VertexPersistent {
 
 case class VertexOutput(config: DualConfig) extends Bundle {
   // execute stage
-  val executeGrown = Bits(config.weightBits bits)
+  val executeGrown = UInt(config.weightBits bits)
   // update stage
   val updateNode = Bits(config.vertexBits bits)
   val updateRoot = Bits(config.vertexBits bits)
   val updateSpeed = Speed()
   // write stage
+  val writeShadow = VertexShadow(config)
+  val writeGrown = UInt(config.weightBits bits)
 }
 
 case class VertexPropagator(config: DualConfig) extends Bundle {
@@ -53,16 +54,13 @@ case class VertexShadow(config: DualConfig) extends Bundle {
 }
 
 case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
-  // printf("hello\n");
   val io = new Bundle {
-    val valid = in Bool ()
-    val instruction = in(Instruction(config))
-    val contextId = (config.contextBits > 0) generate (in UInt (config.contextBits bits))
+    val input = in(BroadcastMessage(config))
     val vertexOutputs = out(Vec.fill(config.numIncidentEdgeOf(vertexIndex))(VertexOutput(config)))
     val edgeInputs = in(Vec.fill(config.numIncidentEdgeOf(vertexIndex))(EdgeOutput(config)))
   }
 
-  private var pipelineIndex = 0;
+  private var pipelineIndex = 0
 
   /*
    * pipeline input signals
@@ -94,16 +92,16 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
     // fetch stage, delay the instruction
     ram = Mem(VertexPersistent(config), config.contextDepth)
     executeState := ram.readSync(
-      address = io.contextId,
-      enable = io.valid
+      address = io.input.contextId,
+      enable = io.input.valid
     )
-    executeContextId := RegNext(io.contextId)
+    executeContextId := RegNext(io.input.contextId)
   } else {
     executeState := RegNext(register)
   }
-  executeValid := RegNext(io.valid) init False
-  executeInstruction.assignFromBits(RegNext(io.instruction.asBits))
-  pipelineIndex += 1;
+  executeValid := RegNext(io.input.valid) init False
+  executeInstruction.assignFromBits(RegNext(io.input.instruction.asBits))
+  pipelineIndex += 1
 
   // execute stage
   executeResult := executeState
@@ -122,10 +120,10 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
     when(executeInstruction.isGrow) {
       switch(executeState.speed.asUInt) {
         is(Speed.Grow) {
-          executeResult.grown := (executeState.grown.asUInt + executeInstruction.length.asUInt).asBits
+          executeResult.grown := (executeState.grown + executeInstruction.length)
         }
         is(Speed.Shrink) {
-          executeResult.grown := (executeState.grown.asUInt - executeInstruction.length.asUInt).asBits
+          executeResult.grown := (executeState.grown - executeInstruction.length)
         }
       }
     }
@@ -154,7 +152,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   updateInstruction.assignFromBits(RegNext(executeInstruction.asBits))
   updateState := RegNext(executeResult)
   if (config.contextBits > 0) updateContextId := RegNext(executeContextId)
-  pipelineIndex += 1;
+  pipelineIndex += 1
 
   // update stage
   updateResult := updateState
@@ -205,10 +203,16 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   writeValid := RegNext(updateValid) init False
   writeInstruction.assignFromBits(RegNext(updateInstruction.asBits))
   writeState := Mux(updateInstruction.isReset, VertexPersistent.resetValue(config), RegNext(updateResult))
+  writeShadow := RegNext(updateResultShadow)
   if (config.contextBits > 0) writeContextId := RegNext(updateContextId)
-  pipelineIndex += 1;
+  pipelineIndex += 1
 
   // write stage
+  for (edgeIndex <- config.incidentEdgesOf(vertexIndex)) {
+    val localIndexOfEdge = config.localIndexOfEdge(vertexIndex, edgeIndex)
+    io.vertexOutputs(localIndexOfEdge).writeShadow := writeShadow
+    io.vertexOutputs(localIndexOfEdge).writeGrown := writeState.grown
+  }
 
   if (config.contextBits > 0) {
     ram.write(
@@ -221,7 +225,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
       register := writeState
     }
   }
-  pipelineIndex += 1;
+  pipelineIndex += 1
 
   def pipelineStages = pipelineIndex
 }
@@ -255,8 +259,8 @@ class VertexTest extends AnyFunSuite {
         dut
       })
       .doSim("testA") { dut =>
-        dut.io.valid #= false
-        dut.io.instruction #= 0
+        dut.io.input.valid #= false
+        dut.io.input.instruction #= 0
         dut.clockDomain.forkStimulus(period = 10)
         dut.clockDomain.waitSampling()
 
@@ -266,16 +270,16 @@ class VertexTest extends AnyFunSuite {
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
         dut.clockDomain.waitSampling()
-        dut.io.valid #= true
+        dut.io.input.valid #= true
         val setSpeedInstruction = instructionSpec.generateSetSpeed(nodeIndex, Speed.Grow)
-        dut.io.instruction #= setSpeedInstruction
+        dut.io.input.instruction #= setSpeedInstruction
 
         dut.clockDomain.waitSampling()
-        dut.io.valid #= false
-        dut.io.instruction #= 0
+        dut.io.input.valid #= false
+        dut.io.input.instruction #= 0
         sleep(1)
-        assert(dut.io.valid.toBoolean == false)
-        assert(dut.io.instruction.toLong == 0)
+        assert(dut.io.input.valid.toBoolean == false)
+        assert(dut.io.input.instruction.toLong == 0)
         assert(dut.executeValid.toBoolean == true)
         assert(dut.executeInstruction.toLong == setSpeedInstruction)
         assert(dut.updateValid.toBoolean == false)
@@ -288,8 +292,8 @@ class VertexTest extends AnyFunSuite {
 
         dut.clockDomain.waitSampling()
         sleep(1)
-        assert(dut.io.valid.toBoolean == false)
-        assert(dut.io.instruction.toLong == 0)
+        assert(dut.io.input.valid.toBoolean == false)
+        assert(dut.io.input.instruction.toLong == 0)
         assert(dut.executeValid.toBoolean == false)
         assert(dut.executeInstruction.toLong == 0)
         assert(dut.updateValid.toBoolean == true)
@@ -299,8 +303,8 @@ class VertexTest extends AnyFunSuite {
 
         dut.clockDomain.waitSampling()
         sleep(1)
-        assert(dut.io.valid.toBoolean == false)
-        assert(dut.io.instruction.toLong == 0)
+        assert(dut.io.input.valid.toBoolean == false)
+        assert(dut.io.input.instruction.toLong == 0)
         assert(dut.executeValid.toBoolean == false)
         assert(dut.executeInstruction.toLong == 0)
         assert(dut.updateValid.toBoolean == false)
@@ -310,8 +314,8 @@ class VertexTest extends AnyFunSuite {
 
         dut.clockDomain.waitSampling()
         sleep(1)
-        assert(dut.io.valid.toBoolean == false)
-        assert(dut.io.instruction.toLong == 0)
+        assert(dut.io.input.valid.toBoolean == false)
+        assert(dut.io.input.instruction.toLong == 0)
         assert(dut.executeValid.toBoolean == false)
         assert(dut.executeInstruction.toLong == 0)
         assert(dut.updateValid.toBoolean == false)

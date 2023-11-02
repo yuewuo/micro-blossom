@@ -13,6 +13,12 @@ case class Obstacle(config: DualConfig = DualConfig()) extends Bits {
     switch(obstacle.rspCode.asUInt) {
       is(RspCode.NonZeroGrow) {
         length := obstacle.length.resized
+        if (spec.numBits > obstacle.spec.numBits) {
+          // extending length should also extend the MSB
+          when(obstacle.length.asUInt === obstacle.length.asUInt.maxValue) {
+            length(length.getWidth - 1 downto obstacle.length.getWidth).setAll()
+          }
+        }
         if (config.weightBits < 6 * config.vertexBits) { lengthZero.clearAll() }
       }
       default {
@@ -22,6 +28,16 @@ case class Obstacle(config: DualConfig = DualConfig()) extends Bits {
         field4 := obstacle.field4.resized
         field5 := obstacle.field5.resized
         field6 := obstacle.field6.resized
+        if (spec.numBits > obstacle.spec.numBits) {
+          when(obstacle.length.asUInt === obstacle.length.asUInt.maxValue) {
+            field1(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
+            field2(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
+            field3(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
+            field4(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
+            field5(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
+            field6(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
+          }
+        }
         field6
       }
     }
@@ -71,5 +87,16 @@ case class ObstacleSpec(config: DualConfig) {
   }
   def generateBlossomNeedExpand(blossom: Long): Long = {
     rspCodeRange.masked(RspCode.BlossomNeedExpand) | field1Range.masked(blossom)
+  }
+
+  def dynNonZeroGrow(length: UInt): Bits = {
+    B(0, numBits bits) | rspCodeRange.dynMasked(B(RspCode.NonZeroGrow, 2 bits)).resize(numBits) |
+      lengthRange.dynMasked(length.asBits).resize(numBits)
+  }
+  def dynConflict(node1: Bits, node2: Bits, touch1: Bits, touch2: Bits, vertex1: Bits, vertex2: Bits): Bits = {
+    B(0, numBits bits) | rspCodeRange.dynMasked(B(RspCode.Conflict, 2 bits)).resize(numBits) |
+      field1Range.dynMasked(node1).resize(numBits) | field2Range.dynMasked(node2).resize(numBits) |
+      field3Range.dynMasked(touch1).resize(numBits) | field4Range.dynMasked(touch2).resize(numBits) |
+      field5Range.dynMasked(vertex1).resize(numBits) | field6Range.dynMasked(vertex2).resize(numBits)
   }
 }

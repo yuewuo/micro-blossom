@@ -63,9 +63,7 @@ case class DualAccelerator(config: DualConfig, topConfig: DualConfig = DualConfi
     .map(vertexIndex => new Vertex(config, vertexIndex))
 
   vertices.foreach(vertex => {
-    vertex.io.instruction := broadcastRegInserted.instruction
-    vertex.io.valid := broadcastRegInserted.valid
-    if (config.contextBits > 0) { vertex.io.contextId := broadcastRegInserted.contextId }
+    vertex.io.input := broadcastRegInserted
   })
 
   val edges = Seq
@@ -73,9 +71,7 @@ case class DualAccelerator(config: DualConfig, topConfig: DualConfig = DualConfi
     .map(edgeIndex => new Edge(config, edgeIndex))
 
   edges.foreach(edge => {
-    edge.io.instruction := broadcastRegInserted.instruction
-    edge.io.valid := broadcastRegInserted.valid
-    if (config.contextBits > 0) { edge.io.contextId := broadcastRegInserted.contextId }
+    edge.io.input := broadcastRegInserted
   })
 
   // connect the vertices and edges

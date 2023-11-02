@@ -32,7 +32,7 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
         }
       }
       is(OpCode.Grow) {
-        length := instruction.length.resized
+        sliceOf(spec.lengthRange) := instruction.length.asBits.resized // length
         if (config.weightBits < 2 * config.vertexBits) { growZero.clearAll() }
       }
     }
@@ -41,7 +41,7 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
   def opCode = sliceOf(spec.opCodeRange)
   def extensionIndicator = sliceOf(spec.extensionIndicatorRange)
   def extendedOpCode = sliceOf(spec.extendedOpCodeRange)
-  def length = sliceOf(spec.lengthRange)
+  def length = sliceOf(spec.lengthRange).asUInt
   def growZero = if (config.weightBits < 2 * config.vertexBits) sliceOf(spec.growZeroRange) else null
   def payload = sliceOf(spec.payloadRange)
   def field1 = sliceOf(spec.field1Range)
@@ -73,6 +73,11 @@ case class BitRange(msb: Int, lsb: Int) {
     assert(value >= 0)
     val maxValue = 1 << numBits
     assert(value < maxValue)
+    value << lsb
+  }
+
+  def dynMasked(value: Bits): Bits = {
+    assert(value.getWidth <= numBits)
     value << lsb
   }
 }

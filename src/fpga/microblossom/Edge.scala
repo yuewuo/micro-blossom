@@ -1,13 +1,14 @@
 package microblossom
 
 import spinal.core._
+import spinal.lib._
 import microblossom._
 import spinal.core.sim._
 import org.scalatest.funsuite.AnyFunSuite
 
 // persistent state of an edge
 case class EdgePersistent(config: DualConfig) extends Bundle {
-  val weight = Bits(config.weightBits bits)
+  val weight = UInt(config.weightBits bits)
 }
 
 object EdgePersistent {
@@ -32,14 +33,15 @@ case class EdgeOutput(config: DualConfig) extends Bundle {
 
 case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   val io = new Bundle {
-    val valid = in Bool ()
-    val instruction = in(Instruction(config))
-    val contextId = (config.contextBits > 0) generate (in UInt (config.contextBits bits))
+    val input = in(BroadcastMessage(config))
+    val output = out(ConvergecastMessage(config))
     val edgeOutputs = out(Vec.fill(2)(EdgeOutput(config)))
     val vertexInputs = in(Vec.fill(2)(VertexOutput(config)))
   }
 
-  private var pipelineIndex = 0;
+  private var pipelineIndex = 0
+  val left = io.vertexInputs(0)
+  val right = io.vertexInputs(1)
 
   /*
    * pipeline input signals
@@ -49,19 +51,27 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   val executeState = EdgePersistent(config)
   val executeIsFindObstacle = Bool
   val executeIsReset = Bool
+  val executeGrown = UInt(config.weightBits bits)
   val executeContextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 
   val updateValid = Bool
   val updateState = EdgePersistent(config)
   val updateIsFindObstacle = Bool
   val updateIsReset = Bool
+  val updateGrown = UInt(config.weightBits bits)
   val updateContextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 
   val writeValid = Bool
   val writeState = EdgePersistent(config)
   val writeIsFindObstacle = Bool
   val writeIsReset = Bool
+  val writeGrown = UInt(config.weightBits bits)
   val writeContextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+
+  val reportIsFindObstacle = Bool
+  val reportContextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+  val reportLeftShadow = VertexShadow(config)
+  val reportRightShadow = VertexShadow(config)
 
   // fetch stage
   var ram: Mem[EdgePersistent] = null
@@ -70,22 +80,22 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
     // fetch stage, delay the instruction
     ram = Mem(EdgePersistent(config), config.contextDepth)
     executeState := ram.readSync(
-      address = io.contextId,
-      enable = io.valid
+      address = io.input.contextId,
+      enable = io.input.valid
     )
-    executeContextId := RegNext(io.contextId)
+    executeContextId := RegNext(io.input.contextId)
   } else {
     executeState := RegNext(register)
   }
-  executeValid := RegNext(io.valid) init False
-  executeIsFindObstacle := RegNext(io.instruction.isFindObstacle)
-  executeIsReset := RegNext(io.instruction.isReset)
-  pipelineIndex += 1;
+  executeIsFindObstacle := RegNext(io.input.valid && io.input.instruction.isFindObstacle) init False
+  executeIsReset := RegNext(io.input.valid && io.input.instruction.isReset) init False
+  pipelineIndex += 1
 
   // execute stage
+  executeGrown := left.executeGrown + right.executeGrown
 
   val updateIsTight = RegNext(
-    io.vertexInputs(0).executeGrown.asUInt + io.vertexInputs(1).executeGrown.asUInt >= executeState.weight.asUInt
+    executeGrown >= executeState.weight
   )
   for (pair <- config.incidentVerticesPairsOf(edgeIndex)) {
     val vertexIndex = pair(0)
@@ -101,20 +111,21 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   updateIsFindObstacle := RegNext(executeIsFindObstacle)
   updateIsReset := RegNext(executeIsReset)
   updateState := RegNext(executeState)
+  updateGrown := RegNext(executeGrown)
   if (config.contextBits > 0) updateContextId := RegNext(executeContextId)
-  pipelineIndex += 1;
+  pipelineIndex += 1
 
   // update stage
 
   writeValid := RegNext(updateValid) init False
-  writeIsFindObstacle := RegNext(updateIsFindObstacle)
-  writeIsReset := RegNext(updateIsReset)
+  writeIsFindObstacle := RegNext(updateIsFindObstacle) init False
+  writeIsReset := RegNext(updateIsReset) init False
+  writeGrown := RegNext(updateGrown)
   writeState := Mux(writeIsReset, EdgePersistent.resetValue(config, edgeIndex), RegNext(updateState))
   if (config.contextBits > 0) writeContextId := RegNext(updateContextId)
-  pipelineIndex += 1;
+  pipelineIndex += 1
 
   // write stage
-
   if (config.contextBits > 0) {
     ram.write(
       address = writeContextId,
@@ -126,9 +137,62 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
       register := writeState
     }
   }
-  pipelineIndex += 1;
+  pipelineIndex += 1
 
-  // also generate response in write stage
+  // also compute maxGrowth in the write stage
+  val maxGrowth = Reg(UInt(config.weightBits bits))
+  maxGrowth := maxGrowth.maxValue
+  when(writeIsFindObstacle) {
+    when(left.writeShadow.node =/= right.writeShadow.node) {
+      val value1 = Mux(left.writeShadow.speed === Speed.Shrink, left.writeGrown, U(maxGrowth.maxValue))
+      val value2 = Mux(right.writeShadow.speed === Speed.Shrink, right.writeGrown, U(maxGrowth.maxValue))
+      val value3 = Mux(
+        left.writeShadow.speed === Speed.Grow && right.writeShadow.speed === Speed.Shrink,
+        writeState.weight - left.writeGrown,
+        U(maxGrowth.maxValue)
+      )
+      val value4 = Mux(
+        left.writeShadow.speed === Speed.Shrink && right.writeShadow.speed === Speed.Grow,
+        writeState.weight - right.writeGrown,
+        U(maxGrowth.maxValue)
+      )
+      val value5 = Mux(
+        left.writeShadow.speed === Speed.Grow && right.writeShadow.speed === Speed.Grow,
+        (writeState.weight - writeGrown) >> 1,
+        U(maxGrowth.maxValue)
+      )
+      val value6 = Mux(
+        (left.writeShadow.speed === Speed.Grow && right.writeShadow.speed === Speed.Stay) ||
+          (left.writeShadow.speed === Speed.Stay && right.writeShadow.speed === Speed.Grow),
+        writeState.weight - writeGrown,
+        U(maxGrowth.maxValue)
+      )
+      maxGrowth := Vec(value1, value2, value3, value4, value5, value6).reduceBalancedTree((l, r) => Mux(l < r, l, r))
+    }
+  }
+  reportIsFindObstacle := RegNext(writeIsFindObstacle) init False
+  if (config.contextBits > 0) reportContextId := RegNext(writeContextId)
+  reportLeftShadow := RegNext(left.writeShadow)
+  reportRightShadow := RegNext(right.writeShadow)
+
+  // report stage
+  io.output.valid := reportIsFindObstacle
+  io.output.obstacle.assignFromBits(
+    Mux(
+      maxGrowth === 0,
+      config.obstacleSpec
+        .dynConflict(
+          reportLeftShadow.node,
+          reportRightShadow.node,
+          reportLeftShadow.root,
+          reportRightShadow.root,
+          B(config.incidentVerticesOf(edgeIndex)(0)),
+          B(config.incidentVerticesOf(edgeIndex)(1))
+        ),
+      config.obstacleSpec.dynNonZeroGrow(maxGrowth).resized
+    )
+  )
+  if (config.contextBits > 0) io.output.contextId := writeContextId
 
   def pipelineStages = pipelineIndex
 }
