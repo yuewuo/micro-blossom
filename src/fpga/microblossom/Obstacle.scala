@@ -15,29 +15,14 @@ case class Obstacle(config: DualConfig = DualConfig()) extends Bits {
         length := obstacle.length.resized
         if (config.weightBits < 6 * config.vertexBits) { lengthZero.clearAll() }
       }
-      is(RspCode.Conflict) {
+      default {
         field1 := obstacle.field1.resized
         field2 := obstacle.field2.resized
         field3 := obstacle.field3.resized
         field4 := obstacle.field4.resized
         field5 := obstacle.field5.resized
         field6 := obstacle.field6.resized
-      }
-      is(RspCode.BlossomNeedExpand) {
-        field1 := obstacle.field1.resized
-        field2 := obstacle.field2.resized
-        field3 := obstacle.field3.resized
-        field4 := obstacle.field4.resized
-        field5 := obstacle.field5.resized
-        field6 := obstacle.field6.resized
-      }
-      is(RspCode.Reserved) {
-        field1 := obstacle.field1.resized
-        field2 := obstacle.field2.resized
-        field3 := obstacle.field3.resized
-        field4 := obstacle.field4.resized
-        field5 := obstacle.field5.resized
-        field6 := obstacle.field6.resized
+        field6
       }
     }
   }

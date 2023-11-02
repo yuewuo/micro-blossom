@@ -22,23 +22,40 @@ case class ConvergecastMessage(config: DualConfig) extends Bundle {
   val contextId = (config.contextBits > 0) generate (in UInt (config.contextBits bits))
 }
 
-case class DualAccelerator(config: DualConfig) extends Component {
+case class DualAccelerator(config: DualConfig, topConfig: DualConfig = DualConfig()) extends Component {
   val io = new Bundle {
-    val input = in(BroadcastMessage(DualConfig()))
+    val input = in(BroadcastMessage(topConfig))
+    val output = out(ConvergecastMessage(topConfig))
     val state = out(DualAcceleratorState())
-    val output = out(ConvergecastMessage(DualConfig()))
   }
 
-  val instructionReg = Instruction()
-  instructionReg.assignFromBits(RegNext(io.input.instruction.asBits))
-
   io.state := DualAcceleratorState.Normal
+  io.output.valid := False
+  io.output.obstacle := 0
+  if (config.contextBits > 0) {
+    io.output.contextId := 0
+  }
 
-  val broadcastMessage = Instruction(config)
+  // width conversion
+  val broadcastMessage = BroadcastMessage(config)
+  broadcastMessage.instruction.widthConvertedFrom(io.input.instruction)
+  broadcastMessage.valid := io.input.valid
+  if (config.contextBits > 0) {
+    broadcastMessage.contextId := io.input.contextId
+  }
 
-  broadcastMessage.widthConvertedFrom(io.input.instruction)
-  val broadcastInstruction = Instruction(config)
-  broadcastInstruction.assignFromBits(Delay(RegNext(broadcastMessage.asBits), config.broadcastDelay))
+  // delay the signal so that the synthesizer can automatically balancing the registers
+  val broadcastRegInserted = BroadcastMessage(config)
+  broadcastRegInserted.instruction.assignFromBits(
+    Delay(RegNext(broadcastMessage.instruction.asBits), config.broadcastDelay)
+  )
+  broadcastRegInserted.valid := Delay(RegNext(io.input.valid), config.broadcastDelay)
+  if (config.contextBits > 0) {
+    broadcastRegInserted.contextId := Delay(
+      RegNext(io.input.contextId),
+      config.broadcastDelay
+    )
+  }
 
   // instantiate vertices and edges
   val vertices = Seq
@@ -46,8 +63,9 @@ case class DualAccelerator(config: DualConfig) extends Component {
     .map(vertexIndex => new Vertex(config, vertexIndex))
 
   vertices.foreach(vertex => {
-    vertex.io.instruction := broadcastInstruction
-    // vertex.io.valid :=
+    vertex.io.instruction := broadcastRegInserted.instruction
+    vertex.io.valid := broadcastRegInserted.valid
+    if (config.contextBits > 0) { vertex.io.contextId := broadcastRegInserted.contextId }
   })
 
   val edges = Seq
@@ -55,7 +73,9 @@ case class DualAccelerator(config: DualConfig) extends Component {
     .map(edgeIndex => new Edge(config, edgeIndex))
 
   edges.foreach(edge => {
-    edge.io.instruction := broadcastInstruction
+    edge.io.instruction := broadcastRegInserted.instruction
+    edge.io.valid := broadcastRegInserted.valid
+    if (config.contextBits > 0) { edge.io.contextId := broadcastRegInserted.contextId }
   })
 
   // connect the vertices and edges
@@ -78,7 +98,7 @@ case class DualAccelerator(config: DualConfig) extends Component {
 class DualAcceleratorTest extends AnyFunSuite {
 
   test("construct accelerator from file") {
-    // val config = DualConfig(filename = "./resources/graphs/code_capacity_d3.json")
+    // val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
     // val config = DualConfig(filename = "./resources/graphs/example_code_capacity_planar_d5.json")
     val config = DualConfig(filename = "./resources/graphs/example_phenomenological_rotated_d5.json")
     Config.spinal.generateVerilog(DualAccelerator(config))
@@ -86,7 +106,7 @@ class DualAcceleratorTest extends AnyFunSuite {
 
   test("test pipeline registers") {
     // gtkwave simWorkspace/DualAccelerator/testA.fst
-    val config = DualConfig(filename = "./resources/graphs/code_capacity_d3.json", minimizeBits = false)
+    val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json", minimizeBits = false)
     config.sanityCheck()
     Config.sim
       .compile({
