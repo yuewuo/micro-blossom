@@ -12,6 +12,7 @@ use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
+use rand::{distributions::Alphanumeric, Rng};
 use scan_fmt::*;
 use std::io::prelude::*;
 use std::io::{BufReader, LineWriter};
@@ -22,6 +23,7 @@ use wait_timeout::ChildExt;
 
 pub struct DualModuleScalaDriver {
     pub link: Mutex<Link>,
+    pub host_name: String,
 }
 
 pub struct Link {
@@ -61,17 +63,11 @@ impl Drop for DualModuleScalaDriver {
         } else {
             println!("Scala process quit normally");
         }
-        match std::fs::remove_dir_all(format!(
-            "../../../simWorkspace/dualHost/{}/rtl",
-            self.link.lock().unwrap().port
-        )) {
+        match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/rtl", self.host_name)) {
             Err(e) => println!("Could not remove rtl folder: {}", e),
             Ok(_) => println!("Successfully remove rtl folder"),
         }
-        match std::fs::remove_dir_all(format!(
-            "../../../simWorkspace/dualHost/{}/verilator",
-            self.link.lock().unwrap().port
-        )) {
+        match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/verilator", self.host_name)) {
             Err(e) => println!("Could not remove verilator folder: {}", e),
             Ok(_) => println!("Successfully remove verilator folder"),
         }
@@ -79,7 +75,7 @@ impl Drop for DualModuleScalaDriver {
 }
 
 impl DualModuleScalaDriver {
-    pub fn new(initializer: &SolverInitializer) -> std::io::Result<Self> {
+    pub fn new_with_name(initializer: &SolverInitializer, host_name: String) -> std::io::Result<Self> {
         let hostname = "127.0.0.1";
         let listener = TcpListener::bind(format!("{hostname}:0"))?;
         let port = listener.local_addr()?.port();
@@ -87,7 +83,7 @@ impl DualModuleScalaDriver {
         println!("Starting Scala simulator host... this may take a while (listening on {hostname}:{port})");
         let child = Command::new("sbt")
             .current_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../"))
-            .arg(format!("runMain microblossom.DualHost {hostname} {port}"))
+            .arg(format!("runMain microblossom.DualHost {hostname} {port} {host_name}"))
             .spawn()?;
         let (socket, _addr) = listener.accept()?;
         let mut reader = BufReader::new(socket.try_clone()?);
@@ -104,6 +100,7 @@ impl DualModuleScalaDriver {
         assert_eq!(line, "simulation started\n");
         write!(writer, "reset()\n")?;
         Ok(Self {
+            host_name,
             link: Mutex::new(Link {
                 port,
                 child,
@@ -111,6 +108,15 @@ impl DualModuleScalaDriver {
                 writer,
             }),
         })
+    }
+
+    pub fn new(initializer: &SolverInitializer) -> std::io::Result<Self> {
+        let host_name = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(8)
+            .map(char::from)
+            .collect();
+        Self::new_with_name(initializer, host_name)
     }
 }
 
@@ -128,6 +134,7 @@ impl DualStacklessDriver for DualModuleScalaDriver {
         write!(self.link.lock().unwrap().writer, "find_obstacle()\n").unwrap();
         let mut line = String::new();
         self.link.lock().unwrap().reader.read_line(&mut line).unwrap();
+        println!("find_obstacle -> {}", line);
         if line.starts_with("NonZeroGrow(") {
             let (length, grown) = scan_fmt!(&line, "NonZeroGrow({d}), {d}", Weight, Weight).unwrap();
             (
@@ -222,9 +229,14 @@ mod tests {
     ) -> SolverDualScala {
         dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
             d,
-            Some(visualize_filename),
+            Some(visualize_filename.clone()),
             defect_vertices,
-            |initializer| SolverDualScala::new(initializer),
+            |initializer| {
+                SolverDualScala::new_with_name(
+                    initializer,
+                    visualize_filename.as_str().strip_suffix(".json").unwrap().to_string(),
+                )
+            },
         )
     }
 }

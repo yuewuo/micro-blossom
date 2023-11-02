@@ -19,15 +19,16 @@ import io.circe.parser.decode
 import scala.reflect.io.Directory
 import scala.util.control.Breaks._
 
-// sbt "runMain microblossom.DualHost localhost 4123"
+// sbt "runMain microblossom.DualHost localhost 4123 test"
 object DualHost extends App {
   println(SpinalConfig.defaultTargetDirectory)
-  if (args.length != 2) {
-    println("usage: <address> <port>")
+  if (args.length != 3) {
+    println("usage: <address> <port> <host_name>")
     sys.exit(1)
   }
   val hostname = args(0)
   val port = Integer.parseInt(args(1))
+  val host_name = args(2)
   val socket = new Socket(hostname, port)
   val workspacePath = "./simWorkspace/dualHost"
   try {
@@ -48,7 +49,7 @@ object DualHost extends App {
     val simConfig = SimConfig
       .withConfig(Config.spinal)
       .workspacePath(workspacePath)
-      .workspaceName(port.toString)
+      .workspaceName(host_name)
 
     var command = inStream.readLine()
     var withWaveform = false
@@ -69,9 +70,14 @@ object DualHost extends App {
         val ioConfig = dut.ioConfig
         outStream.println("simulation started")
         if (withWaveform) {
-          println("view waveform: `gtkwave %s/%d/hosted.fst`".format(workspacePath, port))
+          println("view waveform: `gtkwave %s/%s/hosted.fst`".format(workspacePath, host_name))
         } else {
           println("waveform disabled")
+        }
+
+        var cycleCounter = 0L
+        dut.clockDomain.onActiveEdges {
+          cycleCounter += 1
         }
 
         dut.io.input.valid #= false
@@ -87,7 +93,7 @@ object DualHost extends App {
         breakable {
           while (true) {
             command = inStream.readLine()
-            // println(command)
+            println("[%d] %s".format(cycleCounter, command))
             if (command == "quit") {
               println("requested quit, breaking...")
               break
@@ -165,6 +171,8 @@ object DualHost extends App {
             }
           }
         }
+
+        for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
       }
 
   } catch {
@@ -173,7 +181,7 @@ object DualHost extends App {
     socket.close()
     // also delete large verilator files, it's now attempted to delete on the Rust side
     // for (subfolder <- Seq("verilator", "rtl")) {
-    //   val directory = new Directory(new File("%s/%d/%s".format(workspacePath, port, subfolder)))
+    //   val directory = new Directory(new File("%s/%d/%s".format(workspacePath, host_name, subfolder)))
     //   directory.deleteRecursively()
     // }
   }

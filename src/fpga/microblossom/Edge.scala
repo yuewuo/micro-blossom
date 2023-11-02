@@ -96,7 +96,7 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   executeGrown := left.executeGrown + right.executeGrown
 
   val updateIsTight = RegNext(
-    executeGrown >= executeState.weight
+    Mux(executeValid, executeGrown >= executeState.weight, False)
   )
   for (pair <- config.incidentVerticesPairsOf(edgeIndex)) {
     val vertexIndex = pair(0)

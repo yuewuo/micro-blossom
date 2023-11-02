@@ -11,6 +11,8 @@ use fusion_blossom::primal_module::*;
 use fusion_blossom::primal_module_serial::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
+use micro_blossom_nostd::dual_driver_tracked::*;
+use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::primal_module_embedded::*;
 use micro_blossom_nostd::util::*;
@@ -388,6 +390,17 @@ impl SolverDualScala {
             defect_nodes: vec![],
         }
     }
+
+    pub fn new_with_name(initializer: &SolverInitializer, host_name: String) -> Self {
+        Self {
+            dual_module: DualModuleStackless::new(DualDriverTracked::new(
+                DualModuleScalaDriver::new_with_name(initializer, host_name).unwrap(),
+            )),
+            primal_module: PrimalModuleEmbedded::new(),
+            subgraph_builder: SubGraphBuilder::new(initializer),
+            defect_nodes: vec![],
+        }
+    }
 }
 
 impl PrimalDualSolver for SolverDualScala {
@@ -476,6 +489,7 @@ impl PrimalDualSolver for SolverDualScala {
         let perfect_matching = self.perfect_matching();
         self.subgraph_builder.load_perfect_matching(&perfect_matching);
         let subgraph = self.subgraph_builder.get_subgraph();
+        println!("subgraph: {subgraph:?}");
         if let Some(visualizer) = visualizer {
             visualizer
                 .snapshot_combined(
