@@ -210,7 +210,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
 class VertexTest extends AnyFunSuite {
 
   test("construct a Vertex") {
-    val config = DualConfig(filename = "./resources/graphs/code_capacity_d3.json")
+    val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
     // config.contextDepth = 1024 // fit in a single Block RAM of 36 kbits in 36-bit mode
     config.contextDepth = 1 // no context switch
     config.sanityCheck()
@@ -219,7 +219,7 @@ class VertexTest extends AnyFunSuite {
 
   test("test pipeline registers") {
     // gtkwave simWorkspace/Vertex/testA.fst
-    val config = DualConfig(filename = "./resources/graphs/code_capacity_d3.json", minimizeBits = false)
+    val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json", minimizeBits = false)
     val instructionSpec = InstructionSpec(config)
     config.sanityCheck()
     Config.sim

@@ -20,14 +20,14 @@ class DualConfigTest extends AnyFunSuite {
   }
 
   test("construct config from file") {
-    val config = new DualConfig(filename = "./resources/graphs/code_capacity_d3.json")
+    val config = new DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
     config.sanityCheck()
     assert(config.localIndexOfEdge(vertexIndex = 0, edgeIndex = 0) == 0)
     assert(config.localIndexOfEdge(vertexIndex = 1, edgeIndex = 0) == 0)
     assert(config.localIndexOfEdge(vertexIndex = 1, edgeIndex = 1) == 1)
     assert(config.localIndexOfEdge(vertexIndex = 2, edgeIndex = 1) == 0)
-    assert(config.localIndexOfEdge(vertexIndex = 2, edgeIndex = 2) == 1)
     assert(config.localIndexOfEdge(vertexIndex = 3, edgeIndex = 2) == 0)
+    assert(config.localIndexOfEdge(vertexIndex = 0, edgeIndex = 2) == 1)
     assertThrows[Exception] { // exception when the edge is not incident to the vertex
       assert(config.localIndexOfEdge(vertexIndex = 0, edgeIndex = 1) == 0)
     }

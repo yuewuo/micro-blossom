@@ -137,7 +137,7 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
 class EdgeTest extends AnyFunSuite {
 
   test("construct an Edge") {
-    val config = DualConfig(filename = "./resources/graphs/code_capacity_d3.json")
+    val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
     // config.contextDepth = 1024 // fit in a single Block RAM of 36 kbits in 36-bit mode
     config.contextDepth = 1 // no context switch
     config.sanityCheck()
