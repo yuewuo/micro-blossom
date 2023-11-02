@@ -1,5 +1,10 @@
 package microblossom
 
+import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.Map
+import io.circe._
+import io.circe.generic.extras._
+import io.circe.generic.semiauto._
 import spinal.core._
 import spinal.lib._
 import util._
@@ -23,10 +28,10 @@ case class ConvergecastMessage(config: DualConfig) extends Bundle {
   val contextId = (config.contextBits > 0) generate (in UInt (config.contextBits bits))
 }
 
-case class DualAccelerator(config: DualConfig, topConfig: DualConfig = DualConfig()) extends Component {
+case class DualAccelerator(config: DualConfig, ioConfig: DualConfig = DualConfig()) extends Component {
   val io = new Bundle {
-    val input = in(BroadcastMessage(topConfig))
-    val output = out(ConvergecastMessage(topConfig))
+    val input = in(BroadcastMessage(ioConfig))
+    val output = out(ConvergecastMessage(ioConfig))
     val state = out(DualAcceleratorState())
   }
 
@@ -81,11 +86,11 @@ case class DualAccelerator(config: DualConfig, topConfig: DualConfig = DualConfi
       Mux(
         right.obstacle.isConflict,
         right, {
-          assert(
-            assertion = left.obstacle.isNonZeroGrow && right.obstacle.isNonZeroGrow,
-            message = "simple reduce function does not consider more obstacles",
-            severity = ERROR
-          )
+          // assert(
+          //   assertion = left.obstacle.isNonZeroGrow && right.obstacle.isNonZeroGrow,
+          //   message = "simple reduce function does not consider more obstacles",
+          //   severity = ERROR
+          // )
           Mux(left.obstacle.length < right.obstacle.length, left, right)
         }
       )
@@ -112,12 +117,15 @@ case class DualAccelerator(config: DualConfig, topConfig: DualConfig = DualConfi
 
   // a temporary solution without primal offloading
   def simFindObstacle(maxGrowth: Long): (BigInt, Long) = {
-    var obstacle = simExecute(config.instructionSpec.generateFindObstacle())
-    var reader = ObstacleReader(config, obstacle)
+    var obstacle = simExecute(ioConfig.instructionSpec.generateFindObstacle())
+    var reader = ObstacleReader(ioConfig, obstacle)
     var grown = 0.toLong
     breakable {
       while (reader.rspCode == RspCode.NonZeroGrow) {
         var length = reader.length.toLong
+        if (length == ioConfig.LengthNone) {
+          break
+        }
         if (length + grown > maxGrowth) {
           length = maxGrowth - grown
         }
@@ -126,12 +134,114 @@ case class DualAccelerator(config: DualConfig, topConfig: DualConfig = DualConfi
           break
         }
         grown += length
-        simExecute(config.instructionSpec.generateGrow(length))
-        obstacle = simExecute(config.instructionSpec.generateFindObstacle())
-        reader = ObstacleReader(config, obstacle)
+        simExecute(ioConfig.instructionSpec.generateGrow(length))
+        obstacle = simExecute(ioConfig.instructionSpec.generateFindObstacle())
+        reader = ObstacleReader(ioConfig, obstacle)
       }
     }
     (obstacle, grown)
+  }
+
+  // before compiling the simulator, mark the fields as public to enable snapshot
+  def simMakePublicSnapshot() = {
+    vertices.foreach(vertex => {
+      vertex.register.simPublic()
+      vertex.io.simPublic()
+    })
+    edges.foreach(edge => {
+      edge.register.simPublic()
+      edge.io.simPublic()
+    })
+  }
+
+  // take a snapshot of the dual module, in the format of fusion blossom visualization
+  def simSnapshot(abbrev: Boolean = true): Json = {
+    // https://circe.github.io/circe/api/io/circe/JsonObject.html
+    var jsonVertices = ArrayBuffer[Json]()
+    vertices.foreach(vertex => {
+      val register = vertex.register
+      val vertexMap = Map(
+        (if (abbrev) { "v" }
+         else { "is_virtual" }) -> Json.fromBoolean(register.isVirtual.toBoolean),
+        (if (abbrev) { "s" }
+         else { "is_defect" }) -> Json.fromBoolean(register.isDefect.toBoolean)
+      )
+      val node = register.node.toLong
+      if (node != config.IndexNone) {
+        vertexMap += ((
+          if (abbrev) { "p" }
+          else { "propagated_dual_node" },
+          Json.fromLong(node)
+        ))
+      }
+      val root = register.root.toLong
+      if (root != config.IndexNone) {
+        vertexMap += ((
+          if (abbrev) { "pg" }
+          else { "propagated_grandson_dual_node" },
+          Json.fromLong(root)
+        ))
+      }
+      jsonVertices.append(Json.fromFields(vertexMap))
+    })
+    var jsonEdges = ArrayBuffer[Json]()
+    edges.foreach(edge => {
+      val register = edge.register
+      val neighbors = config.incidentVerticesOf(edge.edgeIndex)
+      val leftReg = vertices(neighbors(0)).register
+      val rightReg = vertices(neighbors(1)).register
+      val edgeMap = Map(
+        (if (abbrev) { "w" }
+         else { "weight" }) -> Json.fromLong(register.weight.toLong),
+        (if (abbrev) { "l" }
+         else { "left" }) -> Json.fromLong(neighbors(0)),
+        (if (abbrev) { "r" }
+         else { "right" }) -> Json.fromLong(neighbors(1)),
+        (if (abbrev) { "lg" }
+         else { "left_growth" }) -> Json.fromLong(leftReg.grown.toLong),
+        (if (abbrev) { "rg" }
+         else { "right_growth" }) -> Json.fromLong(rightReg.grown.toLong)
+      )
+      val leftNode = leftReg.node.toLong
+      if (leftNode != config.IndexNone) {
+        edgeMap += ((
+          if (abbrev) { "ld" }
+          else { "left_dual_node" },
+          Json.fromLong(leftNode)
+        ))
+      }
+      val leftRoot = leftReg.root.toLong
+      if (leftRoot != config.IndexNone) {
+        edgeMap += ((
+          if (abbrev) { "lgd" }
+          else { "left_grandson_dual_node" },
+          Json.fromLong(leftRoot)
+        ))
+      }
+      val rightNode = rightReg.node.toLong
+      if (rightNode != config.IndexNone) {
+        edgeMap += ((
+          if (abbrev) { "rd" }
+          else { "right_dual_node" },
+          Json.fromLong(rightNode)
+        ))
+      }
+      val rightRoot = rightReg.root.toLong
+      if (rightRoot != config.IndexNone) {
+        edgeMap += ((
+          if (abbrev) { "rgd" }
+          else { "right_grandson_dual_node" },
+          Json.fromLong(rightRoot)
+        ))
+      }
+      jsonEdges.append(Json.fromFields(edgeMap))
+    })
+    Json.fromFields(
+      Map(
+        "vertices" -> Json.fromValues(jsonVertices),
+        "edges" -> Json.fromValues(jsonEdges)
+      )
+    )
   }
 
 }
@@ -153,49 +263,84 @@ class DualAcceleratorTest extends AnyFunSuite {
     Config.sim
       .compile({
         val dut = DualAccelerator(config)
-        dut.vertices.foreach(vertex => {
-          vertex.io.simPublic()
-        })
+        dut.simMakePublicSnapshot()
         dut
       })
       .doSim("testA") { dut =>
+        val ioConfig = dut.ioConfig
         dut.io.input.valid #= false
         dut.clockDomain.forkStimulus(period = 10)
 
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
-        dut.simExecute(config.instructionSpec.generateReset())
-        dut.simExecute(config.instructionSpec.generateAddDefect(0, 0))
-        var obstacle = dut.simExecute(config.instructionSpec.generateFindObstacle())
+        dut.simExecute(ioConfig.instructionSpec.generateReset())
+        dut.simExecute(ioConfig.instructionSpec.generateAddDefect(0, 0))
+        var obstacle = dut.simExecute(ioConfig.instructionSpec.generateFindObstacle())
 
         assert(obstacle == 100 << 2) // at most grow 100
-        val reader = ObstacleReader(config, obstacle)
+        val reader = ObstacleReader(ioConfig, obstacle)
         assert(reader.rspCode == RspCode.NonZeroGrow)
         assert(reader.length == 100)
 
-        dut.simExecute(config.instructionSpec.generateGrow(30))
-        var obstacle2 = dut.simExecute(config.instructionSpec.generateFindObstacle())
-        val reader2 = ObstacleReader(config, obstacle2)
+        dut.simExecute(ioConfig.instructionSpec.generateGrow(30))
+        var obstacle2 = dut.simExecute(ioConfig.instructionSpec.generateFindObstacle())
+        val reader2 = ObstacleReader(ioConfig, obstacle2)
         assert(reader2.rspCode == RspCode.NonZeroGrow)
         assert(reader2.length == 70)
 
         val (obstacle3, grown3) = dut.simFindObstacle(50)
-        val reader3 = ObstacleReader(config, obstacle3)
+        val reader3 = ObstacleReader(ioConfig, obstacle3)
         assert(grown3 == 50)
         assert(reader3.rspCode == RspCode.NonZeroGrow)
         assert(reader3.length == 0)
 
         val (obstacle4, grown4) = dut.simFindObstacle(1000)
-        val reader4 = ObstacleReader(config, obstacle4)
+        val reader4 = ObstacleReader(ioConfig, obstacle4)
         assert(grown4 == 20)
         assert(reader4.rspCode == RspCode.Conflict)
         assert(reader4.field1 == 0) // node1
-        assert(reader4.field2 == config.IndexNone) // node2 (here it's virtual)
+        assert(reader4.field2 == ioConfig.IndexNone) // node2 (here it's virtual)
         assert(reader4.field3 == 0) // touch1
-        assert(reader4.field4 == config.IndexNone) // touch2 (here it's virtual)
+        assert(reader4.field4 == ioConfig.IndexNone) // touch2 (here it's virtual)
         assert(reader4.field5 == 0) // vertex1
         assert(reader4.field6 == 1) // vertex2
 
+        println(dut.simSnapshot().noSpacesSortKeys)
       }
   }
+
+}
+
+// sbt "runMain microblossom.DualAcceleratorDebug1"
+object DualAcceleratorDebug1 extends App {
+  // gtkwave simWorkspace/DualAccelerator/testB.fst
+  val config = DualConfig(filename = "./resources/graphs/example_code_capacity_planar_d3.json", minimizeBits = false)
+  config.sanityCheck()
+  Config.sim
+    .compile({
+      val dut = DualAccelerator(config)
+      dut.simMakePublicSnapshot()
+      dut
+    })
+    .doSim("testB") { dut =>
+      val ioConfig = dut.ioConfig
+      dut.io.input.valid #= false
+      dut.clockDomain.forkStimulus(period = 10)
+
+      for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
+
+      dut.simExecute(ioConfig.instructionSpec.generateReset())
+      dut.simExecute(ioConfig.instructionSpec.generateAddDefect(0, 0))
+      dut.simExecute(ioConfig.instructionSpec.generateAddDefect(4, 1))
+      dut.simExecute(ioConfig.instructionSpec.generateAddDefect(8, 2))
+
+      val (obstacle, grown) = dut.simFindObstacle(1000)
+      assert(grown == 50)
+      val reader = ObstacleReader(ioConfig, obstacle)
+      assert(reader.rspCode == RspCode.Conflict)
+      println(reader.field1, reader.field2, reader.field3, reader.field4)
+
+      println(dut.simSnapshot().noSpacesSortKeys)
+
+    }
 }

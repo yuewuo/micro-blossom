@@ -1147,6 +1147,7 @@ dependencies = [
  "rand",
  "rand_xoshiro",
  "rayon",
+ "scan_fmt",
  "serde",
  "serde_json",
  "urlencoding",
@@ -1576,6 +1577,15 @@ name = "ryu"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ad4cc8da4ef723ed60bced201181d83791ad433213d8c24efffda1eec85d741"
+
+[[package]]
+name = "scan_fmt"
+version = "0.2.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b53b0a5db882a8e2fdaae0a43f7b39e7e9082389e978398bdf223a55b581248"
+dependencies = [
+ "regex",
+]
 
 [[package]]
 name = "scopeguard"

@@ -16,13 +16,17 @@ case class Obstacle(config: DualConfig = DualConfig()) extends Bits {
     field5 := obstacle.field5.resized
     field6 := obstacle.field6.resized
     if (spec.numBits > obstacle.spec.numBits) {
-      when(obstacle.length === obstacle.length.maxValue) {
+      when(obstacle.field1 === obstacle.field1.asUInt.maxValue) {
         field1(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
-        field2(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
-        field3(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
-        field4(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
-        field5(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
-        field6(field1.getWidth - 1 downto obstacle.field1.getWidth).setAll()
+      }
+      when(obstacle.field2 === obstacle.field2.asUInt.maxValue) {
+        field2(field2.getWidth - 1 downto obstacle.field2.getWidth).setAll()
+      }
+      when(obstacle.field3 === obstacle.field3.asUInt.maxValue) {
+        field3(field3.getWidth - 1 downto obstacle.field3.getWidth).setAll()
+      }
+      when(obstacle.field4 === obstacle.field4.asUInt.maxValue) {
+        field4(field4.getWidth - 1 downto obstacle.field4.getWidth).setAll()
       }
     }
   }

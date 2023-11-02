@@ -62,15 +62,11 @@ object DualHost extends App {
     simConfig
       .compile({
         val dut = DualAccelerator(config)
-        dut.vertices.foreach(vertex => {
-          vertex.io.simPublic()
-        })
-        dut.edges.foreach(edge => {
-          edge.io.simPublic()
-        })
+        dut.simMakePublicSnapshot()
         dut
       })
       .doSim("hosted") { dut =>
+        val ioConfig = dut.ioConfig
         outStream.println("simulation started")
         if (withWaveform) {
           println("view waveform: `gtkwave %s/%d/hosted.fst`".format(workspacePath, port))
@@ -84,17 +80,19 @@ object DualHost extends App {
 
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
-        dut.simExecute(config.instructionSpec.generateReset())
+        dut.simExecute(ioConfig.instructionSpec.generateReset())
 
         // start hosting the commands
+        var maxGrowth = Long.MaxValue
         breakable {
           while (true) {
             command = inStream.readLine()
+            // println(command)
             if (command == "quit") {
               println("requested quit, breaking...")
               break
             } else if (command == "reset()") {
-              dut.simExecute(config.instructionSpec.generateReset())
+              dut.simExecute(ioConfig.instructionSpec.generateReset())
             } else if (command.startsWith("set_speed(")) {
               val parameters = command.substring("set_speed(".length, command.length - 1).split(", ")
               assert(parameters.length == 2)
@@ -102,24 +100,53 @@ object DualHost extends App {
               val speed = if (parameters(1) == "Grow") { Speed.Grow }
               else if (parameters(1) == "Shrink") { Speed.Shrink }
               else { Speed.Stay }
-              dut.simExecute(config.instructionSpec.generateSetSpeed(node, speed))
+              dut.simExecute(ioConfig.instructionSpec.generateSetSpeed(node, speed))
             } else if (command.startsWith("set_blossom(")) {
               val parameters = command.substring("set_blossom(".length, command.length - 1).split(", ")
               assert(parameters.length == 2)
               val node = parameters(0).toInt
               val blossom = parameters(1).toInt
-              dut.simExecute(config.instructionSpec.generateSetBlossom(node, blossom))
+              dut.simExecute(ioConfig.instructionSpec.generateSetBlossom(node, blossom))
+            } else if (command.startsWith("set_maximum_growth(")) {
+              val parameters = command.substring("set_maximum_growth(".length, command.length - 1).split(", ")
+              assert(parameters.length == 1)
+              maxGrowth = parameters(0).toLong
             } else if (command == "find_obstacle()") {
-              val obstacle = dut.simExecute(config.instructionSpec.generateFindObstacle())
-              val reader = ObstacleReader(config, obstacle)
+              val (obstacle, grown) = dut.simFindObstacle(maxGrowth)
+              maxGrowth -= grown
+              val reader = ObstacleReader(ioConfig, obstacle)
               if (reader.rspCode == RspCode.NonZeroGrow) {
-                outStream.println("NonZeroGrow(%d)".format(reader.length))
-              } else if (reader.rspCode == RspCode.Conflict) {
                 outStream.println(
-                  "Conflict(%d, %d, %d, %d, %d, %d)"
-                    .format(reader.field1, reader.field2, reader.field3, reader.field4, reader.field5, reader.field6)
+                  "NonZeroGrow(%d), %d".format(
+                    if (reader.length == ioConfig.LengthNone) { Int.MaxValue }
+                    else { reader.length },
+                    grown
+                  )
+                )
+              } else if (reader.rspCode == RspCode.Conflict) {
+                val (node1, node2, touch1, touch2, vertex1, vertex2) = if (reader.field2 == ioConfig.IndexNone) {
+                  (reader.field1, reader.field2, reader.field3, reader.field4, reader.field5, reader.field6)
+                } else {
+                  (reader.field2, reader.field1, reader.field4, reader.field3, reader.field6, reader.field5)
+                }
+                assert(node1 != ioConfig.IndexNone)
+                assert(touch1 != ioConfig.IndexNone)
+                outStream.println(
+                  "Conflict(%d, %d, %d, %d, %d, %d), %d"
+                    .format(
+                      node1,
+                      if (node2 == ioConfig.IndexNone) { Int.MaxValue }
+                      else { node2 },
+                      touch1,
+                      if (touch2 == ioConfig.IndexNone) { Int.MaxValue }
+                      else { touch2 },
+                      vertex1,
+                      vertex2,
+                      grown
+                    )
                 )
               } else {
+                outStream.println("illegal obstacle arguments")
                 throw new IllegalArgumentException
               }
             } else if (command.startsWith("add_defect(")) {
@@ -128,6 +155,13 @@ object DualHost extends App {
               val vertex = parameters(0).toInt
               val node = parameters(1).toInt
               dut.simExecute(config.instructionSpec.generateAddDefect(vertex, node))
+            } else if (command.startsWith("snapshot(")) {
+              val parameters = command.substring("snapshot(".length, command.length - 1).split(", ")
+              assert(parameters.length == 1)
+              val abbrev = parameters(0).toBoolean
+              outStream.println(dut.simSnapshot(abbrev).noSpacesSortKeys)
+            } else {
+              println("[error] unknown command: %s".format(command))
             }
           }
         }

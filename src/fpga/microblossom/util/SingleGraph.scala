@@ -11,7 +11,8 @@ import io.circe.generic.semiauto._
 case class SingleGraph(
     val positions: Seq[Position],
     val vertex_num: Long,
-    val weighted_edges: Seq[WeightedEdges]
+    val weighted_edges: Seq[WeightedEdges],
+    val virtual_vertices: Seq[Long]
 )
 
 @ConfiguredJsonCodec

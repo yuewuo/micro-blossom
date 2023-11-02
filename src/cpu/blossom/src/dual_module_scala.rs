@@ -12,7 +12,7 @@ use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
-use serde_json::json;
+use scan_fmt::*;
 use std::io::prelude::*;
 use std::io::{BufReader, LineWriter};
 use std::net::{TcpListener, TcpStream};
@@ -102,6 +102,7 @@ impl DualModuleScalaDriver {
         line.clear();
         reader.read_line(&mut line)?;
         assert_eq!(line, "simulation started\n");
+        write!(writer, "reset()\n")?;
         Ok(Self {
             link: Mutex::new(Link {
                 port,
@@ -128,9 +129,49 @@ impl DualStacklessDriver for DualModuleScalaDriver {
         let mut line = String::new();
         self.link.lock().unwrap().reader.read_line(&mut line).unwrap();
         if line.starts_with("NonZeroGrow(") {
-            unimplemented!()
+            let (length, grown) = scan_fmt!(&line, "NonZeroGrow({d}), {d}", Weight, Weight).unwrap();
+            (
+                if length == i32::MAX as Weight {
+                    CompactObstacle::None
+                } else {
+                    CompactObstacle::GrowLength {
+                        length: length as CompactWeight,
+                    }
+                },
+                grown as CompactWeight,
+            )
         } else if line.starts_with("Conflict(") {
-            unimplemented!()
+            let (node_1, node_2, touch_1, touch_2, vertex_1, vertex_2, grown) = scan_fmt!(
+                &line,
+                "Conflict({d}, {d}, {d}, {d}, {d}, {d}), {d}",
+                NodeIndex,
+                NodeIndex,
+                NodeIndex,
+                NodeIndex,
+                NodeIndex,
+                NodeIndex,
+                Weight
+            )
+            .unwrap();
+            (
+                CompactObstacle::Conflict {
+                    node_1: ni!(node_1),
+                    node_2: if node_2 == i32::MAX as NodeIndex {
+                        None
+                    } else {
+                        Some(ni!(node_2))
+                    },
+                    touch_1: ni!(touch_1),
+                    touch_2: if touch_2 == i32::MAX as NodeIndex {
+                        None
+                    } else {
+                        Some(ni!(touch_2))
+                    },
+                    vertex_1: ni!(vertex_1),
+                    vertex_2: ni!(vertex_2),
+                },
+                grown as CompactWeight,
+            )
         } else {
             unreachable!()
         }
@@ -150,8 +191,10 @@ impl FusionVisualizer for DualModuleScalaDriver {
     #[allow(clippy::unnecessary_cast)]
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
         write!(self.link.lock().unwrap().writer, "snapshot({abbrev})\n").unwrap();
-        unimplemented!();
-        json!({})
+        let mut line = String::new();
+        self.link.lock().unwrap().reader.read_line(&mut line).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+        serde_json::from_str(&line).unwrap()
     }
 }
 
@@ -168,8 +211,8 @@ mod tests {
     fn dual_module_scala_basic_1() {
         // cargo test dual_module_scala_basic_1 -- --nocapture
         let visualize_filename = "dual_module_scala_basic_1.json".to_string();
-        let defect_vertices = vec![18, 26, 34];
-        dual_module_scala_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+        let defect_vertices = vec![0, 4, 8];
+        dual_module_scala_basic_standard_syndrome(3, visualize_filename, defect_vertices);
     }
 
     pub fn dual_module_scala_basic_standard_syndrome(

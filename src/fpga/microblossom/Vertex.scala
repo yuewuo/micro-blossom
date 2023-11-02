@@ -17,12 +17,12 @@ case class VertexPersistent(config: DualConfig) extends Bundle {
 }
 
 object VertexPersistent {
-  def resetValue(config: DualConfig): VertexPersistent = {
+  def resetValue(config: DualConfig, vertexIndex: Int): VertexPersistent = {
     val reset = VertexPersistent(config)
     reset.speed := Speed.Stay
     reset.node := config.IndexNone
     reset.root := config.IndexNone
-    reset.isVirtual := False
+    reset.isVirtual := Bool(config.isVirtual(vertexIndex))
     reset.isDefect := False
     reset.grown := 0
     reset
@@ -186,9 +186,9 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
     when(executeInstruction.isFindObstacle) {
       when(updateState.speed === Speed.Shrink && updateState.grown === 0) {
         when(selectedPropagator.valid) {
-          updateResult.node := selectedPropagator.node
-          updateResult.root := selectedPropagator.root
-          updateResult.speed := Speed.Grow
+          updateResultShadow.node := selectedPropagator.node
+          updateResultShadow.root := selectedPropagator.root
+          updateResultShadow.speed := Speed.Grow
         }
       }
     }
@@ -202,7 +202,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
 
   writeValid := RegNext(updateValid) init False
   writeInstruction.assignFromBits(RegNext(updateInstruction.asBits))
-  writeState := Mux(updateInstruction.isReset, VertexPersistent.resetValue(config), RegNext(updateResult))
+  writeState := Mux(updateInstruction.isReset, VertexPersistent.resetValue(config, vertexIndex), RegNext(updateResult))
   writeShadow := RegNext(updateResultShadow)
   if (config.contextBits > 0) writeContextId := RegNext(updateContextId)
   pipelineIndex += 1

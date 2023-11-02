@@ -25,6 +25,7 @@ pub struct MicroBlossomSingle {
     positions: Vec<Position>,
     vertex_num: i64,
     weighted_edges: Vec<WeightedEdges>,
+    virtual_vertices: Vec<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -55,6 +56,7 @@ impl MicroBlossomSingle {
                     w: e.2 as i64,
                 })
                 .collect(),
+            virtual_vertices: initializer.virtual_vertices.iter().map(|index| *index as i64).collect(),
         }
     }
 

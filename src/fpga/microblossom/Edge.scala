@@ -142,7 +142,7 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
 
   // also compute maxGrowth in the write stage
   val maxGrowth = Reg(UInt(config.weightBits bits))
-  maxGrowth := maxGrowth.maxValue
+  maxGrowth := config.LengthNone
   when(writeIsFindObstacle) {
     when(left.writeShadow.node =/= right.writeShadow.node) {
       val value1 = Mux(left.writeShadow.speed === Speed.Shrink, left.writeGrown, U(maxGrowth.maxValue))

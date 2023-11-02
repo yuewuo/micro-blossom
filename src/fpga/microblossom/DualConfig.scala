@@ -23,7 +23,9 @@ case class DualConfig(
   def obstacleSpec = ObstacleSpec(this)
   def contextBits = log2Up(contextDepth)
   def IndexNone = (1 << vertexBits) - 1
+  def LengthNone = (1 << weightBits) - 1
   def readLatency = broadcastDelay + convergecastDelay + 5 // from sending the command to receiving the obstacle
+  private val virtualVertices = collection.mutable.Set[Int]()
   private val incidentEdges = collection.mutable.Map[Int, Seq[Int]]()
 
   if (filename != null) {
@@ -42,7 +44,7 @@ case class DualConfig(
   }
 
   // fit the bits to a specific decoding graph and construct connections
-  def fitGraph(minimizeBits: Boolean = true): Unit = {
+  private def fitGraph(minimizeBits: Boolean = true): Unit = {
     // compute the minimum bits of vertices and nodes; note that there could be
     // as many as 2x nodes than the number of vertices, so it's necessary to have enough bits
     assert(vertexNum > 0)
@@ -62,6 +64,11 @@ case class DualConfig(
     }
     // build vertex to neighbor edge mapping
     updateIncidentEdges()
+    // update virtual vertices
+    virtualVertices.clear()
+    for (vertexIndex <- graph.virtual_vertices) {
+      virtualVertices += vertexIndex.toInt
+    }
   }
 
   def updateIncidentEdges(): Unit = {
@@ -109,6 +116,9 @@ case class DualConfig(
       return 1
     }
     throw new Exception("the edge does not connect the vertex")
+  }
+  def isVirtual(vertexIndex: Int): Boolean = {
+    virtualVertices.contains(vertexIndex)
   }
 
   def sanityCheck(): Unit = {
