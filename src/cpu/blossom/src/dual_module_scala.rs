@@ -249,6 +249,25 @@ mod tests {
         dual_module_scala_basic_standard_syndrome(7, visualize_filename, defect_vertices);
     }
 
+    /// debug infinite loop
+    /// reason: the write stage logic is implemented wrongly: only when the overall speed is positive
+    ///   should it report an obstacle; otherwise just report whatever the maxGrowth value is
+    #[test]
+    fn dual_module_scala_debug_1() {
+        // cargo test dual_module_scala_debug_1 -- --nocapture
+        let visualize_filename = "dual_module_scala_debug_1.json".to_string();
+        let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
+        dual_module_scala_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    }
+
+    #[test]
+    fn dual_module_scala_debug_compare_1() {
+        // cargo test dual_module_scala_debug_compare_1 -- --nocapture
+        let visualize_filename = "dual_module_scala_debug_compare_1.json".to_string();
+        let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
+        dual_module_rtl_embedded_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    }
+
     pub fn dual_module_scala_basic_standard_syndrome(
         d: VertexNum,
         visualize_filename: String,
@@ -262,7 +281,7 @@ mod tests {
                 SolverDualScala::new_with_name(
                     initializer,
                     visualize_filename.as_str().trim_end_matches(".json").to_string(),
-                )
+                ) //.with_max_iterations(30)  // this is helpful when debugging infinite loops
             },
         )
     }

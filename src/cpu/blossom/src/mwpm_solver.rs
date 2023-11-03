@@ -371,6 +371,7 @@ pub struct SolverDualScala {
     primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
     subgraph_builder: SubGraphBuilder,
     defect_nodes: Vec<VertexIndex>,
+    pub max_iterations: usize, // to debug the infinite loop cases: save a waveform in the middle
 }
 
 impl FusionVisualizer for SolverDualScala {
@@ -388,6 +389,7 @@ impl SolverDualScala {
             primal_module: PrimalModuleEmbedded::new(),
             subgraph_builder: SubGraphBuilder::new(initializer),
             defect_nodes: vec![],
+            max_iterations: usize::MAX,
         }
     }
 
@@ -399,7 +401,13 @@ impl SolverDualScala {
             primal_module: PrimalModuleEmbedded::new(),
             subgraph_builder: SubGraphBuilder::new(initializer),
             defect_nodes: vec![],
+            max_iterations: usize::MAX,
         }
+    }
+
+    pub fn with_max_iterations(mut self, max_iterations: usize) -> Self {
+        self.max_iterations = max_iterations;
+        self
     }
 }
 
@@ -422,7 +430,9 @@ impl PrimalDualSolver for SolverDualScala {
             visualizer.snapshot_combined("syndrome".to_string(), vec![self]).unwrap();
         }
         let (mut obstacle, _) = self.dual_module.find_obstacle();
-        while !obstacle.is_none() {
+        let mut iteration = 0;
+        while !obstacle.is_none() && iteration < self.max_iterations {
+            iteration += 1;
             // println!("obstacle: {obstacle:?}");
             debug_assert!(
                 obstacle.is_obstacle(),

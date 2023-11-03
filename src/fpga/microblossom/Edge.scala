@@ -143,6 +143,10 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   // also compute maxGrowth in the write stage
   val maxGrowth = Reg(UInt(config.weightBits bits))
   maxGrowth := config.LengthNone
+  val isOverallSpeedPositive = Reg(Bool)
+  isOverallSpeedPositive := (left.writeShadow.speed === Speed.Stay && right.writeShadow.speed === Speed.Grow) ||
+    (left.writeShadow.speed === Speed.Grow && right.writeShadow.speed === Speed.Stay) ||
+    (left.writeShadow.speed === Speed.Grow && right.writeShadow.speed === Speed.Grow)
   when(writeIsFindObstacle) {
     when(left.writeShadow.node =/= right.writeShadow.node) {
       val value1 = Mux(left.writeShadow.speed === Speed.Shrink, left.writeGrown, U(maxGrowth.maxValue))
@@ -180,7 +184,7 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   io.output.valid := reportIsFindObstacle
   io.output.obstacle.assignFromBits(
     Mux(
-      maxGrowth === 0,
+      maxGrowth === 0 && isOverallSpeedPositive,
       config.obstacleSpec
         .dynConflict(
           reportLeftShadow.node,

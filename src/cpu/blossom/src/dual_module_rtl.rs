@@ -511,7 +511,6 @@ impl DualPipelined for Edge {
             }
             max_growth = std::cmp::min(max_growth, remaining / joint_speed);
         }
-        if max_growth == 0 {}
         Some(Response::NonZeroGrow { length: max_growth })
     }
 }
