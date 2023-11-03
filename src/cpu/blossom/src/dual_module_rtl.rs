@@ -24,6 +24,8 @@ pub struct DualModuleRTLDriver {
     pub vertices: Vec<Vertex>,
     pub edges: Vec<Edge>,
     pub maximum_growth: Weight,
+    // pre-matching optimization that doesn't report qualified local matchings
+    pub use_pre_matching: bool,
 }
 
 pub type DualModuleRTL = DualModuleStackless<DualDriverTracked<DualModuleRTLDriver, MAX_NODE_NUM>>;
@@ -81,8 +83,12 @@ impl Response {
         if !matches!(resp2, Response::NonZeroGrow { .. }) {
             return Some(resp2);
         }
-        let Response::NonZeroGrow { length: length1 } = resp1 else { unreachable!() };
-        let Response::NonZeroGrow { length: length2 } = resp2 else { unreachable!() };
+        let Response::NonZeroGrow { length: length1 } = resp1 else {
+            unreachable!()
+        };
+        let Response::NonZeroGrow { length: length2 } = resp2 else {
+            unreachable!()
+        };
         Some(Response::NonZeroGrow {
             length: std::cmp::min(length1, length2),
         })
@@ -135,6 +141,7 @@ impl DualModuleRTLDriver {
             vertices: vec![],
             edges: vec![],
             maximum_growth: Weight::MAX,
+            use_pre_matching: false,
         };
         behavior.clear();
         behavior
@@ -155,6 +162,8 @@ impl DualModuleRTLDriver {
                 shadow_node_index: None,
                 shadow_root_index: None,
                 shadow_speed: DualNodeGrowState::Stay,
+                permit_pre_matching: false,
+                do_pre_matching: false,
             })
             .collect();
         // set virtual vertices
@@ -172,6 +181,7 @@ impl DualModuleRTLDriver {
                 left_index: i,
                 right_index: j,
                 is_tight: false,
+                do_pre_matching: false,
             });
             for vertex_index in [i, j] {
                 self.vertices[vertex_index].edge_indices.push(edge_index);
@@ -185,6 +195,10 @@ impl DualModuleRTLDriver {
     }
 
     fn execute_instruction(&mut self, instruction: Instruction) -> Option<Response> {
+        if self.use_pre_matching {
+            pipeline_staged!(self, instruction, pre_count_stage);
+            pipeline_staged!(self, instruction, pre_match_stage);
+        }
         pipeline_staged!(self, instruction, execute_stage);
         pipeline_staged!(self, instruction, update_stage);
         let response = self
@@ -195,6 +209,18 @@ impl DualModuleRTLDriver {
             .reduce(Response::reduce)
             .unwrap();
         response
+    }
+
+    /// get all the edges that are pre-matched in the graph
+    pub fn get_pre_matchings(&self) -> Vec<EdgeIndex> {
+        if !self.use_pre_matching {
+            return vec![];
+        }
+        self.edges
+            .iter()
+            .filter(|edge| edge.do_pre_matching)
+            .map(|edge| edge.edge_index)
+            .collect()
     }
 }
 
@@ -293,6 +319,10 @@ impl DualTrackedDriver for DualModuleRTLDriver {
 pub trait DualPipelined {
     /// load data from BRAM (optional)
     fn load_stage(&mut self, _dual_module: &DualModuleRTLDriver, _instruction: &Instruction) {}
+    /// pre count stage that checks how many tight edges are surrounding each vertex
+    fn pre_count_stage(&mut self, _dual_module: &DualModuleRTLDriver, _instruction: &Instruction) {}
+    /// pre matching stage marks the vertices as pre-matched if one of its neighbor edges is marked pre-matching
+    fn pre_match_stage(&mut self, _dual_module: &DualModuleRTLDriver, _instruction: &Instruction) {}
     /// execute growth and respond to speed and blossom updates
     fn execute_stage(&mut self, dual_module: &DualModuleRTLDriver, instruction: &Instruction);
     /// update the node according to the updated speed and length after growth
@@ -316,6 +346,10 @@ pub struct Vertex {
     pub shadow_node_index: Option<NodeIndex>,
     pub shadow_root_index: Option<NodeIndex>,
     pub shadow_speed: DualNodeGrowState,
+    /// when a vertex is only surrounded by a single vertex, it reports to an edge;
+    /// if both vertices of an edge is surrounded by a single tight edge, then this edge can be locally matched
+    pub permit_pre_matching: bool,
+    pub do_pre_matching: bool,
 }
 
 impl Vertex {
@@ -328,10 +362,14 @@ impl Vertex {
     }
 
     pub fn get_shadow_speed(&self) -> Weight {
-        match self.shadow_speed {
-            DualNodeGrowState::Stay => 0,
-            DualNodeGrowState::Shrink => -1,
-            DualNodeGrowState::Grow => 1,
+        if self.do_pre_matching {
+            0
+        } else {
+            match self.shadow_speed {
+                DualNodeGrowState::Stay => 0,
+                DualNodeGrowState::Shrink => -1,
+                DualNodeGrowState::Grow => 1,
+            }
         }
     }
 
@@ -344,6 +382,28 @@ impl Vertex {
 }
 
 impl DualPipelined for Vertex {
+    fn pre_count_stage(&mut self, dual_module: &DualModuleRTLDriver, _instruction: &Instruction) {
+        self.permit_pre_matching = self.speed == DualNodeGrowState::Grow
+            && self
+                .edge_indices
+                .iter()
+                .filter(|&&edge_index| {
+                    let edge = &dual_module.edges[edge_index];
+                    let peer_index = edge.get_peer(self.vertex_index);
+                    let peer = &dual_module.vertices[peer_index];
+                    self.grown + peer.grown >= edge.weight
+                })
+                .count()
+                == 1;
+    }
+
+    fn pre_match_stage(&mut self, dual_module: &DualModuleRTLDriver, _instruction: &Instruction) {
+        self.do_pre_matching = self.edge_indices.iter().any(|&edge_index| {
+            let edge = &dual_module.edges[edge_index];
+            edge.get_do_pre_matching(dual_module)
+        });
+    }
+
     fn execute_stage(&mut self, _dual_module: &DualModuleRTLDriver, instruction: &Instruction) {
         match instruction {
             Instruction::SetSpeed { node, speed } => {
@@ -444,6 +504,7 @@ pub struct Edge {
     pub right_index: VertexIndex,
     /// information passing to neighboring vertex
     pub is_tight: bool,
+    pub do_pre_matching: bool,
 }
 
 impl Edge {
@@ -456,9 +517,22 @@ impl Edge {
             panic!("vertex is not incident to the edge, cannot get peer")
         }
     }
+
+    pub fn get_do_pre_matching(&self, dual_module: &DualModuleRTLDriver) -> bool {
+        let left_vertex = &dual_module.vertices[self.left_index];
+        let right_vertex = &dual_module.vertices[self.right_index];
+        left_vertex.permit_pre_matching
+            && right_vertex.permit_pre_matching
+            && (left_vertex.grown + right_vertex.grown >= self.weight)
+            && (left_vertex.node_index != right_vertex.node_index)
+    }
 }
 
 impl DualPipelined for Edge {
+    fn pre_match_stage(&mut self, dual_module: &DualModuleRTLDriver, _instruction: &Instruction) {
+        self.do_pre_matching = self.get_do_pre_matching(dual_module);
+    }
+
     // compute the next register values
     #[allow(clippy::single_match)]
     fn execute_stage(&mut self, dual_module: &DualModuleRTLDriver, instruction: &Instruction) {
@@ -479,7 +553,7 @@ impl DualPipelined for Edge {
         let left_vertex = &dual_module.vertices[self.left_index];
         let right_vertex = &dual_module.vertices[self.right_index];
         if left_vertex.shadow_node_index == right_vertex.shadow_node_index {
-            return None;
+            return Some(Response::NonZeroGrow { length: Weight::MAX });
         }
         let mut max_growth = Weight::MAX;
         let left_speed = left_vertex.get_shadow_speed();
@@ -509,6 +583,11 @@ impl DualPipelined for Edge {
                     vertex_2: self.right_index,
                 });
             }
+            assert!(
+                remaining % joint_speed == 0,
+                "found a case where the reported maxGrowth is rounding down, edge {}",
+                self.edge_index
+            );
             max_growth = std::cmp::min(max_growth, remaining / joint_speed);
         }
         Some(Response::NonZeroGrow { length: max_growth })
@@ -689,6 +768,15 @@ pub mod tests {
         // dual_module_rtl_adaptor_basic_standard_syndrome(19, visualize_filename, defect_vertices);
     }
 
+    /// evaluate a new feature of pre matching without compromises global optimal result
+    #[test]
+    fn dual_module_rtl_embedded_feature_pre_matching() {
+        // PRINT_DUAL_CALLS=1 cargo test dual_module_rtl_embedded_feature_pre_matching -- --nocapture
+        let visualize_filename = "dual_module_rtl_embedded_feature_pre_matching.json".to_string();
+        let defect_vertices = vec![13, 14];
+        dual_module_rtl_pre_matching_standard_syndrome(5, visualize_filename, defect_vertices);
+    }
+
     pub fn dual_module_rtl_embedded_basic_standard_syndrome_optional_viz<Solver: PrimalDualSolver + Sized>(
         d: VertexNum,
         visualize_filename: Option<String>,
@@ -740,6 +828,23 @@ pub mod tests {
             Some(visualize_filename),
             defect_vertices,
             |initializer| SolverEmbeddedRTL::new(initializer),
+        )
+    }
+
+    pub fn dual_module_rtl_pre_matching_standard_syndrome(
+        d: VertexNum,
+        visualize_filename: String,
+        defect_vertices: Vec<VertexIndex>,
+    ) -> SolverEmbeddedRTL {
+        dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
+            d,
+            Some(visualize_filename),
+            defect_vertices,
+            |initializer| {
+                let mut solver = SolverEmbeddedRTL::new(initializer);
+                solver.dual_module.driver.driver.use_pre_matching = true;
+                solver
+            },
         )
     }
 

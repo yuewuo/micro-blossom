@@ -1,5 +1,5 @@
 use crate::mwpm_solver::*;
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use fusion_blossom::cli::{ExampleCodeType, RunnableBenchmarkParameters, Verifier};
 use fusion_blossom::mwpm_solver::*;
 use fusion_blossom::util::*;
@@ -105,85 +105,40 @@ pub enum PrimalDualType {
     EmbeddedRTL,
     /// embedded primal + Scala simulation dual
     DualScala,
+    /// embedded primal + RTL dual with pre-matching
+    EmbeddedRTLPreMatching,
     /// serial primal and dual, standard solution
     Serial,
     /// log error into a file for later fetch
     ErrorPatternLogger,
 }
 
+#[derive(Args, Clone)]
+pub struct StandardTestParameters {
+    /// print out the command to test
+    #[clap(short = 'c', long, action)]
+    print_command: bool,
+    /// enable visualizer
+    #[clap(short = 'v', long, action)]
+    enable_visualizer: bool,
+    /// disable the fusion verifier
+    #[clap(short = 'd', long, action)]
+    disable_fusion: bool,
+    /// enable print syndrome pattern
+    #[clap(short = 's', long, action)]
+    print_syndrome_pattern: bool,
+    /// use deterministic seed for debugging purpose
+    #[clap(long, action)]
+    use_deterministic_seed: bool,
+}
+
 #[derive(Subcommand, Clone)]
 enum TestCommands {
-    /// test RTL-behavior dual module
-    DualRTL {
-        /// print out the command to test
-        #[clap(short = 'c', long, action)]
-        print_command: bool,
-        /// enable visualizer
-        #[clap(short = 'v', long, action)]
-        enable_visualizer: bool,
-        /// disable the fusion verifier
-        #[clap(short = 'd', long, action)]
-        disable_fusion: bool,
-        /// enable print syndrome pattern
-        #[clap(short = 's', long, action)]
-        print_syndrome_pattern: bool,
-        /// use deterministic seed for debugging purpose
-        #[clap(long, action)]
-        use_deterministic_seed: bool,
-    },
-    /// test embedded primal module
-    PrimalEmbedded {
-        /// print out the command to test
-        #[clap(short = 'c', long, action)]
-        print_command: bool,
-        /// enable visualizer
-        #[clap(short = 'v', long, action)]
-        enable_visualizer: bool,
-        /// disable the fusion verifier
-        #[clap(short = 'd', long, action)]
-        disable_fusion: bool,
-        /// enable print syndrome pattern
-        #[clap(short = 's', long, action)]
-        print_syndrome_pattern: bool,
-        /// use deterministic seed for debugging purpose
-        #[clap(long, action)]
-        use_deterministic_seed: bool,
-    },
-    /// test embedded primal module + RTL-behavior dual module, bypassing the dual interface
-    EmbeddedRTL {
-        /// print out the command to test
-        #[clap(short = 'c', long, action)]
-        print_command: bool,
-        /// enable visualizer
-        #[clap(short = 'v', long, action)]
-        enable_visualizer: bool,
-        /// disable the fusion verifier
-        #[clap(short = 'd', long, action)]
-        disable_fusion: bool,
-        /// enable print syndrome pattern
-        #[clap(short = 's', long, action)]
-        print_syndrome_pattern: bool,
-        /// use deterministic seed for debugging purpose
-        #[clap(long, action)]
-        use_deterministic_seed: bool,
-    },
-    DualScala {
-        /// print out the command to test
-        #[clap(short = 'c', long, action)]
-        print_command: bool,
-        /// enable visualizer
-        #[clap(short = 'v', long, action)]
-        enable_visualizer: bool,
-        /// disable the fusion verifier
-        #[clap(short = 'd', long, action)]
-        disable_fusion: bool,
-        /// enable print syndrome pattern
-        #[clap(short = 's', long, action)]
-        print_syndrome_pattern: bool,
-        /// use deterministic seed for debugging purpose
-        #[clap(long, action)]
-        use_deterministic_seed: bool,
-    },
+    DualRTL(StandardTestParameters),
+    PrimalEmbedded(StandardTestParameters),
+    EmbeddedRTL(StandardTestParameters),
+    DualScala(StandardTestParameters),
+    EmbeddedRTLPreMatching(StandardTestParameters),
 }
 
 impl From<BenchmarkParameters> for fusion_blossom::cli::BenchmarkParameters {
@@ -329,6 +284,32 @@ lazy_static! {
     };
 }
 
+pub fn standard_test_command_body(primal_dual_type: &str, parameters: StandardTestParameters) {
+    let command_head = vec![format!(""), format!("benchmark")];
+    let mut command_tail = vec!["--total-rounds".to_string(), format!("{TEST_EACH_ROUNDS}")];
+    if !parameters.disable_fusion {
+        command_tail.append(&mut vec![format!("--verifier"), format!("fusion-serial")]);
+    } else {
+        command_tail.append(&mut vec![format!("--verifier"), format!("none")]);
+    }
+    if parameters.enable_visualizer {
+        command_tail.append(&mut vec![format!("--enable-visualizer")]);
+    }
+    if parameters.print_syndrome_pattern {
+        command_tail.append(&mut vec![format!("--print-syndrome-pattern")]);
+    }
+    if parameters.use_deterministic_seed {
+        command_tail.append(&mut vec![format!("--use-deterministic-seed")]);
+    }
+    command_tail.append(&mut vec![format!("--primal-dual-type"), primal_dual_type.to_string()]);
+    for parameter in RANDOMIZED_TEST_PARAMETERS.iter() {
+        execute_in_cli(
+            command_head.iter().chain(parameter.iter()).chain(command_tail.iter()),
+            parameters.print_command,
+        );
+    }
+}
+
 impl Cli {
     pub fn run(self) {
         match self.command {
@@ -337,129 +318,12 @@ impl Cli {
                 runnable.run();
             }
             Commands::Test { command } => match command {
-                TestCommands::DualRTL {
-                    print_command,
-                    enable_visualizer,
-                    disable_fusion,
-                    print_syndrome_pattern,
-                    use_deterministic_seed,
-                } => {
-                    let command_head = vec![format!(""), format!("benchmark")];
-                    let mut command_tail = vec!["--total-rounds".to_string(), format!("{TEST_EACH_ROUNDS}")];
-                    if !disable_fusion {
-                        command_tail.append(&mut vec![format!("--verifier"), format!("fusion-serial")]);
-                    } else {
-                        command_tail.append(&mut vec![format!("--verifier"), format!("none")]);
-                    }
-                    if enable_visualizer {
-                        command_tail.append(&mut vec![format!("--enable-visualizer")]);
-                    }
-                    if print_syndrome_pattern {
-                        command_tail.append(&mut vec![format!("--print-syndrome-pattern")]);
-                    }
-                    if use_deterministic_seed {
-                        command_tail.append(&mut vec![format!("--use-deterministic-seed")]);
-                    }
-                    command_tail.append(&mut vec![format!("--primal-dual-type"), format!("dual-rtl")]);
-                    for parameter in RANDOMIZED_TEST_PARAMETERS.iter() {
-                        execute_in_cli(
-                            command_head.iter().chain(parameter.iter()).chain(command_tail.iter()),
-                            print_command,
-                        );
-                    }
-                }
-                TestCommands::PrimalEmbedded {
-                    print_command,
-                    enable_visualizer,
-                    disable_fusion,
-                    print_syndrome_pattern,
-                    use_deterministic_seed,
-                } => {
-                    let command_head = vec![format!(""), format!("benchmark")];
-                    let mut command_tail = vec!["--total-rounds".to_string(), format!("{TEST_EACH_ROUNDS}")];
-                    if !disable_fusion {
-                        command_tail.append(&mut vec![format!("--verifier"), format!("fusion-serial")]);
-                    } else {
-                        command_tail.append(&mut vec![format!("--verifier"), format!("none")]);
-                    }
-                    if enable_visualizer {
-                        command_tail.append(&mut vec![format!("--enable-visualizer")]);
-                    }
-                    if print_syndrome_pattern {
-                        command_tail.append(&mut vec![format!("--print-syndrome-pattern")]);
-                    }
-                    if use_deterministic_seed {
-                        command_tail.append(&mut vec![format!("--use-deterministic-seed")]);
-                    }
-                    command_tail.append(&mut vec![format!("--primal-dual-type"), format!("primal-embedded")]);
-                    for parameter in RANDOMIZED_TEST_PARAMETERS.iter() {
-                        execute_in_cli(
-                            command_head.iter().chain(parameter.iter()).chain(command_tail.iter()),
-                            print_command,
-                        );
-                    }
-                }
-                TestCommands::EmbeddedRTL {
-                    print_command,
-                    enable_visualizer,
-                    disable_fusion,
-                    print_syndrome_pattern,
-                    use_deterministic_seed,
-                } => {
-                    let command_head = vec![format!(""), format!("benchmark")];
-                    let mut command_tail = vec!["--total-rounds".to_string(), format!("{TEST_EACH_ROUNDS}")];
-                    if !disable_fusion {
-                        command_tail.append(&mut vec![format!("--verifier"), format!("fusion-serial")]);
-                    } else {
-                        command_tail.append(&mut vec![format!("--verifier"), format!("none")]);
-                    }
-                    if enable_visualizer {
-                        command_tail.append(&mut vec![format!("--enable-visualizer")]);
-                    }
-                    if print_syndrome_pattern {
-                        command_tail.append(&mut vec![format!("--print-syndrome-pattern")]);
-                    }
-                    if use_deterministic_seed {
-                        command_tail.append(&mut vec![format!("--use-deterministic-seed")]);
-                    }
-                    command_tail.append(&mut vec![format!("--primal-dual-type"), format!("embedded-rtl")]);
-                    for parameter in RANDOMIZED_TEST_PARAMETERS.iter() {
-                        execute_in_cli(
-                            command_head.iter().chain(parameter.iter()).chain(command_tail.iter()),
-                            print_command,
-                        );
-                    }
-                }
-                TestCommands::DualScala {
-                    print_command,
-                    enable_visualizer,
-                    disable_fusion,
-                    print_syndrome_pattern,
-                    use_deterministic_seed,
-                } => {
-                    let command_head = vec![format!(""), format!("benchmark")];
-                    let mut command_tail = vec!["--total-rounds".to_string(), format!("{TEST_EACH_ROUNDS}")];
-                    if !disable_fusion {
-                        command_tail.append(&mut vec![format!("--verifier"), format!("fusion-serial")]);
-                    } else {
-                        command_tail.append(&mut vec![format!("--verifier"), format!("none")]);
-                    }
-                    if enable_visualizer {
-                        command_tail.append(&mut vec![format!("--enable-visualizer")]);
-                    }
-                    if print_syndrome_pattern {
-                        command_tail.append(&mut vec![format!("--print-syndrome-pattern")]);
-                    }
-                    if use_deterministic_seed {
-                        command_tail.append(&mut vec![format!("--use-deterministic-seed")]);
-                    }
-                    command_tail.append(&mut vec![format!("--primal-dual-type"), format!("dual-scala")]);
-                    for parameter in RANDOMIZED_TEST_PARAMETERS.iter() {
-                        execute_in_cli(
-                            command_head.iter().chain(parameter.iter()).chain(command_tail.iter()),
-                            print_command,
-                        );
-                    }
+                TestCommands::DualRTL(parameters) => standard_test_command_body("dual-rtl", parameters),
+                TestCommands::PrimalEmbedded(parameters) => standard_test_command_body("primal-embedded", parameters),
+                TestCommands::EmbeddedRTL(parameters) => standard_test_command_body("embedded-rtl", parameters),
+                TestCommands::DualScala(parameters) => standard_test_command_body("dual-scala", parameters),
+                TestCommands::EmbeddedRTLPreMatching(parameters) => {
+                    standard_test_command_body("embedded-rtl-pre-matching", parameters)
                 }
             },
             #[cfg(feature = "qecp_integrate")]
@@ -507,6 +371,12 @@ impl PrimalDualType {
             Self::DualScala => {
                 assert_eq!(primal_dual_config, json!({}));
                 Box::new(SolverDualScala::new(initializer))
+            }
+            Self::EmbeddedRTLPreMatching => {
+                assert_eq!(primal_dual_config, json!({}));
+                let mut solver = SolverEmbeddedRTL::new(initializer);
+                solver.dual_module.driver.driver.use_pre_matching = true;
+                Box::new(solver)
             }
             _ => unimplemented!(),
         }

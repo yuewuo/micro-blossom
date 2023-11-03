@@ -233,8 +233,8 @@ impl PrimalDualSolver for SolverPrimalEmbedded {
 }
 
 pub struct SolverEmbeddedRTL {
-    dual_module: DualModuleRTL,
-    primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
+    pub dual_module: DualModuleRTL,
+    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
     subgraph_builder: SubGraphBuilder,
     defect_nodes: Vec<VertexIndex>,
 }
@@ -333,6 +333,35 @@ impl PrimalDualSolver for SolverEmbeddedRTL {
                     }
                 }
             });
+        // also add pre matchings from the dual driver
+        let dual_module = &self.dual_module.driver.driver;
+        let pre_matchings = dual_module.get_pre_matchings();
+        for &edge_index in pre_matchings.iter() {
+            let edge = &dual_module.edges[edge_index];
+            let left_vertex = &dual_module.vertices[edge.left_index];
+            let right_vertex = &dual_module.vertices[edge.right_index];
+            let left_node = DualNodePtr::new_value(DualNode {
+                index: left_vertex.node_index.unwrap(),
+                class: DualNodeClass::DefectVertex {
+                    defect_index: self.defect_nodes[left_vertex.node_index.unwrap() as usize],
+                },
+                grow_state: DualNodeGrowState::Stay,
+                parent_blossom: None,
+                dual_variable_cache: (0, 0),
+                belonging: belonging.clone(),
+            });
+            let right_node = DualNodePtr::new_value(DualNode {
+                index: right_vertex.node_index.unwrap(),
+                class: DualNodeClass::DefectVertex {
+                    defect_index: self.defect_nodes[right_vertex.node_index.unwrap() as usize],
+                },
+                grow_state: DualNodeGrowState::Stay,
+                parent_blossom: None,
+                dual_variable_cache: (0, 0),
+                belonging: belonging.clone(),
+            });
+            perfect_matching.peer_matchings.push((left_node, right_node));
+        }
         if let Some(visualizer) = visualizer {
             visualizer
                 .snapshot_combined("perfect matching".to_string(), vec![self, &perfect_matching])
@@ -367,8 +396,8 @@ impl PrimalDualSolver for SolverEmbeddedRTL {
 }
 
 pub struct SolverDualScala {
-    dual_module: DualModuleScala,
-    primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
+    pub dual_module: DualModuleScala,
+    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
     subgraph_builder: SubGraphBuilder,
     defect_nodes: Vec<VertexIndex>,
     pub max_iterations: usize, // to debug the infinite loop cases: save a waveform in the middle
