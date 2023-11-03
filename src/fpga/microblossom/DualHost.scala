@@ -56,7 +56,9 @@ object DualHost extends App {
     if (command == "with waveform") {
       simConfig.withFstWave
       withWaveform = true
-    } else if (command == "no waveform") {} else {
+    } else if (command == "no waveform") {
+      simConfig.allOptimisation
+    } else {
       throw new IllegalArgumentException
     }
 
