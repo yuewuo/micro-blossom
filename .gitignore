@@ -54,3 +54,4 @@ bin/*
 simWorkspace/
 tmp/
 null
+/gen/

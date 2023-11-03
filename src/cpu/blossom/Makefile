@@ -18,7 +18,8 @@ test: clean-env
 	cargo run --release -- test primal-embedded
 	cargo run --release -- test dual-rtl
 	cargo run --release -- test embedded-rtl
-	cargo run --release -- test dual-scala
+# this command runs way too slow, so it's important to enable syndrome printing to help locate problem
+	cargo run --release -- test dual-scala --print-syndrome-pattern --print-command
 
 build: clean-env
 	cargo test --no-run
