@@ -354,10 +354,14 @@ pub struct Vertex {
 
 impl Vertex {
     pub fn get_speed(&self) -> Weight {
-        match self.speed {
-            DualNodeGrowState::Stay => 0,
-            DualNodeGrowState::Shrink => -1,
-            DualNodeGrowState::Grow => 1,
+        if self.do_pre_matching {
+            0
+        } else {
+            match self.speed {
+                DualNodeGrowState::Stay => 0,
+                DualNodeGrowState::Shrink => -1,
+                DualNodeGrowState::Grow => 1,
+            }
         }
     }
 
@@ -770,11 +774,21 @@ pub mod tests {
 
     /// evaluate a new feature of pre matching without compromises global optimal result
     #[test]
-    fn dual_module_rtl_embedded_feature_pre_matching() {
-        // PRINT_DUAL_CALLS=1 cargo test dual_module_rtl_embedded_feature_pre_matching -- --nocapture
-        let visualize_filename = "dual_module_rtl_embedded_feature_pre_matching.json".to_string();
+    fn dual_module_rtl_embedded_pre_matching_basic_1() {
+        // PRINT_DUAL_CALLS=1 cargo test dual_module_rtl_embedded_pre_matching_basic_1 -- --nocapture
+        let visualize_filename = "dual_module_rtl_embedded_pre_matching_basic_1.json".to_string();
         let defect_vertices = vec![13, 14];
         dual_module_rtl_pre_matching_standard_syndrome(5, visualize_filename, defect_vertices);
+    }
+
+    /// bug: the growth of a pre-matched vertex should be stopped, but it's not
+    #[test]
+    fn dual_module_rtl_embedded_pre_matching_debug_1() {
+        // PRINT_DUAL_CALLS=1 cargo test dual_module_rtl_embedded_pre_matching_debug_1 -- --nocapture
+        let visualize_filename = "dual_module_rtl_embedded_pre_matching_debug_1.json".to_string();
+        let defect_vertices = vec![0, 4, 9];
+        dual_module_rtl_pre_matching_standard_syndrome(3, visualize_filename, defect_vertices);
+        // dual_module_rtl_adaptor_basic_standard_syndrome(3, visualize_filename, defect_vertices);
     }
 
     pub fn dual_module_rtl_embedded_basic_standard_syndrome_optional_viz<Solver: PrimalDualSolver + Sized>(
@@ -814,7 +828,7 @@ pub mod tests {
         let total_weight = subgraph_builder.total_weight();
         subgraph_builder.load_subgraph(&standard_subgraph);
         let standard_total_weight = subgraph_builder.total_weight();
-        assert!(total_weight == standard_total_weight);
+        assert_eq!(total_weight, standard_total_weight);
         solver
     }
 
