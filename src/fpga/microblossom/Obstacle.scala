@@ -39,7 +39,7 @@ case class Obstacle(config: DualConfig = DualConfig()) extends Bits {
         if (spec.numBits > obstacle.spec.numBits) {
           // extending length should also extend the MSB
           when(obstacle.length === obstacle.length.maxValue) {
-            length(length.getWidth - 1 downto obstacle.length.getWidth).setAll()
+            sliceOf(spec.lengthRange)(length.getWidth - 1 downto obstacle.length.getWidth).setAll()
           }
         }
         if (config.weightBits < 6 * config.vertexBits) { lengthZero.clearAll() }

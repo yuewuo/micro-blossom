@@ -167,7 +167,7 @@ object BlinkyAsmVerilog extends App {
     top
   }
 
-  Config.spinal.generateVerilog(buildTop())
+  Config.spinal().generateVerilog(buildTop())
 }
 
 // sbt "runMain microblossom.demo.BlinkyAsmTestA" && gtkwave simWorkspace/BlinkyAsm/testA.fst

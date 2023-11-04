@@ -229,7 +229,7 @@ object BlinkyPowerVerilog extends App {
     top
   }
 
-  Config.spinal.generateVerilog(buildTop())
+  Config.spinal().generateVerilog(buildTop())
 }
 
 // sbt "runMain microblossom.demo.BlinkyPowerTestA" && gtkwave simWorkspace/BlinkyPower/testA.fst

@@ -36,7 +36,7 @@ case class LearnMem() extends Component {
 class LearnMemTest extends AnyFunSuite {
 
   test("generate verilog") {
-    Config.spinal.generateVerilog(LearnMem())
+    Config.spinal().generateVerilog(LearnMem())
   }
 
   test("behavior test") {

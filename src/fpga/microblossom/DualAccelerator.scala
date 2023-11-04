@@ -253,7 +253,7 @@ class DualAcceleratorTest extends AnyFunSuite {
     // val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
     val config = DualConfig(filename = "./resources/graphs/example_code_capacity_planar_d5.json")
     // val config = DualConfig(filename = "./resources/graphs/example_phenomenological_rotated_d5.json")
-    Config.spinal.generateVerilog(DualAccelerator(config))
+    Config.spinal().generateVerilog(DualAccelerator(config))
   }
 
   test("test pipeline registers") {
@@ -350,4 +350,26 @@ object DualAcceleratorDebug1 extends App {
       for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
     }
+}
+
+// sbt "runMain microblossom.DualAcceleratorExamples"
+object DualAcceleratorExamples extends App {
+  for (d <- Seq(3, 5, 7)) {
+    val config =
+      DualConfig(filename = "./resources/graphs/example_code_capacity_planar_d%d.json".format(d), minimizeBits = true)
+    Config.spinal("gen/example_code_capacity_planar_d%d".format(d)).generateVerilog(DualAccelerator(config))
+  }
+  for (d <- Seq(3, 5, 7)) {
+    val config =
+      DualConfig(filename = "./resources/graphs/example_code_capacity_rotated_d%d.json".format(d), minimizeBits = true)
+    Config.spinal("gen/example_code_capacity_rotated_d%d".format(d)).generateVerilog(DualAccelerator(config))
+  }
+  for (d <- Seq(3, 5, 7)) {
+    val config =
+      DualConfig(
+        filename = "./resources/graphs/example_phenomenological_rotated_d%d.json".format(d),
+        minimizeBits = true
+      )
+    Config.spinal("gen/example_phenomenological_rotated_d%d".format(d)).generateVerilog(DualAccelerator(config))
+  }
 }

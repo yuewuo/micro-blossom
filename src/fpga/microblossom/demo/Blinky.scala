@@ -27,7 +27,7 @@ class Blinky extends Component {
 
 // sbt "runMain microblossom.demo.BlinkyVerilog"
 object BlinkyVerilog extends App {
-  Config.spinal.generateVerilog(new Blinky())
+  Config.spinal().generateVerilog(new Blinky())
 }
 
 // sbt "runMain microblossom.demo.BlinkyTestA" && gtkwave simWorkspace/Blinky/testA.fst

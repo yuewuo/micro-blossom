@@ -210,7 +210,7 @@ class EdgeTest extends AnyFunSuite {
     // config.contextDepth = 1024 // fit in a single Block RAM of 36 kbits in 36-bit mode
     config.contextDepth = 1 // no context switch
     config.sanityCheck()
-    Config.spinal.generateVerilog(Edge(config, 0))
+    Config.spinal().generateVerilog(Edge(config, 0))
   }
 
 }

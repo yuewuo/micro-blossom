@@ -47,7 +47,7 @@ object DualHost extends App {
     val config = DualConfig(graph = graph, minimizeBits = false)
     config.sanityCheck()
     val simConfig = SimConfig
-      .withConfig(Config.spinal)
+      .withConfig(Config.spinal())
       .workspacePath(workspacePath)
       .workspaceName(host_name)
 
@@ -162,7 +162,7 @@ object DualHost extends App {
               assert(parameters.length == 2)
               val vertex = parameters(0).toInt
               val node = parameters(1).toInt
-              dut.simExecute(config.instructionSpec.generateAddDefect(vertex, node))
+              dut.simExecute(ioConfig.instructionSpec.generateAddDefect(vertex, node))
             } else if (command.startsWith("snapshot(")) {
               val parameters = command.substring("snapshot(".length, command.length - 1).split(", ")
               assert(parameters.length == 1)
