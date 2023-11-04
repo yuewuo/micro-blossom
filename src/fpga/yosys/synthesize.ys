@@ -1,0 +1,15 @@
+# read_verilog gen/example_code_capacity_planar_d7/DualAccelerator.v
+# read_verilog gen/example_phenomenological_rotated_d7/DualAccelerator.v
+read_verilog gen/example_phenomenological_rotated_d11/DualAccelerator.v
+
+synth_xilinx -top DualAccelerator -family xcup -edif gen/DualAccelerator.edif
+stat
+write_json gen/DualAccelerator.json
+
+
+#
+#abc -lut 6
+
+#synth -top DualAccelerator
+#abc -lut 6
+#stat

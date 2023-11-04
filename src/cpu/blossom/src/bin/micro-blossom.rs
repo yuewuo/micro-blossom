@@ -29,4 +29,9 @@ fn main() {
     generate_example("phenomenological_rotated_d3", PhenomenologicalRotatedCode::new(3, 3, 0.1, 50));
     generate_example("phenomenological_rotated_d5", PhenomenologicalRotatedCode::new(5, 5, 0.1, 50));
     generate_example("phenomenological_rotated_d7", PhenomenologicalRotatedCode::new(7, 7, 0.1, 50));
+    generate_example("phenomenological_rotated_d9", PhenomenologicalRotatedCode::new(9, 9, 0.1, 50));
+    generate_example(
+        "phenomenological_rotated_d11",
+        PhenomenologicalRotatedCode::new(11, 11, 0.1, 50),
+    );
 }

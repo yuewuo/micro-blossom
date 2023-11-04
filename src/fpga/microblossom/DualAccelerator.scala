@@ -364,7 +364,7 @@ object DualAcceleratorExamples extends App {
       DualConfig(filename = "./resources/graphs/example_code_capacity_rotated_d%d.json".format(d), minimizeBits = true)
     Config.spinal("gen/example_code_capacity_rotated_d%d".format(d)).generateVerilog(DualAccelerator(config))
   }
-  for (d <- Seq(3, 5, 7)) {
+  for (d <- Seq(3, 5, 7, 9, 11)) {
     val config =
       DualConfig(
         filename = "./resources/graphs/example_phenomenological_rotated_d%d.json".format(d),

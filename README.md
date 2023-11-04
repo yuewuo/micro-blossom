@@ -115,6 +115,10 @@ chmod +x llvm.sh
 sudo ./llvm.sh 15
 ```
 
+### Install YoSys synthesizer
+
+It's easiest to install a pre-built binary from [OSS CAD](https://github.com/YosysHQ/oss-cad-suite-build).
+
 ## Build
 
 ### Hardware
@@ -149,6 +153,44 @@ sbt 'testOnly *DualConfigTest'
 git clone git@github.com:SpinalHDL/SpinalHDL.git
 cd SpinalHDL
 git checkout v1.9.3
+```
+
+### How to estimate LUT usage of a design
+
+```sh
+cargo run --bin micro-blossom  # generate the graph json files in resources/
+sbt "runMain microblossom.DualAcceleratorExamples"  # generate verilog files in gen/example_*/
+yosys -s src/fpga/yosys/synthesize.ys  # generate the report in gen/DualAccelerator.json
+```
+
+For example, for a phenomenological noise model with d=11, we get the usage information of
+
+```
+   Number of wires:             1912284
+   Number of wire bits:         9305386
+   Number of public wires:      410423
+   Number of public wire bits:  5560940
+   Number of memories:               0
+   Number of memory bits:            0
+   Number of processes:              0
+   Number of cells:             2991070
+     BUFG                            1
+     CARRY4                      84934
+     FDCE                        18300
+     FDRE                       532064
+     FDSE                        59544
+     IBUF                           35
+     INV                         17796
+     LUT1                        32394
+     LUT2                       273502
+     LUT3                       283016
+     LUT4                       135305
+     LUT5                       388120
+     LUT6                       475984
+     MUXF7                      534031
+     MUXF8                      140376
+     MUXF9                       15573
+     OBUF                           95
 ```
 
 ## Known Issues

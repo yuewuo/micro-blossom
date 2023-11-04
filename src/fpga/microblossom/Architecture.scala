@@ -19,7 +19,7 @@ import spinal.core._
  * |                                         0                                   | 3'b100 | 3'b100 | Reset
  * |                  Time[14:0]                |           Channel[10:0]        | 3'b101 | 3'b100 | LoadSyndromeExternal
  * |                 Vertex[14:0]               |             Node[10:0]         | 3'b110 | 3'b100 | AddDefectVertex(debug)
- * |                                                                             | 3'b111 | 3'b100 | Reserved
+ * |                 Vertex[14:0]               | v|e | t|e |                    | 3'b111 | 3'b100 | SetAttribute(debug)
  * -------------------------------------------------------------------------------------------------
  *
  *
