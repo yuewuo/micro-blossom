@@ -19,13 +19,13 @@ object DualAcceleratorState extends SpinalEnum {
 case class BroadcastMessage(config: DualConfig) extends Bundle {
   val valid = Bool
   val instruction = Instruction(config)
-  val contextId = (config.contextBits > 0) generate (in UInt (config.contextBits bits))
+  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 }
 
 case class ConvergecastMessage(config: DualConfig) extends Bundle {
   val valid = Bool
   val obstacle = Obstacle(config)
-  val contextId = (config.contextBits > 0) generate (in UInt (config.contextBits bits))
+  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 }
 
 case class DualAccelerator(config: DualConfig, ioConfig: DualConfig = DualConfig()) extends Component {
