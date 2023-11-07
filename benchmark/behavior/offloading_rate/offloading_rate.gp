@@ -22,15 +22,15 @@ set xrange [2:24]
 # print(", ".join([f"'1e{i}' 1e{i}" for i in range(-4, 2)]))
 set yrange [0:1]
 # set style fill transparent solid 0.2 noborder
-# set key box top left Left reverse width -3.5 height 0.5 opaque font default_font samplen 2
+set key box top left
 
 set output "offloading_rate.eps"
 
-plot "data_p0.0005.txt" using 1:4 with linespoints lt rgb "#e41a1c" linewidth 3 pointtype 5 pointsize 1.5 title "p = 0.05\%",\
-    "data_p0.001.txt" using 1:4 with linespoints lt rgb "#e41a1c" linewidth 3 pointtype 5 pointsize 1.5 title "p = 0.1\%",\
-    "data_p0.002.txt" using 1:4 with linespoints lt rgb "#279627" linewidth 3 pointtype 5 pointsize 1.5 title "p = 0.2\%",\
-    "data_p0.005.txt" using 1:4 with linespoints lt rgb "#279627" linewidth 3 pointtype 5 pointsize 1.5 title "p = 0.5\%",\
-    "data_p0.01.txt" using 1:4 with linespoints lt rgb "#279627" linewidth 3 pointtype 5 pointsize 1.5 title "p = 1\%"
+plot "data_p0.0005.txt" using 1:4 with linespoints lt rgb "orange" linewidth 3 pointtype 5 pointsize 1.5 title "p = 0.05\%",\
+    "data_p0.001.txt" using 1:4 with linespoints lt rgb "red" linewidth 3 pointtype 5 pointsize 1.5 title "p = 0.1\%",\
+    "data_p0.002.txt" using 1:4 with linespoints lt rgb "blue" linewidth 3 pointtype 5 pointsize 1.5 title "p = 0.2\%",\
+    "data_p0.005.txt" using 1:4 with linespoints lt rgb "purple" linewidth 3 pointtype 5 pointsize 1.5 title "p = 0.5\%",\
+    "data_p0.01.txt" using 1:4 with linespoints lt rgb "black" linewidth 3 pointtype 5 pointsize 1.5 title "p = 1\%"
 
 system("ps2pdf -dEPSCrop offloading_rate.eps offloading_rate.pdf")
 
