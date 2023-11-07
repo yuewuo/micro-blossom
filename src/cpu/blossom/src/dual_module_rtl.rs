@@ -187,10 +187,6 @@ impl DualModuleRTLDriver {
                 self.vertices[vertex_index].edge_indices.push(edge_index);
             }
         }
-        // each vertex must have at least one incident edge
-        for vertex in self.vertices.iter() {
-            assert!(!vertex.edge_indices.is_empty());
-        }
         self.maximum_growth = Weight::MAX;
     }
 
@@ -221,6 +217,10 @@ impl DualModuleRTLDriver {
             .filter(|edge| edge.do_pre_matching)
             .map(|edge| edge.edge_index)
             .collect()
+    }
+
+    pub fn generate_profiler_report(&self) -> serde_json::Value {
+        json!({})
     }
 }
 
@@ -444,7 +444,7 @@ impl DualPipelined for Vertex {
 
     fn update_stage(&mut self, dual_module: &DualModuleRTLDriver, instruction: &Instruction) {
         // is there any growing peer trying to propagate to this node?
-        let propagating_peer: Option<&Vertex> = if self.grown == 0 {
+        let propagating_peer: Option<&Vertex> = if self.grown == 0 && !self.edge_indices.is_empty() {
             // find a peer node with positive growth and fully-grown edge
             self.edge_indices
                 .iter()

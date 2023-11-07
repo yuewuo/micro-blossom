@@ -237,6 +237,7 @@ pub struct SolverEmbeddedRTL {
     pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
     subgraph_builder: SubGraphBuilder,
     defect_nodes: Vec<VertexIndex>,
+    offloaded: usize,
 }
 
 impl FusionVisualizer for SolverEmbeddedRTL {
@@ -254,6 +255,7 @@ impl SolverEmbeddedRTL {
             primal_module: PrimalModuleEmbedded::new(),
             subgraph_builder: SubGraphBuilder::new(initializer),
             defect_nodes: vec![],
+            offloaded: 0,
         }
     }
 }
@@ -294,6 +296,13 @@ impl PrimalDualSolver for SolverEmbeddedRTL {
         }
         let perfect_matching = self.perfect_matching();
         self.subgraph_builder.load_perfect_matching(&perfect_matching);
+        // check how many defect vertices are offloaded (not maintained by the primal module at all)
+        self.offloaded = 0;
+        for node_index in 0..self.defect_nodes.len() {
+            if !self.primal_module.nodes.has_node(ni!(node_index)) {
+                self.offloaded += 1;
+            }
+        }
     }
     fn perfect_matching_visualizer(&mut self, visualizer: Option<&mut Visualizer>) -> PerfectMatching {
         // this perfect matching is not necessarily complete when some of the matchings are inside the dual module
@@ -389,8 +398,10 @@ impl PrimalDualSolver for SolverEmbeddedRTL {
     }
     fn generate_profiler_report(&self) -> serde_json::Value {
         json!({
-            // "dual": self.dual_module.generate_profiler_report(),
-            // "primal": self.primal_module.generate_profiler_report(),
+            "dual": self.dual_module.driver.driver.generate_profiler_report(),
+            "primal": {
+                "offloaded": self.offloaded,
+            },
         })
     }
 }
