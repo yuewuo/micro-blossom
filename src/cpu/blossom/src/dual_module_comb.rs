@@ -8,8 +8,9 @@
 //!
 
 use crate::dual_module_adaptor::*;
+use crate::dual_module_comb_edge::*;
+use crate::dual_module_comb_vertex::*;
 use crate::util::*;
-use fusion_blossom::dual_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::dual_driver_tracked::*;
@@ -17,11 +18,6 @@ use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
 use serde_json::json;
-
-pub trait CombinatorialLogic<T> {
-    type Item;
-    fn get(&self, dual_module: &mut T) -> Self::Item;
-}
 
 pub struct DualModuleCombDriver {
     pub initializer: SolverInitializer,
@@ -78,10 +74,6 @@ impl DualTrackedDriver for DualModuleCombDriver {
         self.maximum_growth = length as Weight;
     }
 }
-
-pub struct Vertex {}
-
-pub struct Edge {}
 
 impl FusionVisualizer for DualModuleCombDriver {
     #[allow(clippy::unnecessary_cast)]
