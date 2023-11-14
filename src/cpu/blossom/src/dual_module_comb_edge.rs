@@ -119,7 +119,7 @@ impl Edge {
 
     pub fn get_remaining(&self, dual_module: &DualModuleCombDriver) -> Weight {
         let left_vertex = dual_module.vertices[self.left_index].get_post_update_signals(dual_module);
-        let right_vertex = dual_module.vertices[self.left_index].get_post_update_signals(dual_module);
+        let right_vertex = dual_module.vertices[self.right_index].get_post_update_signals(dual_module);
         self.registers.weight - left_vertex.grown - right_vertex.grown
     }
 
@@ -148,7 +148,7 @@ impl Edge {
                 if remaining == 0 {
                     return CompactObstacle::Conflict {
                         node_1: left_shadow.node_index.and_then(node_mapper),
-                        touch_1: left_shadow.node_index.and_then(node_mapper),
+                        touch_1: left_shadow.root_index.and_then(node_mapper),
                         vertex_1: ni!(self.left_index),
                         node_2: right_shadow.node_index.and_then(node_mapper),
                         touch_2: right_shadow.root_index.and_then(node_mapper),

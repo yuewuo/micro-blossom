@@ -122,6 +122,22 @@ impl DualModuleCombDriver {
         self.update_registers();
         response
     }
+
+    /// get all the edges that are pre-matched in the graph
+    pub fn get_pre_matchings(&self) -> Vec<EdgeIndex> {
+        if !self.use_pre_matching {
+            return vec![];
+        }
+        self.edges
+            .iter()
+            .filter(|edge| edge.get_do_pre_matching(self))
+            .map(|edge| edge.edge_index)
+            .collect()
+    }
+
+    pub fn generate_profiler_report(&self) -> serde_json::Value {
+        json!({})
+    }
 }
 
 impl DualStacklessDriver for DualModuleCombDriver {
@@ -268,6 +284,20 @@ pub enum Instruction {
 
 pub const VIRTUAL_NODE_INDEX: NodeIndex = NodeIndex::MAX;
 
+#[macro_export]
+macro_rules! referenced_signal {
+    ($signal:expr, $function:expr) => {
+        if $signal.borrow().is_some() {
+            Ref::map($signal.borrow(), |value| value.as_ref().unwrap())
+        } else {
+            $signal.borrow_mut().get_or_insert_with($function);
+            Ref::map($signal.borrow(), |value| value.as_ref().unwrap())
+        }
+    };
+}
+#[allow(unused_imports)]
+pub use referenced_signal;
+
 #[cfg(test)]
 pub mod tests {
     use super::*;
@@ -285,6 +315,24 @@ pub mod tests {
         dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices);
     }
 
+    /// test a free node conflict with a virtual boundary
+    #[test]
+    fn dual_module_comb_basic_2() {
+        // cargo test dual_module_comb_basic_2 -- --nocapture
+        let visualize_filename = "dual_module_comb_basic_2.json".to_string();
+        let defect_vertices = vec![16];
+        dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    }
+
+    /// test a free node conflict with a matched node (with virtual boundary)
+    #[test]
+    fn dual_module_comb_basic_3() {
+        // cargo test dual_module_comb_basic_3 -- --nocapture
+        let visualize_filename = "dual_module_comb_basic_3.json".to_string();
+        let defect_vertices = vec![16, 26];
+        dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    }
+
     pub fn dual_module_comb_basic_standard_syndrome(
         d: VertexNum,
         visualize_filename: String,
@@ -298,17 +346,3 @@ pub mod tests {
         )
     }
 }
-
-#[macro_export]
-macro_rules! referenced_signal {
-    ($signal:expr, $function:expr) => {
-        if $signal.borrow().is_some() {
-            Ref::map($signal.borrow(), |value| value.as_ref().unwrap())
-        } else {
-            $signal.borrow_mut().get_or_insert_with($function);
-            Ref::map($signal.borrow(), |value| value.as_ref().unwrap())
-        }
-    };
-}
-#[allow(unused_imports)]
-pub use referenced_signal;

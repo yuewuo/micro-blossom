@@ -394,7 +394,7 @@ impl PrimalDualSolver for SolverEmbeddedRTL {
         subgraph
     }
     fn sum_dual_variables(&self) -> Weight {
-        // cannot adapt: both the primal and dual node don't know all the information
+        // cannot adapt: neither the primal nor dual node know all the information
         self.subgraph_builder.total_weight()
     }
     fn generate_profiler_report(&self) -> serde_json::Value {
@@ -551,7 +551,7 @@ impl PrimalDualSolver for SolverDualScala {
         subgraph
     }
     fn sum_dual_variables(&self) -> Weight {
-        // cannot adapt: both the primal and dual node don't know all the information
+        // cannot adapt: neither the primal nor dual node know all the information
         self.subgraph_builder.total_weight()
     }
     fn generate_profiler_report(&self) -> serde_json::Value {
@@ -673,34 +673,34 @@ impl PrimalDualSolver for SolverDualComb {
                 }
             });
         // also add pre matchings from the dual driver
-        // let dual_module = &self.dual_module.driver.driver;
-        // let pre_matchings = dual_module.get_pre_matchings();
-        // for &edge_index in pre_matchings.iter() {
-        //     let edge = &dual_module.edges[edge_index];
-        //     let left_vertex = &dual_module.vertices[edge.left_index];
-        //     let right_vertex = &dual_module.vertices[edge.right_index];
-        //     let left_node = DualNodePtr::new_value(DualNode {
-        //         index: left_vertex.node_index.unwrap(),
-        //         class: DualNodeClass::DefectVertex {
-        //             defect_index: self.defect_nodes[left_vertex.node_index.unwrap() as usize],
-        //         },
-        //         grow_state: DualNodeGrowState::Stay,
-        //         parent_blossom: None,
-        //         dual_variable_cache: (0, 0),
-        //         belonging: belonging.clone(),
-        //     });
-        //     let right_node = DualNodePtr::new_value(DualNode {
-        //         index: right_vertex.node_index.unwrap(),
-        //         class: DualNodeClass::DefectVertex {
-        //             defect_index: self.defect_nodes[right_vertex.node_index.unwrap() as usize],
-        //         },
-        //         grow_state: DualNodeGrowState::Stay,
-        //         parent_blossom: None,
-        //         dual_variable_cache: (0, 0),
-        //         belonging: belonging.clone(),
-        //     });
-        //     perfect_matching.peer_matchings.push((left_node, right_node));
-        // }
+        let dual_module = &self.dual_module.driver.driver;
+        let pre_matchings = dual_module.get_pre_matchings();
+        for &edge_index in pre_matchings.iter() {
+            let edge = &dual_module.edges[edge_index];
+            let left_vertex = &dual_module.vertices[edge.left_index];
+            let right_vertex = &dual_module.vertices[edge.right_index];
+            let left_node = DualNodePtr::new_value(DualNode {
+                index: left_vertex.registers.node_index.unwrap(),
+                class: DualNodeClass::DefectVertex {
+                    defect_index: self.defect_nodes[left_vertex.registers.node_index.unwrap() as usize],
+                },
+                grow_state: DualNodeGrowState::Stay,
+                parent_blossom: None,
+                dual_variable_cache: (0, 0),
+                belonging: belonging.clone(),
+            });
+            let right_node = DualNodePtr::new_value(DualNode {
+                index: right_vertex.registers.node_index.unwrap(),
+                class: DualNodeClass::DefectVertex {
+                    defect_index: self.defect_nodes[right_vertex.registers.node_index.unwrap() as usize],
+                },
+                grow_state: DualNodeGrowState::Stay,
+                parent_blossom: None,
+                dual_variable_cache: (0, 0),
+                belonging: belonging.clone(),
+            });
+            perfect_matching.peer_matchings.push((left_node, right_node));
+        }
         if let Some(visualizer) = visualizer {
             visualizer
                 .snapshot_combined("perfect matching".to_string(), vec![self, &perfect_matching])
@@ -723,15 +723,15 @@ impl PrimalDualSolver for SolverDualComb {
         subgraph
     }
     fn sum_dual_variables(&self) -> Weight {
-        // cannot adapt: both the primal and dual node don't know all the information
+        // cannot adapt: neither the primal nor dual node know all the information
         self.subgraph_builder.total_weight()
     }
     fn generate_profiler_report(&self) -> serde_json::Value {
         json!({
-            // "dual": self.dual_module.driver.driver.generate_profiler_report(),
-            // "primal": {
-            //     "offloaded": self.offloaded,
-            // },
+            "dual": self.dual_module.driver.driver.generate_profiler_report(),
+            "primal": {
+                "offloaded": self.offloaded,
+            },
         })
     }
 }
