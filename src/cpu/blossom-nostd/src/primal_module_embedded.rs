@@ -52,14 +52,17 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
         debug_assert!(obstacle.is_obstacle());
         match obstacle {
             CompactObstacle::Conflict {
-                mut node_1,
+                node_1,
                 mut node_2,
                 touch_1,
                 touch_2,
                 vertex_1,
                 vertex_2,
             } => {
-                debug_assert!(Some(node_1) != node_2, "one cannot conflict with itself");
+                debug_assert!(node_1 != node_2, "one cannot conflict with itself");
+                debug_assert!(node_1.is_some() && touch_1.is_some());
+                let mut node_1 = usu!(node_1);
+                let touch_1 = usu!(touch_1);
                 self.nodes.check_node_index(node_1);
                 self.nodes.check_node_index(touch_1);
                 cfg_if::cfg_if! {

@@ -1,6 +1,8 @@
 use crate::dual_module_comb::*;
 use fusion_blossom::util::*;
-use std::cell::RefCell;
+use micro_blossom_nostd::interface::*;
+use micro_blossom_nostd::util::*;
+use std::cell::{Ref, RefCell};
 
 pub struct Edge {
     pub edge_index: EdgeIndex,
@@ -11,6 +13,7 @@ pub struct Edge {
     pub signals: EdgeCombSignals,
 }
 
+#[derive(Clone)]
 pub struct EdgeRegisters {
     pub weight: Weight,
 }
@@ -18,7 +21,10 @@ pub struct EdgeRegisters {
 pub struct EdgeCombSignals {
     // left_grown: Weight
     // right_grown: Weight
-    is_tight: RefCell<Option<bool>>,
+    post_fetch_is_tight: RefCell<Option<bool>>,
+    do_pre_matching: RefCell<Option<bool>>,
+    post_execute_is_tight: RefCell<Option<bool>>,
+    response: RefCell<Option<CompactObstacle>>,
 }
 
 impl EdgeRegisters {
@@ -30,7 +36,10 @@ impl EdgeRegisters {
 impl EdgeCombSignals {
     pub fn new() -> Self {
         Self {
-            is_tight: RefCell::new(None),
+            post_fetch_is_tight: RefCell::new(None),
+            do_pre_matching: RefCell::new(None),
+            post_execute_is_tight: RefCell::new(None),
+            response: RefCell::new(None),
         }
     }
 }
@@ -54,17 +63,114 @@ impl Edge {
         self.signals = EdgeCombSignals::new();
     }
 
-    pub fn get_left_grown(&self, dual_module: &DualModuleCombDriver) -> Weight {
-        dual_module.vertices[self.left_index].registers.grown
+    pub fn get_peer(&self, vertex: VertexIndex) -> VertexIndex {
+        if vertex == self.left_index {
+            self.right_index
+        } else if vertex == self.right_index {
+            self.left_index
+        } else {
+            panic!("vertex is not incident to the edge, cannot get peer")
+        }
     }
 
-    pub fn get_right_grown(&self, dual_module: &DualModuleCombDriver) -> Weight {
-        dual_module.vertices[self.right_index].registers.grown
+    pub fn get_post_fetch_is_tight(&self, dual_module: &DualModuleCombDriver) -> bool {
+        self.signals
+            .post_fetch_is_tight
+            .borrow_mut()
+            .get_or_insert_with(|| {
+                dual_module.vertices[self.left_index].registers.grown
+                    + dual_module.vertices[self.right_index].registers.grown
+                    >= self.registers.weight
+            })
+            .clone()
     }
 
-    pub fn get_is_tight(&self, dual_module: &DualModuleCombDriver) -> bool {
-        *self.signals.is_tight.borrow_mut().get_or_insert_with(|| {
-            self.get_left_grown(dual_module) + self.get_right_grown(dual_module) >= self.registers.weight
+    pub fn get_do_pre_matching(&self, dual_module: &DualModuleCombDriver) -> bool {
+        if !dual_module.use_pre_matching {
+            return false;
+        }
+        self.signals
+            .do_pre_matching
+            .borrow_mut()
+            .get_or_insert_with(|| {
+                let left_vertex = &dual_module.vertices[self.left_index];
+                let right_vertex = &dual_module.vertices[self.right_index];
+                left_vertex.get_permit_pre_matching(dual_module)
+                    && right_vertex.get_permit_pre_matching(dual_module)
+                    && self.get_post_fetch_is_tight(dual_module)
+                    && (left_vertex.registers.node_index != right_vertex.registers.node_index)
+            })
+            .clone()
+    }
+
+    pub fn get_post_execute_is_tight(&self, dual_module: &DualModuleCombDriver) -> bool {
+        self.signals
+            .post_execute_is_tight
+            .borrow_mut()
+            .get_or_insert_with(|| {
+                let left_vertex = &dual_module.vertices[self.left_index];
+                let right_vertex = &dual_module.vertices[self.right_index];
+                left_vertex.get_post_execute_signals(dual_module).grown
+                    + right_vertex.get_post_execute_signals(dual_module).grown
+                    >= self.registers.weight
+            })
+            .clone()
+    }
+
+    pub fn get_remaining(&self, dual_module: &DualModuleCombDriver) -> Weight {
+        let left_vertex = dual_module.vertices[self.left_index].get_post_update_signals(dual_module);
+        let right_vertex = dual_module.vertices[self.left_index].get_post_update_signals(dual_module);
+        self.registers.weight - left_vertex.grown - right_vertex.grown
+    }
+
+    pub fn get_response(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, CompactObstacle> {
+        referenced_signal!(self.signals.response, || {
+            if !matches!(dual_module.instruction, Instruction::FindObstacle { .. }) {
+                return CompactObstacle::None;
+            }
+            let left_shadow = dual_module.vertices[self.left_index].get_shadow_node(dual_module);
+            let right_shadow = dual_module.vertices[self.right_index].get_shadow_node(dual_module);
+            if left_shadow.node_index == right_shadow.node_index {
+                return CompactObstacle::GrowLength {
+                    length: CompactWeight::MAX,
+                };
+            }
+            let joint_speed = Weight::from(left_shadow.speed) + Weight::from(right_shadow.speed);
+            if joint_speed > 0 {
+                let remaining = self.get_remaining(dual_module);
+                let node_mapper = |node_index: NodeIndex| -> Option<CompactNodeIndex> {
+                    if node_index != VIRTUAL_NODE_INDEX {
+                        Some(ni!(node_index))
+                    } else {
+                        None
+                    }
+                };
+                if remaining == 0 {
+                    return CompactObstacle::Conflict {
+                        node_1: left_shadow.node_index.and_then(node_mapper),
+                        touch_1: left_shadow.node_index.and_then(node_mapper),
+                        vertex_1: ni!(self.left_index),
+                        node_2: right_shadow.node_index.and_then(node_mapper),
+                        touch_2: right_shadow.root_index.and_then(node_mapper),
+                        vertex_2: ni!(self.right_index),
+                    };
+                }
+                assert!(
+                    remaining % joint_speed == 0,
+                    "found a case where the reported maxGrowth is rounding down, edge {}",
+                    self.edge_index
+                );
+                return CompactObstacle::GrowLength {
+                    length: (remaining / joint_speed).try_into().unwrap(),
+                };
+            }
+            CompactObstacle::GrowLength {
+                length: CompactWeight::MAX,
+            }
         })
+    }
+
+    pub fn get_write_signals(&self, _dual_module: &DualModuleCombDriver) -> &EdgeRegisters {
+        &self.registers
     }
 }

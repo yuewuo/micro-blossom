@@ -280,13 +280,13 @@ impl DualStacklessDriver for DualModuleRTLDriver {
                     };
                     return (
                         CompactObstacle::Conflict {
-                            node_1: ni!(node_1),
+                            node_1: Some(ni!(node_1)),
                             node_2: if node_2 != VIRTUAL_NODE_INDEX {
                                 Some(ni!(node_2))
                             } else {
                                 None
                             },
-                            touch_1: ni!(touch_1),
+                            touch_1: Some(ni!(touch_1)),
                             touch_2: if touch_2 != VIRTUAL_NODE_INDEX {
                                 Some(ni!(touch_2))
                             } else {
@@ -442,7 +442,7 @@ impl DualPipelined for Vertex {
         }
     }
 
-    fn update_stage(&mut self, dual_module: &DualModuleRTLDriver, instruction: &Instruction) {
+    fn update_stage(&mut self, dual_module: &DualModuleRTLDriver, _instruction: &Instruction) {
         // is there any growing peer trying to propagate to this node?
         let propagating_peer: Option<&Vertex> = if self.grown == 0 && !self.edge_indices.is_empty() {
             // find a peer node with positive growth and fully-grown edge
@@ -463,34 +463,26 @@ impl DualPipelined for Vertex {
         } else {
             None
         };
-        match instruction {
-            Instruction::Grow { .. } | Instruction::SetSpeed { .. } | Instruction::SetBlossom { .. } => {
-                // is this node contributing to at least one
-                if !self.is_defect && !self.is_virtual && self.grown == 0 {
-                    if let Some(peer) = propagating_peer {
-                        self.node_index = peer.node_index;
-                        self.root_index = peer.root_index;
-                        self.speed = DualNodeGrowState::Grow;
-                    } else {
-                        self.node_index = None;
-                        self.root_index = None;
-                        self.speed = DualNodeGrowState::Stay;
-                    }
-                }
+        self.shadow_node_index = self.node_index;
+        self.shadow_root_index = self.root_index;
+        self.shadow_speed = self.speed;
+        if self.speed == DualNodeGrowState::Shrink && self.grown == 0 {
+            if let Some(peer) = propagating_peer {
+                self.shadow_node_index = peer.node_index;
+                self.shadow_root_index = peer.root_index;
+                self.shadow_speed = DualNodeGrowState::Grow;
             }
-            Instruction::FindObstacle { .. } => {
-                self.shadow_node_index = self.node_index;
-                self.shadow_root_index = self.root_index;
-                self.shadow_speed = self.speed;
-                if self.speed == DualNodeGrowState::Shrink && self.grown == 0 {
-                    if let Some(peer) = propagating_peer {
-                        self.shadow_node_index = peer.node_index;
-                        self.shadow_root_index = peer.root_index;
-                        self.shadow_speed = DualNodeGrowState::Grow;
-                    }
-                }
+        }
+        if !self.is_defect && !self.is_virtual && self.grown == 0 {
+            if let Some(peer) = propagating_peer {
+                self.node_index = peer.node_index;
+                self.root_index = peer.root_index;
+                self.speed = DualNodeGrowState::Grow;
+            } else {
+                self.node_index = None;
+                self.root_index = None;
+                self.speed = DualNodeGrowState::Stay;
             }
-            _ => {}
         }
     }
 
@@ -565,14 +557,16 @@ impl DualPipelined for Edge {
             // normally self.left_growth > 0, unless the defect vertex has yS=0, which suggests two conflicting nodes
             max_growth = std::cmp::min(max_growth, left_vertex.grown);
         } else if left_speed > 0 {
-            max_growth = std::cmp::min(max_growth, self.weight - left_vertex.grown);
+            // update 2023.11.13: we don't really need to check this, because it will be bounded by other conditions.
+            // max_growth = std::cmp::min(max_growth, self.weight - left_vertex.grown);
         }
         let right_speed = right_vertex.get_shadow_speed();
         if right_speed < 0 {
             // normally self.left_growth > 0, unless the defect vertex has yS=0, which suggests two conflicting nodes
             max_growth = std::cmp::min(max_growth, right_vertex.grown);
         } else if right_speed > 0 {
-            max_growth = std::cmp::min(max_growth, self.weight - right_vertex.grown);
+            // update 2023.11.13: we don't really need to check this, because it will be bounded by other conditions.
+            // max_growth = std::cmp::min(max_growth, self.weight - right_vertex.grown);
         }
         let joint_speed = left_speed + right_speed;
         if joint_speed > 0 {

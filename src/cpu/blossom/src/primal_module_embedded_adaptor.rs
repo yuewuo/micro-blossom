@@ -137,17 +137,17 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
             }
             let adapted_conflict = match conflict {
                 MaxUpdateLength::Conflicting((node_1, touch_1), (node_2, touch_2)) => CompactObstacle::Conflict {
-                    node_1: *self.ptr_to_index.get(&node_1).unwrap(),
+                    node_1: Some(*self.ptr_to_index.get(&node_1).unwrap()),
                     node_2: Some(*self.ptr_to_index.get(&node_2).unwrap()),
-                    touch_1: *self.ptr_to_index.get(&touch_1).unwrap(),
+                    touch_1: Some(*self.ptr_to_index.get(&touch_1).unwrap()),
                     touch_2: Some(*self.ptr_to_index.get(&touch_2).unwrap()),
                     vertex_1: ni!(0),
                     vertex_2: ni!(0),
                 },
                 MaxUpdateLength::TouchingVirtual((node, touch), (virtual_vertex, _is_mirror)) => CompactObstacle::Conflict {
-                    node_1: *self.ptr_to_index.get(&node).unwrap(),
+                    node_1: Some(*self.ptr_to_index.get(&node).unwrap()),
                     node_2: None,
-                    touch_1: *self.ptr_to_index.get(&touch).unwrap(),
+                    touch_1: Some(*self.ptr_to_index.get(&touch).unwrap()),
                     touch_2: None,
                     vertex_1: ni!(0),
                     vertex_2: ni!(virtual_vertex),

@@ -29,9 +29,9 @@ impl<const MAX_NODE_NUM: usize, const DOUBLE_MAX_NODE_NUM: usize> PrimalSimpleMa
             self.primal_module.resolve(
                 &mut self.dual_module,
                 CompactObstacle::Conflict {
-                    node_1: ni!(index),
+                    node_1: Some(ni!(index)),
                     node_2: Some(ni!(index + 1)),
-                    touch_1: ni!(index),
+                    touch_1: Some(ni!(index)),
                     touch_2: Some(ni!(index + 1)),
                     vertex_1: ni!(123),
                     vertex_2: ni!(234),

@@ -8,7 +8,7 @@
 
 use crate::util::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum CompactObstacle {
     /// nothing to do
     None,
@@ -20,16 +20,66 @@ pub enum CompactObstacle {
     /// some conflict needs the primal module to resolve
     Conflict {
         /// node_1 is assumed to be always normal node
-        node_1: CompactNodeIndex,
+        node_1: Option<CompactNodeIndex>,
         /// node_2 could be NODE_NONE, which means it's touching a virtual vertex `vertex_2`
         node_2: Option<CompactNodeIndex>,
-        touch_1: CompactNodeIndex,
+        touch_1: Option<CompactNodeIndex>,
         touch_2: Option<CompactNodeIndex>,
         vertex_1: CompactVertexIndex,
         vertex_2: CompactVertexIndex,
     },
     /// a blossom needs to be expanded
     BlossomNeedExpand { blossom: CompactNodeIndex },
+}
+
+impl CompactObstacle {
+    pub fn reduce(resp1: CompactObstacle, resp2: CompactObstacle) -> CompactObstacle {
+        if matches!(resp1, CompactObstacle::None) {
+            return resp2;
+        }
+        if matches!(resp2, CompactObstacle::None) {
+            return resp1;
+        }
+        if !matches!(resp1, CompactObstacle::GrowLength { .. }) {
+            return resp1;
+        }
+        if !matches!(resp2, CompactObstacle::GrowLength { .. }) {
+            return resp2;
+        }
+        let CompactObstacle::GrowLength { length: length1 } = resp1 else {
+            unreachable!()
+        };
+        let CompactObstacle::GrowLength { length: length2 } = resp2 else {
+            unreachable!()
+        };
+        CompactObstacle::GrowLength {
+            length: std::cmp::min(length1, length2),
+        }
+    }
+
+    pub fn fix_conflict_order(&mut self) {
+        if let Self::Conflict {
+            node_1,
+            node_2,
+            touch_1,
+            touch_2,
+            vertex_1,
+            vertex_2,
+        } = self
+        {
+            if node_1.is_none() {
+                debug_assert!(node_2.is_some(), "at least one of node_1 and node_2 should be some");
+                *self = Self::Conflict {
+                    node_1: *node_2,
+                    node_2: *node_1,
+                    touch_1: *touch_2,
+                    touch_2: *touch_1,
+                    vertex_1: *vertex_2,
+                    vertex_2: *vertex_1,
+                }
+            }
+        }
+    }
 }
 
 pub trait PrimalInterface {
