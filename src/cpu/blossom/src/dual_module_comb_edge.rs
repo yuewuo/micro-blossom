@@ -2,6 +2,7 @@ use crate::dual_module_comb::*;
 use fusion_blossom::util::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
+use serde_json::json;
 use std::cell::{Ref, RefCell};
 
 pub struct Edge {
@@ -19,8 +20,6 @@ pub struct EdgeRegisters {
 }
 
 pub struct EdgeCombSignals {
-    // left_grown: Weight
-    // right_grown: Weight
     post_fetch_is_tight: RefCell<Option<bool>>,
     do_pre_matching: RefCell<Option<bool>>,
     post_execute_is_tight: RefCell<Option<bool>>,
@@ -172,5 +171,21 @@ impl Edge {
 
     pub fn get_write_signals(&self, _dual_module: &DualModuleCombDriver) -> &EdgeRegisters {
         &self.registers
+    }
+}
+
+impl Edge {
+    pub fn snapshot(&self, _abbrev: bool, dual_module: &DualModuleCombDriver) -> serde_json::Value {
+        json!({
+            "registers": json!({
+                "weight": self.registers.weight,
+            }),
+            "signals": json!({
+                "post_fetch_is_tight": self.get_post_fetch_is_tight(dual_module),
+                "do_pre_matching": self.get_do_pre_matching(dual_module),
+                "post_execute_is_tight": self.get_post_execute_is_tight(dual_module),
+                "response": format!("{:?}", self.get_response(dual_module)),
+            })
+        })
     }
 }

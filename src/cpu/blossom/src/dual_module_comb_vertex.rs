@@ -2,6 +2,7 @@ use crate::dual_module_comb::*;
 use fusion_blossom::util::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
+use serde_json::json;
 use std::cell::{Ref, RefCell};
 
 pub struct Vertex {
@@ -256,5 +257,54 @@ impl Vertex {
 
     pub fn get_write_signals(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, VertexRegisters> {
         self.get_post_update_signals(dual_module)
+    }
+}
+
+impl VertexRegisters {
+    pub fn snapshot(&self) -> serde_json::Value {
+        json!({
+            "speed": format!("{:?}", self.speed),
+            "grown": self.grown,
+            "is_virtual": self.is_virtual,
+            "is_defect": self.is_defect,
+            "node_index": self.node_index,
+            "root_index": self.root_index,
+        })
+    }
+}
+
+impl ShadowNode {
+    pub fn snapshot(&self) -> serde_json::Value {
+        json!({
+            "speed": format!("{:?}", self.speed),
+            "node_index": self.node_index,
+            "root_index": self.root_index,
+        })
+    }
+}
+
+impl PropagatingPeer {
+    pub fn snapshot(&self) -> serde_json::Value {
+        json!({
+            "node_index": self.node_index,
+            "root_index": self.root_index,
+        })
+    }
+}
+
+impl Vertex {
+    pub fn snapshot(&self, _abbrev: bool, dual_module: &DualModuleCombDriver) -> serde_json::Value {
+        json!({
+            "registers": self.registers.snapshot(),
+            "signals": json!({
+                "permit_pre_matching": self.get_permit_pre_matching(dual_module),
+                "do_pre_matching": self.get_do_pre_matching(dual_module),
+                "post_execute_signals": self.get_post_execute_signals(dual_module).snapshot(),
+                "propagating_peer": self.get_propagating_peer(dual_module).clone().map(|v| v.snapshot()),
+                "post_update_signals": self.get_post_update_signals(dual_module).snapshot(),
+                "shadow_node": self.get_shadow_node(dual_module).snapshot(),
+                "response": format!("{:?}", self.get_response(dual_module)),
+            })
+        })
     }
 }

@@ -113,10 +113,6 @@ impl DualModuleCombDriver {
             .iter()
             .map(|vertex| vertex.get_response(self).clone())
             .chain(self.edges.iter().map(|edge| edge.get_response(self).clone()))
-            // .map(|obstacle| {
-            //     println!("obstacle: {obstacle:?}");
-            //     obstacle
-            // })
             .reduce(CompactObstacle::reduce)
             .unwrap();
         self.update_registers();
@@ -266,9 +262,14 @@ impl FusionVisualizer for DualModuleCombDriver {
                 value
             })
             .collect();
+        let vertices_comb: Vec<serde_json::Value> =
+            self.vertices.iter().map(|vertex| vertex.snapshot(abbrev, self)).collect();
+        let edges_comb: Vec<serde_json::Value> = self.edges.iter().map(|edge| edge.snapshot(abbrev, self)).collect();
         json!({
             "vertices": vertices,
             "edges": edges,
+            "vertices_comb": vertices_comb,
+            "edges_comb": edges_comb,
         })
     }
 }
