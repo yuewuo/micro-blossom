@@ -15,7 +15,6 @@ use fusion_blossom::visualize::*;
 use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::interface::*;
-use micro_blossom_nostd::primal_module_embedded::*;
 use micro_blossom_nostd::util::*;
 use serde_json::json;
 
@@ -243,8 +242,8 @@ pub struct SolverEmbeddedRTL {
 
 impl FusionVisualizer for SolverEmbeddedRTL {
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
-        let value = self.dual_module.driver.driver.snapshot(abbrev);
-        // snapshot_combine_values(&mut value, self.dual_module.snapshot(abbrev), abbrev);
+        let mut value = self.dual_module.driver.driver.snapshot(abbrev);
+        snapshot_combine_values(&mut value, self.primal_module.snapshot(abbrev), abbrev);
         value
     }
 }
@@ -417,8 +416,8 @@ pub struct SolverDualScala {
 
 impl FusionVisualizer for SolverDualScala {
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
-        let value = self.dual_module.driver.driver.snapshot(abbrev);
-        // snapshot_combine_values(&mut value, self.dual_module.snapshot(abbrev), abbrev);
+        let mut value = self.dual_module.driver.driver.snapshot(abbrev);
+        snapshot_combine_values(&mut value, self.primal_module.snapshot(abbrev), abbrev);
         value
     }
 }
@@ -572,8 +571,8 @@ pub struct SolverDualComb {
 
 impl FusionVisualizer for SolverDualComb {
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
-        let value = self.dual_module.driver.driver.snapshot(abbrev);
-        // snapshot_combine_values(&mut value, self.dual_module.snapshot(abbrev), abbrev);
+        let mut value = self.dual_module.driver.driver.snapshot(abbrev);
+        snapshot_combine_values(&mut value, self.primal_module.snapshot(abbrev), abbrev);
         value
     }
 }
