@@ -334,6 +334,25 @@ pub mod tests {
         dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices);
     }
 
+    /// evaluate a new feature of pre matching without compromises global optimal result
+    #[test]
+    fn dual_module_comb_pre_matching_basic_1() {
+        // PRINT_DUAL_CALLS=1 cargo test dual_module_comb_pre_matching_basic_1 -- --nocapture
+        let visualize_filename = "dual_module_comb_pre_matching_basic_1.json".to_string();
+        let defect_vertices = vec![13, 14];
+        dual_module_comb_pre_matching_standard_syndrome(5, visualize_filename, defect_vertices);
+    }
+
+    /// bug: the growth of a pre-matched vertex should be stopped, but it's not
+    #[test]
+    fn dual_module_comb_pre_matching_debug_1() {
+        // PRINT_DUAL_CALLS=1 cargo test dual_module_comb_pre_matching_debug_1 -- --nocapture
+        let visualize_filename = "dual_module_comb_pre_matching_debug_1.json".to_string();
+        let defect_vertices = vec![0, 4, 9];
+        dual_module_comb_pre_matching_standard_syndrome(3, visualize_filename, defect_vertices);
+        // dual_module_rtl_adaptor_basic_standard_syndrome(3, visualize_filename, defect_vertices);
+    }
+
     pub fn dual_module_comb_basic_standard_syndrome(
         d: VertexNum,
         visualize_filename: String,
@@ -344,6 +363,23 @@ pub mod tests {
             Some(visualize_filename.clone()),
             defect_vertices,
             |initializer| SolverDualComb::new(initializer),
+        )
+    }
+
+    pub fn dual_module_comb_pre_matching_standard_syndrome(
+        d: VertexNum,
+        visualize_filename: String,
+        defect_vertices: Vec<VertexIndex>,
+    ) -> SolverDualComb {
+        dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
+            d,
+            Some(visualize_filename.clone()),
+            defect_vertices,
+            |initializer| {
+                let mut solver = SolverDualComb::new(initializer);
+                solver.dual_module.driver.driver.use_pre_matching = true;
+                solver
+            },
         )
     }
 }

@@ -307,14 +307,11 @@ impl FusionVisualizer for PrimalModuleEmbeddedAdaptor {
 impl<const N: usize, const DN: usize> FusionVisualizer for PrimalModuleEmbedded<N, DN> {
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
         let mut primal_nodes = Vec::<serde_json::Value>::new();
-        let mut dual_nodes = Vec::<serde_json::Value>::new();
         for node_index in (0..self.nodes.count_defects).chain(N..N + self.nodes.count_blossoms) {
             primal_nodes.resize(node_index + 1, json!(null));
-            dual_nodes.resize(node_index + 1, json!(null));
             if !self.nodes.has_node(ni!(node_index)) {
                 continue;
             }
-            let is_blossom = self.nodes.is_blossom(ni!(node_index));
             let primal_node = self.nodes.get_node(ni!(node_index));
             let parent = primal_node.parent.map(|parent| parent.get());
             let parent_touch = primal_node.link.touch.map(|parent| parent.get());
@@ -348,7 +345,39 @@ impl<const N: usize, const DN: usize> FusionVisualizer for PrimalModuleEmbedded<
             } else {
                 primal_nodes[node_index] = json!({});
             }
-            // dual node cares about all nodes
+        }
+        json!({
+            "primal_nodes": primal_nodes,
+        })
+    }
+}
+
+pub struct DualNodesOf<'a, const N: usize, const DN: usize>(&'a PrimalModuleEmbedded<N, DN>);
+
+impl<'a, const N: usize, const DN: usize> std::ops::Deref for DualNodesOf<'a, N, DN> {
+    type Target = PrimalModuleEmbeddedOriginal<N, DN>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a, const N: usize, const DN: usize> DualNodesOf<'a, N, DN> {
+    pub fn new(primal_module: &'a PrimalModuleEmbedded<N, DN>) -> Self {
+        Self(primal_module)
+    }
+}
+
+impl<'a, const N: usize, const DN: usize> FusionVisualizer for DualNodesOf<'a, N, DN> {
+    fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+        let mut dual_nodes = Vec::<serde_json::Value>::new();
+        for node_index in (0..self.nodes.count_defects).chain(N..N + self.nodes.count_blossoms) {
+            dual_nodes.resize(node_index + 1, json!(null));
+            if !self.nodes.has_node(ni!(node_index)) {
+                continue;
+            }
+            let is_blossom = self.nodes.is_blossom(ni!(node_index));
+            let primal_node = self.nodes.get_node(ni!(node_index));
+            let parent = primal_node.parent.map(|parent| parent.get());
             let grow_state = primal_node.grow_state.unwrap_or(CompactGrowState::Stay);
             let parent_blossom = if primal_node.is_outer_blossom() { None } else { parent };
             let blossom = if is_blossom {
@@ -378,7 +407,6 @@ impl<const N: usize, const DN: usize> FusionVisualizer for PrimalModuleEmbedded<
             });
         }
         json!({
-            "primal_nodes": primal_nodes,
             "dual_nodes": dual_nodes,
         })
     }

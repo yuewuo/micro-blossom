@@ -244,6 +244,7 @@ impl FusionVisualizer for SolverEmbeddedRTL {
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
         let mut value = self.dual_module.driver.driver.snapshot(abbrev);
         snapshot_combine_values(&mut value, self.primal_module.snapshot(abbrev), abbrev);
+        snapshot_combine_values(&mut value, DualNodesOf::new(&self.primal_module).snapshot(abbrev), abbrev);
         value
     }
 }
@@ -386,7 +387,12 @@ impl PrimalDualSolver for SolverEmbeddedRTL {
             visualizer
                 .snapshot_combined(
                     "perfect matching and subgraph".to_string(),
-                    vec![self, &perfect_matching, &VisualizeSubgraph::new(&subgraph)],
+                    vec![
+                        &self.dual_module.driver.driver,
+                        &DualNodesOf::new(&self.primal_module),
+                        &perfect_matching,
+                        &VisualizeSubgraph::new(&subgraph),
+                    ],
                 )
                 .unwrap();
         }
@@ -418,6 +424,7 @@ impl FusionVisualizer for SolverDualScala {
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
         let mut value = self.dual_module.driver.driver.snapshot(abbrev);
         snapshot_combine_values(&mut value, self.primal_module.snapshot(abbrev), abbrev);
+        snapshot_combine_values(&mut value, DualNodesOf::new(&self.primal_module).snapshot(abbrev), abbrev);
         value
     }
 }
@@ -543,7 +550,12 @@ impl PrimalDualSolver for SolverDualScala {
             visualizer
                 .snapshot_combined(
                     "perfect matching and subgraph".to_string(),
-                    vec![self, &perfect_matching, &VisualizeSubgraph::new(&subgraph)],
+                    vec![
+                        &self.dual_module.driver.driver,
+                        &DualNodesOf::new(&self.primal_module),
+                        &perfect_matching,
+                        &VisualizeSubgraph::new(&subgraph),
+                    ],
                 )
                 .unwrap();
         }
@@ -573,6 +585,7 @@ impl FusionVisualizer for SolverDualComb {
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
         let mut value = self.dual_module.driver.driver.snapshot(abbrev);
         snapshot_combine_values(&mut value, self.primal_module.snapshot(abbrev), abbrev);
+        snapshot_combine_values(&mut value, DualNodesOf::new(&self.primal_module).snapshot(abbrev), abbrev);
         value
     }
 }
@@ -715,7 +728,12 @@ impl PrimalDualSolver for SolverDualComb {
             visualizer
                 .snapshot_combined(
                     "perfect matching and subgraph".to_string(),
-                    vec![self, &perfect_matching, &VisualizeSubgraph::new(&subgraph)],
+                    vec![
+                        &self.dual_module.driver.driver,
+                        &DualNodesOf::new(&self.primal_module),
+                        &perfect_matching,
+                        &VisualizeSubgraph::new(&subgraph),
+                    ],
                 )
                 .unwrap();
         }
