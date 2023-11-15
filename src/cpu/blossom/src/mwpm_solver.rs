@@ -578,7 +578,7 @@ pub struct SolverDualComb {
     pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
     subgraph_builder: SubGraphBuilder,
     defect_nodes: Vec<VertexIndex>,
-    offloaded: usize,
+    pub offloaded: usize,
 }
 
 impl FusionVisualizer for SolverDualComb {

@@ -9,8 +9,14 @@ pub struct Vertex {
     pub vertex_index: VertexIndex,
     pub edge_indices: Vec<EdgeIndex>,
     pub default_is_virtual: bool,
+    // each vertex may correspond to multiple virtual pre-matching
+    pub potential_virtual_matching: Option<VirtualMatchingVertexProfile>,
     pub registers: VertexRegisters,
     pub signals: VertexCombSignals,
+}
+
+pub struct VirtualMatchingVertexProfile {
+    pub contributing_edges: Vec<EdgeIndex>,
 }
 
 /// the persistent state of the vertex
@@ -81,6 +87,7 @@ impl Vertex {
             vertex_index,
             edge_indices,
             default_is_virtual: is_virtual,
+            potential_virtual_matching: None,
             registers: VertexRegisters::new(is_virtual),
             signals: VertexCombSignals::new(),
         }
@@ -97,35 +104,29 @@ impl Vertex {
         if !dual_module.use_pre_matching {
             return false;
         }
-        self.signals
-            .permit_pre_matching
-            .borrow_mut()
-            .get_or_insert_with(|| {
-                self.registers.speed == CompactGrowState::Grow
-                    && self
-                        .edge_indices
-                        .iter()
-                        .filter(|&&edge_index| dual_module.edges[edge_index].get_post_fetch_is_tight(dual_module))
-                        .count()
-                        == 1
-            })
-            .clone()
+        referenced_signal!(self.signals.permit_pre_matching, || {
+            self.registers.speed == CompactGrowState::Grow
+                && self
+                    .edge_indices
+                    .iter()
+                    .filter(|&&edge_index| dual_module.edges[edge_index].get_post_fetch_is_tight(dual_module))
+                    .count()
+                    == 1
+        })
+        .clone()
     }
 
     pub fn get_do_pre_matching(&self, dual_module: &DualModuleCombDriver) -> bool {
         if !dual_module.use_pre_matching {
             return false;
         }
-        self.signals
-            .do_pre_matching
-            .borrow_mut()
-            .get_or_insert_with(|| {
-                self.edge_indices.iter().any(|&edge_index| {
-                    let edge = &dual_module.edges[edge_index];
-                    edge.get_do_pre_matching(dual_module)
-                })
+        referenced_signal!(self.signals.do_pre_matching, || {
+            self.edge_indices.iter().any(|&edge_index| {
+                let edge = &dual_module.edges[edge_index];
+                edge.get_do_pre_matching(dual_module)
             })
-            .clone()
+        })
+        .clone()
     }
 
     pub fn get_post_execute_signals(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, VertexRegisters> {

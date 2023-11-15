@@ -10,8 +10,18 @@ pub struct Edge {
     pub default_weight: Weight,
     pub left_index: VertexIndex,
     pub right_index: VertexIndex,
+    // each edge can only have one potential virtual matching
+    pub potential_virtual_matching: Option<VirtualMatchingEdgeProfile>,
     pub registers: EdgeRegisters,
     pub signals: EdgeCombSignals,
+}
+
+pub struct VirtualMatchingEdgeProfile {
+    /// the potential virtual vertex: note that a run-time check of the vertex is needed because
+    /// the virtual attribute can be removed (although cannot be added)
+    pub virtual_index: VertexIndex,
+    pub required_untight_edges: Vec<EdgeIndex>,
+    pub required_permit_vertices: Vec<VertexIndex>,
 }
 
 #[derive(Clone)]
@@ -50,6 +60,7 @@ impl Edge {
             default_weight: weight,
             left_index,
             right_index,
+            potential_virtual_matching: None,
             registers: EdgeRegisters::new(weight),
             signals: EdgeCombSignals::new(),
         }
@@ -73,47 +84,37 @@ impl Edge {
     }
 
     pub fn get_post_fetch_is_tight(&self, dual_module: &DualModuleCombDriver) -> bool {
-        self.signals
-            .post_fetch_is_tight
-            .borrow_mut()
-            .get_or_insert_with(|| {
-                dual_module.vertices[self.left_index].registers.grown
-                    + dual_module.vertices[self.right_index].registers.grown
-                    >= self.registers.weight
-            })
-            .clone()
+        referenced_signal!(self.signals.post_fetch_is_tight, || {
+            dual_module.vertices[self.left_index].registers.grown + dual_module.vertices[self.right_index].registers.grown
+                >= self.registers.weight
+        })
+        .clone()
     }
 
     pub fn get_do_pre_matching(&self, dual_module: &DualModuleCombDriver) -> bool {
         if !dual_module.use_pre_matching {
             return false;
         }
-        self.signals
-            .do_pre_matching
-            .borrow_mut()
-            .get_or_insert_with(|| {
-                let left_vertex = &dual_module.vertices[self.left_index];
-                let right_vertex = &dual_module.vertices[self.right_index];
-                left_vertex.get_permit_pre_matching(dual_module)
-                    && right_vertex.get_permit_pre_matching(dual_module)
-                    && self.get_post_fetch_is_tight(dual_module)
-                    && (left_vertex.registers.node_index != right_vertex.registers.node_index)
-            })
-            .clone()
+        referenced_signal!(self.signals.do_pre_matching, || {
+            let left_vertex = &dual_module.vertices[self.left_index];
+            let right_vertex = &dual_module.vertices[self.right_index];
+            left_vertex.get_permit_pre_matching(dual_module)
+                && right_vertex.get_permit_pre_matching(dual_module)
+                && self.get_post_fetch_is_tight(dual_module)
+                && (left_vertex.registers.node_index != right_vertex.registers.node_index)
+        })
+        .clone()
     }
 
     pub fn get_post_execute_is_tight(&self, dual_module: &DualModuleCombDriver) -> bool {
-        self.signals
-            .post_execute_is_tight
-            .borrow_mut()
-            .get_or_insert_with(|| {
-                let left_vertex = &dual_module.vertices[self.left_index];
-                let right_vertex = &dual_module.vertices[self.right_index];
-                left_vertex.get_post_execute_signals(dual_module).grown
-                    + right_vertex.get_post_execute_signals(dual_module).grown
-                    >= self.registers.weight
-            })
-            .clone()
+        referenced_signal!(self.signals.post_execute_is_tight, || {
+            let left_vertex = &dual_module.vertices[self.left_index];
+            let right_vertex = &dual_module.vertices[self.right_index];
+            left_vertex.get_post_execute_signals(dual_module).grown
+                + right_vertex.get_post_execute_signals(dual_module).grown
+                >= self.registers.weight
+        })
+        .clone()
     }
 
     pub fn get_remaining(&self, dual_module: &DualModuleCombDriver) -> Weight {

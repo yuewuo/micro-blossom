@@ -27,6 +27,8 @@ pub struct DualModuleCombDriver {
     pub maximum_growth: CompactWeight,
     // pre-matching optimization that doesn't report qualified local matchings
     pub use_pre_matching: bool,
+    // pre-matching with virtual matching considered
+    pub use_pre_matching_virtual: bool,
     // the current instruction for computing the combinatorial logic
     pub(crate) instruction: Instruction,
 }
@@ -66,6 +68,7 @@ impl DualModuleCombDriver {
                 .collect(),
             maximum_growth: CompactWeight::MAX,
             use_pre_matching: false,
+            use_pre_matching_virtual: false,
             instruction: Instruction::FindObstacle,
         };
         behavior.clear();
@@ -353,6 +356,18 @@ pub mod tests {
         // dual_module_rtl_adaptor_basic_standard_syndrome(3, visualize_filename, defect_vertices);
     }
 
+    /// evaluate pre-matching with virtual vertex
+    #[test]
+    fn dual_module_comb_pre_matching_virtual_basic_1() {
+        // cargo test dual_module_comb_pre_matching_virtual_basic_1 -- --nocapture
+        let visualize_filename = "dual_module_comb_pre_matching_virtual_basic_1.json".to_string();
+        let defect_vertices = vec![4];
+        // let solver = dual_module_comb_pre_matching_standard_syndrome(3, visualize_filename.clone(), defect_vertices.clone());
+        // assert!(solver.offloaded == 0);
+        let solver = dual_module_comb_pre_matching_virtual_standard_syndrome(3, visualize_filename, defect_vertices);
+        assert!(solver.offloaded == 1);
+    }
+
     pub fn dual_module_comb_basic_standard_syndrome(
         d: VertexNum,
         visualize_filename: String,
@@ -378,6 +393,24 @@ pub mod tests {
             |initializer| {
                 let mut solver = SolverDualComb::new(initializer);
                 solver.dual_module.driver.driver.use_pre_matching = true;
+                solver
+            },
+        )
+    }
+
+    pub fn dual_module_comb_pre_matching_virtual_standard_syndrome(
+        d: VertexNum,
+        visualize_filename: String,
+        defect_vertices: Vec<VertexIndex>,
+    ) -> SolverDualComb {
+        dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
+            d,
+            Some(visualize_filename.clone()),
+            defect_vertices,
+            |initializer| {
+                let mut solver = SolverDualComb::new(initializer);
+                solver.dual_module.driver.driver.use_pre_matching = true;
+                solver.dual_module.driver.driver.use_pre_matching_virtual = true;
                 solver
             },
         )
