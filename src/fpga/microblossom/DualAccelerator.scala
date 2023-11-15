@@ -370,6 +370,8 @@ object DualAcceleratorExamples extends App {
         filename = "./resources/graphs/example_phenomenological_rotated_d%d.json".format(d),
         minimizeBits = true
       )
+    config.broadcastDelay = 2
+    config.convergecastDelay = 4
     Config.spinal("gen/example_phenomenological_rotated_d%d".format(d)).generateVerilog(DualAccelerator(config))
   }
 }
