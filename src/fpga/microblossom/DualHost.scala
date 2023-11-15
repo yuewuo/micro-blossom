@@ -65,7 +65,9 @@ object DualHost extends App {
     simConfig
       .compile({
         val dut = DualAccelerator(config)
-        dut.simMakePublicSnapshot()
+        if (withWaveform) {
+          dut.simMakePublicSnapshot()
+        }
         dut
       })
       .doSim("hosted") { dut =>
