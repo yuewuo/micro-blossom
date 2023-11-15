@@ -233,6 +233,9 @@ impl Vertex {
                     shadow_node.speed = CompactGrowState::Grow;
                 }
             }
+            if self.get_do_pre_matching(dual_module) {
+                shadow_node.speed = CompactGrowState::Stay;
+            }
             shadow_node
         })
     }

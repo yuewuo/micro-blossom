@@ -80,8 +80,8 @@ for p in p_vec:
                 command += ["--code-config",
                             f'{{"filename":"{syndrome_file_path}"}}']
                 command += ["--verifier", "none"]
-                command += ["--primal-dual-type", "embedded-rtl-pre-matching"]
-                # command += ["--primal-dual-type", "embedded-rtl"]
+                command += ["--primal-dual-type", "embedded-comb-pre-matching"]
+                # command += ["--primal-dual-type", "embedded-comb"]
                 command += ["--benchmark-profiler-output",
                             benchmark_profile_path]
                 print(command)
