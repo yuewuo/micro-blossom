@@ -89,8 +89,8 @@ impl<D: DualInterface + DualInterfaceWithInitializer> DualModuleImpl for DualMod
                 if node_2.is_some() {
                     MaxUpdateLength::Conflicting(
                         (
-                            self.nodes[node_1.get() as usize].clone(),
-                            self.nodes[touch_1.get() as usize].clone(),
+                            self.nodes[node_1.unwrap().get() as usize].clone(),
+                            self.nodes[touch_1.unwrap().get() as usize].clone(),
                         ),
                         (
                             self.nodes[node_2.unwrap().get() as usize].clone(),
@@ -100,8 +100,8 @@ impl<D: DualInterface + DualInterfaceWithInitializer> DualModuleImpl for DualMod
                 } else {
                     MaxUpdateLength::TouchingVirtual(
                         (
-                            self.nodes[node_1.get() as usize].clone(),
-                            self.nodes[touch_1.get() as usize].clone(),
+                            self.nodes[node_1.unwrap().get() as usize].clone(),
+                            self.nodes[touch_1.unwrap().get() as usize].clone(),
                         ),
                         (vertex_2.get() as VertexIndex, false),
                     )

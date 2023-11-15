@@ -7,6 +7,7 @@ import io.circe.parser.decode
 case class DualConfig(
     var vertexBits: Int = 15,
     var weightBits: Int = 30,
+    var grownBits: Int = 30,
     var broadcastDelay: Int = 1,
     var convergecastDelay: Int = 1,
     var contextDepth: Int = 1, // how many different contexts are supported
@@ -54,6 +55,7 @@ case class DualConfig(
       val max_weight = graph.weighted_edges.map(e => e.w).max
       assert(max_weight > 0)
       weightBits = log2Up(max_weight.toInt * graph.weighted_edges.length)
+      // grownBits =
       assert(weightBits <= 30)
       if (vertexBits * 2 < weightBits) {
         vertexBits = (weightBits + 1) / 2 // expand vertexBits so that the instruction can hold the maximum length

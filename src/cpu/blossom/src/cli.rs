@@ -107,6 +107,10 @@ pub enum PrimalDualType {
     DualScala,
     /// embedded primal + RTL dual with pre-matching
     EmbeddedRTLPreMatching,
+    /// embedded primal + Combinatorial-behavior dual
+    EmbeddedComb,
+    /// embedded primal + Combinatorial-behavior dual with pre-matching
+    EmbeddedCombPreMatching,
     /// serial primal and dual, standard solution
     Serial,
     /// log error into a file for later fetch
@@ -139,6 +143,8 @@ enum TestCommands {
     EmbeddedRTL(StandardTestParameters),
     DualScala(StandardTestParameters),
     EmbeddedRTLPreMatching(StandardTestParameters),
+    EmbeddedComb(StandardTestParameters),
+    EmbeddedCombPreMatching(StandardTestParameters),
 }
 
 impl From<BenchmarkParameters> for fusion_blossom::cli::BenchmarkParameters {
@@ -325,6 +331,10 @@ impl Cli {
                 TestCommands::EmbeddedRTLPreMatching(parameters) => {
                     standard_test_command_body("embedded-rtl-pre-matching", parameters)
                 }
+                TestCommands::EmbeddedComb(parameters) => standard_test_command_body("embedded-comb", parameters),
+                TestCommands::EmbeddedCombPreMatching(parameters) => {
+                    standard_test_command_body("embedded-comb-pre-matching", parameters)
+                }
             },
             #[cfg(feature = "qecp_integrate")]
             Commands::Qecp(benchmark_parameters) => {
@@ -378,7 +388,19 @@ impl PrimalDualType {
                 solver.dual_module.driver.driver.use_pre_matching = true;
                 Box::new(solver)
             }
-            _ => unimplemented!(),
+            Self::EmbeddedComb => {
+                assert_eq!(primal_dual_config, json!({}));
+                Box::new(SolverDualComb::new(initializer))
+            }
+            Self::EmbeddedCombPreMatching => {
+                assert_eq!(primal_dual_config, json!({}));
+                let mut solver = SolverDualComb::new(initializer);
+                solver.dual_module.driver.driver.use_pre_matching = true;
+                Box::new(solver)
+            }
+            Self::Serial | Self::ErrorPatternLogger => {
+                unreachable!()
+            }
         }
     }
 }

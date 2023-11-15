@@ -1,13 +1,37 @@
 use crate::util::*;
+use derivative::Derivative;
 use fusion_blossom::dual_module::*;
 use fusion_blossom::primal_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::interface::*;
-use micro_blossom_nostd::primal_module_embedded::*;
+use micro_blossom_nostd::primal_module_embedded::PrimalModuleEmbedded as PrimalModuleEmbeddedOriginal;
 use micro_blossom_nostd::util::*;
 use serde_json::json;
 use std::collections::BTreeMap;
+
+#[derive(Derivative)]
+#[derivative(Debug = "transparent")]
+pub struct PrimalModuleEmbedded<const N: usize, const DN: usize>(PrimalModuleEmbeddedOriginal<N, DN>);
+
+impl<const N: usize, const DN: usize> std::ops::Deref for PrimalModuleEmbedded<N, DN> {
+    type Target = PrimalModuleEmbeddedOriginal<N, DN>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<const N: usize, const DN: usize> std::ops::DerefMut for PrimalModuleEmbedded<N, DN> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<const N: usize, const DN: usize> PrimalModuleEmbedded<N, DN> {
+    pub fn new() -> Self {
+        Self(PrimalModuleEmbeddedOriginal::new())
+    }
+}
 
 #[derive(Debug)]
 pub struct PrimalModuleEmbeddedAdaptor {
@@ -137,17 +161,17 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
             }
             let adapted_conflict = match conflict {
                 MaxUpdateLength::Conflicting((node_1, touch_1), (node_2, touch_2)) => CompactObstacle::Conflict {
-                    node_1: *self.ptr_to_index.get(&node_1).unwrap(),
+                    node_1: Some(*self.ptr_to_index.get(&node_1).unwrap()),
                     node_2: Some(*self.ptr_to_index.get(&node_2).unwrap()),
-                    touch_1: *self.ptr_to_index.get(&touch_1).unwrap(),
+                    touch_1: Some(*self.ptr_to_index.get(&touch_1).unwrap()),
                     touch_2: Some(*self.ptr_to_index.get(&touch_2).unwrap()),
                     vertex_1: ni!(0),
                     vertex_2: ni!(0),
                 },
                 MaxUpdateLength::TouchingVirtual((node, touch), (virtual_vertex, _is_mirror)) => CompactObstacle::Conflict {
-                    node_1: *self.ptr_to_index.get(&node).unwrap(),
+                    node_1: Some(*self.ptr_to_index.get(&node).unwrap()),
                     node_2: None,
-                    touch_1: *self.ptr_to_index.get(&touch).unwrap(),
+                    touch_1: Some(*self.ptr_to_index.get(&touch).unwrap()),
                     touch_2: None,
                     vertex_1: ni!(0),
                     vertex_2: ni!(virtual_vertex),
@@ -276,6 +300,114 @@ impl FusionVisualizer for PrimalModuleEmbeddedAdaptor {
         }
         json!({
             "primal_nodes": primal_nodes,
+        })
+    }
+}
+
+impl<const N: usize, const DN: usize> FusionVisualizer for PrimalModuleEmbedded<N, DN> {
+    fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+        let mut primal_nodes = Vec::<serde_json::Value>::new();
+        for node_index in (0..self.nodes.count_defects).chain(N..N + self.nodes.count_blossoms) {
+            primal_nodes.resize(node_index + 1, json!(null));
+            if !self.nodes.has_node(ni!(node_index)) {
+                continue;
+            }
+            let primal_node = self.nodes.get_node(ni!(node_index));
+            let parent = primal_node.parent.map(|parent| parent.get());
+            let parent_touch = primal_node.link.touch.map(|parent| parent.get());
+            let mut root_index = ni!(node_index);
+            let mut depth = 0;
+            while self.nodes.get_node(root_index).parent.is_some() {
+                root_index = self.nodes.get_node(root_index).parent.unwrap();
+                depth += 1;
+            }
+            let mut children = vec![];
+            let mut children_touching = vec![];
+            let mut child = primal_node.first_child;
+            while let Some(child_index) = child {
+                let primal_child = self.nodes.get_node(child_index);
+                children.push(child_index.get());
+                children_touching.push(primal_child.link.peer_touch.unwrap().get());
+                child = primal_child.sibling;
+            }
+            // primal node only cares about outer blossom
+            if primal_node.is_outer_blossom() {
+                primal_nodes[node_index] = json!({
+                    if abbrev { "t" } else { "tree_node" }: json!({
+                        if abbrev { "r" } else { "root" }: root_index.get(),
+                        if abbrev { "p" } else { "parent" }: parent,
+                        if abbrev { "pt" } else { "parent_touching" }: parent_touch,
+                        if abbrev { "c" } else { "children" }: children,
+                        if abbrev { "ct" } else { "children_touching" }: children_touching,
+                        if abbrev { "d" } else { "depth" }: depth,
+                    }),
+                });
+            } else {
+                primal_nodes[node_index] = json!({});
+            }
+        }
+        json!({
+            "primal_nodes": primal_nodes,
+        })
+    }
+}
+
+pub struct DualNodesOf<'a, const N: usize, const DN: usize>(&'a PrimalModuleEmbedded<N, DN>);
+
+impl<'a, const N: usize, const DN: usize> std::ops::Deref for DualNodesOf<'a, N, DN> {
+    type Target = PrimalModuleEmbeddedOriginal<N, DN>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'a, const N: usize, const DN: usize> DualNodesOf<'a, N, DN> {
+    pub fn new(primal_module: &'a PrimalModuleEmbedded<N, DN>) -> Self {
+        Self(primal_module)
+    }
+}
+
+impl<'a, const N: usize, const DN: usize> FusionVisualizer for DualNodesOf<'a, N, DN> {
+    fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+        let mut dual_nodes = Vec::<serde_json::Value>::new();
+        for node_index in (0..self.nodes.count_defects).chain(N..N + self.nodes.count_blossoms) {
+            dual_nodes.resize(node_index + 1, json!(null));
+            if !self.nodes.has_node(ni!(node_index)) {
+                continue;
+            }
+            let is_blossom = self.nodes.is_blossom(ni!(node_index));
+            let primal_node = self.nodes.get_node(ni!(node_index));
+            let parent = primal_node.parent.map(|parent| parent.get());
+            let grow_state = primal_node.grow_state.unwrap_or(CompactGrowState::Stay);
+            let parent_blossom = if primal_node.is_outer_blossom() { None } else { parent };
+            let blossom = if is_blossom {
+                let mut blossom_children = vec![];
+                self.nodes.iterate_blossom_children(ni!(node_index), |child_index, _link| {
+                    blossom_children.push(child_index.get());
+                });
+                Some(blossom_children)
+            } else {
+                None
+            };
+            dual_nodes[node_index] = json!({
+                if abbrev { "o" } else { "blossom" }: blossom,
+                // if abbrev { "t" } else { "touching_children" }: if is_blossom { Some(children_touching) } else { None },
+                if abbrev { "s" } else { "defect_vertex" }: if is_blossom { None } else { Some(VertexIndex::MAX) },
+                if abbrev { "g" } else { "grow_state" }: match grow_state {
+                    CompactGrowState::Grow => "grow",
+                    CompactGrowState::Shrink => "shrink",
+                    CompactGrowState::Stay => "stay",
+                },
+                if abbrev { "u" } else { "unit_growth" }: match grow_state {
+                    CompactGrowState::Grow => 1,
+                    CompactGrowState::Shrink => -1,
+                    CompactGrowState::Stay => 0,
+                },
+                if abbrev { "p" } else { "parent_blossom" }: parent_blossom,
+            });
+        }
+        json!({
+            "dual_nodes": dual_nodes,
         })
     }
 }

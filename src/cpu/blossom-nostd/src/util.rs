@@ -45,6 +45,16 @@ impl CompactGrowState {
     }
 }
 
+impl From<CompactGrowState> for isize {
+    fn from(speed: CompactGrowState) -> Self {
+        match speed {
+            CompactGrowState::Stay => 0,
+            CompactGrowState::Shrink => -1,
+            CompactGrowState::Grow => 1,
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum CompactMatchTarget {
     Peer(CompactNodeIndex),
