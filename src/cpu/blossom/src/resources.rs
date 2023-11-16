@@ -1,20 +1,5 @@
 // see micro-blossom/resources/graphs/README.md
 
-// generate by https://app.quicktype.io/
-
-// Example code that deserializes and serializes the model.
-// extern crate serde;
-// #[macro_use]
-// extern crate serde_derive;
-// extern crate serde_json;
-//
-// use generated_module::MicroBlossomSingle;
-//
-// fn main() {
-//     let json = r#"{"answer": 42}"#;
-//     let model: MicroBlossomSingle = serde_json::from_str(&json).unwrap();
-// }
-
 use fusion_blossom::example_codes::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
