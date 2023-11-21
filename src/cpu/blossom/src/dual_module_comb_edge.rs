@@ -110,16 +110,15 @@ impl Edge {
         referenced_signal!(self.signals.post_execute_is_tight, || {
             let left_vertex = &dual_module.vertices[self.left_index];
             let right_vertex = &dual_module.vertices[self.right_index];
-            left_vertex.get_post_execute_signals(dual_module).grown
-                + right_vertex.get_post_execute_signals(dual_module).grown
+            left_vertex.get_post_execute_state(dual_module).grown + right_vertex.get_post_execute_state(dual_module).grown
                 >= self.registers.weight
         })
         .clone()
     }
 
     pub fn get_remaining(&self, dual_module: &DualModuleCombDriver) -> Weight {
-        let left_vertex = dual_module.vertices[self.left_index].get_post_update_signals(dual_module);
-        let right_vertex = dual_module.vertices[self.right_index].get_post_update_signals(dual_module);
+        let left_vertex = dual_module.vertices[self.left_index].get_post_update_state(dual_module);
+        let right_vertex = dual_module.vertices[self.right_index].get_post_update_state(dual_module);
         self.registers.weight - left_vertex.grown - right_vertex.grown
     }
 

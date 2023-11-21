@@ -17,6 +17,7 @@ pub struct MicroBlossomSingle {
     /// a binary tree from every vertex/edge to a single root
     pub vertex_binary_tree: BinaryTree,
     pub edge_binary_tree: BinaryTree,
+    pub vertex_edge_binary_tree: BinaryTree, // first vertex, then edge
     pub vertex_max_growth: Vec<isize>,
 }
 
@@ -79,6 +80,8 @@ impl MicroBlossomSingle {
             })
         }
         let edge_binary_tree = BinaryTree::inferred_from_positions(&edge_positions);
+        let vertex_edge_positions: Vec<_> = positions.iter().chain(edge_positions.iter()).cloned().collect();
+        let vertex_edge_binary_tree = BinaryTree::inferred_from_positions(&vertex_edge_positions);
         let vertex_max_growth = infer_vertex_max_growth(initializer);
         Self {
             vertex_num: initializer.vertex_num.try_into().unwrap(),
@@ -87,6 +90,7 @@ impl MicroBlossomSingle {
             virtual_vertices: initializer.virtual_vertices.iter().map(|index| *index as i64).collect(),
             vertex_binary_tree,
             edge_binary_tree,
+            vertex_edge_binary_tree,
             vertex_max_growth,
         }
     }

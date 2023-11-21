@@ -34,9 +34,9 @@ pub struct VertexRegisters {
 pub struct VertexCombSignals {
     permit_pre_matching: RefCell<Option<bool>>,
     do_pre_matching: RefCell<Option<bool>>,
-    post_execute_signals: RefCell<Option<VertexRegisters>>,
+    post_execute_state: RefCell<Option<VertexRegisters>>,
     propagating_peer: RefCell<Option<Option<PropagatingPeer>>>,
-    post_update_signals: RefCell<Option<VertexRegisters>>,
+    post_update_state: RefCell<Option<VertexRegisters>>,
     shadow_node: RefCell<Option<ShadowNode>>,
     response: RefCell<Option<CompactObstacle>>,
 }
@@ -72,9 +72,9 @@ impl VertexCombSignals {
         Self {
             permit_pre_matching: RefCell::new(None),
             do_pre_matching: RefCell::new(None),
-            post_execute_signals: RefCell::new(None),
+            post_execute_state: RefCell::new(None),
             propagating_peer: RefCell::new(None),
-            post_update_signals: RefCell::new(None),
+            post_update_state: RefCell::new(None),
             shadow_node: RefCell::new(None),
             response: RefCell::new(None),
         }
@@ -129,8 +129,8 @@ impl Vertex {
         .clone()
     }
 
-    pub fn get_post_execute_signals(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, VertexRegisters> {
-        referenced_signal!(self.signals.post_execute_signals, || {
+    pub fn get_post_execute_state(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, VertexRegisters> {
+        referenced_signal!(self.signals.post_execute_state, || {
             let mut signals = self.registers.clone();
             match &dual_module.instruction {
                 Instruction::SetSpeed { node, speed } => {
@@ -171,37 +171,29 @@ impl Vertex {
 
     pub fn get_propagating_peer(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, Option<PropagatingPeer>> {
         referenced_signal!(self.signals.propagating_peer, || {
-            if self.get_post_execute_signals(dual_module).grown == 0 && !self.edge_indices.is_empty() {
-                // find a peer node with positive growth and fully-grown edge
-                self.edge_indices
-                    .iter()
-                    .map(|&edge_index| {
-                        let edge = &dual_module.edges[edge_index];
-                        let peer_index = edge.get_peer(self.vertex_index);
-                        let peer = &dual_module.vertices[peer_index];
-                        let peer_post_execute_signals = peer.get_post_execute_signals(dual_module);
-                        if edge.get_post_execute_is_tight(dual_module)
-                            && peer_post_execute_signals.speed == CompactGrowState::Grow
-                        {
-                            Some(PropagatingPeer {
-                                node_index: peer_post_execute_signals.node_index,
-                                root_index: peer_post_execute_signals.root_index,
-                            })
-                        } else {
-                            None
-                        }
-                    })
-                    .reduce(|a, b| a.or(b))
-                    .unwrap()
-            } else {
-                None
+            if self.get_post_execute_state(dual_module).grown != 0 {
+                return None;
             }
+            // find a peer node with positive growth and fully-grown edge
+            for &edge_index in self.edge_indices.iter() {
+                let edge = &dual_module.edges[edge_index];
+                let peer_index = edge.get_peer(self.vertex_index);
+                let peer = &dual_module.vertices[peer_index];
+                let peer_post_execute_state = peer.get_post_execute_state(dual_module);
+                if edge.get_post_execute_is_tight(dual_module) && peer_post_execute_state.speed == CompactGrowState::Grow {
+                    return Some(PropagatingPeer {
+                        node_index: peer_post_execute_state.node_index,
+                        root_index: peer_post_execute_state.root_index,
+                    });
+                }
+            }
+            None
         })
     }
 
-    pub fn get_post_update_signals(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, VertexRegisters> {
-        referenced_signal!(self.signals.post_update_signals, || {
-            let mut signals = self.get_post_execute_signals(dual_module).clone();
+    pub fn get_post_update_state(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, VertexRegisters> {
+        referenced_signal!(self.signals.post_update_state, || {
+            let mut signals = self.get_post_execute_state(dual_module).clone();
             let propagating_peer = self.get_propagating_peer(dual_module);
             if !signals.is_defect && !signals.is_virtual && signals.grown == 0 {
                 if let Some(peer) = propagating_peer.clone() {
@@ -220,7 +212,7 @@ impl Vertex {
 
     pub fn get_shadow_node(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, ShadowNode> {
         referenced_signal!(self.signals.shadow_node, || {
-            let signals = self.get_post_execute_signals(dual_module);
+            let signals = self.get_post_execute_state(dual_module);
             let propagating_peer = self.get_propagating_peer(dual_module);
             let mut shadow_node = ShadowNode {
                 node_index: signals.node_index,
@@ -247,10 +239,10 @@ impl Vertex {
             if !matches!(dual_module.instruction, Instruction::FindObstacle { .. }) {
                 return CompactObstacle::None;
             }
-            let post_update_signals = self.get_post_update_signals(dual_module);
-            if post_update_signals.speed == CompactGrowState::Shrink {
+            let post_update_state = self.get_post_update_state(dual_module);
+            if post_update_state.speed == CompactGrowState::Shrink {
                 return CompactObstacle::GrowLength {
-                    length: post_update_signals.grown.try_into().unwrap(),
+                    length: post_update_state.grown.try_into().unwrap(),
                 };
             }
             CompactObstacle::GrowLength {
@@ -260,7 +252,7 @@ impl Vertex {
     }
 
     pub fn get_write_signals(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, VertexRegisters> {
-        self.get_post_update_signals(dual_module)
+        self.get_post_update_state(dual_module)
     }
 }
 
@@ -303,9 +295,9 @@ impl Vertex {
             "signals": json!({
                 "permit_pre_matching": self.get_permit_pre_matching(dual_module),
                 "do_pre_matching": self.get_do_pre_matching(dual_module),
-                "post_execute_signals": self.get_post_execute_signals(dual_module).snapshot(),
+                "post_execute_state": self.get_post_execute_state(dual_module).snapshot(),
                 "propagating_peer": self.get_propagating_peer(dual_module).clone().map(|v| v.snapshot()),
-                "post_update_signals": self.get_post_update_signals(dual_module).snapshot(),
+                "post_update_state": self.get_post_update_state(dual_module).snapshot(),
                 "shadow_node": self.get_shadow_node(dual_module).snapshot(),
                 "response": format!("{:?}", self.get_response(dual_module)),
             })
