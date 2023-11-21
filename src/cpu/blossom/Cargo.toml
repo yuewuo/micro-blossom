@@ -46,14 +46,15 @@ rayon = "1.7.0"
 weak-table = "0.3.2"
 rand = "0.8.5"
 lazy_static = "1.4.0"
-petgraph = "0.6.3"
+petgraph = "0.6.4"
 qecp = { version = "0.2.4", optional = true }
 fusion-blossom = { path = "../../../../fusion-blossom", version = "0.2.9" }
 micro-blossom-nostd = { path = "../blossom-nostd", features = [
     "std",
     "obstacle_potentially_outdated",
 ] }
-heapless = "0.7.16"
+heapless = "0.8.0"
 konst = "0.3.6"
 wait-timeout = "0.2.0"
 scan_fmt = "0.2.6"
+mwmatching = "0.1.1"

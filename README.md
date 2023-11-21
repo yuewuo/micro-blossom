@@ -12,6 +12,19 @@ Distributed MWPM decoder for Quantum Error Correction
 
 ## Installation
 
+### Install language
+
+```sh
+# Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Scala
+sudo apt install default-jdk
+# https://www.scala-sbt.org/1.x/docs/Installing-sbt-on-Linux.html
+```
+
+### Install Verilator
+
 For FPGA development and testing, we use [Verilator](https://verilator.org/guide/latest/install.html).
 We pin to a specific version 5.014 to avoid incompatibility.
 
@@ -19,9 +32,9 @@ We pin to a specific version 5.014 to avoid incompatibility.
 sudo apt install gtkwave
 sudo apt install git help2man perl python3 make autoconf g++ flex bison ccache
 sudo apt install libgoogle-perftools-dev numactl perl-doc
-sudo apt-get install libfl2  # Ubuntu only (ignore if gives error)
-sudo apt-get install libfl-dev  # Ubuntu only (ignore if gives error)
-sudo apt-get install zlibc zlib1g zlib1g-dev  # Ubuntu only (ignore if gives error)
+sudo apt install libfl2  # Ubuntu only (ignore if gives error)
+sudo apt install libfl-dev  # Ubuntu only (ignore if gives error)
+sudo apt install zlibc zlib1g zlib1g-dev  # Ubuntu only (ignore if gives error)
 
 git clone https://github.com/verilator/verilator   # Only first time
 cd verilator
@@ -54,7 +67,7 @@ git clone git@github.com:SpinalHDL/openocd_riscv.git
 cd openocd_riscv
 
 # for Ubuntu
-sudo apt-get install libtool automake texinfo libusb-1.0-0-dev libusb-dev libyaml-dev pkg-config
+sudo apt-get install libtool automake texinfo libusb-1.0-0-dev libusb-dev libyaml-dev pkg-config libftdi-dev libusb-1.0-0-dev
 # for MacOS (@Yue 2023.10.11)
 brew install libtool automake libusb libyaml pkg-config texinfo
 
@@ -118,6 +131,26 @@ sudo ./llvm.sh 15
 ### Install YoSys synthesizer
 
 It's easiest to install a pre-built binary from [OSS CAD](https://github.com/YosysHQ/oss-cad-suite-build).
+
+### Install OpenROAD EDA tool for RTL-GDSII flow
+
+The link of installation binary is at [here](https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts/blob/master/docs/user/BuildWithPrebuilt.md).
+
+```sh
+# install Klayout (https://www.klayout.de/build.html)
+sudo apt install klayout
+
+# install Yosys (https://github.com/YosysHQ/oss-cad-suite-build/blob/master/README.md#installation)
+wget https://github.com/YosysHQ/oss-cad-suite-build/releases/download/2023-11-18/oss-cad-suite-linux-x64-20231118.tgz
+tar -xvf oss-cad-suite-linux-x64-20231118.tgz
+# put this in .bashrc: export PATH="<extracted_location>/oss-cad-suite/bin:$PATH"
+
+# install OpenROAD
+sudo apt install openroad
+# put these in .bashrc for future usage
+export OPENROAD_EXE=$(command -v openroad)
+export YOSYS_CMD=$(command -v yosys)
+```
 
 ## Build
 
@@ -197,6 +230,15 @@ When implementing on Vivado, the resource usage is as follows:
 
 ```
 phenomenological d=3: 18298 LUT (7.94%)
+```
+
+### How to build chip design in GDSII format using OpenROAD
+
+```sh
+git clone https://github.com/The-OpenROAD-Project/OpenROAD-flow-scripts.git
+cd flow
+make
+make gui_final
 ```
 
 ## Known Issues
