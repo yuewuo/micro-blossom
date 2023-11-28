@@ -41,7 +41,7 @@ impl<D: DualInterface + DualInterfaceWithInitializer> DualModuleImpl for DualMod
         match &node.class {
             DualNodeClass::Blossom { .. } => {
                 self.dual_module
-                    .create_blossom(&mut MockPrimalInterface { nodes: &mut self.nodes }, ni!(node.index));
+                    .create_blossom(&MockPrimalInterface { nodes: &mut self.nodes }, ni!(node.index));
             }
             DualNodeClass::DefectVertex { defect_index } => {
                 self.dual_module.add_defect(ni!(*defect_index), ni!(node.index));
@@ -53,7 +53,7 @@ impl<D: DualInterface + DualInterfaceWithInitializer> DualModuleImpl for DualMod
         // remove blossom is expensive because the vertices doesn't remember all the chain of blossom
         let node = dual_node_ptr.read_recursive();
         self.dual_module
-            .expand_blossom(&mut MockPrimalInterface { nodes: &mut self.nodes }, ni!(node.index));
+            .expand_blossom(&MockPrimalInterface { nodes: &mut self.nodes }, ni!(node.index));
     }
 
     fn set_grow_state(&mut self, dual_node_ptr: &DualNodePtr, grow_state: DualNodeGrowState) {
@@ -86,14 +86,14 @@ impl<D: DualInterface + DualInterfaceWithInitializer> DualModuleImpl for DualMod
                 vertex_1: _,
                 vertex_2,
             } => {
-                if node_2.is_some() {
+                if let Some(node_2) = node_2 {
                     MaxUpdateLength::Conflicting(
                         (
                             self.nodes[node_1.unwrap().get() as usize].clone(),
                             self.nodes[touch_1.unwrap().get() as usize].clone(),
                         ),
                         (
-                            self.nodes[node_2.unwrap().get() as usize].clone(),
+                            self.nodes[node_2.get() as usize].clone(),
                             self.nodes[touch_2.unwrap().get() as usize].clone(),
                         ),
                     )

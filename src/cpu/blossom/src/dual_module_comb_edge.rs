@@ -10,6 +10,7 @@ pub struct Edge {
     pub default_weight: Weight,
     pub left_index: VertexIndex,
     pub right_index: VertexIndex,
+    pub offloading_indices: Vec<usize>,
     // each edge can only have one potential virtual matching
     pub potential_virtual_matching: Option<VirtualMatchingEdgeProfile>,
     pub registers: EdgeRegisters,
@@ -31,7 +32,7 @@ pub struct EdgeRegisters {
 
 pub struct EdgeCombSignals {
     post_fetch_is_tight: RefCell<Option<bool>>,
-    do_pre_matching: RefCell<Option<bool>>,
+    offloading_stalled: RefCell<Option<bool>>,
     post_execute_is_tight: RefCell<Option<bool>>,
     response: RefCell<Option<CompactObstacle>>,
 }
@@ -46,7 +47,7 @@ impl EdgeCombSignals {
     pub fn new() -> Self {
         Self {
             post_fetch_is_tight: RefCell::new(None),
-            do_pre_matching: RefCell::new(None),
+            offloading_stalled: RefCell::new(None),
             post_execute_is_tight: RefCell::new(None),
             response: RefCell::new(None),
         }
@@ -60,6 +61,7 @@ impl Edge {
             default_weight: weight,
             left_index,
             right_index,
+            offloading_indices: vec![],
             potential_virtual_matching: None,
             registers: EdgeRegisters::new(weight),
             signals: EdgeCombSignals::new(),
@@ -91,17 +93,18 @@ impl Edge {
         .clone()
     }
 
-    pub fn get_do_pre_matching(&self, dual_module: &DualModuleCombDriver) -> bool {
-        if !dual_module.use_pre_matching {
-            return false;
-        }
-        referenced_signal!(self.signals.do_pre_matching, || {
-            let left_vertex = &dual_module.vertices[self.left_index];
-            let right_vertex = &dual_module.vertices[self.right_index];
-            left_vertex.get_permit_pre_matching(dual_module)
-                && right_vertex.get_permit_pre_matching(dual_module)
-                && self.get_post_fetch_is_tight(dual_module)
-                && (left_vertex.registers.node_index != right_vertex.registers.node_index)
+    pub fn get_offloading_stalled(&self, dual_module: &DualModuleCombDriver) -> bool {
+        referenced_signal!(self.signals.offloading_stalled, || {
+            self.offloading_indices
+                .iter()
+                .map(|&offloading_index| {
+                    dual_module.offloading_units[offloading_index]
+                        .get_signals(dual_module)
+                        .edge_stalls
+                        .contains(&self.edge_index)
+                })
+                .reduce(|a, b| a || b)
+                .unwrap_or(false)
         })
         .clone()
     }
@@ -182,7 +185,7 @@ impl Edge {
             }),
             "signals": json!({
                 "post_fetch_is_tight": self.get_post_fetch_is_tight(dual_module),
-                "do_pre_matching": self.get_do_pre_matching(dual_module),
+                "offloading_stalled": self.get_offloading_stalled(dual_module),
                 "post_execute_is_tight": self.get_post_execute_is_tight(dual_module),
                 "response": format!("{:?}", self.get_response(dual_module)),
             })

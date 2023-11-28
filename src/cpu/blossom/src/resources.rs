@@ -6,33 +6,35 @@ use fusion_blossom::visualize::*;
 use mwmatching::Matching;
 use petgraph::{algo::floyd_warshall, prelude::*};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MicroBlossomSingle {
-    positions: Vec<Position>,
-    vertex_num: usize,
-    weighted_edges: Vec<WeightedEdges>,
-    virtual_vertices: Vec<i64>,
+    pub positions: Vec<Position>,
+    pub vertex_num: usize,
+    pub weighted_edges: Vec<WeightedEdges>,
+    pub virtual_vertices: Vec<usize>,
     /// a binary tree from every vertex/edge to a single root
     pub vertex_binary_tree: BinaryTree,
     pub edge_binary_tree: BinaryTree,
     pub vertex_edge_binary_tree: BinaryTree, // first vertex, then edge
     pub vertex_max_growth: Vec<isize>,
+    /// primal offloading
+    pub offloading: OffloadingFinder,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Position {
-    i: f64,
-    j: f64,
-    t: f64,
+    pub i: f64,
+    pub j: f64,
+    pub t: f64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WeightedEdges {
-    l: usize,
-    r: usize,
-    w: isize,
+    pub l: usize,
+    pub r: usize,
+    pub w: isize,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -53,6 +55,25 @@ pub struct BinaryTreeNode {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BinaryTree {
     nodes: Vec<BinaryTreeNode>,
+}
+
+/// the type of offloading
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum OffloadingType {
+    /// a pair of defects match with each other
+    #[serde(rename = "DM")]
+    DefectMatch {
+        #[serde(rename = "e")]
+        edge_index: usize,
+    },
+    /// a defect match with virtual vertex
+    #[serde(rename = "VM")]
+    VirtualMatch {
+        #[serde(rename = "e")]
+        edge_index: usize,
+        #[serde(rename = "v")]
+        virtual_vertex: usize,
+    },
 }
 
 impl MicroBlossomSingle {
@@ -83,15 +104,18 @@ impl MicroBlossomSingle {
         let vertex_edge_positions: Vec<_> = positions.iter().chain(edge_positions.iter()).cloned().collect();
         let vertex_edge_binary_tree = BinaryTree::inferred_from_positions(&vertex_edge_positions);
         let vertex_max_growth = infer_vertex_max_growth(initializer);
+        let mut offloading = OffloadingFinder::new();
+        offloading.find_all(initializer);
         Self {
             vertex_num: initializer.vertex_num.try_into().unwrap(),
             positions,
             weighted_edges,
-            virtual_vertices: initializer.virtual_vertices.iter().map(|index| *index as i64).collect(),
+            virtual_vertices: initializer.virtual_vertices.clone(),
             vertex_binary_tree,
             edge_binary_tree,
             vertex_edge_binary_tree,
             vertex_max_growth,
+            offloading,
         }
     }
 
@@ -109,6 +133,59 @@ impl MicroBlossomSingle {
             .map(|_| VisualizePosition::new(0., 0., 0.))
             .collect();
         Self::new(initializer, &positions)
+    }
+
+    pub fn get_initializer(&self) -> SolverInitializer {
+        SolverInitializer::new(
+            self.vertex_num,
+            self.weighted_edges.iter().map(|edge| (edge.l, edge.r, edge.w)).collect(),
+            self.virtual_vertices.clone(),
+        )
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct OffloadingFinder(pub Vec<OffloadingType>);
+
+impl OffloadingFinder {
+    pub fn new() -> Self {
+        Self(vec![])
+    }
+
+    pub fn find_all(&mut self, initializer: &SolverInitializer) {
+        self.find_defect_match(initializer);
+        self.find_virtual_match(initializer);
+    }
+
+    pub fn find_defect_match(&mut self, initializer: &SolverInitializer) {
+        let virtual_vertices: BTreeSet<_> = initializer.virtual_vertices.iter().cloned().collect();
+        for (edge_index, (l, r, _weight)) in initializer.weighted_edges.iter().enumerate() {
+            let is_virtual_left = virtual_vertices.contains(l);
+            let is_virtual_right = virtual_vertices.contains(r);
+            if !is_virtual_left && !is_virtual_right {
+                self.0.push(OffloadingType::DefectMatch { edge_index })
+            }
+        }
+    }
+
+    pub fn find_virtual_match(&mut self, initializer: &SolverInitializer) {
+        let virtual_vertices: BTreeSet<_> = initializer.virtual_vertices.iter().cloned().collect();
+        for (edge_index, (l, r, _weight)) in initializer.weighted_edges.iter().enumerate() {
+            let is_virtual_left = virtual_vertices.contains(l);
+            let is_virtual_right = virtual_vertices.contains(r);
+            if is_virtual_left {
+                self.0.push(OffloadingType::VirtualMatch {
+                    edge_index,
+                    virtual_vertex: *l,
+                })
+            }
+            if is_virtual_right {
+                self.0.push(OffloadingType::VirtualMatch {
+                    edge_index,
+                    virtual_vertex: *r,
+                })
+            }
+        }
     }
 }
 

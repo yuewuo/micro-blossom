@@ -9,6 +9,7 @@ pub struct Vertex {
     pub vertex_index: VertexIndex,
     pub edge_indices: Vec<EdgeIndex>,
     pub default_is_virtual: bool,
+    pub offloading_indices: Vec<usize>,
     // each vertex may correspond to multiple virtual pre-matching
     pub potential_virtual_matching: Option<VirtualMatchingVertexProfile>,
     pub registers: VertexRegisters,
@@ -32,8 +33,9 @@ pub struct VertexRegisters {
 
 /// combinatorial signals of the vertex, should be invalidated whenever the registers are updated
 pub struct VertexCombSignals {
-    permit_pre_matching: RefCell<Option<bool>>,
-    do_pre_matching: RefCell<Option<bool>>,
+    /// only one surrounding edge is tight
+    is_one_tight: RefCell<Option<bool>>,
+    offloading_stalled: RefCell<Option<bool>>,
     post_execute_state: RefCell<Option<VertexRegisters>>,
     propagating_peer: RefCell<Option<Option<PropagatingPeer>>>,
     post_update_state: RefCell<Option<VertexRegisters>>,
@@ -70,8 +72,8 @@ impl VertexRegisters {
 impl VertexCombSignals {
     pub fn new() -> Self {
         Self {
-            permit_pre_matching: RefCell::new(None),
-            do_pre_matching: RefCell::new(None),
+            is_one_tight: RefCell::new(None),
+            offloading_stalled: RefCell::new(None),
             post_execute_state: RefCell::new(None),
             propagating_peer: RefCell::new(None),
             post_update_state: RefCell::new(None),
@@ -86,6 +88,7 @@ impl Vertex {
         Self {
             vertex_index,
             edge_indices,
+            offloading_indices: vec![],
             default_is_virtual: is_virtual,
             potential_virtual_matching: None,
             registers: VertexRegisters::new(is_virtual),
@@ -100,31 +103,28 @@ impl Vertex {
         self.signals = VertexCombSignals::new();
     }
 
-    pub fn get_permit_pre_matching(&self, dual_module: &DualModuleCombDriver) -> bool {
-        if !dual_module.use_pre_matching {
-            return false;
-        }
-        referenced_signal!(self.signals.permit_pre_matching, || {
-            self.registers.speed == CompactGrowState::Grow
-                && self
-                    .edge_indices
-                    .iter()
-                    .filter(|&&edge_index| dual_module.edges[edge_index].get_post_fetch_is_tight(dual_module))
-                    .count()
-                    == 1
+    pub fn get_is_one_tight(&self, dual_module: &DualModuleCombDriver) -> bool {
+        *referenced_signal!(self.signals.is_one_tight, || {
+            self.edge_indices
+                .iter()
+                .filter(|&&edge_index| dual_module.edges[edge_index].get_post_fetch_is_tight(dual_module))
+                .count()
+                == 1
         })
-        .clone()
     }
 
-    pub fn get_do_pre_matching(&self, dual_module: &DualModuleCombDriver) -> bool {
-        if !dual_module.use_pre_matching {
-            return false;
-        }
-        referenced_signal!(self.signals.do_pre_matching, || {
-            self.edge_indices.iter().any(|&edge_index| {
-                let edge = &dual_module.edges[edge_index];
-                edge.get_do_pre_matching(dual_module)
-            })
+    pub fn get_offloading_stalled(&self, dual_module: &DualModuleCombDriver) -> bool {
+        referenced_signal!(self.signals.offloading_stalled, || {
+            self.offloading_indices
+                .iter()
+                .map(|&offloading_index| {
+                    dual_module.offloading_units[offloading_index]
+                        .get_signals(dual_module)
+                        .vertex_stalls
+                        .contains(&self.vertex_index)
+                })
+                .reduce(|a, b| a || b)
+                .unwrap_or(false)
         })
         .clone()
     }
@@ -145,7 +145,7 @@ impl Vertex {
                     }
                 }
                 Instruction::Grow { length } => {
-                    if !self.get_do_pre_matching(dual_module) {
+                    if !self.get_offloading_stalled(dual_module) {
                         signals.grown = self.registers.grown + Weight::from(self.registers.speed) * length;
                         assert!(
                             signals.grown >= 0,
@@ -226,7 +226,7 @@ impl Vertex {
                     shadow_node.speed = CompactGrowState::Grow;
                 }
             }
-            if self.get_do_pre_matching(dual_module) {
+            if self.get_offloading_stalled(dual_module) {
                 shadow_node.speed = CompactGrowState::Stay;
             }
             shadow_node
@@ -293,8 +293,7 @@ impl Vertex {
         json!({
             "registers": self.registers.snapshot(),
             "signals": json!({
-                "permit_pre_matching": self.get_permit_pre_matching(dual_module),
-                "do_pre_matching": self.get_do_pre_matching(dual_module),
+                "offloading_stalled": self.get_offloading_stalled(dual_module),
                 "post_execute_state": self.get_post_execute_state(dual_module).snapshot(),
                 "propagating_peer": self.get_propagating_peer(dual_module).clone().map(|v| v.snapshot()),
                 "post_update_state": self.get_post_update_state(dual_module).snapshot(),

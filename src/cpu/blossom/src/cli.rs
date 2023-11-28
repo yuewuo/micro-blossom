@@ -1,4 +1,5 @@
 use crate::mwpm_solver::*;
+use crate::resources::*;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use fusion_blossom::cli::{ExampleCodeType, RunnableBenchmarkParameters, Verifier};
 use fusion_blossom::mwpm_solver::*;
@@ -395,7 +396,13 @@ impl PrimalDualType {
             Self::EmbeddedCombPreMatching => {
                 assert_eq!(primal_dual_config, json!({}));
                 let mut solver = SolverDualComb::new(initializer);
-                solver.dual_module.driver.driver.use_pre_matching = true;
+                let mut offloading = OffloadingFinder::new();
+                offloading.find_defect_match(&initializer);
+                solver
+                    .dual_module
+                    .driver
+                    .driver
+                    .set_offloading_units(&initializer, offloading.0);
                 Box::new(solver)
             }
             Self::Serial | Self::ErrorPatternLogger => {

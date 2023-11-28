@@ -9,7 +9,9 @@
 
 use crate::dual_module_adaptor::*;
 use crate::dual_module_comb_edge::*;
+use crate::dual_module_comb_offloading::*;
 use crate::dual_module_comb_vertex::*;
+use crate::resources::*;
 use crate::util::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
@@ -24,11 +26,8 @@ pub struct DualModuleCombDriver {
     pub initializer: SolverInitializer,
     pub vertices: Vec<Vertex>,
     pub edges: Vec<Edge>,
+    pub offloading_units: Vec<Offloading>,
     pub maximum_growth: CompactWeight,
-    // pre-matching optimization that doesn't report qualified local matchings
-    pub use_pre_matching: bool,
-    // pre-matching with virtual matching considered
-    pub use_pre_matching_virtual: bool,
     // the current instruction for computing the combinatorial logic
     pub(crate) instruction: Instruction,
 }
@@ -42,15 +41,16 @@ impl DualInterfaceWithInitializer for DualModuleComb {
 }
 
 impl DualModuleCombDriver {
-    pub fn new_empty(initializer: &SolverInitializer) -> Self {
-        let virtual_vertices: BTreeSet<VertexIndex> = initializer.virtual_vertices.iter().cloned().collect();
-        let mut all_incident_edges: Vec<Vec<EdgeIndex>> = vec![vec![]; initializer.vertex_num];
-        for (edge_index, &(i, j, _weight)) in initializer.weighted_edges.iter().enumerate() {
-            for vertex_index in [i, j] {
+    pub fn new(config: MicroBlossomSingle) -> Self {
+        let virtual_vertices: BTreeSet<VertexIndex> = config.virtual_vertices.iter().cloned().collect();
+        let mut all_incident_edges: Vec<Vec<EdgeIndex>> = vec![vec![]; config.vertex_num];
+        for (edge_index, &WeightedEdges { l, r, .. }) in config.weighted_edges.iter().enumerate() {
+            for vertex_index in [l, r] {
                 all_incident_edges[vertex_index].push(edge_index);
             }
         }
-        let mut behavior = Self {
+        let initializer = config.get_initializer();
+        let mut comb_driver = Self {
             initializer: initializer.clone(),
             vertices: all_incident_edges
                 .into_iter()
@@ -67,12 +67,44 @@ impl DualModuleCombDriver {
                 .map(|(edge_index, &(i, j, weight))| Edge::new(edge_index, i, j, weight))
                 .collect(),
             maximum_growth: CompactWeight::MAX,
-            use_pre_matching: false,
-            use_pre_matching_virtual: false,
+            offloading_units: vec![],
             instruction: Instruction::FindObstacle,
         };
-        behavior.clear();
-        behavior
+        let mut offloading = OffloadingFinder::new();
+        offloading.find_all(&initializer);
+        comb_driver.set_offloading_units(&initializer, offloading.0);
+        comb_driver.clear();
+        comb_driver
+    }
+
+    pub fn set_offloading_units(&mut self, initializer: &SolverInitializer, offloading_types: Vec<OffloadingType>) {
+        for vertex in self.vertices.iter_mut() {
+            vertex.offloading_indices.clear();
+        }
+        for edge in self.edges.iter_mut() {
+            edge.offloading_indices.clear();
+        }
+        self.offloading_units = offloading_types
+            .into_iter()
+            .map(|offloading_type| Offloading::new(offloading_type, initializer))
+            .collect();
+        // connect the offloading units
+        for (offloading_index, offloading) in self.offloading_units.iter().enumerate() {
+            for &vertex_index in offloading.affecting_vertices.iter() {
+                self.vertices[vertex_index].offloading_indices.push(offloading_index);
+            }
+            for &edge_index in offloading.affecting_edges.iter() {
+                self.edges[edge_index].offloading_indices.push(offloading_index);
+            }
+        }
+    }
+
+    pub fn new_empty(initializer: &SolverInitializer) -> Self {
+        let fake_positions = vec![VisualizePosition::new(0., 0., 0.); initializer.vertex_num];
+        let config = MicroBlossomSingle::new(initializer, &fake_positions);
+        let mut comb_driver = Self::new(config);
+        comb_driver.set_offloading_units(initializer, vec![]); // by default do not use any offloading
+        comb_driver
     }
 
     pub fn clear(&mut self) {
@@ -82,6 +114,9 @@ impl DualModuleCombDriver {
         for edge in self.edges.iter_mut() {
             edge.clear();
         }
+        for offloading_unit in self.offloading_units.iter_mut() {
+            offloading_unit.clear();
+        }
     }
 
     pub fn register_updated(&mut self) {
@@ -90,6 +125,9 @@ impl DualModuleCombDriver {
         }
         for edge in self.edges.iter_mut() {
             edge.register_updated()
+        }
+        for offloading_unit in self.offloading_units.iter_mut() {
+            offloading_unit.register_updated()
         }
     }
 
@@ -124,12 +162,9 @@ impl DualModuleCombDriver {
 
     /// get all the edges that are pre-matched in the graph
     pub fn get_pre_matchings(&self) -> Vec<EdgeIndex> {
-        if !self.use_pre_matching {
-            return vec![];
-        }
         self.edges
             .iter()
-            .filter(|edge| edge.get_do_pre_matching(self))
+            .filter(|edge| edge.get_offloading_stalled(self))
             .map(|edge| edge.edge_index)
             .collect()
     }
@@ -356,6 +391,15 @@ pub mod tests {
         // dual_module_rtl_adaptor_basic_standard_syndrome(3, visualize_filename, defect_vertices);
     }
 
+    /// bug: 4000 != 5000
+    #[test]
+    fn dual_module_comb_pre_matching_debug_2() {
+        // PRINT_DUAL_CALLS=1 cargo test dual_module_comb_pre_matching_debug_2 -- --nocapture
+        let visualize_filename = "dual_module_comb_pre_matching_debug_2.json".to_string();
+        let defect_vertices = vec![20, 27, 28, 36, 43, 44, 45, 53];
+        dual_module_comb_pre_matching_standard_syndrome(7, visualize_filename, defect_vertices);
+    }
+
     /// evaluate pre-matching with virtual vertex
     #[test]
     fn dual_module_comb_pre_matching_virtual_basic_1() {
@@ -392,7 +436,13 @@ pub mod tests {
             defect_vertices,
             |initializer| {
                 let mut solver = SolverDualComb::new(initializer);
-                solver.dual_module.driver.driver.use_pre_matching = true;
+                let mut offloading = OffloadingFinder::new();
+                offloading.find_defect_match(&initializer);
+                solver
+                    .dual_module
+                    .driver
+                    .driver
+                    .set_offloading_units(&initializer, offloading.0);
                 solver
             },
         )
@@ -409,8 +459,14 @@ pub mod tests {
             defect_vertices,
             |initializer| {
                 let mut solver = SolverDualComb::new(initializer);
-                solver.dual_module.driver.driver.use_pre_matching = true;
-                solver.dual_module.driver.driver.use_pre_matching_virtual = true;
+                let mut offloading = OffloadingFinder::new();
+                offloading.find_defect_match(&initializer);
+                offloading.find_virtual_match(&initializer);
+                solver
+                    .dual_module
+                    .driver
+                    .driver
+                    .set_offloading_units(&initializer, offloading.0);
                 solver
             },
         )
