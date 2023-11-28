@@ -49,6 +49,17 @@ impl Offloading {
                     left_index
                 };
                 affecting_vertices.insert(regular_index);
+                for (neighbor_edge_index, &(left_index, right_index, _)) in initializer.weighted_edges.iter().enumerate() {
+                    if neighbor_edge_index == edge_index {
+                        continue;
+                    }
+                    if left_index == regular_index {
+                        affecting_vertices.insert(right_index);
+                    }
+                    if right_index == regular_index {
+                        affecting_vertices.insert(left_index);
+                    }
+                }
             }
         }
         Self {
@@ -97,14 +108,34 @@ impl Offloading {
                     let virtual_vertex = &dual_module.vertices[virtual_index];
                     let regular_index = edge.get_peer(virtual_index);
                     let regular_vertex = &dual_module.vertices[regular_index];
-                    let condition = edge.get_post_fetch_is_tight(dual_module)
+                    let mut condition = edge.get_post_fetch_is_tight(dual_module)
                         && virtual_vertex.registers.is_virtual
                         // && regular_vertex.registers.is_defect
-                        && regular_vertex.registers.speed == CompactGrowState::Grow
-                        && regular_vertex.get_is_one_tight(dual_module);
+                        && regular_vertex.registers.speed == CompactGrowState::Grow;
+                    // && regular_vertex.get_is_one_tight(dual_module);
+                    for &neighbor_edge_index in regular_vertex.edge_indices.iter() {
+                        if neighbor_edge_index == edge_index {
+                            continue;
+                        }
+                        let neighbor_edge = &dual_module.edges[neighbor_edge_index];
+                        let neighbor_vertex_index = neighbor_edge.get_peer(regular_index);
+                        let neighbor_vertex = &dual_module.vertices[neighbor_vertex_index];
+                        condition &= !neighbor_edge.get_post_fetch_is_tight(dual_module)
+                            || (neighbor_vertex.get_is_one_tight(dual_module) && !neighbor_vertex.registers.is_defect);
+                    }
                     if condition {
                         vertex_stalls.insert(regular_index);
                         edge_stalls.insert(edge_index);
+                        for &neighbor_edge_index in regular_vertex.edge_indices.iter() {
+                            if neighbor_edge_index == edge_index {
+                                continue;
+                            }
+                            let neighbor_edge = &dual_module.edges[neighbor_edge_index];
+                            let neighbor_vertex_index = neighbor_edge.get_peer(regular_index);
+                            if neighbor_edge.get_post_fetch_is_tight(dual_module) {
+                                vertex_stalls.insert(neighbor_vertex_index);
+                            }
+                        }
                     }
                     condition
                 }

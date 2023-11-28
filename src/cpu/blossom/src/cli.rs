@@ -112,6 +112,8 @@ pub enum PrimalDualType {
     EmbeddedComb,
     /// embedded primal + Combinatorial-behavior dual with pre-matching
     EmbeddedCombPreMatching,
+    /// embedded primal + Combinatorial-behavior dual with pre-matching including virtual vertex
+    EmbeddedCombPreMatchingVirtual,
     /// serial primal and dual, standard solution
     Serial,
     /// log error into a file for later fetch
@@ -146,6 +148,7 @@ enum TestCommands {
     EmbeddedRTLPreMatching(StandardTestParameters),
     EmbeddedComb(StandardTestParameters),
     EmbeddedCombPreMatching(StandardTestParameters),
+    EmbeddedCombPreMatchingVirtual(StandardTestParameters),
 }
 
 impl From<BenchmarkParameters> for fusion_blossom::cli::BenchmarkParameters {
@@ -336,6 +339,9 @@ impl Cli {
                 TestCommands::EmbeddedCombPreMatching(parameters) => {
                     standard_test_command_body("embedded-comb-pre-matching", parameters)
                 }
+                TestCommands::EmbeddedCombPreMatchingVirtual(parameters) => {
+                    standard_test_command_body("embedded-comb-pre-matching-virtual", parameters)
+                }
             },
             #[cfg(feature = "qecp_integrate")]
             Commands::Qecp(benchmark_parameters) => {
@@ -398,6 +404,19 @@ impl PrimalDualType {
                 let mut solver = SolverDualComb::new(initializer);
                 let mut offloading = OffloadingFinder::new();
                 offloading.find_defect_match(&initializer);
+                solver
+                    .dual_module
+                    .driver
+                    .driver
+                    .set_offloading_units(&initializer, offloading.0);
+                Box::new(solver)
+            }
+            Self::EmbeddedCombPreMatchingVirtual => {
+                assert_eq!(primal_dual_config, json!({}));
+                let mut solver = SolverDualComb::new(initializer);
+                let mut offloading = OffloadingFinder::new();
+                offloading.find_defect_match(&initializer);
+                offloading.find_virtual_match(&initializer);
                 solver
                     .dual_module
                     .driver

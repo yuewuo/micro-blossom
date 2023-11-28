@@ -691,27 +691,52 @@ impl PrimalDualSolver for SolverDualComb {
             let edge = &dual_module.edges[edge_index];
             let left_vertex = &dual_module.vertices[edge.left_index];
             let right_vertex = &dual_module.vertices[edge.right_index];
-            let left_node = DualNodePtr::new_value(DualNode {
-                index: left_vertex.registers.node_index.unwrap(),
-                class: DualNodeClass::DefectVertex {
-                    defect_index: self.defect_nodes[left_vertex.registers.node_index.unwrap() as usize],
-                },
-                grow_state: DualNodeGrowState::Stay,
-                parent_blossom: None,
-                dual_variable_cache: (0, 0),
-                belonging: belonging.clone(),
-            });
-            let right_node = DualNodePtr::new_value(DualNode {
-                index: right_vertex.registers.node_index.unwrap(),
-                class: DualNodeClass::DefectVertex {
-                    defect_index: self.defect_nodes[right_vertex.registers.node_index.unwrap() as usize],
-                },
-                grow_state: DualNodeGrowState::Stay,
-                parent_blossom: None,
-                dual_variable_cache: (0, 0),
-                belonging: belonging.clone(),
-            });
-            perfect_matching.peer_matchings.push((left_node, right_node));
+            if !left_vertex.registers.is_virtual && !right_vertex.registers.is_virtual {
+                let left_node = DualNodePtr::new_value(DualNode {
+                    index: left_vertex.registers.node_index.unwrap(),
+                    class: DualNodeClass::DefectVertex {
+                        defect_index: self.defect_nodes[left_vertex.registers.node_index.unwrap() as usize],
+                    },
+                    grow_state: DualNodeGrowState::Stay,
+                    parent_blossom: None,
+                    dual_variable_cache: (0, 0),
+                    belonging: belonging.clone(),
+                });
+                let right_node = DualNodePtr::new_value(DualNode {
+                    index: right_vertex.registers.node_index.unwrap(),
+                    class: DualNodeClass::DefectVertex {
+                        defect_index: self.defect_nodes[right_vertex.registers.node_index.unwrap() as usize],
+                    },
+                    grow_state: DualNodeGrowState::Stay,
+                    parent_blossom: None,
+                    dual_variable_cache: (0, 0),
+                    belonging: belonging.clone(),
+                });
+                perfect_matching.peer_matchings.push((left_node, right_node));
+            } else {
+                assert!(
+                    !left_vertex.registers.is_virtual || !right_vertex.registers.is_virtual,
+                    "cannot match virtual vertex with another virtual vertex"
+                );
+                let (regular_vertex, virtual_vertex) = if left_vertex.registers.is_virtual {
+                    (right_vertex, left_vertex)
+                } else {
+                    (left_vertex, right_vertex)
+                };
+                let regular_node = DualNodePtr::new_value(DualNode {
+                    index: regular_vertex.registers.node_index.unwrap(),
+                    class: DualNodeClass::DefectVertex {
+                        defect_index: self.defect_nodes[regular_vertex.registers.node_index.unwrap() as usize],
+                    },
+                    grow_state: DualNodeGrowState::Stay,
+                    parent_blossom: None,
+                    dual_variable_cache: (0, 0),
+                    belonging: belonging.clone(),
+                });
+                perfect_matching
+                    .virtual_matchings
+                    .push((regular_node, virtual_vertex.vertex_index));
+            }
         }
         if let Some(visualizer) = visualizer {
             visualizer
