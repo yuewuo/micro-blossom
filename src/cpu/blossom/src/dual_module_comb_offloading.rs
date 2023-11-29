@@ -87,10 +87,10 @@ impl Offloading {
                     let left_vertex = &dual_module.vertices[edge.left_index];
                     let right_vertex = &dual_module.vertices[edge.right_index];
                     let condition = edge.get_post_fetch_is_tight(dual_module)
-                        // && left_vertex.registers.is_defect
+                        && left_vertex.registers.is_defect
                         && left_vertex.registers.speed == CompactGrowState::Grow
                         && left_vertex.get_is_one_tight(dual_module)
-                        // && right_vertex.registers.is_defect
+                        && right_vertex.registers.is_defect
                         && right_vertex.registers.speed == CompactGrowState::Grow
                         && right_vertex.get_is_one_tight(dual_module);
                     if condition {
@@ -110,7 +110,7 @@ impl Offloading {
                     let regular_vertex = &dual_module.vertices[regular_index];
                     let mut condition = edge.get_post_fetch_is_tight(dual_module)
                         && virtual_vertex.registers.is_virtual
-                        // && regular_vertex.registers.is_defect
+                        && regular_vertex.registers.is_defect
                         && regular_vertex.registers.speed == CompactGrowState::Grow;
                     // && regular_vertex.get_is_one_tight(dual_module);
                     for &neighbor_edge_index in regular_vertex.edge_indices.iter() {

@@ -342,6 +342,7 @@ pub mod tests {
     use super::*;
     use crate::dual_module_rtl::tests::*;
     use crate::mwpm_solver::*;
+    use fusion_blossom::example_codes::*;
 
     // to use visualization, we need the folder of fusion-blossom repo
     // e.g. export FUSION_DIR=/Users/wuyue/Documents/GitHub/fusion-blossom
@@ -410,6 +411,30 @@ pub mod tests {
         // assert!(solver.offloaded == 0);
         let solver = dual_module_comb_pre_matching_virtual_standard_syndrome(3, visualize_filename, defect_vertices);
         assert!(solver.offloaded == 1);
+    }
+
+    /// verify that all single error can be decoded totally offline
+    #[test]
+    fn dual_module_comb_pre_matching_virtual_all_single_error() {
+        // cargo test dual_module_comb_pre_matching_virtual_all_single_error -- --nocapture
+        let visualize_filename = "dual_module_comb_pre_matching_virtual_all_single_error.json".to_string();
+        let d = 5;
+        let code = CodeCapacityPlanarCode::new(d, 0.1, 500);
+        let initializer = code.get_initializer();
+        let virtual_vertices: BTreeSet<_> = initializer.virtual_vertices.iter().cloned().collect();
+        for (left, right, _) in initializer.weighted_edges.iter() {
+            let defect_vertices: Vec<_> = [left, right]
+                .into_iter()
+                .filter(|vertex_index| !virtual_vertices.contains(&vertex_index))
+                .cloned()
+                .collect();
+            let solver = dual_module_comb_pre_matching_virtual_standard_syndrome(
+                d,
+                visualize_filename.clone(),
+                defect_vertices.clone(),
+            );
+            assert_eq!(solver.offloaded, defect_vertices.len(), "all defects should be offloaded");
+        }
     }
 
     pub fn dual_module_comb_basic_standard_syndrome(

@@ -79,8 +79,9 @@ for p in p_vec:
                 command += ["--code-type", "error-pattern-reader"]
                 command += ["--code-config",
                             f'{{"filename":"{syndrome_file_path}"}}']
-                command += ["--verifier", "none"]
-                command += ["--primal-dual-type", "embedded-comb-pre-matching"]
+                command += ["--verifier", "fusion-serial"]
+                command += ["--primal-dual-type",
+                            "embedded-comb-pre-matching-virtual"]
                 # command += ["--primal-dual-type", "embedded-comb"]
                 command += ["--benchmark-profiler-output",
                             benchmark_profile_path]
@@ -89,6 +90,7 @@ for p in p_vec:
                 print("\n" + stdout)
                 assert returncode == 0, "command fails..."
 
+            print(benchmark_profile_path)
             profile = Profile(benchmark_profile_path)
             offloaded = profile.sum_offloaded()
             defect_num = profile.sum_defect_num()

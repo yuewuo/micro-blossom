@@ -641,7 +641,7 @@ impl PrimalDualSolver for SolverDualComb {
         // check how many defect vertices are offloaded (not maintained by the primal module at all)
         self.offloaded = 0;
         for node_index in 0..self.defect_nodes.len() {
-            if !self.primal_module.nodes.has_node(ni!(node_index)) {
+            if !self.primal_module.nodes.maintains_node(ni!(node_index)) {
                 self.offloaded += 1;
             }
         }

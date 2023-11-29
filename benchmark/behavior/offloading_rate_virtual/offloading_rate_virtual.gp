@@ -24,7 +24,7 @@ set yrange [0:1]
 # set style fill transparent solid 0.2 noborder
 set key box top left
 
-set output "offloading_rate.eps"
+set output "offloading_rate_virtual.eps"
 
 plot "data_p0.0005.txt" using 1:4 with linespoints lt rgb "orange" linewidth 3 pointtype 5 pointsize 1.5 title "p = 0.05\%",\
     "data_p0.001.txt" using 1:4 with linespoints lt rgb "red" linewidth 3 pointtype 5 pointsize 1.5 title "p = 0.1\%",\
@@ -32,5 +32,5 @@ plot "data_p0.0005.txt" using 1:4 with linespoints lt rgb "orange" linewidth 3 p
     "data_p0.005.txt" using 1:4 with linespoints lt rgb "purple" linewidth 3 pointtype 5 pointsize 1.5 title "p = 0.5\%",\
     "data_p0.01.txt" using 1:4 with linespoints lt rgb "black" linewidth 3 pointtype 5 pointsize 1.5 title "p = 1\%"
 
-system("ps2pdf -dEPSCrop offloading_rate.eps offloading_rate.pdf")
+system("ps2pdf -dEPSCrop offloading_rate_virtual.eps offloading_rate_virtual.pdf")
 

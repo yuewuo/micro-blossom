@@ -113,6 +113,10 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         }
     }
 
+    pub fn maintains_node(&self, node_index: CompactNodeIndex) -> bool {
+        (node_index.get() as usize) < self.count_defects && self.has_node(node_index)
+    }
+
     pub fn has_node(&self, node_index: CompactNodeIndex) -> bool {
         get!(self.buffer, node_index.get() as usize).is_some()
     }
