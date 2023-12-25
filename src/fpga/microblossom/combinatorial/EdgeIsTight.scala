@@ -52,8 +52,8 @@ class EdgeIsTightTest extends AnyFunSuite {
 
   test("logic validity") {
     val configurations = List(
-      (1, 1),
-      (3, 1),
+      (1, 2),
+      (3, 2),
       (3, 3),
       (5, 3),
       (8, 3)
@@ -80,14 +80,14 @@ class EdgeIsTightTest extends AnyFunSuite {
 
   test("logic depth") {
     val configurations = List(
-      (1, 1, "minimal for d=3 code"),
-      (2, 1, "minimal for d=5,7 code"),
-      (3, 1, "minimal for d=9,11,13,15 code"),
-      (4, 1, "minimal for d=[17, 31] code"),
-      (3, 3, "circuit-level for d=3 code"),
-      (4, 3, "circuit-level for d=5,7 code"),
-      (5, 3, "circuit-level for d=9,11,13,15 code"),
-      (6, 3, "circuit-level for d=[17, 31] code")
+      (2, 2, "minimal for d=3 code"),
+      (3, 2, "minimal for d=5,7 code"),
+      (4, 2, "minimal for d=9,11,13,15 code"),
+      (5, 2, "minimal for d=[17, 31] code"),
+      (4, 4, "circuit-level for d=3 code"), // max_half_weight = 7
+      (5, 4, "circuit-level for d=5,7 code"),
+      (6, 4, "circuit-level for d=9,11,13,15 code"),
+      (7, 4, "circuit-level for d=[17, 31] code")
     )
     for ((grownBits, weightBits, name) <- configurations) {
       println(name)
