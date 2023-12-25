@@ -5,7 +5,6 @@ use fusion_blossom::example_codes::*;
 use micro_blossom::resources::*;
 use std::fs;
 
-#[allow(clippy::unnecessary_cast)]
 fn generate_example(name: String, code: impl ExampleCode) {
     let folder = "../../../resources/graphs";
     fs::create_dir_all(folder).unwrap();

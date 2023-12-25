@@ -12,8 +12,7 @@ object EdgeIsTight {
     assert(leftGrown.getWidth >= weightWidth)
     assert(rightGrown.getWidth >= weightWidth)
     // usually the grown bits are much larger than the weight, e.g. weight is 3 bits but grown is 7 bits
-    // we could optimize the logic so that it uses less resources
-    // TODO: implement this optimization and make it optional given the config
+    // we could optimize the logic so that it uses fewer resources
     val leftGrownTruncated = leftGrown.resize(weightWidth).resize(weightWidth + 1)
     val rightGrownTruncated = rightGrown.resize(weightWidth).resize(weightWidth + 1)
     def overflowed(grown: UInt): Bool = {
@@ -52,8 +51,14 @@ class EdgeIsTightTest extends AnyFunSuite {
   }
 
   test("logic validity") {
-    val weightBits = 3
-    for (grownBits <- Range(3, 8)) {
+    val configurations = List(
+      (1, 1),
+      (3, 1),
+      (3, 3),
+      (5, 3),
+      (8, 3)
+    )
+    for ((grownBits, weightBits) <- configurations) {
       Config.sim
         .compile(EdgeIsTightTester(grownBits, weightBits))
         .doSim("logic validity") { dut =>
@@ -70,6 +75,22 @@ class EdgeIsTightTest extends AnyFunSuite {
             }
           }
         }
+    }
+  }
+
+  test("logic depth") {
+    val configurations = List(
+      (1, 1, "minimal for d=3 code"),
+      (2, 1, "minimal for d=5,7 code"),
+      (3, 1, "minimal for d=9,11,13,15 code"),
+      (4, 1, "minimal for d=[17, 31] code"),
+      (3, 3, "circuit-level for d=3 code"),
+      (4, 3, "circuit-level for d=5,7 code"),
+      (5, 3, "circuit-level for d=9,11,13,15 code"),
+      (6, 3, "circuit-level for d=[17, 31] code")
+    )
+    for ((grownBits, weightBits, name) <- configurations) {
+      println(name)
     }
   }
 
