@@ -131,41 +131,41 @@ impl Vertex {
 
     pub fn get_post_execute_state(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, VertexRegisters> {
         referenced_signal!(self.signals.post_execute_state, || {
-            let mut signals = self.registers.clone();
+            let mut state = self.registers.clone();
             match &dual_module.instruction {
                 Instruction::SetSpeed { node, speed } => {
                     if self.registers.node_index == Some(*node) {
-                        signals.speed = *speed;
+                        state.speed = *speed;
                     }
                 }
                 Instruction::SetBlossom { node, blossom } => {
                     if self.registers.node_index == Some(*node) || self.registers.root_index == Some(*node) {
-                        signals.node_index = Some(*blossom);
-                        signals.speed = CompactGrowState::Grow;
+                        state.node_index = Some(*blossom);
+                        state.speed = CompactGrowState::Grow;
                     }
                 }
                 Instruction::Grow { length } => {
                     if !self.get_offloading_stalled(dual_module) {
-                        signals.grown = self.registers.grown + Weight::from(self.registers.speed) * length;
+                        state.grown = self.registers.grown + Weight::from(self.registers.speed) * length;
                         assert!(
-                            signals.grown >= 0,
+                            state.grown >= 0,
                             "vertex {} has negative grown value {}",
                             self.vertex_index,
-                            signals.grown
+                            state.grown
                         );
                     }
                 }
                 Instruction::AddDefectVertex { vertex, node } => {
                     if self.vertex_index == *vertex {
-                        signals.is_defect = true;
-                        signals.speed = CompactGrowState::Grow;
-                        signals.root_index = Some(*node);
-                        signals.node_index = Some(*node);
+                        state.is_defect = true;
+                        state.speed = CompactGrowState::Grow;
+                        state.root_index = Some(*node);
+                        state.node_index = Some(*node);
                     }
                 }
                 _ => {}
             }
-            signals
+            state
         })
     }
 
@@ -193,33 +193,33 @@ impl Vertex {
 
     pub fn get_post_update_state(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, VertexRegisters> {
         referenced_signal!(self.signals.post_update_state, || {
-            let mut signals = self.get_post_execute_state(dual_module).clone();
+            let mut state = self.get_post_execute_state(dual_module).clone();
             let propagating_peer = self.get_propagating_peer(dual_module);
-            if !signals.is_defect && !signals.is_virtual && signals.grown == 0 {
+            if !state.is_defect && !state.is_virtual && state.grown == 0 {
                 if let Some(peer) = propagating_peer.clone() {
-                    signals.node_index = peer.node_index;
-                    signals.root_index = peer.root_index;
-                    signals.speed = CompactGrowState::Grow;
+                    state.node_index = peer.node_index;
+                    state.root_index = peer.root_index;
+                    state.speed = CompactGrowState::Grow;
                 } else {
-                    signals.node_index = None;
-                    signals.root_index = None;
-                    signals.speed = CompactGrowState::Stay;
+                    state.node_index = None;
+                    state.root_index = None;
+                    state.speed = CompactGrowState::Stay;
                 }
             }
-            signals
+            state
         })
     }
 
     pub fn get_shadow_node(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, ShadowNode> {
         referenced_signal!(self.signals.shadow_node, || {
-            let signals = self.get_post_execute_state(dual_module);
+            let state = self.get_post_execute_state(dual_module);
             let propagating_peer = self.get_propagating_peer(dual_module);
             let mut shadow_node = ShadowNode {
-                node_index: signals.node_index,
-                root_index: signals.root_index,
-                speed: signals.speed,
+                node_index: state.node_index,
+                root_index: state.root_index,
+                speed: state.speed,
             };
-            if signals.speed == CompactGrowState::Shrink && signals.grown == 0 {
+            if state.speed == CompactGrowState::Shrink && state.grown == 0 {
                 if let Some(peer) = propagating_peer.clone() {
                     shadow_node.node_index = peer.node_index;
                     shadow_node.root_index = peer.root_index;

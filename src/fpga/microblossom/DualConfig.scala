@@ -122,6 +122,9 @@ case class DualConfig(
   def isVirtual(vertexIndex: Int): Boolean = {
     virtualVertices.contains(vertexIndex)
   }
+  def grownBitsOf(vertexIndex: Int): Int = {
+    log2Up(graph.vertex_max_growth(vertexIndex) + 1)
+  }
 
   def sanityCheck(): Unit = {
     assert(vertexBits <= 15)

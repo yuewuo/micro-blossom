@@ -33,6 +33,7 @@ pub struct EdgeRegisters {
 pub struct EdgeCombSignals {
     post_fetch_is_tight: RefCell<Option<bool>>,
     offloading_stalled: RefCell<Option<bool>>,
+    post_execute_state: RefCell<Option<EdgeRegisters>>,
     post_execute_is_tight: RefCell<Option<bool>>,
     response: RefCell<Option<CompactObstacle>>,
 }
@@ -48,6 +49,7 @@ impl EdgeCombSignals {
         Self {
             post_fetch_is_tight: RefCell::new(None),
             offloading_stalled: RefCell::new(None),
+            post_execute_state: RefCell::new(None),
             post_execute_is_tight: RefCell::new(None),
             response: RefCell::new(None),
         }
@@ -109,20 +111,28 @@ impl Edge {
         .clone()
     }
 
+    pub fn get_post_execute_state(&self, _dual_module: &DualModuleCombDriver) -> Ref<'_, EdgeRegisters> {
+        referenced_signal!(self.signals.post_execute_state, || {
+            let state = self.registers.clone();
+            // TODO: dynamically update edge weights
+            state
+        })
+    }
+
     pub fn get_post_execute_is_tight(&self, dual_module: &DualModuleCombDriver) -> bool {
         referenced_signal!(self.signals.post_execute_is_tight, || {
             let left_vertex = &dual_module.vertices[self.left_index];
             let right_vertex = &dual_module.vertices[self.right_index];
             left_vertex.get_post_execute_state(dual_module).grown + right_vertex.get_post_execute_state(dual_module).grown
-                >= self.registers.weight
+                >= self.get_post_execute_state(dual_module).weight
         })
         .clone()
     }
 
-    pub fn get_remaining(&self, dual_module: &DualModuleCombDriver) -> Weight {
+    fn get_remaining(&self, dual_module: &DualModuleCombDriver) -> Weight {
         let left_vertex = dual_module.vertices[self.left_index].get_post_update_state(dual_module);
         let right_vertex = dual_module.vertices[self.right_index].get_post_update_state(dual_module);
-        self.registers.weight - left_vertex.grown - right_vertex.grown
+        self.get_post_execute_state(dual_module).weight - left_vertex.grown - right_vertex.grown
     }
 
     pub fn get_response(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, CompactObstacle> {
@@ -172,8 +182,16 @@ impl Edge {
         })
     }
 
-    pub fn get_write_signals(&self, _dual_module: &DualModuleCombDriver) -> &EdgeRegisters {
-        &self.registers
+    pub fn get_write_signals(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, EdgeRegisters> {
+        self.get_post_execute_state(dual_module)
+    }
+}
+
+impl EdgeRegisters {
+    pub fn snapshot(&self) -> serde_json::Value {
+        json!({
+            "weight": self.weight,
+        })
     }
 }
 
@@ -181,11 +199,12 @@ impl Edge {
     pub fn snapshot(&self, _abbrev: bool, dual_module: &DualModuleCombDriver) -> serde_json::Value {
         json!({
             "registers": json!({
-                "weight": self.registers.weight,
+                "weight": self.registers.snapshot(),
             }),
             "signals": json!({
                 "post_fetch_is_tight": self.get_post_fetch_is_tight(dual_module),
                 "offloading_stalled": self.get_offloading_stalled(dual_module),
+                "post_execute_state": self.get_post_execute_state(dual_module).snapshot(),
                 "post_execute_is_tight": self.get_post_execute_is_tight(dual_module),
                 "response": format!("{:?}", self.get_response(dual_module)),
             })
