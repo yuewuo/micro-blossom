@@ -52,7 +52,7 @@ class EdgeIsTightTest extends AnyFunSuite {
 
   test("logic validity") {
     val configurations = List(
-      (1, 2),
+      (2, 2),
       (3, 2),
       (3, 3),
       (5, 3),
