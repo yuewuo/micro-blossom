@@ -4,13 +4,14 @@ import spinal.core._
 import spinal.lib._
 import spinal.core.sim._
 import microblossom._
+import microblossom.util.Vivado
 import org.scalatest.funsuite.AnyFunSuite
 
 object EdgeIsTight {
   def build(isTight: Bool, leftGrown: UInt, rightGrown: UInt, weight: UInt) = {
     val weightWidth = weight.getWidth
-    assert(leftGrown.getWidth >= weightWidth)
-    assert(rightGrown.getWidth >= weightWidth)
+    require(leftGrown.getWidth >= weightWidth)
+    require(rightGrown.getWidth >= weightWidth)
     // usually the grown bits are much larger than the weight, e.g. weight is 3 bits but grown is 7 bits
     // we could optimize the logic so that it uses fewer resources
     val leftGrownTruncated = leftGrown.resize(weightWidth).resize(weightWidth + 1)
@@ -27,40 +28,40 @@ object EdgeIsTight {
   }
 }
 
+case class EdgeIsTight(grownBits: Int, weightBits: Int) extends Component {
+  require(grownBits >= weightBits)
+
+  val io = new Bundle {
+    val leftGrown = in(UInt(grownBits bits))
+    val rightGrown = in(UInt(grownBits bits))
+    val weight = in(UInt(weightBits bits))
+    val isTight = out(Bool)
+  }
+
+  EdgeIsTight.build(io.isTight, io.leftGrown, io.rightGrown, io.weight)
+
+}
+
 // sbt 'testOnly microblossom.combinatorial.EdgeIsTightTest'
 class EdgeIsTightTest extends AnyFunSuite {
 
-  case class EdgeIsTightTester(grownBits: Int, weightBits: Int) extends Component {
-    assert(grownBits >= weightBits)
-
-    val io = new Bundle {
-      val leftGrown = in(UInt(grownBits bits))
-      val rightGrown = in(UInt(grownBits bits))
-      val weight = in(UInt(weightBits bits))
-      val isTight = out(Bool)
-    }
-
-    EdgeIsTight.build(io.isTight, io.leftGrown, io.rightGrown, io.weight)
-
-  }
-
   test("example") {
-    val weightBits = 3
     val grownBits = 6
-    Config.spinal().generateVerilog(EdgeIsTightTester(grownBits, weightBits))
+    val weightBits = 3
+    Config.spinal().generateVerilog(EdgeIsTight(grownBits, weightBits))
   }
 
   test("logic validity") {
     val configurations = List(
       (2, 2),
       (3, 2),
-      (3, 3),
-      (5, 3),
-      (8, 3)
+      (4, 4),
+      (5, 4),
+      (7, 4)
     )
     for ((grownBits, weightBits) <- configurations) {
       Config.sim
-        .compile(EdgeIsTightTester(grownBits, weightBits))
+        .compile(EdgeIsTight(grownBits, weightBits))
         .doSim("logic validity") { dut =>
           for (weight <- Range(0, 1 << weightBits)) {
             for (leftGrown <- Range(0, 1 << grownBits)) {
@@ -78,18 +79,24 @@ class EdgeIsTightTest extends AnyFunSuite {
     }
   }
 
-  test("logic depth") {
+}
+
+// sbt 'testOnly microblossom.combinatorial.EdgeIsTightDelayEstimation'
+class EdgeIsTightDelayEstimation extends AnyFunSuite {
+
+  test("logic delay") {
     val configurations = List(
-      (2, 2, "minimal for d=3 code"),
-      (3, 2, "minimal for d=5,7 code"),
-      (4, 2, "minimal for d=9,11,13,15 code"),
-      (5, 2, "minimal for d=[17, 31] code"),
-      (4, 4, "circuit-level for d=3 code"), // max_half_weight = 7
-      (5, 4, "circuit-level for d=5,7 code"),
-      (6, 4, "circuit-level for d=9,11,13,15 code"),
+      // (2, 2, "minimal for d=3 code")
+      // (3, 2, "minimal for d=5,7 code"),
+      // (4, 2, "minimal for d=9,11,13,15 code"),
+      // (5, 2, "minimal for d=[17, 31] code"),
+      // (4, 4, "circuit-level for d=3 code"), // max_half_weight = 7
+      // (5, 4, "circuit-level for d=5,7 code"),
+      // (6, 4, "circuit-level for d=9,11,13,15 code"),
       (7, 4, "circuit-level for d=[17, 31] code")
     )
     for ((grownBits, weightBits, name) <- configurations) {
+      Vivado.reportTiming(EdgeIsTight(grownBits, weightBits))
       println(name)
     }
   }

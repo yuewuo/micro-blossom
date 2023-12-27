@@ -57,3 +57,6 @@ null
 /gen/
 
 *.pyc
+
+vivado.*
+.Xil
