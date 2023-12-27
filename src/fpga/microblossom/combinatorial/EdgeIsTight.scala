@@ -86,18 +86,18 @@ class EdgeIsTightDelayEstimation extends AnyFunSuite {
 
   test("logic delay") {
     val configurations = List(
-      // (2, 2, "minimal for d=3 code")
-      // (3, 2, "minimal for d=5,7 code"),
-      // (4, 2, "minimal for d=9,11,13,15 code"),
-      // (5, 2, "minimal for d=[17, 31] code"),
-      // (4, 4, "circuit-level for d=3 code"), // max_half_weight = 7
-      // (5, 4, "circuit-level for d=5,7 code"),
-      // (6, 4, "circuit-level for d=9,11,13,15 code"),
-      (7, 4, "circuit-level for d=[17, 31] code")
+      (2, 2, "minimal for d=3 code"), // 0.043ns
+      (3, 2, "minimal for d=5,7 code"), // 0.36ns
+      (4, 2, "minimal for d=9,11,13,15 code"), // 0.36ns
+      (5, 2, "minimal for d=[17, 31] code"), // 0.36ns
+      (4, 4, "circuit-level for d=3 code"), // max_half_weight = 7, 0.67ns
+      (5, 4, "circuit-level for d=5,7 code"), // 0.68ns
+      (6, 4, "circuit-level for d=9,11,13,15 code"), // 0.67ns
+      (7, 4, "circuit-level for d=[17, 31] code") // 0.67ns
     )
     for ((grownBits, weightBits, name) <- configurations) {
-      Vivado.reportTiming(EdgeIsTight(grownBits, weightBits))
-      println(name)
+      val timingReport = Vivado.reportTiming(EdgeIsTight(grownBits, weightBits))
+      println(s"$name: ${timingReport.getPathDelaysExcludingIOWorst}ns")
     }
   }
 
