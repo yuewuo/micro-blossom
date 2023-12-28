@@ -99,7 +99,7 @@ class VertexIsUniqueTightDelayEstimation extends AnyFunSuite {
       (2, "code capacity 2 neighbors"), // 0.043ns
       (4, "code capacity 4 neighbors"), // 0.043ns
       (6, "phenomenological 6 neighbors"), // 0.043ns
-      (12, "circuit-level 12 neighbors") // 0.67ns
+      (12, "circuit-level 12 neighbors") // 0.67ns (LUT6 -> LUT6 -> LUT4)
     )
     for ((numEdges, name) <- configurations) {
       val timingReport = Vivado.reportTiming(VertexIsUniqueTight(numEdges))
