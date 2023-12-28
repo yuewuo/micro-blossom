@@ -97,3 +97,25 @@ class EdgeRemainingTest extends AnyFunSuite {
   }
 
 }
+
+// sbt 'testOnly microblossom.combinatorial.EdgeRemainingDelayEstimation'
+class EdgeRemainingDelayEstimation extends AnyFunSuite {
+
+  test("logic delay") {
+    val configurations = List(
+      (2, 2, "minimal for d=3 code"), // 0.04ns
+      (3, 2, "minimal for d=5,7 code"), // 0.49ns
+      (4, 2, "minimal for d=9,11,13,15 code"), // 0.50ns
+      (5, 2, "minimal for d=[17, 31] code"), // 0.50ns
+      (4, 4, "circuit-level for d=3 code"), // max_half_weight = 7, 0.70ns
+      (5, 4, "circuit-level for d=5,7 code"), // 0.84ns
+      (6, 4, "circuit-level for d=9,11,13,15 code"), // 0.84ns
+      (7, 4, "circuit-level for d=[17, 31] code") // 0.83ns
+    )
+    for ((grownBits, weightBits, name) <- configurations) {
+      val timingReport = Vivado.reportTiming(EdgeRemaining(grownBits, grownBits, weightBits))
+      println(s"$name: ${timingReport.getPathDelaysExcludingIOWorst}ns")
+    }
+  }
+
+}

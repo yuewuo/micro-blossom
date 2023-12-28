@@ -10,10 +10,10 @@ case class ConvergecastMaxLength(weightBits: Int) extends Bundle {
 
 case class ConvergecastConflict(vertexBits: Int) extends Bundle {
   val valid = Bool
-  val field1 = Bits(vertexBits bits)
-  val field2 = Bits(vertexBits bits)
-  val field3 = Bits(vertexBits bits)
-  val field4 = Bits(vertexBits bits)
-  val field5 = Bits(vertexBits bits)
-  val field6 = Bits(vertexBits bits)
+  val node1 = Bits(vertexBits bits)
+  val node2 = Bits(vertexBits bits)
+  val touch1 = Bits(vertexBits bits)
+  val touch2 = Bits(vertexBits bits)
+  val vertex1 = Bits(vertexBits bits)
+  val vertex2 = Bits(vertexBits bits)
 }
