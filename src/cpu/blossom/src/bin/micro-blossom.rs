@@ -2,14 +2,29 @@
 // see micro-blossom/resources/graphs/README.md
 
 use fusion_blossom::example_codes::*;
+use fusion_blossom::visualize::Visualizer;
 use micro_blossom::resources::*;
 use serde_json::json;
 use std::fs;
+use std::env;
+
 
 fn generate_example(name: String, code: impl ExampleCode) {
     let folder = "../../../resources/graphs";
     fs::create_dir_all(folder).unwrap();
     let filename = format!("{folder}/example_{name}.json");
+
+    // also generate visualization file if `FUSION_DIR` is set
+    // to use visualization, we need the folder of fusion-blossom repo
+    // e.g. export FUSION_DIR=/Users/wuyue/Documents/GitHub/fusion-blossom
+    if let Ok(fusion_dir) = env::var("FUSION_DIR") {
+        let visualizer = Visualizer::new(
+            Some(format!("{fusion_dir}/visualize/data/micro_blossom_{name}.json")),
+            code.get_positions(),
+            true,
+        );
+        print_visualize_link(visualize_filename.clone());
+    }
 
     println!("generating {name}...");
     let micro_blossom = MicroBlossomSingle::new_code(code);

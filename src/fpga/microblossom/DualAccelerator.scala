@@ -11,15 +11,10 @@ import util._
 import spinal.core.sim._
 import org.scalatest.funsuite.AnyFunSuite
 import scala.util.control.Breaks._
+import microblossom.types._
 
 object DualAcceleratorState extends SpinalEnum {
   val Normal, Busy, InstructionError = newElement()
-}
-
-case class BroadcastMessage(config: DualConfig) extends Bundle {
-  val valid = Bool
-  val instruction = Instruction(config)
-  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 }
 
 case class ConvergecastMessage(config: DualConfig) extends Bundle {

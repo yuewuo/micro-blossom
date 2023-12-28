@@ -3,6 +3,7 @@ package microblossom
 import spinal.core._
 import spinal.lib._
 import microblossom._
+import microblossom.types._
 import spinal.core.sim._
 import org.scalatest.funsuite.AnyFunSuite
 
