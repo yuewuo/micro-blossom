@@ -122,6 +122,7 @@ object Vivado {
 
     val projectName = Random.alphanumeric.filter(_.isLetter).take(10).mkString
     val targetDirectory = s"gen/tmp/$projectName"
+    println(s"targetDirectory: $targetDirectory")
     val spinalReport = Config.spinal(targetDirectory).generateVerilog(component)
     // create a TCL script to generate the project
     val moduleName = spinalReport.toplevelName

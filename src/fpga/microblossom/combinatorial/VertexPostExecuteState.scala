@@ -85,8 +85,6 @@ case class VertexPostExecuteState(config: DualConfig, vertexIndex: Int) extends 
     val after = out(VertexState(config.vertexBits, grownBits))
   }
 
-  val isVertexEqField1 = (io.message.instruction.field1 === vertexIndex)
-
   val common = VertexPostExecuteStateCommon(config, grownBits)
   common.io.before := io.before
   common.io.message := io.message
