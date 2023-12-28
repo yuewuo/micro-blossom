@@ -9,7 +9,7 @@ import scala.collection.mutable
 import org.scalatest.funsuite.AnyFunSuite
 import microblossom.types._
 
-case class VertexPropagator(vertexBits: Int) extends Bundle {
+case class VertexPropagatingPeerResult(vertexBits: Int) extends Bundle {
   val valid = Bool
   val node = Bits(vertexBits bits)
   val root = Bits(vertexBits bits)
@@ -17,7 +17,7 @@ case class VertexPropagator(vertexBits: Int) extends Bundle {
 
 object VertexPropagatingPeer {
   def build(
-      peer: VertexPropagator, // output
+      peer: VertexPropagatingPeerResult, // output
       grown: UInt,
       edgeIsTight: Seq[Bool],
       peerSpeed: Seq[Speed],
@@ -30,7 +30,7 @@ object VertexPropagatingPeer {
     require(peerNode.length == numNeighbors)
     require(peerRoot.length == numNeighbors)
 
-    val propagators = Vec.fill(numNeighbors)(VertexPropagator(config.vertexBits))
+    val propagators = Vec.fill(numNeighbors)(VertexPropagatingPeerResult(config.vertexBits))
     for (neighborIndex <- 0 until numNeighbors) {
       propagators(neighborIndex).node := peerNode(neighborIndex)
       propagators(neighborIndex).root := peerRoot(neighborIndex)
@@ -57,7 +57,7 @@ case class VertexPropagatingPeer(config: DualConfig, vertexIndex: Int) extends C
     val peerNode = in(Vec.fill(numNeighbors)(Bits(config.vertexBits bits)))
     val peerRoot = in(Vec.fill(numNeighbors)(Bits(config.vertexBits bits)))
 
-    val peer = out(VertexPropagator(config.vertexBits))
+    val peer = out(VertexPropagatingPeerResult(config.vertexBits))
   }
 
   VertexPropagatingPeer.build(
