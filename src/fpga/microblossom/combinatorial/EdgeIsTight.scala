@@ -8,7 +8,12 @@ import microblossom.util.Vivado
 import org.scalatest.funsuite.AnyFunSuite
 
 object EdgeIsTight {
-  def build(isTight: Bool, leftGrown: UInt, rightGrown: UInt, weight: UInt) = {
+  def build(
+      isTight: Bool, // output
+      leftGrown: UInt,
+      rightGrown: UInt,
+      weight: UInt
+  ) = {
     val weightWidth = weight.getWidth
     require(leftGrown.getWidth >= weightWidth)
     require(rightGrown.getWidth >= weightWidth)

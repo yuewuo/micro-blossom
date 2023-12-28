@@ -9,7 +9,10 @@ import scala.collection.mutable
 import org.scalatest.funsuite.AnyFunSuite
 
 object VertexIsUniqueTight {
-  def build(isUnique: Bool, tights: Seq[Bool]) = {
+  def build(
+      isUnique: Bool, // output
+      tights: Seq[Bool]
+  ) = {
     require(tights.length > 0)
 
     val num = tights.length
