@@ -111,13 +111,29 @@ class VertexPostExecuteStateDelayEstimation extends AnyFunSuite {
 
   test("logic delay") {
     val configurations = List(
-      (DualConfig(filename = "./resources/graphs/example_circuit_level_d5.json"), , "code capacity 2 neighbors"), // 0.04ns
-      (4, "code capacity 4 neighbors"), // 0.04ns
-      (6, "phenomenological 6 neighbors"), // 0.04ns
-      (12, "circuit-level 12 neighbors") // 0.67ns (LUT6 -> LUT6 -> LUT4)
+      (
+        DualConfig(filename = "./resources/graphs/example_code_capacity_d5.json"),
+        1,
+        "code capacity 2 neighbors"
+      ), // 0.99ns (LUT4 -> LUT6 -> LUT6)
+      (
+        DualConfig(filename = "./resources/graphs/example_code_capacity_rotated_d5.json"),
+        10,
+        "code capacity 4 neighbors"
+      ), // 0.99ns (LUT6 -> LUT6 -> LUT6)
+      (
+        DualConfig(filename = "./resources/graphs/example_phenomenological_rotated_d5.json"),
+        64,
+        "phenomenological 6 neighbors"
+      ), // 1.14ns (LUT4 -> LUT4 -> LUT5 -> LUT6)
+      (
+        DualConfig(filename = "./resources/graphs/example_circuit_level_d5.json"),
+        63,
+        "circuit-level 12 neighbors"
+      ) // 1.10ns (LUT6 -> CARRY4 -> LUT4 -> LUT6) vertex: 9 bits, grown: 3 bits
     )
-    for ((numEdges, name) <- configurations) {
-      val timingReport = Vivado.reportTiming(VertexPostExecuteState(numEdges))
+    for ((config, vertexIndex, name) <- configurations) {
+      val timingReport = Vivado.reportTiming(VertexPostExecuteState(config, vertexIndex))
       println(s"$name: ${timingReport.getPathDelaysExcludingIOWorst}ns")
     }
   }
