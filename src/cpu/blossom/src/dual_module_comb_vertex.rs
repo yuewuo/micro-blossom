@@ -34,7 +34,7 @@ pub struct VertexRegisters {
 /// combinatorial signals of the vertex, should be invalidated whenever the registers are updated
 pub struct VertexCombSignals {
     /// only one surrounding edge is tight
-    is_one_tight: RefCell<Option<bool>>,
+    is_unique_tight: RefCell<Option<bool>>,
     offloading_stalled: RefCell<Option<bool>>,
     post_execute_state: RefCell<Option<VertexRegisters>>,
     propagating_peer: RefCell<Option<Option<PropagatingPeer>>>,
@@ -72,7 +72,7 @@ impl VertexRegisters {
 impl VertexCombSignals {
     pub fn new() -> Self {
         Self {
-            is_one_tight: RefCell::new(None),
+            is_unique_tight: RefCell::new(None),
             offloading_stalled: RefCell::new(None),
             post_execute_state: RefCell::new(None),
             propagating_peer: RefCell::new(None),
@@ -103,8 +103,8 @@ impl Vertex {
         self.signals = VertexCombSignals::new();
     }
 
-    pub fn get_is_one_tight(&self, dual_module: &DualModuleCombDriver) -> bool {
-        *referenced_signal!(self.signals.is_one_tight, || {
+    pub fn get_is_unique_tight(&self, dual_module: &DualModuleCombDriver) -> bool {
+        *referenced_signal!(self.signals.is_unique_tight, || {
             self.edge_indices
                 .iter()
                 .filter(|&&edge_index| dual_module.edges[edge_index].get_post_fetch_is_tight(dual_module))

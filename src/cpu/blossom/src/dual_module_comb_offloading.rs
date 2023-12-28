@@ -89,10 +89,10 @@ impl Offloading {
                     let condition = edge.get_post_fetch_is_tight(dual_module)
                         && left_vertex.registers.is_defect
                         && left_vertex.registers.speed == CompactGrowState::Grow
-                        && left_vertex.get_is_one_tight(dual_module)
+                        && left_vertex.get_is_unique_tight(dual_module)
                         && right_vertex.registers.is_defect
                         && right_vertex.registers.speed == CompactGrowState::Grow
-                        && right_vertex.get_is_one_tight(dual_module);
+                        && right_vertex.get_is_unique_tight(dual_module);
                     if condition {
                         vertex_stalls.insert(edge.left_index);
                         vertex_stalls.insert(edge.right_index);
@@ -112,7 +112,7 @@ impl Offloading {
                         && virtual_vertex.registers.is_virtual
                         && regular_vertex.registers.is_defect
                         && regular_vertex.registers.speed == CompactGrowState::Grow;
-                    // && regular_vertex.get_is_one_tight(dual_module);
+                    // && regular_vertex.get_is_unique_tight(dual_module);
                     for &neighbor_edge_index in regular_vertex.edge_indices.iter() {
                         if neighbor_edge_index == edge_index {
                             continue;
@@ -121,7 +121,7 @@ impl Offloading {
                         let neighbor_vertex_index = neighbor_edge.get_peer(regular_index);
                         let neighbor_vertex = &dual_module.vertices[neighbor_vertex_index];
                         condition &= !neighbor_edge.get_post_fetch_is_tight(dual_module)
-                            || (neighbor_vertex.get_is_one_tight(dual_module) && !neighbor_vertex.registers.is_defect);
+                            || (neighbor_vertex.get_is_unique_tight(dual_module) && !neighbor_vertex.registers.is_defect);
                     }
                     if condition {
                         vertex_stalls.insert(regular_index);
