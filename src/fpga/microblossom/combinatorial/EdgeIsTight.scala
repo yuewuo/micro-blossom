@@ -91,7 +91,7 @@ class EdgeIsTightDelayEstimation extends AnyFunSuite {
 
   test("logic delay") {
     val configurations = List(
-      (2, 2, "minimal for d=3 code"), // 0.043ns
+      (2, 2, "minimal for d=3 code"), // 0.04ns
       (3, 2, "minimal for d=5,7 code"), // 0.36ns
       (4, 2, "minimal for d=9,11,13,15 code"), // 0.36ns
       (5, 2, "minimal for d=[17, 31] code"), // 0.36ns
