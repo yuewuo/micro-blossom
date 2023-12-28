@@ -62,6 +62,7 @@ fn main() {
         );
     }
     for d in [3, 5, 7, 9, 11] {
+        let max_half_weight = 7;  // do distinguish between different edges
         let config = json!({
             "qubit_type": fusion_blossom::qecp::types::QubitType::StabZ,
             "max_half_weight": max_half_weight,

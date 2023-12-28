@@ -54,8 +54,8 @@ case class DualConfig(
       vertexBits = log2Up(max_node_num)
       val max_weight = graph.weighted_edges.map(e => e.w).max
       assert(max_weight > 0)
-      weightBits = log2Up(max_weight.toInt * graph.weighted_edges.length)
-      // grownBits =
+      // weightBits = log2Up(max_weight.toInt * graph.weighted_edges.length)
+      weightBits = log2Up(max_weight.toInt + 1) // weightBits could be smaller than grownBits
       assert(weightBits <= 30)
       if (vertexBits * 2 < weightBits) {
         vertexBits = (weightBits + 1) / 2 // expand vertexBits so that the instruction can hold the maximum length
