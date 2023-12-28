@@ -12,7 +12,6 @@ import microblossom.types._
 object VertexResponse {
   def build(
       maxLength: ConvergecastMaxLength, // output
-      message: BroadcastMessage,
       state: VertexState
   ) = {
 
@@ -34,13 +33,12 @@ object VertexResponse {
 case class VertexResponse(config: DualConfig, vertexIndex: Int) extends Component {
 
   val io = new Bundle {
-    val message = in(BroadcastMessage(config))
     val state = in(VertexState(config.vertexBits, config.grownBitsOf(vertexIndex)))
 
     val maxLength = out(ConvergecastMaxLength(config.weightBits))
   }
 
-  VertexResponse.build(io.maxLength, io.message, io.state)
+  VertexResponse.build(io.maxLength, io.state)
 
 }
 

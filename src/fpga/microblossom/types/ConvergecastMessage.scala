@@ -8,7 +8,7 @@ case class ConvergecastMaxLength(weightBits: Int) extends Bundle {
   val length = UInt(weightBits bits)
 }
 
-case class ConvergecastConflicts(vertexBits: Int) extends Bundle {
+case class ConvergecastConflict(vertexBits: Int) extends Bundle {
   val valid = Bool
   val field1 = Bits(vertexBits bits)
   val field2 = Bits(vertexBits bits)

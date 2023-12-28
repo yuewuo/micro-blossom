@@ -33,12 +33,13 @@ object EdgeIsTight {
   }
 }
 
-case class EdgeIsTight(grownBits: Int, weightBits: Int) extends Component {
-  require(grownBits >= weightBits)
+case class EdgeIsTight(leftGrownBits: Int, rightGrownBits: Int, weightBits: Int) extends Component {
+  require(leftGrownBits >= weightBits)
+  require(rightGrownBits >= weightBits)
 
   val io = new Bundle {
-    val leftGrown = in(UInt(grownBits bits))
-    val rightGrown = in(UInt(grownBits bits))
+    val leftGrown = in(UInt(leftGrownBits bits))
+    val rightGrown = in(UInt(rightGrownBits bits))
     val weight = in(UInt(weightBits bits))
     val isTight = out(Bool)
   }
@@ -53,7 +54,7 @@ class EdgeIsTightTest extends AnyFunSuite {
   test("example") {
     val grownBits = 6
     val weightBits = 3
-    Config.spinal().generateVerilog(EdgeIsTight(grownBits, weightBits))
+    Config.spinal().generateVerilog(EdgeIsTight(grownBits, grownBits, weightBits))
   }
 
   test("logic validity") {
@@ -66,7 +67,7 @@ class EdgeIsTightTest extends AnyFunSuite {
     )
     for ((grownBits, weightBits) <- configurations) {
       Config.sim
-        .compile(EdgeIsTight(grownBits, weightBits))
+        .compile(EdgeIsTight(grownBits, grownBits, weightBits))
         .doSim("logic validity") { dut =>
           for (weight <- Range(0, 1 << weightBits)) {
             for (leftGrown <- Range(0, 1 << grownBits)) {
@@ -101,7 +102,7 @@ class EdgeIsTightDelayEstimation extends AnyFunSuite {
       (7, 4, "circuit-level for d=[17, 31] code") // 0.67ns
     )
     for ((grownBits, weightBits, name) <- configurations) {
-      val timingReport = Vivado.reportTiming(EdgeIsTight(grownBits, weightBits))
+      val timingReport = Vivado.reportTiming(EdgeIsTight(grownBits, grownBits, weightBits))
       println(s"$name: ${timingReport.getPathDelaysExcludingIOWorst}ns")
     }
   }
