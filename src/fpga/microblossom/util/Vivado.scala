@@ -138,17 +138,20 @@ object Vivado {
         ???
       }
     }
-    val propertySettings = {
-      for {
-        port <- component.getAllIo
-      } yield s"set_property DONT_TOUCH true [get_nets ${port.getName}${
-          if (port.isInstanceOf[Bool]) {
-            ""
-          } else {
-            "[*]"
-          }
-        }]"
-    }.mkString("\n")
+    val propertySettingsArray = mutable.ArrayBuffer[String]()
+    for (port <- component.getAllIo) {
+      val suffix = if (port.isInstanceOf[Bool]) {
+        ""
+      } else {
+        "[*]"
+      }
+      val signalName = port.getName + suffix
+      propertySettingsArray.append(s"""
+if { [llength [get_nets $signalName]] != 0 } {
+  set_property DONT_TOUCH true [get_nets $signalName]
+}""")
+    }
+    val propertySettings = propertySettingsArray.mkString("\n")
     val runJobScript = if (useImpl) {
       """
 launch_runs synth_1 -jobs 8
