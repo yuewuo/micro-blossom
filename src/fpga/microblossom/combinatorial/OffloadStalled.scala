@@ -8,7 +8,7 @@ import microblossom.util.Vivado
 import scala.collection.mutable
 import org.scalatest.funsuite.AnyFunSuite
 
-object VertexOffloadStalled {
+object OffloadStalled {
 
   def build(
       isStalled: Bool, // output
@@ -24,7 +24,7 @@ object VertexOffloadStalled {
   }
 }
 
-case class VertexOffloadStalled(numConditions: Int) extends Component {
+case class OffloadStalled(numConditions: Int) extends Component {
 
   val io = new Bundle {
     val conditions = in(Vec.fill(numConditions)(Bool))
@@ -32,25 +32,25 @@ case class VertexOffloadStalled(numConditions: Int) extends Component {
     val isStalled = out(Bool)
   }
 
-  VertexOffloadStalled.build(
+  OffloadStalled.build(
     io.isStalled,
     io.conditions
   )
 
 }
 
-// sbt 'testOnly microblossom.combinatorial.VertexOffloadStalledTest'
-class VertexOffloadStalledTest extends AnyFunSuite {
+// sbt 'testOnly microblossom.combinatorial.OffloadStalledTest'
+class OffloadStalledTest extends AnyFunSuite {
 
   test("example") {
     val numConditions = 12
-    Config.spinal().generateVerilog(VertexOffloadStalled(numConditions))
+    Config.spinal().generateVerilog(OffloadStalled(numConditions))
   }
 
 }
 
-// sbt 'testOnly microblossom.combinatorial.VertexOffloadStalledDelayEstimation'
-class VertexOffloadStalledDelayEstimation extends AnyFunSuite {
+// sbt 'testOnly microblossom.combinatorial.OffloadStalledDelayEstimation'
+class OffloadStalledDelayEstimation extends AnyFunSuite {
 
   test("logic delay") {
     val configurations = List(
@@ -60,7 +60,7 @@ class VertexOffloadStalledDelayEstimation extends AnyFunSuite {
       (12, "circuit-level 12 neighbors") // 0.36ns
     )
     for ((numConditions, name) <- configurations) {
-      val timingReport = Vivado.reportTiming(VertexOffloadStalled(numConditions))
+      val timingReport = Vivado.reportTiming(OffloadStalled(numConditions))
       println(s"$name: ${timingReport.getPathDelaysExcludingIOWorst}ns")
     }
   }
