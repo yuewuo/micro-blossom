@@ -61,6 +61,7 @@ case class Edge(config: DualConfig, edgeIndex: Int, injectRegisters: Seq[String]
   // fetch
   var ram: Mem[EdgeState] = null
   var register = Reg(EdgeState(config.weightBits))
+  register.weight init (config.graph.weighted_edges(edgeIndex).w.toInt)
   var fetchState = EdgeState(config.weightBits)
   var message = BroadcastMessage(config)
   if (config.contextBits > 0) {
@@ -177,8 +178,8 @@ class EdgeTest extends AnyFunSuite {
 
 }
 
-// sbt 'testOnly microblossom.modules.EdgeResourceEstimation'
-class EdgeResourceEstimation extends AnyFunSuite {
+// sbt 'testOnly microblossom.modules.EdgeEstimation'
+class EdgeEstimation extends AnyFunSuite {
 
   test("logic delay") {
     val configurations = List(
@@ -186,26 +187,27 @@ class EdgeResourceEstimation extends AnyFunSuite {
         DualConfig(filename = "./resources/graphs/example_code_capacity_d5.json"),
         1,
         "code capacity 2 neighbors"
-      ), //
+      ), // 7xLUT6, 1xLUT5, 3xLUT4 -> 11
       (
         DualConfig(filename = "./resources/graphs/example_code_capacity_rotated_d5.json"),
         12,
         "code capacity 4 neighbors"
-      ), //
+      ), // 9xLUT6, 3xLUT4 -> 12
       (
         DualConfig(filename = "./resources/graphs/example_phenomenological_rotated_d5.json"),
         141,
         "phenomenological 6 neighbors"
-      ), //
+      ), // 6xLUT6, 4xLUT5, 5xLUT4, 1xLUT3 -> 16
       (
         DualConfig(filename = "./resources/graphs/example_circuit_level_d5.json"),
         365,
         "circuit-level 12 neighbors"
-      ) //
+      ) // 19xLUT6, 9xLUT4, 5xLUT2, 1xCARRY4 -> 34
     )
     for ((config, edgeIndex, name) <- configurations) {
-      val timingReport = Vivado.reportTiming(Edge(config, edgeIndex))
-      println(s"$name: ${timingReport.getPathDelaysExcludingIOWorst}ns")
+      val resourceReport = Vivado.reportResource(Edge(config, edgeIndex))
+      println(s"$name:")
+      resourceReport.primitivesTable.print()
     }
   }
 
