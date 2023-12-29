@@ -61,13 +61,13 @@ pub struct BinaryTree {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum OffloadingType {
     /// a pair of defects match with each other
-    #[serde(rename = "DM")]
+    #[serde(rename = "dm")]
     DefectMatch {
         #[serde(rename = "e")]
         edge_index: usize,
     },
     /// a defect match with virtual vertex
-    #[serde(rename = "VM")]
+    #[serde(rename = "vm")]
     VirtualMatch {
         #[serde(rename = "e")]
         edge_index: usize,

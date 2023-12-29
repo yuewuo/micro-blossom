@@ -11,19 +11,23 @@ import spinal.lib._
 
 case class StageOffloadVertex(config: DualConfig, vertexIndex: Int) extends Bundle {
   val state = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
+  val message = BroadcastMessage(config)
 }
 
 case class StageOffloadVertex2(config: DualConfig, vertexIndex: Int) extends Bundle {
   val state = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
+  val message = BroadcastMessage(config)
 }
 
 case class StageOffloadVertex3(config: DualConfig, vertexIndex: Int) extends Bundle {
   val state = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
+  val message = BroadcastMessage(config)
   val isUniqueTight = Bool
 }
 
 case class StageOffloadVertex4(config: DualConfig, vertexIndex: Int) extends Bundle {
   val state = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
+  val message = BroadcastMessage(config)
 }
 
 /*

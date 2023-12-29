@@ -93,13 +93,25 @@ case class DualConfig(
     return incidentEdges(vertexIndex)
   }
   def incidentVerticesOf(edgeIndex: Int): Seq[Int] = {
-    return Seq(graph.weighted_edges(edgeIndex).l.toInt, graph.weighted_edges(edgeIndex).r.toInt)
+    val edge = graph.weighted_edges(edgeIndex)
+    return Seq(edge.l.toInt, edge.r.toInt)
   }
   def incidentVerticesPairsOf(edgeIndex: Int): Seq[Seq[Int]] = {
+    val edge = graph.weighted_edges(edgeIndex)
     return Seq(
-      Seq(graph.weighted_edges(edgeIndex).l.toInt, graph.weighted_edges(edgeIndex).r.toInt),
-      Seq(graph.weighted_edges(edgeIndex).r.toInt, graph.weighted_edges(edgeIndex).l.toInt)
+      Seq(edge.l.toInt, edge.r.toInt),
+      Seq(edge.r.toInt, edge.l.toInt)
     )
+  }
+  def peerVertexOfEdge(edgeIndex: Int, vertexIndex: Int): Int = {
+    val edge = graph.weighted_edges(edgeIndex)
+    if (edge.l.toInt == vertexIndex) {
+      return edge.r.toInt
+    } else if (edge.r.toInt == vertexIndex) {
+      return edge.l.toInt
+    } else {
+      throw new Exception(s"vertex $vertexIndex is not incident to edge $edgeIndex")
+    }
   }
   def localIndexOfEdge(vertexIndex: Int, edgeIndex: Int): Int = {
     for ((localEdgeIndex, localIndex) <- incidentEdges(vertexIndex).zipWithIndex) {
@@ -110,11 +122,11 @@ case class DualConfig(
     throw new Exception("cannot find edge in the incident list of vertex")
   }
   def localIndexOfVertex(edgeIndex: Int, vertexIndex: Int): Int = {
-    val weightedEdge = graph.weighted_edges(edgeIndex)
-    if (weightedEdge.l == vertexIndex) {
+    val edge = graph.weighted_edges(edgeIndex)
+    if (edge.l == vertexIndex) {
       return 0
     }
-    if (weightedEdge.r == vertexIndex) {
+    if (edge.r == vertexIndex) {
       return 1
     }
     throw new Exception("the edge does not connect the vertex")
@@ -124,6 +136,30 @@ case class DualConfig(
   }
   def grownBitsOf(vertexIndex: Int): Int = {
     log2Up(graph.vertex_max_growth(vertexIndex) + 1)
+  }
+  def offloaderNeighborVertexIndices(offloaderIndex: Int): Seq[Int] = {
+    val offloader = graph.offloading(offloaderIndex)
+    println(offloader)
+    offloader.dm match {
+      case Some(defectMatch) =>
+        val edgeIndex = defectMatch.e.toInt
+        return incidentVerticesOf(edgeIndex)
+      case None =>
+    }
+    offloader.vm match {
+      case Some(virtualMatch) =>
+        val edgeIndex = virtualMatch.e.toInt
+        val edge = graph.weighted_edges(edgeIndex)
+        val virtualVertex = virtualMatch.v.toInt
+        val regularVertex = peerVertexOfEdge(edgeIndex, virtualVertex)
+        val neighborEdges = incidentEdgesOf(regularVertex)
+        return neighborEdges.map(ei => peerVertexOfEdge(edgeIndex, regularVertex)).filter(_ != virtualVertex)
+      case None =>
+    }
+    throw new Exception("unrecognized definition of offloader")
+  }
+  def numOffloaderNeighborOf(offloaderIndex: Int): Int = {
+    offloaderNeighborVertexIndices(offloaderIndex).length
   }
 
   def sanityCheck(): Unit = {

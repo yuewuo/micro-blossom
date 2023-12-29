@@ -40,26 +40,26 @@ case class BinaryTree(
 
 @ConfiguredJsonCodec
 case class BinaryTreeNode(
-    val parent: Option[Long],
-    val left: Option[Long],
-    val right: Option[Long]
+    val p: Option[Long], // parent
+    val l: Option[Long], // left
+    val r: Option[Long] // right
 )
 
 @ConfiguredJsonCodec
 case class Offloading(
-    val DM: Option[DefectMatch],
-    val VM: Option[VirtualMatch]
+    val dm: Option[DefectMatch],
+    val vm: Option[VirtualMatch]
 )
 
 @ConfiguredJsonCodec
 case class DefectMatch(
-    val edge_index: Long
+    val e: Long // edge_index
 )
 
 @ConfiguredJsonCodec
 case class VirtualMatch(
-    val edge_index: Long,
-    val virtual_vertex: Long
+    val e: Long, // edge_index
+    val v: Long // virtual_vertex
 )
 
 object SingleGraph {

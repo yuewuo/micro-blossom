@@ -11,6 +11,7 @@ import spinal.lib._
 
 case class StageExecuteVertex(config: DualConfig, vertexIndex: Int) extends Bundle {
   val state = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
+  val message = BroadcastMessage(config)
   val isStalled = Bool
 }
 

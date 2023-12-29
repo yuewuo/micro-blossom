@@ -7,35 +7,35 @@ import microblossom.types._
 import microblossom.stage._
 import org.scalatest.funsuite.AnyFunSuite
 
-case class Vertex(config: DualConfig, vertexIndex: Int, injectRegisters: Seq[String] = List()) extends Component {
+case class Edge(config: DualConfig, edgeIndex: Int, injectRegisters: Seq[String] = List()) extends Component {
   val io = new Bundle {
     val message = in(BroadcastMessage(config))
-    val debugState = out(VertexState(config.vertexBits, config.grownBitsOf(vertexIndex)))
+    val debugState = out(EdgeState(config.weightBits))
   }
 
   val stages = Stages(
-    offload = () => StageOffloadVertex(config, vertexIndex),
-    offload2 = () => StageOffloadVertex2(config, vertexIndex),
-    offload3 = () => StageOffloadVertex3(config, vertexIndex),
-    offload4 = () => StageOffloadVertex4(config, vertexIndex)
+    offload = () => StageOffloadEdge(config),
+    offload2 = () => StageOffloadEdge2(config),
+    offload3 = () => StageOffloadEdge3(config),
+    offload4 = () => StageOffloadEdge4(config)
   )
 
   // fetch
-  var ram: Mem[VertexState] = null
-  var register = Reg(VertexState(config.vertexBits, config.grownBitsOf(vertexIndex)))
-  var fetchState = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
-  var message = BroadcastMessage(config)
+  var ram: Mem[EdgeState] = null
+  var register = Reg(EdgeState(config.weightBits))
+  var fetchState = EdgeState(config.weightBits)
+//   var message = BroadcastMessage(config)
   if (config.contextBits > 0) {
     // fetch stage, delay the instruction
-    ram = Mem(VertexState(config.vertexBits, config.grownBitsOf(vertexIndex)), config.contextDepth)
+    ram = Mem(EdgeState(config.weightBits), config.contextDepth)
     fetchState := ram.readSync(
       address = io.message.contextId,
       enable = io.message.valid
     )
-    message := RegNext(io.message)
+    // message := RegNext(io.message)
   } else {
     fetchState := register
-    message := io.message
+    // message := io.message
   }
 
   // mock
@@ -55,15 +55,15 @@ case class Vertex(config: DualConfig, vertexIndex: Int, injectRegisters: Seq[Str
 
 }
 
-// sbt 'testOnly microblossom.modules.VertexTest'
-class VertexTest extends AnyFunSuite {
+// sbt 'testOnly microblossom.modules.EdgeTest'
+class EdgeTest extends AnyFunSuite {
 
-  test("construct a Vertex") {
+  test("construct a Edge") {
     val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
     // config.contextDepth = 1024 // fit in a single Block RAM of 36 kbits in 36-bit mode
     config.contextDepth = 1 // no context switch
     config.sanityCheck()
-    Config.spinal().generateVerilog(Vertex(config, 0))
+    Config.spinal().generateVerilog(Edge(config, 0))
   }
 
 }
