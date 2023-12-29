@@ -33,11 +33,11 @@ case class StageExecuteEdge(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
 }
 
-case class StageExecute2Edge(config: DualConfig) extends Bundle {
+case class StageExecuteEdge2(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
 }
 
-case class StageExecute3Edge(config: DualConfig) extends Bundle {
+case class StageExecuteEdge3(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
   val isTight = Bool
 }

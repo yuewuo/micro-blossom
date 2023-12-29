@@ -11,7 +11,7 @@ object Offloader {
   def getStages(
       config: DualConfig,
       offloaderIndex: Int
-  ): Stages[Bundle, Bundle, Bundle, StageOffloadOffloader4] = {
+  ): Stages[Bundle, Bundle, Bundle, StageOffloadOffloader4, Bundle, Bundle, Bundle, Bundle, Bundle, Bundle] = {
     Stages(
       offload4 = () => StageOffloadOffloader4(config.numOffloaderNeighborOf(offloaderIndex))
     )
@@ -33,7 +33,7 @@ case class Offloader(config: DualConfig, offloaderIndex: Int, injectRegisters: S
   val stages = Offloader.getStages(config, offloaderIndex)
   stages.connectStageOutput(io.stageOutputs)
 
-  stages.offloadSet4.stallVertex := Vec.fill(config.numOffloaderNeighborOf(offloaderIndex))(False)
+  stages.offloadSet4.stallVertex := Vec.fill(config.numOffloaderNeighborOf(offloaderIndex))(False) // TODO
 
   // inject registers
   for (stageName <- injectRegisters) {
