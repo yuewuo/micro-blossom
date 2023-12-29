@@ -26,6 +26,18 @@ case class Vertex(config: DualConfig, vertexIndex: Int, injectRegisters: Seq[Str
     val message = in(BroadcastMessage(config))
     val debugState = out(VertexState(config.vertexBits, config.grownBitsOf(vertexIndex)))
     val stageOutputs = out(Vertex.getStages(config, vertexIndex).getStageOutput)
+    val edgeInputs = in(
+      Vec(
+        for (edgeIndex <- config.incidentEdgesOf(vertexIndex))
+          yield Edge.getStages(config).getStageOutput
+      )
+    )
+    val offloaderInputs = in(
+      Vec(
+        for (offloaderIndex <- config.incidentOffloaderOf(vertexIndex))
+          yield Offloader.getStages(config, offloaderIndex).getStageOutput
+      )
+    )
   }
 
   val stages = Vertex.getStages(config, vertexIndex)

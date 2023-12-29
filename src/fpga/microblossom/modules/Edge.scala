@@ -21,10 +21,13 @@ object Edge {
 }
 
 case class Edge(config: DualConfig, edgeIndex: Int, injectRegisters: Seq[String] = List()) extends Component {
+  val (leftVertex, rightVertex) = config.incidentVerticesOf(edgeIndex)
   val io = new Bundle {
     val message = in(BroadcastMessage(config))
     val debugState = out(EdgeState(config.weightBits))
     val stageOutputs = out(Edge.getStages(config).getStageOutput)
+    val leftVertexInput = in(Vertex.getStages(config, leftVertex).getStageOutput)
+    val rightVertexInput = in(Vertex.getStages(config, rightVertex).getStageOutput)
   }
 
   val stages = Edge.getStages(config)

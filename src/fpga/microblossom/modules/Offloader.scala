@@ -21,6 +21,13 @@ object Offloader {
 case class Offloader(config: DualConfig, offloaderIndex: Int, injectRegisters: Seq[String] = List()) extends Component {
   val io = new Bundle {
     val stageOutputs = out(Offloader.getStages(config, offloaderIndex).getStageOutput)
+    val vertexInputsOffloadGet3 = in(
+      Vec(
+        for (vertexIndex <- config.offloaderNeighborVertexIndices(offloaderIndex))
+          yield Vertex.getStages(config, vertexIndex).getStageOutput.offloadGet3
+      )
+    )
+    val edgeInputOffloadGet3 = in(Edge.getStages(config).getStageOutput.offloadGet3)
   }
 
   val stages = Offloader.getStages(config, offloaderIndex)

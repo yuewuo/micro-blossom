@@ -34,7 +34,7 @@ case class Stages[Offload <: Bundle, Offload2 <: Bundle, Offload3 <: Bundle, Off
     val offload2: () => Offload2 = () => new Bundle {},
     val offload3: () => Offload3 = () => new Bundle {},
     val offload4: () => Offload4 = () => new Bundle {}
-) {
+) extends Bundle {
   private val namedStages = Map[String, Stage]()
   private def addNamedStage(name: String, setter: Bundle, getter: Bundle) = {
     namedStages += (name -> Stage(setter, getter))

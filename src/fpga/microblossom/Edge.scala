@@ -183,6 +183,7 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
 
   // report stage
   io.output.valid := reportIsFindObstacle
+  val (leftIndex, rightIndex) = config.incidentVerticesOf(edgeIndex)
   io.output.obstacle.assignFromBits(
     Mux(
       maxGrowth === 0 && isOverallSpeedPositive,
@@ -192,8 +193,8 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
           reportRightShadow.node,
           reportLeftShadow.root,
           reportRightShadow.root,
-          B(config.incidentVerticesOf(edgeIndex)(0)),
-          B(config.incidentVerticesOf(edgeIndex)(1))
+          B(leftIndex),
+          B(rightIndex)
         ),
       config.obstacleSpec.dynNonZeroGrow(maxGrowth)
     )

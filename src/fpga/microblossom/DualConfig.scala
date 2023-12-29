@@ -3,6 +3,7 @@ package microblossom
 import spinal.core._
 import util._
 import io.circe.parser.decode
+import collection.mutable.ArrayBuffer
 
 case class DualConfig(
     var vertexBits: Int = 15,
@@ -27,7 +28,8 @@ case class DualConfig(
   def LengthNone = (1 << weightBits) - 1
   def readLatency = broadcastDelay + convergecastDelay + 5 // from sending the command to receiving the obstacle
   private val virtualVertices = collection.mutable.Set[Int]()
-  private val incidentEdges = collection.mutable.Map[Int, Seq[Int]]()
+  private val incidentEdges = collection.mutable.Map[Int, ArrayBuffer[Int]]() // vertexIndex -> Seq[edgeIndex]
+  private val incidentOffloaders = collection.mutable.Map[Int, ArrayBuffer[Int]]() // vertexIndex -> Seq[offloaderIdnex]
 
   if (filename != null) {
     val source = scala.io.Source.fromFile(filename)
@@ -66,6 +68,7 @@ case class DualConfig(
     }
     // build vertex to neighbor edge mapping
     updateIncidentEdges()
+    updateIncidentOffloaders()
     // update virtual vertices
     virtualVertices.clear()
     for (vertexIndex <- graph.virtual_vertices) {
@@ -73,15 +76,25 @@ case class DualConfig(
     }
   }
 
-  def updateIncidentEdges(): Unit = {
+  def updateIncidentEdges() = {
     incidentEdges.clear()
     for ((edge, edgeIndex) <- graph.weighted_edges.zipWithIndex) {
       for (vertexIndex <- Seq(edge.l.toInt, edge.r.toInt)) {
-        if (incidentEdges.contains(vertexIndex)) {
-          incidentEdges(vertexIndex) = incidentEdges(vertexIndex) :+ edgeIndex
-        } else {
-          incidentEdges(vertexIndex) = Seq(edgeIndex)
+        if (!incidentEdges.contains(vertexIndex)) {
+          incidentEdges(vertexIndex) = ArrayBuffer()
         }
+        incidentEdges(vertexIndex).append(edgeIndex)
+      }
+    }
+  }
+  def updateIncidentOffloaders() = {
+    incidentOffloaders.clear()
+    for ((offloader, offloaderIndex) <- graph.offloading.zipWithIndex) {
+      for (vertexIndex <- offloaderNeighborVertexIndices(offloaderIndex)) {
+        if (!incidentOffloaders.contains(vertexIndex)) {
+          incidentOffloaders(vertexIndex) = ArrayBuffer()
+        }
+        incidentOffloaders(vertexIndex).append(offloaderIndex)
       }
     }
   }
@@ -92,9 +105,12 @@ case class DualConfig(
   def incidentEdgesOf(vertexIndex: Int): Seq[Int] = {
     return incidentEdges(vertexIndex)
   }
-  def incidentVerticesOf(edgeIndex: Int): Seq[Int] = {
+  def incidentOffloaderOf(vertexIndex: Int): Seq[Int] = {
+    return incidentOffloaders(vertexIndex)
+  }
+  def incidentVerticesOf(edgeIndex: Int): (Int, Int) = {
     val edge = graph.weighted_edges(edgeIndex)
-    return Seq(edge.l.toInt, edge.r.toInt)
+    return (edge.l.toInt, edge.r.toInt)
   }
   def incidentVerticesPairsOf(edgeIndex: Int): Seq[Seq[Int]] = {
     val edge = graph.weighted_edges(edgeIndex)
@@ -137,13 +153,15 @@ case class DualConfig(
   def grownBitsOf(vertexIndex: Int): Int = {
     log2Up(graph.vertex_max_growth(vertexIndex) + 1)
   }
-  def offloaderNeighborVertexIndices(offloaderIndex: Int): Seq[Int] = {
+  // (edgeIndex, neighborVertices)
+  def offloaderInformation(offloaderIndex: Int): (Int, Seq[Int]) = {
     val offloader = graph.offloading(offloaderIndex)
     println(offloader)
     offloader.dm match {
       case Some(defectMatch) =>
         val edgeIndex = defectMatch.e.toInt
-        return incidentVerticesOf(edgeIndex)
+        val (left, right) = incidentVerticesOf(edgeIndex)
+        return (edgeIndex, Seq(left, right))
       case None =>
     }
     offloader.vm match {
@@ -153,10 +171,21 @@ case class DualConfig(
         val virtualVertex = virtualMatch.v.toInt
         val regularVertex = peerVertexOfEdge(edgeIndex, virtualVertex)
         val neighborEdges = incidentEdgesOf(regularVertex)
-        return neighborEdges.map(ei => peerVertexOfEdge(edgeIndex, regularVertex)).filter(_ != virtualVertex)
+        return (
+          edgeIndex,
+          neighborEdges.map(ei => peerVertexOfEdge(edgeIndex, regularVertex)).filter(_ != virtualVertex)
+        )
       case None =>
     }
     throw new Exception("unrecognized definition of offloader")
+  }
+  def offloaderEdgeIndex(offloaderIndex: Int): Int = {
+    val (edgeIndex, neighborVertices) = offloaderInformation(offloaderIndex)
+    edgeIndex
+  }
+  def offloaderNeighborVertexIndices(offloaderIndex: Int): Seq[Int] = {
+    val (edgeIndex, neighborVertices) = offloaderInformation(offloaderIndex)
+    neighborVertices
   }
   def numOffloaderNeighborOf(offloaderIndex: Int): Int = {
     offloaderNeighborVertexIndices(offloaderIndex).length

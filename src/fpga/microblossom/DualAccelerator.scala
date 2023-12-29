@@ -182,16 +182,16 @@ case class DualAccelerator(config: DualConfig, ioConfig: DualConfig = DualConfig
     var jsonEdges = ArrayBuffer[Json]()
     edges.foreach(edge => {
       val register = edge.register
-      val neighbors = config.incidentVerticesOf(edge.edgeIndex)
-      val leftReg = vertices(neighbors(0)).register
-      val rightReg = vertices(neighbors(1)).register
+      val (leftIndex, rightIndex) = config.incidentVerticesOf(edge.edgeIndex)
+      val leftReg = vertices(leftIndex).register
+      val rightReg = vertices(rightIndex).register
       val edgeMap = Map(
         (if (abbrev) { "w" }
          else { "weight" }) -> Json.fromLong(register.weight.toLong),
         (if (abbrev) { "l" }
-         else { "left" }) -> Json.fromLong(neighbors(0)),
+         else { "left" }) -> Json.fromLong(leftIndex),
         (if (abbrev) { "r" }
-         else { "right" }) -> Json.fromLong(neighbors(1)),
+         else { "right" }) -> Json.fromLong(rightIndex),
         (if (abbrev) { "lg" }
          else { "left_growth" }) -> Json.fromLong(leftReg.grown.toLong),
         (if (abbrev) { "rg" }
