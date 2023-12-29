@@ -35,7 +35,7 @@ case class StageOffloadVertex4(config: DualConfig, vertexIndex: Int) extends Bun
  */
 
 case class StageOffloadOffloader4(numNeighbors: Int) extends Bundle {
-  val condition = Vec.fill(numNeighbors)(Bool)
+  val stallVertex = Vec.fill(numNeighbors)(Bool)
 }
 
 /*

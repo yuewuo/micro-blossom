@@ -7,18 +7,29 @@ import microblossom.types._
 import microblossom.stage._
 import org.scalatest.funsuite.AnyFunSuite
 
+object Vertex {
+  def getStages(
+      config: DualConfig,
+      vertexIndex: Int
+  ): Stages[StageOffloadVertex, StageOffloadVertex2, StageOffloadVertex3, StageOffloadVertex4] = {
+    Stages(
+      offload = () => StageOffloadVertex(config, vertexIndex),
+      offload2 = () => StageOffloadVertex2(config, vertexIndex),
+      offload3 = () => StageOffloadVertex3(config, vertexIndex),
+      offload4 = () => StageOffloadVertex4(config, vertexIndex)
+    )
+  }
+}
+
 case class Vertex(config: DualConfig, vertexIndex: Int, injectRegisters: Seq[String] = List()) extends Component {
   val io = new Bundle {
     val message = in(BroadcastMessage(config))
     val debugState = out(VertexState(config.vertexBits, config.grownBitsOf(vertexIndex)))
+    val stageOutputs = out(Vertex.getStages(config, vertexIndex).getStageOutput)
   }
 
-  val stages = Stages(
-    offload = () => StageOffloadVertex(config, vertexIndex),
-    offload2 = () => StageOffloadVertex2(config, vertexIndex),
-    offload3 = () => StageOffloadVertex3(config, vertexIndex),
-    offload4 = () => StageOffloadVertex4(config, vertexIndex)
-  )
+  val stages = Vertex.getStages(config, vertexIndex)
+  stages.connectStageOutput(io.stageOutputs)
 
   // fetch
   var ram: Mem[VertexState] = null
@@ -39,10 +50,20 @@ case class Vertex(config: DualConfig, vertexIndex: Int, injectRegisters: Seq[Str
   }
 
   // mock
+  stages.offloadSet.message := message
   stages.offloadSet.state := fetchState
+
   stages.offloadSet2.state := stages.offloadGet.state
+  stages.offloadSet2.message := stages.offloadGet.message
+
   stages.offloadSet3.state := stages.offloadGet2.state
+  stages.offloadSet3.message := stages.offloadGet2.message
+  stages.offloadSet3.isUniqueTight := False
+
   stages.offloadSet4.state := stages.offloadGet3.state
+  stages.offloadSet4.message := stages.offloadGet3.message
+
+  // write back
   register := stages.offloadGet4.state
 
   // inject registers

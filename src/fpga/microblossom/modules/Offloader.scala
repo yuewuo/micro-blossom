@@ -7,15 +7,26 @@ import microblossom.types._
 import microblossom.stage._
 import org.scalatest.funsuite.AnyFunSuite
 
-case class Offloader(config: DualConfig, offloaderIndex: Int, injectRegisters: Seq[String] = List()) extends Component {
-  val io = new Bundle {}
+object Offloader {
+  def getStages(
+      config: DualConfig,
+      offloaderIndex: Int
+  ): Stages[Bundle, Bundle, Bundle, StageOffloadOffloader4] = {
+    Stages(
+      offload4 = () => StageOffloadOffloader4(config.numOffloaderNeighborOf(offloaderIndex))
+    )
+  }
+}
 
-  val stages = Stages(
-    offload = () => new Bundle {},
-    offload2 = () => new Bundle {},
-    offload3 = () => new Bundle {},
-    offload4 = () => StageOffloadOffloader4(config.numOffloaderNeighborOf(offloaderIndex))
-  )
+case class Offloader(config: DualConfig, offloaderIndex: Int, injectRegisters: Seq[String] = List()) extends Component {
+  val io = new Bundle {
+    val stageOutputs = out(Offloader.getStages(config, offloaderIndex).getStageOutput)
+  }
+
+  val stages = Offloader.getStages(config, offloaderIndex)
+  stages.connectStageOutput(io.stageOutputs)
+
+  stages.offloadSet4.stallVertex := Vec.fill(config.numOffloaderNeighborOf(offloaderIndex))(False)
 
   // inject registers
   for (stageName <- injectRegisters) {

@@ -7,18 +7,28 @@ import microblossom.types._
 import microblossom.stage._
 import org.scalatest.funsuite.AnyFunSuite
 
+object Edge {
+  def getStages(
+      config: DualConfig
+  ): Stages[StageOffloadEdge, StageOffloadEdge2, StageOffloadEdge3, StageOffloadEdge4] = {
+    Stages(
+      offload = () => StageOffloadEdge(config),
+      offload2 = () => StageOffloadEdge2(config),
+      offload3 = () => StageOffloadEdge3(config),
+      offload4 = () => StageOffloadEdge4(config)
+    )
+  }
+}
+
 case class Edge(config: DualConfig, edgeIndex: Int, injectRegisters: Seq[String] = List()) extends Component {
   val io = new Bundle {
     val message = in(BroadcastMessage(config))
     val debugState = out(EdgeState(config.weightBits))
+    val stageOutputs = out(Edge.getStages(config).getStageOutput)
   }
 
-  val stages = Stages(
-    offload = () => StageOffloadEdge(config),
-    offload2 = () => StageOffloadEdge2(config),
-    offload3 = () => StageOffloadEdge3(config),
-    offload4 = () => StageOffloadEdge4(config)
-  )
+  val stages = Edge.getStages(config)
+  stages.connectStageOutput(io.stageOutputs)
 
   // fetch
   var ram: Mem[EdgeState] = null
@@ -40,9 +50,15 @@ case class Edge(config: DualConfig, edgeIndex: Int, injectRegisters: Seq[String]
 
   // mock
   stages.offloadSet.state := fetchState
+
   stages.offloadSet2.state := stages.offloadGet.state
+  stages.offloadSet2.isTight := False
+
   stages.offloadSet3.state := stages.offloadGet2.state
+  stages.offloadSet3.isTight := stages.offloadGet2.isTight
+
   stages.offloadSet4.state := stages.offloadGet3.state
+
   register := stages.offloadGet4.state
 
   // inject registers
