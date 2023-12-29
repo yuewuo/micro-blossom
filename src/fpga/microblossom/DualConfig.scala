@@ -12,7 +12,7 @@ case class DualConfig(
     var convergecastDelay: Int = 1,
     var contextDepth: Int = 1, // how many different contexts are supported
     // optional features
-    val supportAddDefectVertex: Boolean = true,
+    var supportAddDefectVertex: Boolean = true,
     // load graph either from parameter or from file
     var graph: SingleGraph = null,
     val filename: String = null,
