@@ -144,7 +144,7 @@ case class Edge(config: DualConfig, edgeIndex: Int, injectRegisters: Seq[String]
   io.maxLength := edgeResponse.io.maxLength
   io.conflict := edgeResponse.io.conflict
 
-  // TODO: write back
+  // write back
   if (config.contextBits > 0) {
     ram.write(
       address = stages.updateGet3.contextId,

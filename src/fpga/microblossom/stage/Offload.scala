@@ -17,17 +17,32 @@ case class StageOffloadVertex(config: DualConfig, vertexIndex: Int) extends Bund
 case class StageOffloadVertex2(config: DualConfig, vertexIndex: Int) extends Bundle {
   val state = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
   val message = BroadcastMessage(config)
+
+  def connect(last: StageOffloadVertex) = {
+    state := last.state
+    message := last.message
+  }
 }
 
 case class StageOffloadVertex3(config: DualConfig, vertexIndex: Int) extends Bundle {
   val state = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
   val message = BroadcastMessage(config)
   val isUniqueTight = Bool
+
+  def connect(last: StageOffloadVertex2) = {
+    state := last.state
+    message := last.message
+  }
 }
 
 case class StageOffloadVertex4(config: DualConfig, vertexIndex: Int) extends Bundle {
   val state = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
   val message = BroadcastMessage(config)
+
+  def connect(last: StageOffloadVertex3) = {
+    state := last.state
+    message := last.message
+  }
 }
 
 /*

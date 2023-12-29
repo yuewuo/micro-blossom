@@ -15,6 +15,16 @@ case class StageUpdateVertex(config: DualConfig, vertexIndex: Int) extends Bundl
   val isStalled = Bool
   val valid = Bool
   val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+  val propagatingPeer = VertexPropagatingPeerResult(config.vertexBits)
+
+  def connect(last: StageExecuteVertex3) = {
+    state := last.state
+    isStalled := last.isStalled
+    valid := last.valid
+    if (config.contextBits > 0) {
+      contextId := last.contextId
+    }
+  }
 }
 
 case class StageUpdateVertex2(config: DualConfig, vertexIndex: Int) extends Bundle {
@@ -22,6 +32,13 @@ case class StageUpdateVertex2(config: DualConfig, vertexIndex: Int) extends Bund
   val shadow = VertexShadowResult(config.vertexBits)
   val valid = Bool
   val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+
+  def connect(last: StageUpdateVertex) = {
+    valid := last.valid
+    if (config.contextBits > 0) {
+      contextId := last.contextId
+    }
+  }
 }
 
 case class StageUpdateVertex3(config: DualConfig, vertexIndex: Int) extends Bundle {
@@ -29,6 +46,15 @@ case class StageUpdateVertex3(config: DualConfig, vertexIndex: Int) extends Bund
   val shadow = VertexShadowResult(config.vertexBits)
   val valid = Bool
   val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+
+  def connect(last: StageUpdateVertex2) = {
+    state := last.state
+    shadow := last.shadow
+    valid := last.valid
+    if (config.contextBits > 0) {
+      contextId := last.contextId
+    }
+  }
 }
 
 /*

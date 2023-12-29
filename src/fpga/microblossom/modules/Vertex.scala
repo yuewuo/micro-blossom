@@ -64,6 +64,12 @@ case class Vertex(config: DualConfig, vertexIndex: Int, injectRegisters: Seq[Str
   // fetch
   var ram: Mem[VertexState] = null
   var register = Reg(VertexState(config.vertexBits, config.grownBitsOf(vertexIndex)))
+  register.speed init (Speed.Stay)
+  register.node init (config.IndexNone)
+  register.root init (config.IndexNone)
+  register.isVirtual init (config.isVirtual(vertexIndex))
+  register.isDefect init (false)
+  register.grown init (0)
   var fetchState = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
   var message = BroadcastMessage(config)
   if (config.contextBits > 0) {
@@ -80,42 +86,49 @@ case class Vertex(config: DualConfig, vertexIndex: Int, injectRegisters: Seq[Str
   }
 
   // mock
-  stages.offloadSet.message := message // TODO
-  stages.offloadSet.state := fetchState // TODO
+  stages.offloadSet.message := message
+  stages.offloadSet.state := fetchState
 
-  stages.offloadSet2.state := stages.offloadGet.state // TODO
-  stages.offloadSet2.message := stages.offloadGet.message // TODO
+  stages.offloadSet2.connect(stages.offloadGet)
 
-  stages.offloadSet3.state := stages.offloadGet2.state // TODO
-  stages.offloadSet3.message := stages.offloadGet2.message // TODO
+  stages.offloadSet3.connect(stages.offloadGet2)
   stages.offloadSet3.isUniqueTight := False // TODO
 
-  stages.offloadSet4.state := stages.offloadGet3.state // TODO
-  stages.offloadSet4.message := stages.offloadGet3.message // TODO
+  stages.offloadSet4.connect(stages.offloadGet3)
 
-  stages.executeSet.state := stages.offloadGet4.state // TODO
-  stages.executeSet.message := stages.offloadGet4.message // TODO
+  stages.executeSet.connect(stages.offloadGet4)
   stages.executeSet.isStalled := False // TODO
 
+  stages.executeSet2.connect(stages.executeGet)
   stages.executeSet2.state := stages.executeGet.state // TODO
-  stages.executeSet2.isStalled := stages.executeGet.isStalled // TODO
 
-  stages.executeSet3.state := stages.executeGet2.state // TODO
-  stages.executeSet3.isStalled := stages.executeGet2.isStalled // TODO
+  stages.executeSet3.connect(stages.executeGet2)
 
-  stages.updateSet.state := stages.executeGet3.state // TODO
-  stages.updateSet.isStalled := stages.executeGet3.isStalled // TODO
+  stages.updateSet.connect(stages.executeGet3)
+  stages.updateSet.propagatingPeer.valid := False // TODO
+  stages.updateSet.propagatingPeer.node := config.IndexNone // TODO
+  stages.updateSet.propagatingPeer.root := config.IndexNone // TODO
 
+  stages.updateSet2.connect(stages.updateGet)
   stages.updateSet2.state := stages.updateGet.state // TODO
   stages.updateSet2.shadow.speed := Speed.Stay // TODO
   stages.updateSet2.shadow.node := config.IndexNone // TODO
   stages.updateSet2.shadow.root := config.IndexNone // TODO
 
-  stages.updateSet3.state := stages.updateGet2.state // TODO
-  stages.updateSet3.shadow := stages.updateGet2.shadow // TODO
+  stages.updateSet3.connect(stages.updateGet2)
 
-  // TODO: write back
-  register := stages.updateGet3.state
+  // write back
+  if (config.contextBits > 0) {
+    ram.write(
+      address = stages.updateGet3.contextId,
+      data = stages.updateGet3.state,
+      enable = stages.updateGet3.valid
+    )
+  } else {
+    when(stages.updateGet3.valid) {
+      register := stages.updateGet3.state
+    }
+  }
 
   // inject registers
   for (stageName <- injectRegisters) {

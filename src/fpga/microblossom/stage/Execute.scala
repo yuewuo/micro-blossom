@@ -13,6 +13,11 @@ case class StageExecuteVertex(config: DualConfig, vertexIndex: Int) extends Bund
   val state = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
   val message = BroadcastMessage(config)
   val isStalled = Bool
+
+  def connect(last: StageOffloadVertex4) = {
+    state := last.state
+    message := last.message
+  }
 }
 
 case class StageExecuteVertex2(config: DualConfig, vertexIndex: Int) extends Bundle {
@@ -21,6 +26,14 @@ case class StageExecuteVertex2(config: DualConfig, vertexIndex: Int) extends Bun
   // throw away the broadcast message because it's not used later on
   val valid = Bool
   val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+
+  def connect(last: StageExecuteVertex) = {
+    isStalled := last.isStalled
+    valid := last.message.valid
+    if (config.contextBits > 0) {
+      contextId := last.message.contextId
+    }
+  }
 }
 
 case class StageExecuteVertex3(config: DualConfig, vertexIndex: Int) extends Bundle {
@@ -28,6 +41,15 @@ case class StageExecuteVertex3(config: DualConfig, vertexIndex: Int) extends Bun
   val isStalled = Bool
   val valid = Bool
   val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+
+  def connect(last: StageExecuteVertex2) = {
+    state := last.state
+    isStalled := last.isStalled
+    valid := last.valid
+    if (config.contextBits > 0) {
+      contextId := last.contextId
+    }
+  }
 }
 
 /*
