@@ -156,7 +156,6 @@ case class DualConfig(
   // (edgeIndex, neighborVertices)
   def offloaderInformation(offloaderIndex: Int): (Int, Seq[Int]) = {
     val offloader = graph.offloading(offloaderIndex)
-    println(offloader)
     offloader.dm match {
       case Some(defectMatch) =>
         val edgeIndex = defectMatch.e.toInt

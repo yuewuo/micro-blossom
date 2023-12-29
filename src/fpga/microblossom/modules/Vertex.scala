@@ -41,6 +41,7 @@ object Vertex {
 case class Vertex(config: DualConfig, vertexIndex: Int, injectRegisters: Seq[String] = List()) extends Component {
   val io = new Bundle {
     val message = in(BroadcastMessage(config))
+    // interaction I/O
     val stageOutputs = out(Vertex.getStages(config, vertexIndex).getStageOutput)
     val edgeInputs = in(
       Vec(
@@ -54,6 +55,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int, injectRegisters: Seq[Str
           yield Offloader.getStages(config, offloaderIndex).getStageOutput
       )
     )
+    // final outputs
   }
 
   val stages = Vertex.getStages(config, vertexIndex)

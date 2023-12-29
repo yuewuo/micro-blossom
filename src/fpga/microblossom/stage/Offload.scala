@@ -44,18 +44,51 @@ case class StageOffloadOffloader4(numNeighbors: Int) extends Bundle {
 
 case class StageOffloadEdge(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
+  val valid = Bool
+  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 }
 
 case class StageOffloadEdge2(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
   val isTight = Bool
+  val valid = Bool
+  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+
+  def connect(last: StageOffloadEdge) = {
+    state := last.state
+    valid := last.valid
+    if (config.contextBits > 0) {
+      contextId := last.contextId
+    }
+  }
 }
 
 case class StageOffloadEdge3(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
   val isTight = Bool
+  val valid = Bool
+  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+
+  def connect(last: StageOffloadEdge2) = {
+    state := last.state
+    isTight := last.isTight
+    valid := last.valid
+    if (config.contextBits > 0) {
+      contextId := last.contextId
+    }
+  }
 }
 
 case class StageOffloadEdge4(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
+  val valid = Bool
+  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+
+  def connect(last: StageOffloadEdge3) = {
+    state := last.state
+    valid := last.valid
+    if (config.contextBits > 0) {
+      contextId := last.contextId
+    }
+  }
 }
