@@ -49,19 +49,28 @@ class OffloadStalledTest extends AnyFunSuite {
 
 }
 
-// sbt 'testOnly microblossom.combinatorial.OffloadStalledDelayEstimation'
-class OffloadStalledDelayEstimation extends AnyFunSuite {
+// sbt 'testOnly microblossom.combinatorial.OffloadStalledEstimation'
+class OffloadStalledEstimation extends AnyFunSuite {
 
   test("logic delay") {
     val configurations = List(
-      (2, "code capacity 2 neighbors"), // 0.04ns
-      (4, "code capacity 4 neighbors"), // 0.04ns
-      (6, "phenomenological 6 neighbors"), // 0.04ns
-      (12, "circuit-level 12 neighbors") // 0.36ns
+      // delay: 0.04ns
+      // resource: 1xLUT2
+      (2, "code capacity 2 neighbors"),
+      // delay: 0.04ns
+      // resource: 1xLUT4
+      (4, "code capacity 4 neighbors"),
+      // delay: 0.04ns
+      // resource: 1xLUT6
+      (6, "phenomenological 6 neighbors"),
+      // delay: 0.36ns
+      // resource: 2xLUT6, 1xLUT2
+      (12, "circuit-level 12 neighbors")
     )
     for ((numConditions, name) <- configurations) {
-      val timingReport = Vivado.reportTiming(OffloadStalled(numConditions))
-      println(s"$name: ${timingReport.getPathDelaysExcludingIOWorst}ns")
+      val reports = Vivado.report(OffloadStalled(numConditions))
+      println(s"$name: ${reports.timing.getPathDelaysExcludingIOWorst}ns")
+      reports.resource.primitivesTable.print()
     }
   }
 

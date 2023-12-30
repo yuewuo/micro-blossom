@@ -63,35 +63,31 @@ class VertexPostUpdateStateTest extends AnyFunSuite {
 
 }
 
-// sbt 'testOnly microblossom.combinatorial.VertexPostUpdateStateDelayEstimation'
-class VertexPostUpdateStateDelayEstimation extends AnyFunSuite {
+// sbt 'testOnly microblossom.combinatorial.VertexPostUpdateStateEstimation'
+class VertexPostUpdateStateEstimation extends AnyFunSuite {
 
   test("logic delay") {
+    def dualConfig(name: String): DualConfig = {
+      DualConfig(filename = s"./resources/graphs/example_$name.json"),
+    }
     val configurations = List(
-      (
-        DualConfig(filename = "./resources/graphs/example_code_capacity_d5.json"),
-        1,
-        "code capacity 2 neighbors"
-      ), // 0.41ns
-      (
-        DualConfig(filename = "./resources/graphs/example_code_capacity_rotated_d5.json"),
-        10,
-        "code capacity 4 neighbors"
-      ), // 0.41ns
-      (
-        DualConfig(filename = "./resources/graphs/example_phenomenological_rotated_d5.json"),
-        64,
-        "phenomenological 6 neighbors"
-      ), // 0.42ns
-      (
-        DualConfig(filename = "./resources/graphs/example_circuit_level_d5.json"),
-        63,
-        "circuit-level 12 neighbors"
-      ) // 0.42ns
+      // delay: 0.41ns
+      // resource: 1xLUT6, 1xLUT5, 10xLUT4, 1xLUT3 -> 13
+      (dualConfig("code_capacity_d5"), 1, "code capacity 2 neighbors"),
+      // delay: 0.41ns
+      // resource: 1xLUT6, 1xLUT5, 12xLUT4, 1xLUT3 -> 15
+      (dualConfig("code_capacity_rotated_d5"), 10, "code capacity 4 neighbors"),
+      // delay: 0.42ns
+      // resource: 1xLUT6, 1xLUT5, 16xLUT4, 1xLUT3 -> 19
+      (dualConfig("phenomenological_rotated_d5"), 64, "phenomenological 6 neighbors"),
+      // delay: 0.42ns
+      // resource: 1xLUT6, 18xLUT5, 1xLUT4, 1xLUT3 -> 21
+      (dualConfig("circuit_level_d5"), 63, "circuit-level 12 neighbors")
     )
     for ((config, vertexIndex, name) <- configurations) {
-      val timingReport = Vivado.reportTiming(VertexPostUpdateState(config, vertexIndex))
-      println(s"$name: ${timingReport.getPathDelaysExcludingIOWorst}ns")
+      val reports = Vivado.report(VertexPostUpdateState(config, vertexIndex))
+      println(s"$name: ${reports.timing.getPathDelaysExcludingIOWorst}ns")
+      reports.resource.primitivesTable.print()
     }
   }
 

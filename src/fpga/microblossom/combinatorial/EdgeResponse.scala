@@ -93,23 +93,40 @@ class EdgeResponseTest extends AnyFunSuite {
 
 }
 
-// sbt 'testOnly microblossom.combinatorial.EdgeResponseDelayEstimation'
-class EdgeResponseDelayEstimation extends AnyFunSuite {
+// sbt 'testOnly microblossom.combinatorial.EdgeResponseEstimation'
+class EdgeResponseEstimation extends AnyFunSuite {
 
   test("logic delay") {
     val configurations = List(
-      (3, 2, "minimal for d=3 code"), // 0.37ns
-      (5, 2, "minimal for d=5,7 code"), // 0.37ns
-      (7, 2, "minimal for d=9,11,13,15 code"), // 0.51ns
-      (9, 2, "minimal for d=[17, 31] code"), // 0.74ns
-      (4, 4, "circuit-level for d=3 code"), // max_half_weight = 7, 0.52ns
-      (8, 4, "circuit-level for d=5,7 code"), // 0.65ns
-      (11, 4, "circuit-level for d=9,11,13,15 code"), // 0.79ns
-      (14, 4, "circuit-level for d=[17, 31] code") // 0.80ns
+      // delay: 0.37ns
+      // resource: 4xLUT6, 1xLUT4, 1xLUT2
+      (3, 2, "minimal for d=3 code"),
+      // delay: 0.37ns
+      // resource: 7xLUT6
+      (5, 2, "minimal for d=5,7 code"),
+      // delay: 0.51ns
+      // resource: 5xLUT6, 3xLUT5
+      (7, 2, "minimal for d=9,11,13,15 code"),
+      // delay: 0.74ns
+      // resource: 6xLUT6, 2xLUT2, 1xCARRY4
+      (9, 2, "minimal for d=[17, 31] code"),
+      // delay: 0.52ns
+      // resource: 8xLUT6, 2xLUT5, 2xLUT4
+      (4, 4, "circuit-level for d=3 code"), // max_half_weight = 7
+      // delay: 0.65ns
+      // resource: 9xLUT6, 2xLUT5, 3xLUT4
+      (8, 4, "circuit-level for d=5,7 code"),
+      // delay: 0.79ns
+      // resource: 7xLUT6, 1xLUT5, 4xLUT5, 1xCARRY4
+      (11, 4, "circuit-level for d=9,11,13,15 code"),
+      // delay: 0.80ns
+      // resource: 8xLUT6, 1xLUT5, 4xLUT4, 2xCARRY4
+      (14, 4, "circuit-level for d=[17, 31] code")
     )
     for ((vertexBits, weightBits, name) <- configurations) {
-      val timingReport = Vivado.reportTiming(EdgeResponse(vertexBits, weightBits))
-      println(s"$name: ${timingReport.getPathDelaysExcludingIOWorst}ns")
+      val reports = Vivado.report(EdgeResponse(vertexBits, weightBits))
+      println(s"$name: ${reports.timing.getPathDelaysExcludingIOWorst}ns")
+      reports.resource.primitivesTable.print()
     }
   }
 

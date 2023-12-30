@@ -104,37 +104,33 @@ class VertexPostExecuteStateTest extends AnyFunSuite {
 
 }
 
-// sbt 'testOnly microblossom.combinatorial.VertexPostExecuteStateDelayEstimation'
-class VertexPostExecuteStateDelayEstimation extends AnyFunSuite {
+// sbt 'testOnly microblossom.combinatorial.VertexPostExecuteStateEstimation'
+class VertexPostExecuteStateEstimation extends AnyFunSuite {
 
   test("logic delay") {
+    def dualConfig(name: String): DualConfig = {
+      DualConfig(filename = s"./resources/graphs/example_$name.json"),
+    }
     val configurations = List(
-      (
-        DualConfig(filename = "./resources/graphs/example_code_capacity_d5.json"),
-        1,
-        "code capacity 2 neighbors"
-      ), // 0.85ns / 0.99ns (LUT4 -> LUT6 -> LUT6)
-      (
-        DualConfig(filename = "./resources/graphs/example_code_capacity_rotated_d5.json"),
-        10,
-        "code capacity 4 neighbors"
-      ), // 0.85ns / 0.99ns (LUT6 -> LUT6 -> LUT6)
-      (
-        DualConfig(filename = "./resources/graphs/example_phenomenological_rotated_d5.json"),
-        64,
-        "phenomenological 6 neighbors"
-      ), // 1.00ns / 1.14ns (LUT4 -> LUT4 -> LUT5 -> LUT6)
-      (
-        DualConfig(filename = "./resources/graphs/example_circuit_level_d5.json"),
-        63,
-        "circuit-level 12 neighbors"
-      ) // 1.10ns / 1.10ns (LUT6 -> CARRY4 -> LUT4 -> LUT6) vertex: 9 bits, grown: 3 bits
+      // delay: 0.85ns / 0.99ns (LUT4 -> LUT6 -> LUT6)
+      // resource: (5xLUT6, 5xLUT5, 9xLUT4, 1xLUT3 -> 20) / (10xLUT6, 8xLUT5, 5xLUT4, 2xLUT3, 5xLUT2 -> 30)
+      (dualConfig("code_capacity_d5"), 1, "code capacity 2 neighbors"),
+      // delay: 0.85ns / 0.99ns (LUT6 -> LUT6 -> LUT6)
+      // resource: (7xLUT6, 5xLUT5, 8xLUT4, 1xLUT3 -> 21) / (13xLUT6, 7xLUT5, 4xLUT4, 2xLUT3, 6xLUT2 -> 32)
+      (dualConfig("code_capacity_rotated_d5"), 10, "code capacity 4 neighbors"),
+      // delay: 1.00ns / 1.14ns (LUT4 -> LUT4 -> LUT5 -> LUT6)
+      // resource: (22xLUT6, 1xLUT5, 2xLUT4, 1xLUT3, 3xLUT2 -> 29) / (11xLUT6, 7xLUT5, 16xLUT4, 6xLUT3 -> 40)
+      (dualConfig("phenomenological_rotated_d5"), 64, "phenomenological 6 neighbors"),
+      // delay:  1.10ns / 1.10ns (LUT6 -> CARRY4 -> LUT4 -> LUT6) vertex: 9 bits, grown: 3 bits
+      // resource: (10xLUT6, 5xLUT5, 12xLUT4, 2xLUT3, 2xCARRAY4 -> 31) / (19xLUT6, 8xLUT5, 8xLUT4, 7xLUT3, 2xCARRAY4 -> 44)
+      (dualConfig("circuit_level_d5"), 63, "circuit-level 12 neighbors")
     )
     for ((config, vertexIndex, name) <- configurations) {
       for (supportAddDefectVertex <- List(false, true)) {
         config.supportAddDefectVertex = supportAddDefectVertex
-        val timingReport = Vivado.reportTiming(VertexPostExecuteState(config, vertexIndex))
-        println(s"$name ($supportAddDefectVertex): ${timingReport.getPathDelaysExcludingIOWorst}ns")
+        val reports = Vivado.report(VertexPostExecuteState(config, vertexIndex))
+        println(s"$name ($supportAddDefectVertex): ${reports.timing.getPathDelaysExcludingIOWorst}ns")
+        reports.resource.primitivesTable.print()
       }
     }
   }

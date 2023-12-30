@@ -98,23 +98,40 @@ class EdgeRemainingTest extends AnyFunSuite {
 
 }
 
-// sbt 'testOnly microblossom.combinatorial.EdgeRemainingDelayEstimation'
-class EdgeRemainingDelayEstimation extends AnyFunSuite {
+// sbt 'testOnly microblossom.combinatorial.EdgeRemainingEstimation'
+class EdgeRemainingEstimation extends AnyFunSuite {
 
   test("logic delay") {
     val configurations = List(
-      (2, 2, "minimal for d=3 code"), // 0.04ns
-      (3, 2, "minimal for d=5,7 code"), // 0.49ns
-      (4, 2, "minimal for d=9,11,13,15 code"), // 0.50ns
-      (5, 2, "minimal for d=[17, 31] code"), // 0.50ns
-      (4, 4, "circuit-level for d=3 code"), // max_half_weight = 7, 0.70ns
-      (5, 4, "circuit-level for d=5,7 code"), // 0.84ns
-      (6, 4, "circuit-level for d=9,11,13,15 code"), // 0.84ns
-      (7, 4, "circuit-level for d=[17, 31] code") // 0.83ns
+      // delay: 0.04ns
+      // resource: 2xLUT6
+      (2, 2, "minimal for d=3 code"),
+      // delay: 0.49ns
+      // resource: 3xLUT6, 1xLUT4, 1xLUT3
+      (3, 2, "minimal for d=5,7 code"),
+      // delay: 0.50ns
+      // resource: 2xLUT6, 1xLUT5, 1xLUT4, 1xLUT3, 1xLUT2
+      (4, 2, "minimal for d=9,11,13,15 code"),
+      // delay: 0.50ns
+      // resource: 3xLUT6, 1xLUT5, 1xLUT3, 1xLUT2
+      (5, 2, "minimal for d=[17, 31] code"),
+      // delay: 0.70ns
+      // resource: 7xLUT6, 1xLUT5, 4xLUT3
+      (4, 4, "circuit-level for d=3 code"), // max_half_weight = 7
+      // delay: 0.84ns
+      // resource: 7xLUT6, 2xLUT5, 2xLUT3, 2xLUT2
+      (5, 4, "circuit-level for d=5,7 code"),
+      // delay: 0.84ns
+      // resource: 8xLUT6, 1xLUT5, 1xLUT4, 2xLUT3, 1xLUT2
+      (6, 4, "circuit-level for d=9,11,13,15 code"),
+      // delay: 0.83ns
+      // resource: 8xLUT6, 1xLUT5, 1xLUT4, 2xLUT3, 1xLUT2
+      (7, 4, "circuit-level for d=[17, 31] code")
     )
     for ((grownBits, weightBits, name) <- configurations) {
-      val timingReport = Vivado.reportTiming(EdgeRemaining(grownBits, grownBits, weightBits))
-      println(s"$name: ${timingReport.getPathDelaysExcludingIOWorst}ns")
+      val reports = Vivado.report(EdgeRemaining(grownBits, grownBits, weightBits))
+      println(s"$name: ${reports.timing.getPathDelaysExcludingIOWorst}ns")
+      reports.resource.primitivesTable.print()
     }
   }
 

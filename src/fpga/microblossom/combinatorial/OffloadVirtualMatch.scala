@@ -85,19 +85,28 @@ class OffloadVirtualMatchTest extends AnyFunSuite {
 
 }
 
-// sbt 'testOnly microblossom.combinatorial.OffloadVirtualMatchDelayEstimation'
-class OffloadVirtualMatchDelayEstimation extends AnyFunSuite {
+// sbt 'testOnly microblossom.combinatorial.OffloadVirtualMatchEstimation'
+class OffloadVirtualMatchEstimation extends AnyFunSuite {
 
   test("logic delay") {
     val configurations = List(
-      (1, "code capacity 1 neighbors"), // 0.37ns
-      (3, "code capacity 3 neighbors"), // 0.38ns
-      (5, "phenomenological 5 neighbors"), // 0.52ns
-      (7, "circuit-level 7 neighbors") // 0.66ns (LUT6 -> LUT6)
+      // delay: 0.37ns
+      // resource: 2xLUT5, 1xLUT4
+      (1, "code capacity 1 neighbors"),
+      // delay: 0.38ns
+      // resource: 2xLUT6, 3xLUT5, 1xLUT4
+      (3, "code capacity 3 neighbors"),
+      // delay: 0.52ns
+      // resource: 8xLUT6, 1xLUT5, 1xLUT2
+      (5, "phenomenological 5 neighbors"),
+      // delay: 0.66ns (LUT6 -> LUT6)
+      // resource: 12xLUT6, 1xLUT2
+      (7, "circuit-level 7 neighbors")
     )
     for ((numNeighbors, name) <- configurations) {
-      val timingReport = Vivado.reportTiming(OffloadVirtualMatch(numNeighbors))
-      println(s"$name: ${timingReport.getPathDelaysExcludingIOWorst}ns")
+      val reports = Vivado.report(OffloadVirtualMatch(numNeighbors))
+      println(s"$name: ${reports.timing.getPathDelaysExcludingIOWorst}ns")
+      reports.resource.primitivesTable.print()
     }
   }
 

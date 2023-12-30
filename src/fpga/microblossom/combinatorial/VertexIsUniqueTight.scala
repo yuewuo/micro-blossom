@@ -94,19 +94,28 @@ class VertexIsUniqueTightTest extends AnyFunSuite {
 
 }
 
-// sbt 'testOnly microblossom.combinatorial.VertexIsUniqueTightDelayEstimation'
-class VertexIsUniqueTightDelayEstimation extends AnyFunSuite {
+// sbt 'testOnly microblossom.combinatorial.VertexIsUniqueTightEstimation'
+class VertexIsUniqueTightEstimation extends AnyFunSuite {
 
   test("logic delay") {
     val configurations = List(
-      (2, "code capacity 2 neighbors"), // 0.04ns
-      (4, "code capacity 4 neighbors"), // 0.04ns
-      (6, "phenomenological 6 neighbors"), // 0.04ns
-      (12, "circuit-level 12 neighbors") // 0.67ns (LUT6 -> LUT6 -> LUT4)
+      // delay: 0.04ns
+      // resource: 1xLUT2
+      (2, "code capacity 2 neighbors"),
+      // delay: 0.04ns
+      // resource: 1xLUT4
+      (4, "code capacity 4 neighbors"),
+      // delay: 0.04ns
+      // resource: 1xLUT6
+      (6, "phenomenological 6 neighbors"),
+      // delay: 0.67ns (LUT6 -> LUT6 -> LUT4)
+      // resource: 3xLUT6, 1xLUT5, 1xLUT4
+      (12, "circuit-level 12 neighbors")
     )
     for ((numEdges, name) <- configurations) {
-      val timingReport = Vivado.reportTiming(VertexIsUniqueTight(numEdges))
-      println(s"$name: ${timingReport.getPathDelaysExcludingIOWorst}ns")
+      val reports = Vivado.report(VertexIsUniqueTight(numEdges))
+      println(s"$name: ${reports.timing.getPathDelaysExcludingIOWorst}ns")
+      reports.resource.primitivesTable.print()
     }
   }
 

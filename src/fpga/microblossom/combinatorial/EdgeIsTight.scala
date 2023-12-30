@@ -87,23 +87,40 @@ class EdgeIsTightTest extends AnyFunSuite {
 
 }
 
-// sbt 'testOnly microblossom.combinatorial.EdgeIsTightDelayEstimation'
-class EdgeIsTightDelayEstimation extends AnyFunSuite {
+// sbt 'testOnly microblossom.combinatorial.EdgeIsTightEstimation'
+class EdgeIsTightEstimation extends AnyFunSuite {
 
   test("logic delay") {
     val configurations = List(
-      (2, 2, "minimal for d=3 code"), // 0.04ns
-      (3, 2, "minimal for d=5,7 code"), // 0.36ns
-      (4, 2, "minimal for d=9,11,13,15 code"), // 0.36ns
-      (5, 2, "minimal for d=[17, 31] code"), // 0.36ns
-      (4, 4, "circuit-level for d=3 code"), // max_half_weight = 7, 0.67ns
-      (5, 4, "circuit-level for d=5,7 code"), // 0.68ns
-      (6, 4, "circuit-level for d=9,11,13,15 code"), // 0.67ns
-      (7, 4, "circuit-level for d=[17, 31] code") // 0.67ns
+      // delay: 0.04ns
+      // resource: 1xLUT6
+      (2, 2, "minimal for d=3 code"),
+      // delay: 0.36ns
+      // resource: 1xLUT6, 1xLUT3
+      (3, 2, "minimal for d=5,7 code"),
+      // delay: 0.36ns
+      // resource: 1xLUT6, 1xLUT5
+      (4, 2, "minimal for d=9,11,13,15 code"),
+      // delay: 0.36ns
+      // resource: 2xLUT6, 1xLUT2
+      (5, 2, "minimal for d=[17, 31] code"),
+      // delay: 0.67ns
+      // resource: 2xLUT6, 2xLUT5, 1xLUT1
+      (4, 4, "circuit-level for d=3 code"), // max_half_weight = 7
+      // delay: 0.68ns
+      // resource: 5xLUT6
+      (5, 4, "circuit-level for d=5,7 code"),
+      // delay: 0.67ns
+      // resource: 3xLUT6, 1xLUT5, 2xLUT4
+      (6, 4, "circuit-level for d=9,11,13,15 code"),
+      // delay: 0.67ns
+      // resource: 4xLUT6, 1xLUT5, 1xLUT4
+      (7, 4, "circuit-level for d=[17, 31] code")
     )
     for ((grownBits, weightBits, name) <- configurations) {
-      val timingReport = Vivado.reportTiming(EdgeIsTight(grownBits, grownBits, weightBits))
-      println(s"$name: ${timingReport.getPathDelaysExcludingIOWorst}ns")
+      val reports = Vivado.report(EdgeIsTight(grownBits, grownBits, weightBits))
+      println(s"$name: ${reports.timing.getPathDelaysExcludingIOWorst}ns")
+      reports.resource.primitivesTable.print()
     }
   }
 

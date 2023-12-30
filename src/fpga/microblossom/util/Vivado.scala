@@ -20,6 +20,11 @@ object VivadoTarget {
 
 }
 
+case class VivadoReports(targetDirectory: String) {
+  val timing = TimingReport(s"$targetDirectory/timing.txt")
+  val resource = ResourceReport(s"$targetDirectory/resource.txt")
+}
+
 object Vivado {
 
   /** when `useImpl` is true, run implementation to get a better estimation of timing */
@@ -110,16 +115,9 @@ report_utilization -file ./resource.txt
 
   }
 
-  def reportTiming[T <: Component](component: => T, useImpl: Boolean = false): TimingReport = {
-    // return TimingReport("gen/tmp/gwlkxvkqjF/timing.txt")
+  def report[T <: Component](component: => T, useImpl: Boolean = false): VivadoReports = {
     val targetDirectory = createProject(component, useImpl = useImpl)
-    TimingReport(s"$targetDirectory/timing.txt")
+    VivadoReports(targetDirectory)
   }
 
-  /** when `useImpl` is true, run implementation to get a better estimation of timing */
-  def reportResource[T <: Component](component: => T, useImpl: Boolean = false): ResourceReport = {
-    // return ResourceReport("gen/tmp/eLrnekNLbJ/resource.txt")
-    val targetDirectory = createProject(component, useImpl = useImpl)
-    ResourceReport(s"$targetDirectory/resource.txt")
-  }
 }

@@ -205,9 +205,9 @@ class EdgeEstimation extends AnyFunSuite {
       ) // 19xLUT6, 9xLUT4, 5xLUT2, 1xCARRY4 -> 34
     )
     for ((config, edgeIndex, name) <- configurations) {
-      val resourceReport = Vivado.reportResource(Edge(config, edgeIndex))
+      val reports = Vivado.report(Edge(config, edgeIndex))
       println(s"$name:")
-      resourceReport.primitivesTable.print()
+      reports.resource.primitivesTable.print()
     }
   }
 

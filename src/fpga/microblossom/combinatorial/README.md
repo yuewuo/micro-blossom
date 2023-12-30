@@ -16,7 +16,7 @@ A class extending `Component`, wrapping the combinatorial logic in a separate mo
 Test the correctness of the combinatorial logic when needed.
 It also comes with an example which will be generated under the default `gen` folder.
 
-## NAME`DelayEstimation`
+## NAME`Estimation`
 
 Estimate the delay of the signal, using Vivado simulator.
 This helps to understand the performance and also guide the design of the pipeline.
