@@ -103,11 +103,12 @@ case class Offloader(config: DualConfig, offloaderIndex: Int, injectRegisters: S
 class OffloaderTest extends AnyFunSuite {
 
   test("construct a Offloader") {
-    val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
+    // val (config, offloaderIndex) = (DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json"), 0)
+    val (config, offloaderIndex) = (DualConfig(filename = "./resources/graphs/example_circuit_level_d5.json"), 531)
     // config.contextDepth = 1024 // fit in a single Block RAM of 36 kbits in 36-bit mode
     config.contextDepth = 1 // no context switch
     config.sanityCheck()
-    Config.spinal().generateVerilog(Offloader(config, 0))
+    Config.spinal().generateVerilog(Offloader(config, offloaderIndex))
   }
 
 }
