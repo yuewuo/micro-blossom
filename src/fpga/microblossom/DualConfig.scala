@@ -156,14 +156,14 @@ case class DualConfig(
   def grownBitsOf(vertexIndex: Int): Int = {
     log2Up(graph.vertex_max_growth(vertexIndex) + 1)
   }
-  // (edgeIndex, neighborVertices)
-  def offloaderInformation(offloaderIndex: Int): (Int, Seq[Int]) = {
+  // (edgeIndex, neighborVertices, neighborEdges)
+  def offloaderInformation(offloaderIndex: Int): (Int, Seq[Int], Seq[Int]) = {
     val offloader = graph.offloading(offloaderIndex)
     offloader.dm match {
       case Some(defectMatch) =>
         val edgeIndex = defectMatch.e.toInt
         val (left, right) = incidentVerticesOf(edgeIndex)
-        return (edgeIndex, Seq(left, right))
+        return (edgeIndex, Seq(left, right), Seq())
       case None =>
     }
     offloader.vm match {
@@ -175,19 +175,25 @@ case class DualConfig(
         val neighborEdges = incidentEdgesOf(regularVertex)
         return (
           edgeIndex,
-          neighborEdges.map(ei => peerVertexOfEdge(edgeIndex, regularVertex)).filter(_ != virtualVertex)
+          neighborEdges.map(ei => peerVertexOfEdge(ei, regularVertex)).filter(_ != virtualVertex) ++
+            List(virtualVertex, regularVertex),
+          neighborEdges.filter(_ != edgeIndex)
         )
       case None =>
     }
     throw new Exception("unrecognized definition of offloader")
   }
   def offloaderEdgeIndex(offloaderIndex: Int): Int = {
-    val (edgeIndex, neighborVertices) = offloaderInformation(offloaderIndex)
+    val (edgeIndex, neighborVertices, neighborEdges) = offloaderInformation(offloaderIndex)
     edgeIndex
   }
   def offloaderNeighborVertexIndices(offloaderIndex: Int): Seq[Int] = {
-    val (edgeIndex, neighborVertices) = offloaderInformation(offloaderIndex)
+    val (edgeIndex, neighborVertices, neighborEdges) = offloaderInformation(offloaderIndex)
     neighborVertices
+  }
+  def offloaderNeighborEdgeIndices(offloaderIndex: Int): Seq[Int] = {
+    val (edgeIndex, neighborVertices, neighborEdges) = offloaderInformation(offloaderIndex)
+    neighborEdges
   }
   def numOffloaderNeighborOf(offloaderIndex: Int): Int = {
     offloaderNeighborVertexIndices(offloaderIndex).length
