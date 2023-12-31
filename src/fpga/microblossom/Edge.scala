@@ -71,8 +71,8 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
 
   val reportIsFindObstacle = Bool
   val reportContextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
-  val reportLeftShadow = VertexShadow(config)
-  val reportRightShadow = VertexShadow(config)
+  val reportLeftShadow = VertexShadowLegacy(config)
+  val reportRightShadow = VertexShadowLegacy(config)
 
   // fetch stage
   var ram: Mem[EdgePersistent] = null

@@ -108,6 +108,9 @@ case class DualConfig(
   def incidentOffloaderOf(vertexIndex: Int): Seq[Int] = {
     return incidentOffloaders(vertexIndex)
   }
+  def numIncidentOffloaderOf(vertexIndex: Int): Int = {
+    return incidentOffloaderOf(vertexIndex).length
+  }
   def incidentVerticesOf(edgeIndex: Int): (Int, Int) = {
     val edge = graph.weighted_edges(edgeIndex)
     return (edge.l.toInt, edge.r.toInt)

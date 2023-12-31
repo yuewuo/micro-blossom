@@ -5,6 +5,8 @@ import spinal.lib._
 import microblossom._
 import microblossom.types._
 import microblossom.stage._
+import microblossom.combinatorial._
+import microblossom.util.Vivado
 import org.scalatest.funsuite.AnyFunSuite
 
 object Vertex {
@@ -55,6 +57,12 @@ case class Vertex(config: DualConfig, vertexIndex: Int, injectRegisters: Seq[Str
           yield Offloader.getStages(config, offloaderIndex).getStageOutput
       )
     )
+    var peerVertexInputs = in(
+      Vec(
+        for (edgeIndex <- config.incidentEdgesOf(vertexIndex))
+          yield Vertex.getStages(config, config.peerVertexOfEdge(edgeIndex, vertexIndex)).getStageOutputExecute3
+      )
+    )
     // final outputs
   }
 
@@ -85,35 +93,87 @@ case class Vertex(config: DualConfig, vertexIndex: Int, injectRegisters: Seq[Str
     message := io.message
   }
 
-  // mock
   stages.offloadSet.message := message
   stages.offloadSet.state := fetchState
 
   stages.offloadSet2.connect(stages.offloadGet)
 
   stages.offloadSet3.connect(stages.offloadGet2)
-  stages.offloadSet3.isUniqueTight := False // TODO
+  var offload3Area = new Area {
+    var isUniqueTight = VertexIsUniqueTight(
+      numEdges = config.numIncidentEdgeOf(vertexIndex)
+    )
+    for (localIndex <- 0 until config.numIncidentEdgeOf(vertexIndex)) {
+      isUniqueTight.io.tights(localIndex) := io.edgeInputs(localIndex).offloadGet2.isTight
+    }
+    stages.offloadSet3.isUniqueTight := isUniqueTight.io.isUnique
+  }
 
   stages.offloadSet4.connect(stages.offloadGet3)
 
   stages.executeSet.connect(stages.offloadGet4)
-  stages.executeSet.isStalled := False // TODO
+  var executeArea = new Area {
+    var offloadStalled = OffloadStalled(
+      numConditions = config.numIncidentOffloaderOf(vertexIndex)
+    )
+    for (localIndex <- 0 until config.numIncidentOffloaderOf(vertexIndex)) {
+      offloadStalled.io.conditions(localIndex) :=
+        io.offloaderInputs(localIndex).offloadGet4.getVertexIsStalled(vertexIndex)
+    }
+    stages.executeSet.isStalled := offloadStalled.io.isStalled
+  }
 
   stages.executeSet2.connect(stages.executeGet)
-  stages.executeSet2.state := stages.executeGet.state // TODO
+  var execute2Area = new Area {
+    var vertexPostExecuteState = VertexPostExecuteState(
+      config = config,
+      vertexIndex = vertexIndex
+    )
+    vertexPostExecuteState.io.before := stages.executeGet.state
+    vertexPostExecuteState.io.message := stages.executeGet.message
+    stages.executeSet2.state := vertexPostExecuteState.io.after
+  }
 
   stages.executeSet3.connect(stages.executeGet2)
 
   stages.updateSet.connect(stages.executeGet3)
-  stages.updateSet.propagatingPeer.valid := False // TODO
-  stages.updateSet.propagatingPeer.node := config.IndexNone // TODO
-  stages.updateSet.propagatingPeer.root := config.IndexNone // TODO
+  var updateArea = new Area {
+    var vertexPropagatingPeer = VertexPropagatingPeer(
+      config = config,
+      vertexIndex = vertexIndex
+    )
+    vertexPropagatingPeer.io.grown := stages.executeGet3.state.grown
+    for (localIndex <- 0 until config.numIncidentEdgeOf(vertexIndex)) {
+      vertexPropagatingPeer.io.edgeIsTight(localIndex) := io.edgeInputs(localIndex).executeGet3.isTight
+      vertexPropagatingPeer.io.peerSpeed(localIndex) := io.peerVertexInputs(localIndex).executeGet3.state.speed
+      vertexPropagatingPeer.io.peerNode(localIndex) := io.peerVertexInputs(localIndex).executeGet3.state.node
+      vertexPropagatingPeer.io.peerRoot(localIndex) := io.peerVertexInputs(localIndex).executeGet3.state.root
+    }
+    stages.updateSet.propagatingPeer := vertexPropagatingPeer.io.peer
+  }
 
   stages.updateSet2.connect(stages.updateGet)
-  stages.updateSet2.state := stages.updateGet.state // TODO
-  stages.updateSet2.shadow.speed := Speed.Stay // TODO
-  stages.updateSet2.shadow.node := config.IndexNone // TODO
-  stages.updateSet2.shadow.root := config.IndexNone // TODO
+  var update2Area = new Area {
+    var vertexPostUpdateState = VertexPostUpdateState(
+      config = config,
+      vertexIndex = vertexIndex
+    )
+    vertexPostUpdateState.io.before := stages.updateGet.state
+    vertexPostUpdateState.io.propagator := stages.updateGet.propagatingPeer
+    stages.updateSet2.state := vertexPostUpdateState.io.after
+
+    var vertexShadow = VertexShadow(
+      config = config,
+      vertexIndex = vertexIndex
+    )
+    vertexShadow.io.node := stages.updateGet.state.node
+    vertexShadow.io.root := stages.updateGet.state.root
+    vertexShadow.io.speed := stages.updateGet.state.speed
+    vertexShadow.io.grown := stages.updateGet.state.grown
+    vertexShadow.io.isStalled := stages.updateGet.isStalled
+    vertexShadow.io.propagator := stages.updateGet.propagatingPeer
+    stages.updateSet2.shadow := vertexShadow.io.shadow
+  }
 
   stages.updateSet3.connect(stages.updateGet2)
 
@@ -147,6 +207,32 @@ class VertexTest extends AnyFunSuite {
     config.contextDepth = 1 // no context switch
     config.sanityCheck()
     Config.spinal().generateVerilog(Vertex(config, 0))
+  }
+
+}
+
+// sbt 'testOnly microblossom.modules.VertexEstimation'
+class VertexEstimation extends AnyFunSuite {
+
+  test("logic delay") {
+    def dualConfig(name: String): DualConfig = {
+      DualConfig(filename = s"./resources/graphs/example_$name.json"),
+    }
+    val configurations = List(
+      // 33xLUT6, 19xLUT5, 7xLUT4, 6xLUT3, 7xLUT2 -> 72
+      (dualConfig("code_capacity_d5"), 1, "code capacity 2 neighbors"),
+      // 23xLUT6, 45xLUT5, 19xLUT4, 5xLUT3, 7xLUT2, 1xLUT1, MUXF7x12 -> 112
+      (dualConfig("code_capacity_rotated_d5"), 10, "code capacity 4 neighbors"),
+      // 38xLUT6, 69xLUT5, 22xLUT4, 10xLUT3, 7xLUT2, 1xLUT1 -> 147
+      (dualConfig("phenomenological_rotated_d5"), 64, "phenomenological 6 neighbors"),
+      // 40xLUT6, 107xLUT5, 25xLUT4, 19xLUT3, 7xLUT2, 2xCARRY4 -> 200
+      (dualConfig("circuit_level_d5"), 63, "circuit-level 12 neighbors")
+    )
+    for ((config, vertexIndex, name) <- configurations) {
+      val reports = Vivado.report(Vertex(config, vertexIndex))
+      println(s"$name:")
+      reports.resource.primitivesTable.print()
+    }
   }
 
 }

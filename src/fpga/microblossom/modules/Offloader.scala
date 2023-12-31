@@ -13,7 +13,7 @@ object Offloader {
       offloaderIndex: Int
   ): Stages[Bundle, Bundle, Bundle, StageOffloadOffloader4, Bundle, Bundle, Bundle, Bundle, Bundle, Bundle] = {
     Stages(
-      offload4 = () => StageOffloadOffloader4(config.numOffloaderNeighborOf(offloaderIndex))
+      offload4 = () => StageOffloadOffloader4(config, offloaderIndex)
     )
   }
 }

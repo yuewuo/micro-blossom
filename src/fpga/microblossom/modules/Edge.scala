@@ -77,7 +77,6 @@ case class Edge(config: DualConfig, edgeIndex: Int, injectRegisters: Seq[String]
     message := io.message
   }
 
-  // mock
   stages.offloadSet.state := fetchState
   stages.offloadSet.valid := message.valid
   if (config.contextBits > 0) {
@@ -182,27 +181,18 @@ class EdgeTest extends AnyFunSuite {
 class EdgeEstimation extends AnyFunSuite {
 
   test("logic delay") {
+    def dualConfig(name: String): DualConfig = {
+      DualConfig(filename = s"./resources/graphs/example_$name.json"),
+    }
     val configurations = List(
-      (
-        DualConfig(filename = "./resources/graphs/example_code_capacity_d5.json"),
-        1,
-        "code capacity 2 neighbors"
-      ), // 7xLUT6, 1xLUT5, 3xLUT4 -> 11
-      (
-        DualConfig(filename = "./resources/graphs/example_code_capacity_rotated_d5.json"),
-        12,
-        "code capacity 4 neighbors"
-      ), // 9xLUT6, 3xLUT4 -> 12
-      (
-        DualConfig(filename = "./resources/graphs/example_phenomenological_rotated_d5.json"),
-        141,
-        "phenomenological 6 neighbors"
-      ), // 6xLUT6, 4xLUT5, 5xLUT4, 1xLUT3 -> 16
-      (
-        DualConfig(filename = "./resources/graphs/example_circuit_level_d5.json"),
-        365,
-        "circuit-level 12 neighbors"
-      ) // 19xLUT6, 9xLUT4, 5xLUT2, 1xCARRY4 -> 34
+      // 7xLUT6, 1xLUT5, 3xLUT4 -> 11
+      (dualConfig("code_capacity_d5"), 1, "code capacity 2 neighbors"),
+      // 9xLUT6, 3xLUT4 -> 12
+      (dualConfig("code_capacity_rotated_d5"), 12, "code capacity 4 neighbors"),
+      // 6xLUT6, 4xLUT5, 5xLUT4, 1xLUT3 -> 16
+      (dualConfig("phenomenological_rotated_d5"), 141, "phenomenological 6 neighbors"),
+      // 19xLUT6, 9xLUT4, 5xLUT2, 1xCARRY4 -> 34
+      (dualConfig("circuit_level_d5"), 365, "circuit-level 12 neighbors")
     )
     for ((config, edgeIndex, name) <- configurations) {
       val reports = Vivado.report(Edge(config, edgeIndex))

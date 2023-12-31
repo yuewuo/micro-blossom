@@ -38,7 +38,7 @@ case class VertexFeed(config: DualConfig) extends Bundle {
   val updateRoot = Bits(config.vertexBits bits)
   val updateSpeed = Speed()
   // write stage
-  val writeShadow = VertexShadow(config)
+  val writeShadow = VertexShadowLegacy(config)
   val writeGrown = UInt(config.weightBits bits)
 }
 
@@ -48,7 +48,7 @@ case class VertexPropagator(config: DualConfig) extends Bundle {
   val root = Bits(config.vertexBits bits)
 }
 
-case class VertexShadow(config: DualConfig) extends Bundle {
+case class VertexShadowLegacy(config: DualConfig) extends Bundle {
   val speed = Speed()
   val node = Bits(config.vertexBits bits)
   val root = Bits(config.vertexBits bits)
@@ -76,13 +76,13 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   val updateValid = Bool
   val updateState = VertexPersistent(config)
   val updateResult = VertexPersistent(config)
-  val updateResultShadow = VertexShadow(config)
+  val updateResultShadow = VertexShadowLegacy(config)
   val updateInstruction = Instruction(config)
   val updateContextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 
   val writeValid = Bool
   val writeState = VertexPersistent(config)
-  val writeShadow = VertexShadow(config)
+  val writeShadow = VertexShadowLegacy(config)
   val writeInstruction = Instruction(config)
   val writeContextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 

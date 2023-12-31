@@ -49,8 +49,17 @@ case class StageOffloadVertex4(config: DualConfig, vertexIndex: Int) extends Bun
  * Offloader
  */
 
-case class StageOffloadOffloader4(numNeighbors: Int) extends Bundle {
-  val stallVertex = Vec.fill(numNeighbors)(Bool)
+case class StageOffloadOffloader4(config: DualConfig, offloaderIndex: Int) extends Bundle {
+  val stallVertex = Vec.fill(config.numOffloaderNeighborOf(offloaderIndex))(Bool)
+
+  def getVertexIsStalled(targetVertexIndex: Int): Bool = {
+    for ((vertexIndex, localIndex) <- config.offloaderNeighborVertexIndices(offloaderIndex).zipWithIndex) {
+      if (vertexIndex == targetVertexIndex) {
+        return stallVertex(localIndex)
+      }
+    }
+    throw new Exception(s"offloader $offloaderIndex cannot find vertex $targetVertexIndex")
+  }
 }
 
 /*
