@@ -192,7 +192,9 @@ class EdgeEstimation extends AnyFunSuite {
       // 6xLUT6, 4xLUT5, 5xLUT4, 1xLUT3 -> 16
       (dualConfig("phenomenological_rotated_d5"), 141, "phenomenological 6 neighbors"),
       // 19xLUT6, 9xLUT4, 5xLUT2, 1xCARRY4 -> 34
-      (dualConfig("circuit_level_d5"), 365, "circuit-level 12 neighbors")
+      (dualConfig("circuit_level_d5"), 365, "circuit-level 12 neighbors"),
+      // 18xLUT6, 2xLUT5, 11xLUT4, 4xLUT2, 1xCARRY4 -> 36
+      (dualConfig("circuit_level_d11"), 4719, "circuit-level 12 neighbors")
     )
     for ((config, edgeIndex, name) <- configurations) {
       val reports = Vivado.report(Edge(config, edgeIndex))

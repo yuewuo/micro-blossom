@@ -231,7 +231,9 @@ class VertexEstimation extends AnyFunSuite {
       // 37xLUT6, 73xLUT5, 21xLUT4, 10xLUT3, 8xLUT2 -> 149
       (dualConfig("phenomenological_rotated_d5"), 64, "phenomenological 6 neighbors"),
       // 42xLUT6, 107xLUT5, 31xLUT4, 18xLUT3, 8xLUT2, 2xCARRY4 -> 208
-      (dualConfig("circuit_level_d5"), 63, "circuit-level 12 neighbors")
+      (dualConfig("circuit_level_d5"), 63, "circuit-level 12 neighbors"),
+      // 79xLUT6, 212xLUT5, 7xLUT4, 14xLUT3, 6xLUT2, 2xLUT1, 4xCARRY4 -> 324
+      (dualConfig("circuit_level_d11"), 845, "circuit-level 12 neighbors (d=11)")
     )
     for ((config, vertexIndex, name) <- configurations) {
       val reports = Vivado.report(Vertex(config, vertexIndex))
