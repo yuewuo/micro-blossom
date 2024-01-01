@@ -1,13 +1,19 @@
 package microblossom.modules
 
+import io.circe._
+import io.circe.generic.extras._
+import io.circe.generic.semiauto._
 import spinal.core._
 import spinal.lib._
 import spinal.core.sim._
 import microblossom._
+import microblossom.util._
 import microblossom.types._
 import microblossom.util.Vivado
 import org.scalatest.funsuite.AnyFunSuite
 import scala.util.control.Breaks._
+import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.Map
 
 case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig()) extends Component {
   val io = new Bundle {
@@ -155,9 +161,11 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
   // before compiling the simulator, mark the fields as public to enable snapshot
   def simMakePublicSnapshot() = {
     vertices.foreach(vertex => {
+      vertex.register.simPublic()
       vertex.io.simPublic()
     })
     edges.foreach(edge => {
+      edge.register.simPublic()
       edge.io.simPublic()
     })
     offloaders.foreach(offloader => {
@@ -189,6 +197,96 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
       }
     }
     (conflict, grown)
+  }
+
+  // take a snapshot of the dual module, in the format of fusion blossom visualization
+  def simSnapshot(abbrev: Boolean = true): Json = {
+    // https://circe.github.io/circe/api/io/circe/JsonObject.html
+    var jsonVertices = ArrayBuffer[Json]()
+    vertices.foreach(vertex => {
+      val register = vertex.register
+      val vertexMap = Map(
+        (if (abbrev) { "v" }
+         else { "is_virtual" }) -> Json.fromBoolean(register.isVirtual.toBoolean),
+        (if (abbrev) { "s" }
+         else { "is_defect" }) -> Json.fromBoolean(register.isDefect.toBoolean)
+      )
+      val node = register.node.toLong
+      if (node != config.IndexNone) {
+        vertexMap += ((
+          if (abbrev) { "p" }
+          else { "propagated_dual_node" },
+          Json.fromLong(node)
+        ))
+      }
+      val root = register.root.toLong
+      if (root != config.IndexNone) {
+        vertexMap += ((
+          if (abbrev) { "pg" }
+          else { "propagated_grandson_dual_node" },
+          Json.fromLong(root)
+        ))
+      }
+      jsonVertices.append(Json.fromFields(vertexMap))
+    })
+    var jsonEdges = ArrayBuffer[Json]()
+    edges.foreach(edge => {
+      val register = edge.register
+      val (leftIndex, rightIndex) = config.incidentVerticesOf(edge.edgeIndex)
+      val leftReg = vertices(leftIndex).register
+      val rightReg = vertices(rightIndex).register
+      val edgeMap = Map(
+        (if (abbrev) { "w" }
+         else { "weight" }) -> Json.fromLong(register.weight.toLong),
+        (if (abbrev) { "l" }
+         else { "left" }) -> Json.fromLong(leftIndex),
+        (if (abbrev) { "r" }
+         else { "right" }) -> Json.fromLong(rightIndex),
+        (if (abbrev) { "lg" }
+         else { "left_growth" }) -> Json.fromLong(leftReg.grown.toLong),
+        (if (abbrev) { "rg" }
+         else { "right_growth" }) -> Json.fromLong(rightReg.grown.toLong)
+      )
+      val leftNode = leftReg.node.toLong
+      if (leftNode != config.IndexNone) {
+        edgeMap += ((
+          if (abbrev) { "ld" }
+          else { "left_dual_node" },
+          Json.fromLong(leftNode)
+        ))
+      }
+      val leftRoot = leftReg.root.toLong
+      if (leftRoot != config.IndexNone) {
+        edgeMap += ((
+          if (abbrev) { "lgd" }
+          else { "left_grandson_dual_node" },
+          Json.fromLong(leftRoot)
+        ))
+      }
+      val rightNode = rightReg.node.toLong
+      if (rightNode != config.IndexNone) {
+        edgeMap += ((
+          if (abbrev) { "rd" }
+          else { "right_dual_node" },
+          Json.fromLong(rightNode)
+        ))
+      }
+      val rightRoot = rightReg.root.toLong
+      if (rightRoot != config.IndexNone) {
+        edgeMap += ((
+          if (abbrev) { "rgd" }
+          else { "right_grandson_dual_node" },
+          Json.fromLong(rightRoot)
+        ))
+      }
+      jsonEdges.append(Json.fromFields(edgeMap))
+    })
+    Json.fromFields(
+      Map(
+        "vertices" -> Json.fromValues(jsonVertices),
+        "edges" -> Json.fromValues(jsonEdges)
+      )
+    )
   }
 
 }
@@ -245,13 +343,55 @@ class DistributedDualTest extends AnyFunSuite {
         assert(conflict3.vertex1 == 0)
         assert(conflict3.vertex2 == 3)
 
-        // println(dut.simSnapshot().noSpacesSortKeys)
+        println(dut.simSnapshot().noSpacesSortKeys)
 
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
       }
   }
 
+}
+
+// sbt "runMain microblossom.modules.DistributedDualTestDebug1"
+object DistributedDualTestDebug1 extends App {
+  // gtkwave simWorkspace/DistributedDualTest/testB.fst
+  val config = DualConfig(filename = "./resources/graphs/example_code_capacity_planar_d3.json", minimizeBits = false)
+  config.graph.offloading = Seq() // remove all offloaders
+  config.fitGraph(minimizeBits = false)
+  config.sanityCheck()
+  Config.sim
+    .compile({
+      val dut = DistributedDual(config)
+      dut.simMakePublicSnapshot()
+      dut
+    })
+    .doSim("testB") { dut =>
+      val ioConfig = dut.ioConfig
+      dut.io.message.valid #= false
+      dut.clockDomain.forkStimulus(period = 10)
+
+      for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
+
+      dut.simExecute(ioConfig.instructionSpec.generateReset())
+      dut.simExecute(ioConfig.instructionSpec.generateAddDefect(0, 0))
+      dut.simExecute(ioConfig.instructionSpec.generateAddDefect(4, 1))
+      dut.simExecute(ioConfig.instructionSpec.generateAddDefect(8, 2))
+
+      val (conflict, grown) = dut.simFindObstacle(1000)
+      assert(grown == 1)
+      assert(conflict.valid == true)
+      println(conflict.node1, conflict.node2, conflict.touch1, conflict.touch2)
+
+      println(dut.simSnapshot().noSpacesSortKeys)
+
+      dut.simExecute(ioConfig.instructionSpec.generateSetBlossom(0, 3000))
+      dut.simExecute(ioConfig.instructionSpec.generateSetBlossom(1, 3000))
+      dut.simExecute(ioConfig.instructionSpec.generateSetBlossom(2, 3000))
+      dut.simExecute(ioConfig.instructionSpec.generateSetSpeed(3, Speed.Shrink))
+
+      for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
+
+    }
 }
 
 // sbt 'testOnly microblossom.modules.DistributedDualEstimation'
