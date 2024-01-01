@@ -102,7 +102,7 @@ case class Offloader(config: DualConfig, offloaderIndex: Int, injectRegisters: S
 // sbt 'testOnly microblossom.modules.OffloaderTest'
 class OffloaderTest extends AnyFunSuite {
 
-  test("construct a Offloader") {
+  test("construct an Offloader") {
     // val (config, offloaderIndex) = (DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json"), 0)
     val (config, offloaderIndex) = (DualConfig(filename = "./resources/graphs/example_circuit_level_d5.json"), 531)
     // config.contextDepth = 1024 // fit in a single Block RAM of 36 kbits in 36-bit mode

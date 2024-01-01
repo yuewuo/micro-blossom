@@ -21,6 +21,7 @@ case class DualConfig(
 ) {
   def vertexNum = graph.vertex_num.toInt
   def edgeNum = graph.weighted_edges.length.toInt
+  def offloaderNum = graph.offloading.length.toInt
   def instructionSpec = InstructionSpec(this)
   def obstacleSpec = ObstacleSpec(this)
   def contextBits = log2Up(contextDepth)
@@ -47,7 +48,7 @@ case class DualConfig(
   }
 
   // fit the bits to a specific decoding graph and construct connections
-  private def fitGraph(minimizeBits: Boolean = true): Unit = {
+  def fitGraph(minimizeBits: Boolean = true): Unit = {
     // compute the minimum bits of vertices and nodes; note that there could be
     // as many as 2x nodes than the number of vertices, so it's necessary to have enough bits
     assert(vertexNum > 0)
@@ -154,7 +155,7 @@ case class DualConfig(
     virtualVertices.contains(vertexIndex)
   }
   def grownBitsOf(vertexIndex: Int): Int = {
-    log2Up(graph.vertex_max_growth(vertexIndex) + 1)
+    log2Up(graph.vertex_max_growth(vertexIndex) + 1).max(weightBits)
   }
   // (edgeIndex, neighborVertices, neighborEdges)
   def offloaderInformation(offloaderIndex: Int): (Int, Seq[Int], Seq[Int]) = {

@@ -8,58 +8,58 @@ import io.circe.generic.semiauto._
 
 @ConfiguredJsonCodec
 case class SingleGraph(
-    val positions: Seq[Position],
-    val vertex_num: Long,
-    val weighted_edges: Seq[WeightedEdges],
-    val virtual_vertices: Seq[Long],
-    val vertex_binary_tree: BinaryTree,
-    val edge_binary_tree: BinaryTree,
-    val vertex_edge_binary_tree: BinaryTree,
-    val vertex_max_growth: Seq[Long],
-    val offloading: Seq[Offloading]
+    var positions: Seq[Position],
+    var vertex_num: Long,
+    var weighted_edges: Seq[WeightedEdges],
+    var virtual_vertices: Seq[Long],
+    var vertex_binary_tree: BinaryTree,
+    var edge_binary_tree: BinaryTree,
+    var vertex_edge_binary_tree: BinaryTree,
+    var vertex_max_growth: Seq[Long],
+    var offloading: Seq[Offloading]
 )
 
 @ConfiguredJsonCodec
 case class Position(
-    val i: Double,
-    val j: Double,
-    val t: Double
+    var i: Double,
+    var j: Double,
+    var t: Double
 )
 
 @ConfiguredJsonCodec
 case class WeightedEdges(
-    val l: Long,
-    val r: Long,
-    val w: Long
+    var l: Long,
+    var r: Long,
+    var w: Long
 )
 
 @ConfiguredJsonCodec
 case class BinaryTree(
-    val nodes: Seq[BinaryTreeNode]
+    var nodes: Seq[BinaryTreeNode]
 )
 
 @ConfiguredJsonCodec
 case class BinaryTreeNode(
-    val p: Option[Long], // parent
-    val l: Option[Long], // left
-    val r: Option[Long] // right
+    var p: Option[Long], // parent
+    var l: Option[Long], // left
+    var r: Option[Long] // right
 )
 
 @ConfiguredJsonCodec
 case class Offloading(
-    val dm: Option[DefectMatch],
-    val vm: Option[VirtualMatch]
+    var dm: Option[DefectMatch],
+    var vm: Option[VirtualMatch]
 )
 
 @ConfiguredJsonCodec
 case class DefectMatch(
-    val e: Long // edge_index
+    var e: Long // edge_index
 )
 
 @ConfiguredJsonCodec
 case class VirtualMatch(
-    val e: Long, // edge_index
-    val v: Long // virtual_vertex
+    var e: Long, // edge_index
+    var v: Long // virtual_vertex
 )
 
 object SingleGraph {

@@ -47,10 +47,6 @@ case class StageOutputs[
   val updateGet3 = update3()
 }
 
-case class StageOutputsExecute3[Execute3 <: Bundle](val execute3: () => Execute3 = () => new Bundle {}) extends Bundle {
-  val executeGet3 = execute3()
-}
-
 case class Stages[
     Offload <: Bundle,
     Offload2 <: Bundle,
@@ -139,10 +135,6 @@ case class Stages[
   def getStageOutput()
       : StageOutputs[Offload, Offload2, Offload3, Offload4, Execute, Execute2, Execute3, Update, Update2, Update3] = {
     StageOutputs(offload, offload2, offload3, offload4, execute, execute2, execute3, update, update2, update3)
-  }
-
-  def getStageOutputExecute3(): StageOutputsExecute3[Execute3] = {
-    StageOutputsExecute3(execute3)
   }
 
   def connectStageOutput(

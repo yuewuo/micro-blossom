@@ -57,10 +57,10 @@ case class Vertex(config: DualConfig, vertexIndex: Int, injectRegisters: Seq[Str
           yield Offloader.getStages(config, offloaderIndex).getStageOutput
       )
     )
-    var peerVertexInputs = in(
+    var peerVertexInputsExecute3 = in(
       Vec(
         for (edgeIndex <- config.incidentEdgesOf(vertexIndex))
-          yield Vertex.getStages(config, config.peerVertexOfEdge(edgeIndex, vertexIndex)).getStageOutputExecute3
+          yield Vertex.getStages(config, config.peerVertexOfEdge(edgeIndex, vertexIndex)).executeGet3
       )
     )
     // final outputs
@@ -146,9 +146,9 @@ case class Vertex(config: DualConfig, vertexIndex: Int, injectRegisters: Seq[Str
     vertexPropagatingPeer.io.grown := stages.executeGet3.state.grown
     for (localIndex <- 0 until config.numIncidentEdgeOf(vertexIndex)) {
       vertexPropagatingPeer.io.edgeIsTight(localIndex) := io.edgeInputs(localIndex).executeGet3.isTight
-      vertexPropagatingPeer.io.peerSpeed(localIndex) := io.peerVertexInputs(localIndex).executeGet3.state.speed
-      vertexPropagatingPeer.io.peerNode(localIndex) := io.peerVertexInputs(localIndex).executeGet3.state.node
-      vertexPropagatingPeer.io.peerRoot(localIndex) := io.peerVertexInputs(localIndex).executeGet3.state.root
+      vertexPropagatingPeer.io.peerSpeed(localIndex) := io.peerVertexInputsExecute3(localIndex).state.speed
+      vertexPropagatingPeer.io.peerNode(localIndex) := io.peerVertexInputsExecute3(localIndex).state.node
+      vertexPropagatingPeer.io.peerRoot(localIndex) := io.peerVertexInputsExecute3(localIndex).state.root
     }
     stages.updateSet.propagatingPeer := vertexPropagatingPeer.io.peer
   }
