@@ -150,21 +150,22 @@ class DistributedDualEstimation extends AnyFunSuite {
 
     val configurations = List(
       // TODO: estimate resource usage after correctness verification
-      // 387
+      // synth: 387, impl: 310 Slice LUTs (0.14% on ZCU106)
       (dualConfig("code_capacity_d5"), "code capacity repetition d=5"),
-      // 1589
+      // synth: 1589, impl: 1309 Slice LUTs (0.6% on ZCU106)
       (dualConfig("code_capacity_rotated_d5"), "code capacity rotated d=5"),
-      // 15470
+      // synth: 15470, impl: 13186 Slice LUTs (6.03% on ZCU106)
       (dualConfig("phenomenological_rotated_d5"), "phenomenological d=5"),
-      // 31637
+      // synth: 31637, impl: 25798 Slice LUTs (11.80% on ZCU106)
       (dualConfig("circuit_level_d5", true), "circuit-level d=5 (unweighted)"),
-      // 41523
+      // synth: 41523, impl: 34045 Slice LUTs (15.57% on ZCU106)
       (dualConfig("circuit_level_d5"), "circuit-level d=5"),
-      // 299282
+      // synth: 299282, impl:
       (dualConfig("circuit_level_d9"), "circuit-level d=9")
     )
     for ((config, name) <- configurations) {
-      val reports = Vivado.report(DistributedDual(config))
+      // val reports = Vivado.report(DistributedDual(config))
+      val reports = Vivado.report(DistributedDual(config), useImpl = true)
       println(s"$name:")
       reports.resource.primitivesTable.print()
     }

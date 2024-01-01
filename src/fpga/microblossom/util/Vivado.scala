@@ -28,11 +28,11 @@ case class VivadoReports(targetDirectory: String) {
 object Vivado {
 
   /** when `useImpl` is true, run implementation to get a better estimation of timing */
-  def createProject[T <: Component](
+  def report[T <: Component](
       component: => T,
       useImpl: Boolean = false,
       removeVivadoProj: Boolean = false
-  ): String = {
+  ): VivadoReports = {
 
     val projectName = Random.alphanumeric.filter(_.isLetter).take(10).mkString
     val targetDirectory = s"gen/tmp/$projectName"
@@ -111,13 +111,8 @@ report_utilization -file ./resource.txt
       Process(s"rm -rf $projectName", folder).!!
     }
 
-    targetDirectory
-
-  }
-
-  def report[T <: Component](component: => T, useImpl: Boolean = false): VivadoReports = {
-    val targetDirectory = createProject(component, useImpl = useImpl)
     VivadoReports(targetDirectory)
+
   }
 
 }
