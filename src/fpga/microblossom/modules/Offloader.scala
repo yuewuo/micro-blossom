@@ -20,7 +20,7 @@ object Offloader {
   }
 }
 
-case class Offloader(config: DualConfig, offloaderIndex: Int, injectRegisters: Seq[String] = List()) extends Component {
+case class Offloader(config: DualConfig, offloaderIndex: Int) extends Component {
   val io = new Bundle {
     val stageOutputs = out(Offloader.getStages(config, offloaderIndex).getStageOutput)
     val vertexInputsOffloadGet3 = in(
@@ -92,7 +92,7 @@ case class Offloader(config: DualConfig, offloaderIndex: Int, injectRegisters: S
   connectLogic()
 
   // inject registers
-  for (stageName <- injectRegisters) {
+  for (stageName <- config.injectRegisters) {
     stages.injectRegisterAt(stageName)
   }
   stages.finish()

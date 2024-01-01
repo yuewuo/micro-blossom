@@ -17,3 +17,17 @@ case class ConvergecastConflict(vertexBits: Int) extends Bundle {
   val vertex1 = Bits(vertexBits bits)
   val vertex2 = Bits(vertexBits bits)
 }
+
+case class DataMaxLength(
+    var length: Int
+)
+
+case class DataConflict(
+    var valid: Boolean,
+    var node1: Int,
+    var node2: Int,
+    var touch1: Int,
+    var touch2: Int,
+    var vertex1: Int,
+    var vertex2: Int
+)

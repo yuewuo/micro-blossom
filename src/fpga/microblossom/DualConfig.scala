@@ -17,7 +17,8 @@ case class DualConfig(
     // load graph either from parameter or from file
     var graph: SingleGraph = null,
     val filename: String = null,
-    val minimizeBits: Boolean = true
+    val minimizeBits: Boolean = true,
+    var injectRegisters: Seq[String] = List()
 ) {
   def vertexNum = graph.vertex_num.toInt
   def edgeNum = graph.weighted_edges.length.toInt
@@ -27,7 +28,13 @@ case class DualConfig(
   def contextBits = log2Up(contextDepth)
   def IndexNone = (1 << vertexBits) - 1
   def LengthNone = (1 << weightBits) - 1
-  def readLatency = broadcastDelay + convergecastDelay + 5 // from sending the command to receiving the obstacle
+  def readLatencyLegacy = broadcastDelay + convergecastDelay + 5 // TODO: remove
+  def readLatency = { // from sending the command to receiving the obstacle
+    val contextDelay = (contextDepth != 1).toInt // when there is context switching, delay 1 clock due to memory fetch
+    println(contextDelay)
+    broadcastDelay + convergecastDelay + injectRegisters.length + contextDelay
+  }
+
   private val virtualVertices = collection.mutable.Set[Int]()
   private val incidentEdges = collection.mutable.Map[Int, ArrayBuffer[Int]]() // vertexIndex -> Seq[edgeIndex]
   private val incidentOffloaders = collection.mutable.Map[Int, ArrayBuffer[Int]]() // vertexIndex -> Seq[offloaderIdnex]

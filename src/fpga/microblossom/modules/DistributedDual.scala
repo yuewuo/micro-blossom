@@ -2,6 +2,7 @@ package microblossom.modules
 
 import spinal.core._
 import spinal.lib._
+import spinal.core.sim._
 import microblossom._
 import microblossom.types._
 import microblossom.util.Vivado
@@ -108,7 +109,8 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
       }
     }
   }
-  val convergecastedConflict = conflictConvergecastTree(config.graph.edge_binary_tree.nodes.length - 1)
+  val convergecastedConflict =
+    Delay(RegNext(conflictConvergecastTree(config.graph.edge_binary_tree.nodes.length - 1)), config.convergecastDelay)
   io.conflict.valid := convergecastedConflict.valid
   io.conflict.node1 := convergecastedConflict.node1.resized
   io.conflict.node2 := convergecastedConflict.node2.resized
@@ -116,6 +118,40 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
   io.conflict.touch2 := convergecastedConflict.touch2.resized
   io.conflict.vertex1 := convergecastedConflict.vertex1.resized
   io.conflict.vertex2 := convergecastedConflict.vertex2.resized
+
+  def simExecute(instruction: Long): (DataMaxLength, DataConflict) = {
+    io.message.valid #= true
+    io.message.instruction #= instruction
+    clockDomain.waitSampling()
+    io.message.valid #= false
+    for (idx <- 0 until config.readLatency) { clockDomain.waitSampling() }
+    sleep(1)
+    (
+      DataMaxLength(io.maxLength.length.toInt),
+      DataConflict(
+        io.conflict.valid.toBoolean,
+        io.conflict.node1.toInt,
+        io.conflict.node2.toInt,
+        io.conflict.touch1.toInt,
+        io.conflict.touch1.toInt,
+        io.conflict.vertex1.toInt,
+        io.conflict.vertex2.toInt
+      )
+    )
+  }
+
+  // before compiling the simulator, mark the fields as public to enable snapshot
+  def simMakePublicSnapshot() = {
+    vertices.foreach(vertex => {
+      vertex.io.simPublic()
+    })
+    edges.foreach(edge => {
+      edge.io.simPublic()
+    })
+    offloaders.foreach(offloader => {
+      offloader.io.simPublic()
+    })
+  }
 
 }
 
@@ -128,6 +164,59 @@ class DistributedDualTest extends AnyFunSuite {
     config.contextDepth = 1 // no context switch
     config.sanityCheck()
     Config.spinal().generateVerilog(DistributedDual(config))
+  }
+
+  test("test pipeline registers") {
+    // gtkwave simWorkspace/DistributedDual/testA.fst
+    val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json", minimizeBits = false)
+    config.sanityCheck()
+    Config.sim
+      .compile({
+        val dut = DistributedDual(config)
+        dut.simMakePublicSnapshot()
+        dut
+      })
+      .doSim("testA") { dut =>
+        val ioConfig = dut.ioConfig
+        dut.io.message.valid #= false
+        dut.clockDomain.forkStimulus(period = 10)
+
+        for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
+
+        // dut.simExecute(ioConfig.instructionSpec.generateReset())
+        // dut.simExecute(ioConfig.instructionSpec.generateAddDefect(0, 0))
+        // var obstacle = dut.simExecute(ioConfig.instructionSpec.generateFindObstacle())
+
+        // assert(obstacle == 100 << 2) // at most grow 100
+        // val reader = ObstacleReader(ioConfig, obstacle)
+        // assert(reader.rspCode == RspCode.NonZeroGrow)
+        // assert(reader.length == 100)
+
+        // dut.simExecute(ioConfig.instructionSpec.generateGrow(30))
+        // var obstacle2 = dut.simExecute(ioConfig.instructionSpec.generateFindObstacle())
+        // val reader2 = ObstacleReader(ioConfig, obstacle2)
+        // assert(reader2.rspCode == RspCode.NonZeroGrow)
+        // assert(reader2.length == 70)
+
+        // val (obstacle3, grown3) = dut.simFindObstacle(50)
+        // val reader3 = ObstacleReader(ioConfig, obstacle3)
+        // assert(grown3 == 50)
+        // assert(reader3.rspCode == RspCode.NonZeroGrow)
+        // assert(reader3.length == 0)
+
+        // val (obstacle4, grown4) = dut.simFindObstacle(1000)
+        // val reader4 = ObstacleReader(ioConfig, obstacle4)
+        // assert(grown4 == 20)
+        // assert(reader4.rspCode == RspCode.Conflict)
+        // assert(reader4.field1 == 0) // node1
+        // assert(reader4.field2 == ioConfig.IndexNone) // node2 (here it's virtual)
+        // assert(reader4.field3 == 0) // touch1
+        // assert(reader4.field4 == ioConfig.IndexNone) // touch2 (here it's virtual)
+        // assert(reader4.field5 == 0) // vertex1
+        // assert(reader4.field6 == 3) // vertex2
+
+        // println(dut.simSnapshot().noSpacesSortKeys)
+      }
   }
 
 }

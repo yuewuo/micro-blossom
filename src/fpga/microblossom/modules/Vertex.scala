@@ -40,7 +40,7 @@ object Vertex {
   }
 }
 
-case class Vertex(config: DualConfig, vertexIndex: Int, injectRegisters: Seq[String] = List()) extends Component {
+case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   val io = new Bundle {
     val message = in(BroadcastMessage(config))
     // interaction I/O
@@ -196,7 +196,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int, injectRegisters: Seq[Str
   }
 
   // inject registers
-  for (stageName <- injectRegisters) {
+  for (stageName <- config.injectRegisters) {
     stages.injectRegisterAt(stageName)
   }
   stages.finish()

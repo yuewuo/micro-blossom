@@ -105,7 +105,7 @@ case class DualAccelerator(config: DualConfig, ioConfig: DualConfig = DualConfig
     io.input.instruction #= instruction
     clockDomain.waitSampling()
     io.input.valid #= false
-    for (idx <- 0 to (config.readLatency - 1)) { clockDomain.waitSampling() }
+    for (idx <- 0 to (config.readLatencyLegacy - 1)) { clockDomain.waitSampling() }
     sleep(1)
     io.output.obstacle.toBigInt
   }

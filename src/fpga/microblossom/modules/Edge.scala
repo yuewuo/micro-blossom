@@ -39,7 +39,7 @@ object Edge {
   }
 }
 
-case class Edge(config: DualConfig, edgeIndex: Int, injectRegisters: Seq[String] = List()) extends Component {
+case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   val (leftVertex, rightVertex) = config.incidentVerticesOf(edgeIndex)
   val leftGrownBits = config.grownBitsOf(leftVertex)
   val rightGrownBits = config.grownBitsOf(rightVertex)
@@ -157,7 +157,7 @@ case class Edge(config: DualConfig, edgeIndex: Int, injectRegisters: Seq[String]
   }
 
   // inject registers
-  for (stageName <- injectRegisters) {
+  for (stageName <- config.injectRegisters) {
     stages.injectRegisterAt(stageName)
   }
   stages.finish()
