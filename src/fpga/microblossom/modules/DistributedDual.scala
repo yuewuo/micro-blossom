@@ -7,10 +7,11 @@ import microblossom._
 import microblossom.types._
 import microblossom.util.Vivado
 import org.scalatest.funsuite.AnyFunSuite
+import scala.util.control.Breaks._
 
 case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig()) extends Component {
   val io = new Bundle {
-    val message = in(BroadcastMessage(ioConfig))
+    val message = in(BroadcastMessage(ioConfig, explicitReset = false))
 
     val maxLength = out(ConvergecastMaxLength(ioConfig.weightBits))
     val conflict = out(ConvergecastConflict(ioConfig.vertexBits))
@@ -21,6 +22,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
   broadcastMessage.instruction.widthConvertedFrom(io.message.instruction)
   broadcastMessage.valid := io.message.valid
   if (config.contextBits > 0) { broadcastMessage.contextId := io.message.contextId }
+  broadcastMessage.isReset := io.message.instruction.isReset
 
   // delay the signal so that the synthesizer can automatically balancing the registers
   val broadcastRegInserted = Delay(RegNext(broadcastMessage), config.broadcastDelay)
@@ -46,7 +48,9 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
       vertex.io.offloaderInputs(localIndex) := offloaders(offloaderIndex).io.stageOutputs
     }
     for ((edgeIndex, localIndex) <- config.incidentEdgesOf(vertexIndex).zipWithIndex) {
-      vertex.io.peerVertexInputsExecute3(localIndex) := vertices(vertexIndex).io.stageOutputs.executeGet3
+      vertex.io.peerVertexInputsExecute3(localIndex) := vertices(
+        config.peerVertexOfEdge(edgeIndex, vertexIndex)
+      ).io.stageOutputs.executeGet3
     }
   }
 
@@ -112,10 +116,18 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
   val convergecastedConflict =
     Delay(RegNext(conflictConvergecastTree(config.graph.edge_binary_tree.nodes.length - 1)), config.convergecastDelay)
   io.conflict.valid := convergecastedConflict.valid
-  io.conflict.node1 := convergecastedConflict.node1.resized
-  io.conflict.node2 := convergecastedConflict.node2.resized
-  io.conflict.touch1 := convergecastedConflict.touch1.resized
-  io.conflict.touch2 := convergecastedConflict.touch2.resized
+  def resizeConnectUp(source: Bits, target: Bits) = {
+    target := source.resized
+    if (target.getWidth > source.getWidth) {
+      when(source === source.asUInt.maxValue) {
+        target(target.getWidth - 1 downto source.getWidth).setAll()
+      }
+    }
+  }
+  resizeConnectUp(convergecastedConflict.node1, io.conflict.node1)
+  resizeConnectUp(convergecastedConflict.node2, io.conflict.node2)
+  resizeConnectUp(convergecastedConflict.touch1, io.conflict.touch1)
+  resizeConnectUp(convergecastedConflict.touch2, io.conflict.touch2)
   io.conflict.vertex1 := convergecastedConflict.vertex1.resized
   io.conflict.vertex2 := convergecastedConflict.vertex2.resized
 
@@ -133,7 +145,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
         io.conflict.node1.toInt,
         io.conflict.node2.toInt,
         io.conflict.touch1.toInt,
-        io.conflict.touch1.toInt,
+        io.conflict.touch2.toInt,
         io.conflict.vertex1.toInt,
         io.conflict.vertex2.toInt
       )
@@ -153,6 +165,32 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
     })
   }
 
+  // a temporary solution without primal offloading
+  def simFindObstacle(maxGrowth: Long): (DataConflict, Long) = {
+    var (maxLength, conflict) = simExecute(ioConfig.instructionSpec.generateFindObstacle())
+    var grown = 0.toLong
+    breakable {
+      while (maxLength.length > 0 && !conflict.valid) {
+        var length = maxLength.length.toLong
+        if (length == ioConfig.LengthNone) {
+          break
+        }
+        if (length + grown > maxGrowth) {
+          length = maxGrowth - grown
+        }
+        if (length == 0) {
+          break
+        }
+        grown += length
+        simExecute(ioConfig.instructionSpec.generateGrow(length))
+        val update = simExecute(ioConfig.instructionSpec.generateFindObstacle())
+        maxLength = update._1
+        conflict = update._2
+      }
+    }
+    (conflict, grown)
+  }
+
 }
 
 // sbt 'testOnly microblossom.modules.DistributedDualTest'
@@ -169,6 +207,8 @@ class DistributedDualTest extends AnyFunSuite {
   test("test pipeline registers") {
     // gtkwave simWorkspace/DistributedDual/testA.fst
     val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json", minimizeBits = false)
+    config.graph.offloading = Seq() // remove all offloaders
+    config.fitGraph(minimizeBits = false)
     config.sanityCheck()
     Config.sim
       .compile({
@@ -183,39 +223,32 @@ class DistributedDualTest extends AnyFunSuite {
 
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
-        // dut.simExecute(ioConfig.instructionSpec.generateReset())
-        // dut.simExecute(ioConfig.instructionSpec.generateAddDefect(0, 0))
-        // var obstacle = dut.simExecute(ioConfig.instructionSpec.generateFindObstacle())
+        dut.simExecute(ioConfig.instructionSpec.generateReset())
+        dut.simExecute(ioConfig.instructionSpec.generateAddDefect(0, 0))
+        var (maxLength, conflict) = dut.simExecute(ioConfig.instructionSpec.generateFindObstacle())
 
-        // assert(obstacle == 100 << 2) // at most grow 100
-        // val reader = ObstacleReader(ioConfig, obstacle)
-        // assert(reader.rspCode == RspCode.NonZeroGrow)
-        // assert(reader.length == 100)
+        assert(maxLength.length == 2) // at most grow 2
+        assert(conflict.valid == false)
 
-        // dut.simExecute(ioConfig.instructionSpec.generateGrow(30))
-        // var obstacle2 = dut.simExecute(ioConfig.instructionSpec.generateFindObstacle())
-        // val reader2 = ObstacleReader(ioConfig, obstacle2)
-        // assert(reader2.rspCode == RspCode.NonZeroGrow)
-        // assert(reader2.length == 70)
+        dut.simExecute(ioConfig.instructionSpec.generateGrow(1))
+        var (maxLength2, conflict2) = dut.simExecute(ioConfig.instructionSpec.generateFindObstacle())
+        assert(maxLength2.length == 1)
+        assert(conflict2.valid == false)
 
-        // val (obstacle3, grown3) = dut.simFindObstacle(50)
-        // val reader3 = ObstacleReader(ioConfig, obstacle3)
-        // assert(grown3 == 50)
-        // assert(reader3.rspCode == RspCode.NonZeroGrow)
-        // assert(reader3.length == 0)
-
-        // val (obstacle4, grown4) = dut.simFindObstacle(1000)
-        // val reader4 = ObstacleReader(ioConfig, obstacle4)
-        // assert(grown4 == 20)
-        // assert(reader4.rspCode == RspCode.Conflict)
-        // assert(reader4.field1 == 0) // node1
-        // assert(reader4.field2 == ioConfig.IndexNone) // node2 (here it's virtual)
-        // assert(reader4.field3 == 0) // touch1
-        // assert(reader4.field4 == ioConfig.IndexNone) // touch2 (here it's virtual)
-        // assert(reader4.field5 == 0) // vertex1
-        // assert(reader4.field6 == 3) // vertex2
+        val (conflict3, grown3) = dut.simFindObstacle(1)
+        assert(grown3 == 1)
+        assert(conflict3.valid == true)
+        assert(conflict3.node1 == 0)
+        assert(conflict3.node2 == ioConfig.IndexNone)
+        assert(conflict3.touch1 == 0)
+        assert(conflict3.touch2 == ioConfig.IndexNone)
+        assert(conflict3.vertex1 == 0)
+        assert(conflict3.vertex2 == 3)
 
         // println(dut.simSnapshot().noSpacesSortKeys)
+
+        for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
+
       }
   }
 

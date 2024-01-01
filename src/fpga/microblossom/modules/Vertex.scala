@@ -73,12 +73,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   // fetch
   var ram: Mem[VertexState] = null
   var register = Reg(VertexState(config.vertexBits, config.grownBitsOf(vertexIndex)))
-  register.speed init (Speed.Stay)
-  register.node init (config.IndexNone)
-  register.root init (config.IndexNone)
-  register.isVirtual init (config.isVirtual(vertexIndex))
-  register.isDefect init (false)
-  register.grown init (0)
+  register init (VertexState.resetValue(config, vertexIndex))
   var fetchState = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
   var message = BroadcastMessage(config)
   if (config.contextBits > 0) {
@@ -183,15 +178,17 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   io.maxLength := vertexResponse.io.maxLength
 
   // write back
+  val writeState =
+    Mux(stages.updateGet3.compact.isReset, VertexState.resetValue(config, vertexIndex), stages.updateGet3.state)
   if (config.contextBits > 0) {
     ram.write(
-      address = stages.updateGet3.contextId,
-      data = stages.updateGet3.state,
-      enable = stages.updateGet3.valid
+      address = stages.updateGet3.compact.contextId,
+      data = writeState,
+      enable = stages.updateGet3.compact.valid
     )
   } else {
-    when(stages.updateGet3.valid) {
-      register := stages.updateGet3.state
+    when(stages.updateGet3.compact.valid) {
+      register := writeState
     }
   }
 

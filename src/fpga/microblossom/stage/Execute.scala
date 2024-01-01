@@ -24,31 +24,23 @@ case class StageExecuteVertex2(config: DualConfig, vertexIndex: Int) extends Bun
   val state = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
   val isStalled = Bool
   // throw away the broadcast message because it's not used later on
-  val valid = Bool
-  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+  val compact = BroadcastCompact(config)
 
   def connect(last: StageExecuteVertex) = {
     isStalled := last.isStalled
-    valid := last.message.valid
-    if (config.contextBits > 0) {
-      contextId := last.message.contextId
-    }
+    compact.connect(last.message)
   }
 }
 
 case class StageExecuteVertex3(config: DualConfig, vertexIndex: Int) extends Bundle {
   val state = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
   val isStalled = Bool
-  val valid = Bool
-  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+  val compact = BroadcastCompact(config)
 
   def connect(last: StageExecuteVertex2) = {
     state := last.state
     isStalled := last.isStalled
-    valid := last.valid
-    if (config.contextBits > 0) {
-      contextId := last.contextId
-    }
+    compact := last.compact
   }
 }
 
@@ -58,43 +50,31 @@ case class StageExecuteVertex3(config: DualConfig, vertexIndex: Int) extends Bun
 
 case class StageExecuteEdge(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
-  val valid = Bool
-  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+  val compact = BroadcastCompact(config)
 
   def connect(last: StageOffloadEdge4) = {
     state := last.state
-    valid := last.valid
-    if (config.contextBits > 0) {
-      contextId := last.contextId
-    }
+    compact := last.compact
   }
 }
 
 case class StageExecuteEdge2(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
-  val valid = Bool
-  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+  val compact = BroadcastCompact(config)
 
   def connect(last: StageExecuteEdge) = {
     state := last.state
-    valid := last.valid
-    if (config.contextBits > 0) {
-      contextId := last.contextId
-    }
+    compact := last.compact
   }
 }
 
 case class StageExecuteEdge3(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
   val isTight = Bool
-  val valid = Bool
-  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+  val compact = BroadcastCompact(config)
 
   def connect(last: StageExecuteEdge2) = {
     state := last.state
-    valid := last.valid
-    if (config.contextBits > 0) {
-      contextId := last.contextId
-    }
+    compact := last.compact
   }
 }

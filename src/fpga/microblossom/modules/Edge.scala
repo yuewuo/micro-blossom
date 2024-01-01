@@ -61,7 +61,7 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   // fetch
   var ram: Mem[EdgeState] = null
   var register = Reg(EdgeState(config.weightBits))
-  register.weight init (config.graph.weighted_edges(edgeIndex).w.toInt)
+  register init EdgeState.resetValue(config, edgeIndex)
   var fetchState = EdgeState(config.weightBits)
   var message = BroadcastMessage(config)
   if (config.contextBits > 0) {
@@ -78,10 +78,7 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   }
 
   stages.offloadSet.state := fetchState
-  stages.offloadSet.valid := message.valid
-  if (config.contextBits > 0) {
-    stages.offloadSet.contextId := message.contextId
-  }
+  stages.offloadSet.compact.connect(message)
 
   stages.offloadSet2.connect(stages.offloadGet)
   val offload2Area = new Area {
@@ -144,15 +141,17 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   io.conflict := edgeResponse.io.conflict
 
   // write back
+  val writeState =
+    Mux(stages.updateGet3.compact.isReset, EdgeState.resetValue(config, edgeIndex), stages.updateGet3.state)
   if (config.contextBits > 0) {
     ram.write(
-      address = stages.updateGet3.contextId,
-      data = stages.updateGet3.state,
-      enable = stages.updateGet3.valid
+      address = stages.updateGet3.compact.contextId,
+      data = writeState,
+      enable = stages.updateGet3.compact.valid
     )
   } else {
-    when(stages.updateGet3.valid) {
-      register := stages.updateGet3.state
+    when(stages.updateGet3.compact.valid) {
+      register := writeState
     }
   }
 

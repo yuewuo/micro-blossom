@@ -31,7 +31,6 @@ case class DualConfig(
   def readLatencyLegacy = broadcastDelay + convergecastDelay + 5 // TODO: remove
   def readLatency = { // from sending the command to receiving the obstacle
     val contextDelay = (contextDepth != 1).toInt // when there is context switching, delay 1 clock due to memory fetch
-    println(contextDelay)
     broadcastDelay + convergecastDelay + injectRegisters.length + contextDelay
   }
 
@@ -114,7 +113,7 @@ case class DualConfig(
     return incidentEdges(vertexIndex)
   }
   def incidentOffloaderOf(vertexIndex: Int): Seq[Int] = {
-    return incidentOffloaders(vertexIndex)
+    return incidentOffloaders.getOrElse(vertexIndex, Seq())
   }
   def numIncidentOffloaderOf(vertexIndex: Int): Int = {
     return incidentOffloaderOf(vertexIndex).length

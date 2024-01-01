@@ -68,51 +68,38 @@ case class StageOffloadOffloader4(config: DualConfig, offloaderIndex: Int) exten
 
 case class StageOffloadEdge(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
-  val valid = Bool
-  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+  val compact = BroadcastCompact(config)
 }
 
 case class StageOffloadEdge2(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
   val isTight = Bool
-  val valid = Bool
-  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+  val compact = BroadcastCompact(config)
 
   def connect(last: StageOffloadEdge) = {
     state := last.state
-    valid := last.valid
-    if (config.contextBits > 0) {
-      contextId := last.contextId
-    }
+    compact := last.compact
   }
 }
 
 case class StageOffloadEdge3(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
   val isTight = Bool
-  val valid = Bool
-  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+  val compact = BroadcastCompact(config)
 
   def connect(last: StageOffloadEdge2) = {
     state := last.state
     isTight := last.isTight
-    valid := last.valid
-    if (config.contextBits > 0) {
-      contextId := last.contextId
-    }
+    compact := last.compact
   }
 }
 
 case class StageOffloadEdge4(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
-  val valid = Bool
-  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+  val compact = BroadcastCompact(config)
 
   def connect(last: StageOffloadEdge3) = {
     state := last.state
-    valid := last.valid
-    if (config.contextBits > 0) {
-      contextId := last.contextId
-    }
+    compact := last.compact
   }
 }
