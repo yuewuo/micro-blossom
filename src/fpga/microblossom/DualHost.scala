@@ -18,6 +18,7 @@ import spinal.core.sim._
 import io.circe.parser.decode
 import scala.reflect.io.Directory
 import scala.util.control.Breaks._
+import modules._
 
 // sbt "runMain microblossom.DualHost localhost 4123 test"
 object DualHost extends App {
@@ -64,7 +65,7 @@ object DualHost extends App {
 
     simConfig
       .compile({
-        val dut = DualAccelerator(config)
+        val dut = DistributedDual(config)
         if (withWaveform) {
           dut.simMakePublicSnapshot()
         }
@@ -84,8 +85,8 @@ object DualHost extends App {
           cycleCounter += 1
         }
 
-        dut.io.input.valid #= false
-        dut.io.input.instruction #= 0
+        dut.io.message.valid #= false
+        dut.io.message.instruction #= 0
         dut.clockDomain.forkStimulus(period = 10)
 
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
@@ -122,22 +123,21 @@ object DualHost extends App {
               assert(parameters.length == 1)
               maxGrowth = parameters(0).toLong
             } else if (command == "find_obstacle()") {
-              val (obstacle, grown) = dut.simFindObstacle(maxGrowth)
+              val (maxLength, conflict, grown) = dut.simFindObstacle(maxGrowth)
               maxGrowth -= grown
-              val reader = ObstacleReader(ioConfig, obstacle)
-              if (reader.rspCode == RspCode.NonZeroGrow) {
+              if (!conflict.valid) {
                 outStream.println(
                   "NonZeroGrow(%d), %d".format(
-                    if (reader.length == ioConfig.LengthNone) { Int.MaxValue }
-                    else { reader.length },
+                    if (maxLength.length == ioConfig.LengthNone) { Int.MaxValue }
+                    else { maxLength.length },
                     grown
                   )
                 )
-              } else if (reader.rspCode == RspCode.Conflict) {
-                val (node1, node2, touch1, touch2, vertex1, vertex2) = if (reader.field2 == ioConfig.IndexNone) {
-                  (reader.field1, reader.field2, reader.field3, reader.field4, reader.field5, reader.field6)
+              } else {
+                val (node1, node2, touch1, touch2, vertex1, vertex2) = if (conflict.node2 == ioConfig.IndexNone) {
+                  (conflict.node1, conflict.node2, conflict.touch1, conflict.touch2, conflict.vertex1, conflict.vertex2)
                 } else {
-                  (reader.field2, reader.field1, reader.field4, reader.field3, reader.field6, reader.field5)
+                  (conflict.node2, conflict.node1, conflict.touch2, conflict.touch1, conflict.vertex2, conflict.vertex1)
                 }
                 assert(node1 != ioConfig.IndexNone)
                 assert(touch1 != ioConfig.IndexNone)
@@ -155,9 +155,6 @@ object DualHost extends App {
                       grown
                     )
                 )
-              } else {
-                outStream.println("illegal obstacle arguments")
-                throw new IllegalArgumentException
               }
             } else if (command.startsWith("add_defect(")) {
               val parameters = command.substring("add_defect(".length, command.length - 1).split(", ")

@@ -174,7 +174,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
   }
 
   // a temporary solution without primal offloading
-  def simFindObstacle(maxGrowth: Long): (DataConflict, Long) = {
+  def simFindObstacle(maxGrowth: Long): (DataMaxLength, DataConflict, Long) = {
     var (maxLength, conflict) = simExecute(ioConfig.instructionSpec.generateFindObstacle())
     var grown = 0.toLong
     breakable {
@@ -196,7 +196,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
         conflict = update._2
       }
     }
-    (conflict, grown)
+    (maxLength, conflict, grown)
   }
 
   // take a snapshot of the dual module, in the format of fusion blossom visualization
@@ -333,7 +333,7 @@ class DistributedDualTest extends AnyFunSuite {
         assert(maxLength2.length == 1)
         assert(conflict2.valid == false)
 
-        val (conflict3, grown3) = dut.simFindObstacle(1)
+        val (_, conflict3, grown3) = dut.simFindObstacle(1)
         assert(grown3 == 1)
         assert(conflict3.valid == true)
         assert(conflict3.node1 == 0)
@@ -377,7 +377,7 @@ object DistributedDualTestDebug1 extends App {
       dut.simExecute(ioConfig.instructionSpec.generateAddDefect(4, 1))
       dut.simExecute(ioConfig.instructionSpec.generateAddDefect(8, 2))
 
-      val (conflict, grown) = dut.simFindObstacle(1000)
+      val (_, conflict, grown) = dut.simFindObstacle(1000)
       assert(grown == 1)
       assert(conflict.valid == true)
       println(conflict.node1, conflict.node2, conflict.touch1, conflict.touch2)
@@ -433,4 +433,28 @@ class DistributedDualEstimation extends AnyFunSuite {
     }
   }
 
+}
+
+// sbt "runMain microblossom.modules.DistributedDualExamples"
+object DistributedDualExamples extends App {
+  for (d <- Seq(3, 5, 7)) {
+    val config =
+      DualConfig(filename = "./resources/graphs/example_code_capacity_planar_d%d.json".format(d), minimizeBits = true)
+    Config.spinal("gen/example_code_capacity_planar_d%d".format(d)).generateVerilog(DistributedDual(config))
+  }
+  for (d <- Seq(3, 5, 7)) {
+    val config =
+      DualConfig(filename = "./resources/graphs/example_code_capacity_rotated_d%d.json".format(d), minimizeBits = true)
+    Config.spinal("gen/example_code_capacity_rotated_d%d".format(d)).generateVerilog(DistributedDual(config))
+  }
+  for (d <- Seq(3, 5, 7, 9, 11)) {
+    val config =
+      DualConfig(
+        filename = "./resources/graphs/example_phenomenological_rotated_d%d.json".format(d),
+        minimizeBits = true
+      )
+    config.broadcastDelay = 2
+    config.convergecastDelay = 4
+    Config.spinal("gen/example_phenomenological_rotated_d%d".format(d)).generateVerilog(DistributedDual(config))
+  }
 }

@@ -100,7 +100,7 @@ impl DualModuleScalaDriver {
         reader.read_line(&mut line)?;
         assert_eq!(line, "DualHost v0.0.1, ask for decoding graph\n", "handshake error");
         // in simulation, positions doesn't matter because it's not going to affect the timing constraint
-        let micro_blossom = MicroBlossomSingle::new_initializer_only(initializer);
+        let mut micro_blossom = MicroBlossomSingle::new_initializer_only(initializer);
         write!(writer, "{}\n", serde_json::to_string(&micro_blossom).unwrap())?;
         write!(writer, "{}\n", if cfg!(test) { "with waveform" } else { "no waveform" })?;
         line.clear();
