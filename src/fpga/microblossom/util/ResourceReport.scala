@@ -25,6 +25,7 @@ case class ResourceReport(filepath: String) {
   val tables = mutable.Map[String, ResourceTable]()
 
   def primitivesTable = tables("Primitives")
+  def netlistLogicTable = tables("Netlist Logic")
 
   val source = Source.fromFile(filepath)
   try {

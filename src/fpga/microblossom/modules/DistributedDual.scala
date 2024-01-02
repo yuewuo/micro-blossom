@@ -125,7 +125,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
   def resizeConnectUp(source: Bits, target: Bits) = {
     target := source.resized
     if (target.getWidth > source.getWidth) {
-      when(source === source.asUInt.maxValue) {
+      when(source === (1 << source.getWidth) - 1) {
         target(target.getWidth - 1 downto source.getWidth).setAll()
       }
     }
@@ -394,45 +394,96 @@ object DistributedDualTestDebug1 extends App {
     }
 }
 
+object Local {
+
+  def dualConfig(name: String, removeWeight: Boolean = false): DualConfig = {
+    val config = DualConfig(filename = s"./resources/graphs/example_$name.json")
+    if (removeWeight) {
+      for (edgeIndex <- 0 until config.edgeNum) {
+        config.graph.weighted_edges(edgeIndex).w = 2
+      }
+      config.fitGraph()
+      require(config.weightBits == 2)
+    }
+    config
+  }
+}
+
 // sbt 'testOnly microblossom.modules.DistributedDualEstimation'
 class DistributedDualEstimation extends AnyFunSuite {
 
   test("logic delay") {
-    def dualConfig(name: String, removeWeight: Boolean = false): DualConfig = {
-      val config = DualConfig(filename = s"./resources/graphs/example_$name.json")
-      if (removeWeight) {
-        for (edgeIndex <- 0 until config.edgeNum) {
-          config.graph.weighted_edges(edgeIndex).w = 2
-        }
-        config.fitGraph()
-        require(config.weightBits == 2)
-      }
-      config
-    }
-
     val configurations = List(
       // TODO: estimate resource usage after correctness verification
-      // synth: 387, impl: 310 Slice LUTs (0.14% on ZCU106)
-      (dualConfig("code_capacity_d5"), "code capacity repetition d=5"),
-      // synth: 1589, impl: 1309 Slice LUTs (0.6% on ZCU106)
-      (dualConfig("code_capacity_rotated_d5"), "code capacity rotated d=5"),
+      // synth: 387, impl: 310 Slice LUTs (0.14% on ZCU106), or 407 CLB LUTs (0.05% on VMK180)
+      (Local.dualConfig("code_capacity_d5"), "code capacity repetition d=5"),
+      // synth: 1589, impl: 1309 Slice LUTs (0.6% on ZCU106), or 1719 CLB LUTs (0.19% on VMK180)
+      (Local.dualConfig("code_capacity_rotated_d5"), "code capacity rotated d=5"),
       // synth: 15470, impl: 13186 Slice LUTs (6.03% on ZCU106)
-      (dualConfig("phenomenological_rotated_d5"), "phenomenological d=5"),
+      (Local.dualConfig("phenomenological_rotated_d5"), "phenomenological d=5"),
       // synth: 31637, impl: 25798 Slice LUTs (11.80% on ZCU106)
-      (dualConfig("circuit_level_d5", true), "circuit-level d=5 (unweighted)"),
+      (Local.dualConfig("circuit_level_d5", true), "circuit-level d=5 (unweighted)"),
       // synth: 41523, impl: 34045 Slice LUTs (15.57% on ZCU106)
-      (dualConfig("circuit_level_d5"), "circuit-level d=5"),
+      (Local.dualConfig("circuit_level_d5"), "circuit-level d=5"),
       // synth: 299282, impl:
-      (dualConfig("circuit_level_d9"), "circuit-level d=9")
+      (Local.dualConfig("circuit_level_d9"), "circuit-level d=9")
     )
     for ((config, name) <- configurations) {
       // val reports = Vivado.report(DistributedDual(config))
       val reports = Vivado.report(DistributedDual(config), useImpl = true)
       println(s"$name:")
-      reports.resource.primitivesTable.print()
+      // reports.resource.primitivesTable.print()
+      reports.resource.netlistLogicTable.print()
     }
   }
 
+}
+
+// sbt 'testOnly microblossom.modules.DistributedDualPhenomenologicalEstimation'
+class DistributedDualPhenomenologicalEstimation extends AnyFunSuite {
+  // post-implementation estimations on VMK180
+  // d=3: 3873 LUTs (0.43%), 670 Registers (0.04%)
+  // d=5: 17293 LUTs (1.92%), 2474 Registers (0.14%)
+  // d=7: 48709 LUTs (5.41%), 6233 Registers (0.35%)
+  // d=9: 106133 LUTs (11.79%), 13170 Registers (0.73%)
+  // d=11: 205457 LUTs (22.83%), 24621 Registers (1.37%)
+  // d=13: 354066 LUTs (39.35%), 41790 Registers (2.32%)
+  for (d <- List(3, 5, 7, 9, 11, 13, 15, 17)) {
+    val config = Local.dualConfig(s"phenomenological_rotated_d$d")
+    val reports = Vivado.report(DistributedDual(config), useImpl = true)
+    println(s"phenomenological d = $d:")
+    reports.resource.netlistLogicTable.print()
+  }
+}
+
+// sbt 'testOnly microblossom.modules.DistributedDualCircuitLevelUnweightedEstimation'
+class DistributedDualCircuitLevelUnweightedEstimation extends AnyFunSuite {
+  // post-implementation estimations on VMK180
+  // d=3: 6540 LUTs (0.73%), 1064 Registers (0.06%)
+  // d=5: 39848 LUTs (4.43%), 4558 Registers (0.25%)
+  // d=7: 128923 LUTs (14.33%), 12387 Registers (0.69%)
+  // d=9: 307017 LUTs (34.12%), 26856 Registers (1.49%)
+  for (d <- List(3, 5, 7, 9, 11, 13)) {
+    val config = Local.dualConfig(s"circuit_level_d$d", removeWeight = true)
+    val reports = Vivado.report(DistributedDual(config), useImpl = true)
+    println(s"circuit-level unweighted d = $d:")
+    reports.resource.netlistLogicTable.print()
+  }
+}
+
+// sbt 'testOnly microblossom.modules.DistributedDualCircuitLevelEstimation'
+class DistributedDualCircuitLevelEstimation extends AnyFunSuite {
+  // post-implementation estimations on VMK180
+  // d=3: 7575 LUTs (0.84%), 1110 Registers (0.06%)
+  // d=5: 46483 LUTs (5.17%), 4684 Registers (0.26%)
+  // d=7: 146994 LUTs (16.34%), 12576 Registers (0.70%)
+  // d=9: 342254 LUTs (38.03%), 27151 Registers (1.51%)
+  for (d <- List(3, 5, 7, 9, 11, 13)) {
+    val config = Local.dualConfig(s"circuit_level_d$d")
+    val reports = Vivado.report(DistributedDual(config), useImpl = true)
+    println(s"circuit-level d = $d:")
+    reports.resource.netlistLogicTable.print()
+  }
 }
 
 // sbt "runMain microblossom.modules.DistributedDualExamples"

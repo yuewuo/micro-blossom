@@ -15,8 +15,8 @@ import java.nio.charset.StandardCharsets
 object VivadoTarget {
 
   // val partName = "xc7z010clg400-1"
-  val partName = "xc7z045ffg900-2" // Zynq UltraScale+ ZCU106 Evaluation Platform (license required)
-  // val partName = "xcvm1802-vsva2197-2MP-e-S" // Versal VMK180 Evaluation Platform (license required)
+  // val partName = "xc7z045ffg900-2" // Zynq UltraScale+ ZCU106 Evaluation Platform (license required)
+  val partName = "xcvm1802-vsva2197-2MP-e-S" // Versal VMK180 Evaluation Platform (license required)
 
 }
 
