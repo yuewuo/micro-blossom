@@ -31,13 +31,17 @@ object Vivado {
   def report[T <: Component](
       component: => T,
       useImpl: Boolean = false,
-      removeVivadoProj: Boolean = false
+      removeVivadoProj: Boolean = false,
+      numJobs: Option[Int] = None // default to the number of cores - 1
   ): VivadoReports = {
 
     val projectName = Random.alphanumeric.filter(_.isLetter).take(10).mkString
     val targetDirectory = s"gen/tmp/$projectName"
     println(s"targetDirectory: $targetDirectory")
     val spinalReport = Config.spinal(targetDirectory).generateVerilog(component)
+    // find out the number of cores
+    val numCores = Runtime.getRuntime().availableProcessors()
+    val numJobsVal = numJobs.getOrElse((numCores - 1).min(1))
     // create a TCL script to generate the project
     val moduleName = spinalReport.toplevelName
     val inputPorts = mutable.Set[String]()
@@ -67,16 +71,16 @@ if { [llength [get_nets $signalName]] != 0 } {
     }
     val propertySettings = propertySettingsArray.mkString("\n")
     val runJobScript = if (useImpl) {
-      """
-launch_runs synth_1 -jobs 8
+      s"""
+launch_runs synth_1 -jobs $numJobsVal
 wait_on_run synth_1
-launch_runs impl_1 -jobs 8
+launch_runs impl_1 -jobs $numJobsVal
 wait_on_run impl_1
 open_run impl_1
       """
     } else {
-      """
-launch_runs synth_1 -jobs 8
+      s"""
+launch_runs synth_1 -jobs $numJobsVal
 wait_on_run synth_1
 open_run synth_1
       """

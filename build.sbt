@@ -25,3 +25,4 @@ lazy val microblossom = (project in file("."))
   )
 
 fork := true
+javaOptions ++= Seq("-Xmx32G") // java option for the forked process

@@ -448,6 +448,8 @@ class DistributedDualPhenomenologicalEstimation extends AnyFunSuite {
   // d=9: 106133 LUTs (11.79%), 13170 Registers (0.73%)
   // d=11: 205457 LUTs (22.83%), 24621 Registers (1.37%)
   // d=13: 354066 LUTs (39.35%), 41790 Registers (2.32%)
+  // d=15: 529711 LUTs (58.87%), 62267 Registers (3.46%)
+  // d=17: 799536 LUTs (88.85%), 94875 Registers (5.27%)
   for (d <- List(3, 5, 7, 9, 11, 13, 15, 17)) {
     val config = Local.dualConfig(s"phenomenological_rotated_d$d")
     val reports = Vivado.report(DistributedDual(config), useImpl = true)
@@ -463,7 +465,8 @@ class DistributedDualCircuitLevelUnweightedEstimation extends AnyFunSuite {
   // d=5: 39848 LUTs (4.43%), 4558 Registers (0.25%)
   // d=7: 128923 LUTs (14.33%), 12387 Registers (0.69%)
   // d=9: 307017 LUTs (34.12%), 26856 Registers (1.49%)
-  for (d <- List(3, 5, 7, 9, 11, 13)) {
+  // d=11: 609352 LUTs (67.72%), 50385 Registers (2.80%)
+  for (d <- List(3, 5, 7, 9, 11)) {
     val config = Local.dualConfig(s"circuit_level_d$d", removeWeight = true)
     val reports = Vivado.report(DistributedDual(config), useImpl = true)
     println(s"circuit-level unweighted d = $d:")
@@ -478,7 +481,8 @@ class DistributedDualCircuitLevelEstimation extends AnyFunSuite {
   // d=5: 46483 LUTs (5.17%), 4684 Registers (0.26%)
   // d=7: 146994 LUTs (16.34%), 12576 Registers (0.70%)
   // d=9: 342254 LUTs (38.03%), 27151 Registers (1.51%)
-  for (d <- List(3, 5, 7, 9, 11, 13)) {
+  // d=11: 679519 LUTs (75.52%), 50907 Registers (2.83%)
+  for (d <- List(3, 5, 7, 9, 11)) {
     val config = Local.dualConfig(s"circuit_level_d$d")
     val reports = Vivado.report(DistributedDual(config), useImpl = true)
     println(s"circuit-level d = $d:")
@@ -508,4 +512,11 @@ object DistributedDualExamples extends App {
     config.convergecastDelay = 4
     Config.spinal("gen/example_phenomenological_rotated_d%d".format(d)).generateVerilog(DistributedDual(config))
   }
+}
+
+// Note: to further increase the memory limit to instantiate even larger instances, see `javaOptions` in `build.sbt`
+// sbt "runMain microblossom.modules.DistributedDualLargeInstance"
+object DistributedDualLargeInstance extends App {
+  val config = Local.dualConfig(s"circuit_level_d13")
+  Config.spinal().generateVerilog(DistributedDual(config))
 }
