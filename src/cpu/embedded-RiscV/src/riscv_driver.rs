@@ -8,7 +8,7 @@ pub struct RiscVCommandDriver {
 }
 
 impl DualStacklessDriver for RiscVCommandDriver {
-    fn clear(&mut self) {
+    fn reset(&mut self) {
         unimplemented!()
     }
     fn set_speed(&mut self, node: CompactNodeIndex, speed: CompactGrowState) {
@@ -41,10 +41,10 @@ impl DualStacklessDriver for RiscVCommandDriver {
             },
         }
     }
-    fn grow(&mut self, length: CompactWeight) {
-        self.write_argument::<1>(length as u32);
-        self.write_opcode(OpCode::Grow);
-    }
+    // fn grow(&mut self, length: CompactWeight) {
+    //     self.write_argument::<1>(length as u32);
+    //     self.write_opcode(OpCode::Grow);
+    // }
 }
 
 // 4 write registers and 8 read registers

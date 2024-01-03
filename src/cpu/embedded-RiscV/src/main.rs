@@ -2,8 +2,8 @@
 #![no_main]
 
 use core::arch::asm;
-use embedded_blossom as _; // import panic handler
-use embedded_blossom::riscv_driver::RiscVCommandDriver;
+use embedded_blossom_riscv as _; // import panic handler
+use embedded_blossom_riscv::riscv_driver::RiscVCommandDriver;
 use konst::{option, primitive::parse_usize, result::unwrap_ctx};
 use micro_blossom_nostd::benchmark::primal_simple_match::*;
 use micro_blossom_nostd::dual_module_stackless::*;
@@ -56,6 +56,6 @@ fn main() -> ! {
         // delay(300000);
         // delay(100); // for simulation
         benchmarker.run(10);
-        benchmarker.clear();
+        benchmarker.reset();
     }
 }

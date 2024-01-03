@@ -1,5 +1,5 @@
 [package]
-name = "embedded-blossom"
+name = "embedded-blossom-riscv"
 version = "0.1.0"
 authors = ["Yue Wu <wuyue16pku@gmail.com>"]
 edition = "2021"
@@ -8,7 +8,7 @@ description = "hardware MWPM decoder"
 readme = "README.md"
 keywords = ["QEC", "quantum-computing", "error-correction", "embedded"]
 categories = ["science"]
-default-run = "embedded_blossom"
+default-run = "embedded_blossom_riscv"
 
 # rustup target add --toolchain nightly riscv32i-unknown-none-elf
 # make
@@ -18,12 +18,12 @@ default-run = "embedded_blossom"
 maintenance = { status = "actively-developed" }
 
 # [lib]
-# name = "embedded_blossom"
+# name = "embedded_blossom_riscv"
 # path = "src/lib.rs"
 # crate-type = ["lib"]
 
 [[bin]]
-name = "embedded_blossom"
+name = "embedded_blossom_riscv"
 path = "src/main.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
