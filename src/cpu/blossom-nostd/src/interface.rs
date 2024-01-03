@@ -53,7 +53,7 @@ impl CompactObstacle {
             unreachable!()
         };
         CompactObstacle::GrowLength {
-            length: std::cmp::min(length1, length2),
+            length: core::cmp::min(length1, length2),
         }
     }
 
