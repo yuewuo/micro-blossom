@@ -496,6 +496,13 @@ class DistributedDualCircuitLevelEstimation extends AnyFunSuite {
 class DistributedDualContextDepthEstimation extends AnyFunSuite {
   // post-implementation estimations on VMK180
   // depth=1: 342254 LUTs (38.03%), 27151 Registers (1.51%)
+  // depth=2: 429404 LUTs (47.72%), 52555 Registers (2.92%)
+  // depth=4: 433277 LUTs (48.15%), 56941 Registers (3.16%)
+  // depth=8: 436583 LUTs (48.52%), 61789 Registers (3.43%)
+  // depth=16: 435172 LUTs (48.36%), 66428 Registers (3.69%)
+  // depth=32:
+  // depth=64:
+  // depth=1024:
   val d = 9
   for (contextDepth <- List(1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048)) {
     val config = Local.dualConfig(s"circuit_level_d$d")

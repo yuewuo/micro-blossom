@@ -19,6 +19,10 @@ It will convert `\n` to `\r\n` so that programs with `\n` outputs will show corr
 
 
 successfully run a hello world and Dhrystone benchmark program on VMK180
-    1.5765 DMIPS/MHz for A72, 0.5477DMIPS/MHz for R5F
-    when using TCM for the R5F CPU, the Dhrystone benchmark boosts to 12.8598DMIPS/MHz!!!!
+    1.5765 DMIPS/MHz for A72 (DDR), 0.5477DMIPS/MHz for R5F (DDR or OCM)
+    when using TCM for the R5F CPU, the Dhrystone benchmark boosts to 12.8598DMIPS/MHz!!!! Using OCM does not give this improvement.
+    Even crazier, using ATCM for the instruction (.text) and the BTCM for the data (.heap and .stack) would increase it to 31.1724DMIPS/MHz!
+        There must be something wrong when calculating the number... Yes the timer is not accurate, as large as 4x difference!
     remember to set them in the application component -> Sources -> src -> lscript.ld
+
+

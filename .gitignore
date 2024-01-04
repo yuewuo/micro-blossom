@@ -9,6 +9,8 @@ tmp
 *.class
 *.log
 *.bak
+*.jou
+*.str
 
 # sbt specific
 .cache/
