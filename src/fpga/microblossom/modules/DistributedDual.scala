@@ -16,6 +16,8 @@ import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.Map
 
 case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig()) extends Component {
+  ioConfig.contextDepth = config.contextDepth
+
   val io = new Bundle {
     val message = in(BroadcastMessage(ioConfig, explicitReset = false))
 
@@ -486,6 +488,20 @@ class DistributedDualCircuitLevelEstimation extends AnyFunSuite {
     val config = Local.dualConfig(s"circuit_level_d$d")
     val reports = Vivado.report(DistributedDual(config), useImpl = true)
     println(s"circuit-level d = $d:")
+    reports.resource.netlistLogicTable.print()
+  }
+}
+
+// sbt 'testOnly microblossom.modules.DistributedDualContextDepthEstimation'
+class DistributedDualContextDepthEstimation extends AnyFunSuite {
+  // post-implementation estimations on VMK180
+  // depth=1: 342254 LUTs (38.03%), 27151 Registers (1.51%)
+  val d = 9
+  for (contextDepth <- List(1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048)) {
+    val config = Local.dualConfig(s"circuit_level_d$d")
+    config.contextDepth = contextDepth
+    val reports = Vivado.report(DistributedDual(config), useImpl = true)
+    println(s"contextDepth = $contextDepth:")
     reports.resource.netlistLogicTable.print()
   }
 }

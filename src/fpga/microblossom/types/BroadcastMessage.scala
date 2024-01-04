@@ -16,11 +16,11 @@ case class BroadcastCompact(config: DualConfig) extends Bundle {
   val isReset = Bool
   val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 
-  def connect(message: BroadcastMessage) {
+  def connect(message: BroadcastMessage) = {
     valid := message.valid
     isReset := message.isReset
     if (config.contextBits > 0) {
-    contextId := message.contextId
+      contextId := message.contextId
     }
   }
 }
