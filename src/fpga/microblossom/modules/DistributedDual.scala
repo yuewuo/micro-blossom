@@ -501,8 +501,8 @@ class DistributedDualContextDepthEstimation extends AnyFunSuite {
   // depth=8: 436583 LUTs (48.52%), 61789 Registers (3.43%)
   // depth=16: 435172 LUTs (48.36%), 66428 Registers (3.69%)
   // depth=32: 436308 LUTs (48.49%), 71110 Registers (3.95%)
-  // depth=64:
-  // depth=1024:
+  // depth=64: 457438 LUTs (50.84%), 75760 Registers (4.21%)
+  // depth=1024: seg fault, potentially due to insufficient memory
   val d = 9
   for (contextDepth <- List(1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048)) {
     val config = Local.dualConfig(s"circuit_level_d$d")
