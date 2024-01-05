@@ -500,7 +500,7 @@ class DistributedDualContextDepthEstimation extends AnyFunSuite {
   // depth=4: 433277 LUTs (48.15%), 56941 Registers (3.16%)
   // depth=8: 436583 LUTs (48.52%), 61789 Registers (3.43%)
   // depth=16: 435172 LUTs (48.36%), 66428 Registers (3.69%)
-  // depth=32:
+  // depth=32: 436308 LUTs (48.49%), 71110 Registers (3.95%)
   // depth=64:
   // depth=1024:
   val d = 9

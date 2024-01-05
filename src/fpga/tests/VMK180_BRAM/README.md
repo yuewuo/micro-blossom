@@ -1,5 +1,18 @@
 # VMK180 RPU
 
+## Usage
+
+```sh
+# create Vivado project in `./vmk180bram`
+vivado -s create_vivado.tcl
+# create Vitis workspace in `./vmk180bram_vitis`
+vitis -s create_vitis.py
+```
+
+If you want to hide Vivado GUI, use `vivado -mode batch -s create_vivado.tcl` instead.
+If you want to use interactive command, use `vitis -i` instead and then run `run create_vitis.py` inside the Python shell.
+If you want to open the Vitis GUI, use `vitis -w ./vmk180bram_vitis` after you run the `create_vitis.py` manually.
+
 ## Learning note
 
 According to UG1304 (page 18), we should use either

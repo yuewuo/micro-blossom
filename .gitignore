@@ -59,6 +59,8 @@ null
 /gen/
 
 *.pyc
+*.py~
+vitis_journal.py
 
 vivado.*
 .Xil
