@@ -1,0 +1,53 @@
+d = 3: 392 LUTs
+    Key(virtual_match,8,6): #6 x 8 = 48 LUTs
+    Key(virtual_match,11,9): #4 x 16 = 64 LUTs
+    Key(virtual_match,7,5): #2 x 10 = 20 LUTs
+    Key(virtual_match,9,7): #6 x 13 = 78 LUTs
+    Key(defect_match,2,0): #73 x 2 = 146 LUTs
+    Key(virtual_match,6,4): #4 x 7 = 28 LUTs
+    Key(virtual_match,5,3): #2 x 4 = 8 LUTs
+
+d = 5: 1744 LUTs
+    Key(virtual_match,8,6): #10 x 8 = 80 LUTs
+    Key(virtual_match,11,9): #24 x 16 = 384 LUTs
+    Key(virtual_match,7,5): #6 x 10 = 60 LUTs
+    Key(virtual_match,9,7): #14 x 13 = 182 LUTs
+    Key(defect_match,2,0): #501 x 2 = 1002 LUTs
+    Key(virtual_match,6,4): #4 x 7 = 28 LUTs
+    Key(virtual_match,5,3): #2 x 4 = 8 LUTs
+
+d = 7: 4632 LUTs
+    Key(virtual_match,8,6): #14 x 8 = 112 LUTs
+    Key(virtual_match,11,9): #60 x 16 = 960 LUTs
+    Key(virtual_match,7,5): #10 x 10 = 100 LUTs
+    Key(virtual_match,9,7): #22 x 13 = 286 LUTs
+    Key(defect_match,2,0): #1569 x 2 = 3138 LUTs
+    Key(virtual_match,6,4): #4 x 7 = 28 LUTs
+    Key(virtual_match,5,3): #2 x 4 = 8 LUTs
+
+d = 9: 9632 LUTs
+    Key(virtual_match,8,6): #18 x 8 = 144 LUTs
+    Key(virtual_match,11,9): #112 x 16 = 1792 LUTs
+    Key(virtual_match,7,5): #14 x 10 = 140 LUTs
+    Key(virtual_match,9,7): #30 x 13 = 390 LUTs
+    Key(defect_match,2,0): #3565 x 2 = 7130 LUTs
+    Key(virtual_match,6,4): #4 x 7 = 28 LUTs
+    Key(virtual_match,5,3): #2 x 4 = 8 LUTs
+
+d = 11: 17320 LUTs
+    Key(virtual_match,8,6): #22 x 8 = 176 LUTs
+    Key(virtual_match,11,9): #180 x 16 = 2880 LUTs
+    Key(virtual_match,7,5): #18 x 10 = 180 LUTs
+    Key(virtual_match,9,7): #38 x 13 = 494 LUTs
+    Key(defect_match,2,0): #6777 x 2 = 13554 LUTs
+    Key(virtual_match,6,4): #4 x 7 = 28 LUTs
+    Key(virtual_match,5,3): #2 x 4 = 8 LUTs
+
+d = 13: 28272 LUTs
+    Key(virtual_match,8,6): #26 x 8 = 208 LUTs
+    Key(virtual_match,11,9): #264 x 16 = 4224 LUTs
+    Key(virtual_match,7,5): #22 x 10 = 220 LUTs
+    Key(virtual_match,9,7): #46 x 13 = 598 LUTs
+    Key(defect_match,2,0): #11493 x 2 = 22986 LUTs
+    Key(virtual_match,6,4): #4 x 7 = 28 LUTs
+    Key(virtual_match,5,3): #2 x 4 = 8 LUTs

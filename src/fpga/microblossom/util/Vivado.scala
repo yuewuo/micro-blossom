@@ -32,7 +32,7 @@ object Vivado {
       component: => T,
       useImpl: Boolean = false,
       removeVivadoProj: Boolean = false,
-      numJobs: Option[Int] = None // default to the number of cores - 1
+      numJobs: Option[Int] = Some(8) // if None, default to the number of cores - 1
   ): VivadoReports = {
 
     val projectName = Random.alphanumeric.filter(_.isLetter).take(10).mkString

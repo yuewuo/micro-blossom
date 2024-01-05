@@ -1,0 +1,28 @@
+d = 3: 423 LUTs
+    Key(4): #47 x 9 = 423 LUTs
+
+d = 5: 2449 LUTs
+    Key(4): #119 x 11 = 1309 LUTs
+    Key(5): #60 x 19 = 1140 LUTs
+
+d = 7: 7492 LUTs
+    Key(4): #223 x 12 = 2676 LUTs
+    Key(5): #112 x 21 = 2352 LUTs
+    Key(6): #112 x 22 = 2464 LUTs
+
+d = 9: 17447 LUTs
+    Key(4): #359 x 13 = 4667 LUTs
+    Key(5): #180 x 23 = 4140 LUTs
+    Key(6): #360 x 24 = 8640 LUTs
+
+d = 11: 34572 LUTs
+    Key(4): #527 x 14 = 7378 LUTs
+    Key(5): #264 x 25 = 6600 LUTs
+    Key(7): #2 x 27 = 54 LUTs
+    Key(6): #790 x 26 = 20540 LUTs
+
+d = 13: 61867 LUTs
+    Key(4): #727 x 15 = 10905 LUTs
+    Key(5): #364 x 27 = 9828 LUTs
+    Key(7): #366 x 29 = 10614 LUTs
+    Key(6): #1090 x 28 = 30520 LUTs

@@ -1,0 +1,17 @@
+d = 3: 1261 LUTs
+    Key(): #97 x 13 = 1261 LUTs
+
+d = 5: 7293 LUTs
+    Key(): #561 x 13 = 7293 LUTs
+
+d = 7: 18491 LUTs
+    Key(): #1681 x 11 = 18491 LUTs
+
+d = 9: 44940 LUTs
+    Key(): #3745 x 12 = 44940 LUTs
+
+d = 11: 84492 LUTs
+    Key(): #7041 x 12 = 84492 LUTs
+
+d = 13: 142284 LUTs
+    Key(): #11857 x 12 = 142284 LUTs
