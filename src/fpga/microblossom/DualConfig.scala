@@ -164,6 +164,20 @@ case class DualConfig(
   def grownBitsOf(vertexIndex: Int): Int = {
     log2Up(graph.vertex_max_growth(vertexIndex) + 1).max(weightBits)
   }
+  def offloaderTypeOf(offloaderIndex: Int): String = {
+    val offloader = graph.offloading(offloaderIndex)
+    offloader.dm match {
+      case Some(defectMatch) =>
+        return "defect_match"
+      case None =>
+    }
+    offloader.vm match {
+      case Some(virtualMatch) =>
+        return "virtual_match"
+      case None =>
+    }
+    throw new Exception("unrecognized definition of offloader")
+  }
   // (edgeIndex, neighborVertices, neighborEdges)
   def offloaderInformation(offloaderIndex: Int): (Int, Seq[Int], Seq[Int]) = {
     val offloader = graph.offloading(offloaderIndex)
