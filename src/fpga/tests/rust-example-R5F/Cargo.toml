@@ -1,0 +1,35 @@
+[package]
+name = "rust-example-r5f"
+version = "0.1.0"
+authors = ["Yue Wu <wuyue16pku@gmail.com>"]
+edition = "2021"
+license = "MIT"
+description = "example Rust program to run in FPGA"
+readme = "README.md"
+keywords = ["embedded"]
+categories = ["science"]
+
+# rustup target add --toolchain nightly aarch64-unknown-none
+
+# see https://doc.rust-lang.org/1.39.0/cargo/reference/manifest.html#the-documentation-field-optional
+[badges]
+maintenance = { status = "actively-developed" }
+
+[lib]
+name = "rust_example_r5f"
+path = "src/lib.rs"
+crate-type = ["staticlib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+cty = "0.2.2"
+panic-halt = "0.2.0"
+
+# see https://craigjb.com/2020/01/22/ecp5/
+[profile.release]
+opt-level = 3
+codegen-units = 1       # better optimizations
+debug = true            # symbols are nice and they don't increase the size on Flash
+lto = true              # better optimizations and smaller binary size
+overflow-checks = false
