@@ -42,9 +42,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7059fff8937831a9ae6f0fe4d658ffabf58f2ca96aa9dec1c889f936f705f216"
 
 [[package]]
-name = "embedded-blossom-r5f"
+name = "cty"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b365fabc795046672053e29c954733ec3b05e4be654ab130fe8f1f94d7051f35"
+
+[[package]]
+name = "embedded-blossom-r5"
 version = "0.1.0"
 dependencies = [
+ "cty",
  "heapless",
  "konst",
  "micro-blossom-nostd",

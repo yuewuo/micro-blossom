@@ -1,4 +1,6 @@
-create_project vmk180bram ./vmk180bram -part xcvm1802-vsva2197-2MP-e-S
+set name vmk180_bram
+
+create_project ${name} ./${name}_vivado -part xcvm1802-vsva2197-2MP-e-S
 set_property board_part xilinx.com:vmk180:part0:3.2 [current_project]
 create_bd_design "Versal_APU_RPU_perf" -mode batch
 
@@ -95,8 +97,8 @@ launch_runs impl_1 -to_step write_device_image -jobs 10
 wait_on_run impl_1
 
 # export hardware XSA file
-write_hw_platform -fixed -include_bit -force -file ./vmk180bram/vmk180bram.xsa
-validate_hw_platform ./vmk180bram/vmk180bram.xsa
+write_hw_platform -fixed -include_bit -force -file ./${name}.xsa
+validate_hw_platform ./${name}.xsa
 
 # extract the hardware specification, useful for observing what's inside
-# open_hw_platform ./vmk180bram/vmk180bram.xsa
+# open_hw_platform ./${name}.xsa
