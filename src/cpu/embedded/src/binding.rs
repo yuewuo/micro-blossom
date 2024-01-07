@@ -1,7 +1,7 @@
 use core::arch::asm;
 pub use core::fmt::Write;
 
-mod extern_c {
+pub mod extern_c {
     extern "C" {
         pub fn print_char(c: cty::c_char);
         pub fn test_write32(value: cty::uint32_t);

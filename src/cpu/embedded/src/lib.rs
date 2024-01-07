@@ -25,6 +25,15 @@ pub const DOUBLE_MAX_NODE_NUM: usize = MAX_NODE_NUM * 2;
 #[no_mangle]
 pub extern "C" fn rust_main() -> ! {
     println!("[main] embedded blossom");
+
+    println!("Hello, world!");
+    println!("My value is {}", 666);
+
+    unsafe {
+        extern_c::test_write32(1234);
+        println!("Readout value is {}", extern_c::test_read32());
+    }
+
     set_leds(0x00);
     let mut mask = 0x40;
     let mut benchmarker: PrimalSimpleMatch<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM> = PrimalSimpleMatch::new();

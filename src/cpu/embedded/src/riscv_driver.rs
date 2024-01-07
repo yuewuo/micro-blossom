@@ -122,3 +122,29 @@ impl RiscVCommandDriver {
         unsafe { *((self.base_register + INDEX * REGISTER_INTERVAL) as *mut u32) }
     }
 }
+
+#[cfg(feature = "riscv")]
+#[no_mangle]
+extern "C" fn set_leds(mask: cty::uint32_t) {
+    unsafe {
+        *(0xF0000000 as *mut u32) = mask;
+    }
+}
+
+#[cfg(feature = "riscv")]
+#[no_mangle]
+extern "C" fn print_char(_c: cty::c_char) {
+    // TODO
+}
+
+#[cfg(feature = "riscv")]
+#[no_mangle]
+extern "C" fn test_write32(value: cty::uint32_t) {
+    unimplemented!()
+}
+
+#[cfg(feature = "riscv")]
+#[no_mangle]
+extern "C" fn test_read32() -> cty::uint32_t {
+    unimplemented!()
+}
