@@ -11,7 +11,7 @@ impl DualStacklessDriver for RiscVCommandDriver {
     fn reset(&mut self) {
         unimplemented!()
     }
-    fn set_speed(&mut self, node: CompactNodeIndex, speed: CompactGrowState) {
+    fn set_speed(&mut self, _is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState) {
         self.write_argument::<1>(node.get().into());
         self.write_argument::<2>(speed as u32);
         self.write_opcode(OpCode::SetSpeed);
@@ -21,30 +21,59 @@ impl DualStacklessDriver for RiscVCommandDriver {
         self.write_argument::<2>(blossom.get().into());
         self.write_opcode(OpCode::SetBlossom);
     }
-    fn find_obstacle(&mut self) -> MaxUpdateLength {
-        self.write_opcode(OpCode::FindObstacle);
-        let rspcode = self.read_rspcode();
-        match rspcode {
-            RspCode::NonZeroGrow => MaxUpdateLength::GrowLength {
-                length: self.read_argument::<5>() as CompactWeight,
-            },
-            RspCode::Conflict => MaxUpdateLength::Conflict {
-                node_1: CompactNodeIndex::new(self.read_argument::<5>() as CompactNodeNum).unwrap(),
-                node_2: CompactNodeIndex::new(self.read_argument::<6>() as CompactNodeNum),
-                touch_1: CompactNodeIndex::new(self.read_argument::<7>() as CompactNodeNum).unwrap(),
-                touch_2: CompactNodeIndex::new(self.read_argument::<8>() as CompactNodeNum),
-                vertex_1: CompactVertexIndex::new(self.read_argument::<9>() as CompactVertexNum).unwrap(),
-                vertex_2: CompactVertexIndex::new(self.read_argument::<10>() as CompactVertexNum).unwrap(),
-            },
-            RspCode::BlossomNeedExpand => MaxUpdateLength::BlossomNeedExpand {
-                blossom: CompactNodeIndex::new(self.read_argument::<5>() as CompactNodeNum).unwrap(),
-            },
+    fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
+        // TODO: also read grown value from hardware to avoid CPU-in-the-middle delay
+        let mut grown: CompactWeight = 0;
+        loop {
+            self.write_opcode(OpCode::FindObstacle);
+            let rspcode = self.read_rspcode();
+            match rspcode {
+                RspCode::NonZeroGrow => {
+                    let length = self.read_argument::<5>();
+                    if length != u32::MAX {
+                        let length = length as CompactWeight;
+                        self.grow(length);
+                        grown += length;
+                        continue;
+                    } else {
+                        return (CompactObstacle::None, grown);
+                    }
+                }
+                RspCode::Conflict => {
+                    return (
+                        CompactObstacle::Conflict {
+                            node_1: CompactNodeIndex::new(self.read_argument::<5>() as CompactNodeNum),
+                            node_2: CompactNodeIndex::new(self.read_argument::<6>() as CompactNodeNum),
+                            touch_1: CompactNodeIndex::new(self.read_argument::<7>() as CompactNodeNum),
+                            touch_2: CompactNodeIndex::new(self.read_argument::<8>() as CompactNodeNum),
+                            vertex_1: CompactVertexIndex::new(self.read_argument::<9>() as CompactVertexNum).unwrap(),
+                            vertex_2: CompactVertexIndex::new(self.read_argument::<10>() as CompactVertexNum).unwrap(),
+                        },
+                        grown,
+                    )
+                }
+                RspCode::BlossomNeedExpand => {
+                    return (
+                        CompactObstacle::BlossomNeedExpand {
+                            blossom: CompactNodeIndex::new(self.read_argument::<5>() as CompactNodeNum).unwrap(),
+                        },
+                        grown,
+                    )
+                }
+            }
         }
     }
-    // fn grow(&mut self, length: CompactWeight) {
-    //     self.write_argument::<1>(length as u32);
-    //     self.write_opcode(OpCode::Grow);
-    // }
+    fn add_defect(&mut self, _vertex: CompactVertexIndex, _node: CompactNodeIndex) {
+        unimplemented!()
+    }
+}
+
+impl RiscVCommandDriver {
+    // no longer part of DualStacklessDriver due to the assumption that any non-zero-growth should be executed immediately
+    fn grow(&mut self, length: CompactWeight) {
+        self.write_argument::<1>(length as u32);
+        self.write_opcode(OpCode::Grow);
+    }
 }
 
 // 4 write registers and 8 read registers

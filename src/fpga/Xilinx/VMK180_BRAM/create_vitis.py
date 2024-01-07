@@ -40,7 +40,7 @@ for cpu_id, cpu, rust_project, arch, rust_libname in zip(cpu_ids, cpus, rust_pro
     # import source file and patch the application
     component.import_files(from_loc="./src", files=import_files, dest_dir_in_cmp="src")
     rust_staticlib = os.path.join(os.path.abspath(rust_project), "target", arch, "release", f"{rust_libname}.a")
-    assert(os.path.exists(rust_staticlib), f"rust static lib not found at {rust_staticlib}, please compile it")
+    assert os.path.exists(rust_staticlib), f"rust static lib not found at {rust_staticlib}, please compile it"
     component.set_app_config(key="USER_LINK_LIBRARIES", values=rust_staticlib)
     ld_script = component.get_ld_script()
     if cpu_id == "r5":
