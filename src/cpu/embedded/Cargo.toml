@@ -1,0 +1,60 @@
+[package]
+name = "embedded-blossom"
+version = "0.1.0"
+authors = ["Yue Wu <wuyue16pku@gmail.com>"]
+edition = "2021"
+license = "MIT"
+description = "hardware MWPM decoder"
+readme = "README.md"
+keywords = ["QEC", "quantum-computing", "error-correction", "embedded"]
+categories = ["science"]
+default-run = "embedded_blossom"
+
+# rustup target add --toolchain nightly riscv32i-unknown-none-elf
+# make
+
+# see https://doc.rust-lang.org/1.39.0/cargo/reference/manifest.html#the-documentation-field-optional
+[badges]
+maintenance = { status = "actively-developed" }
+
+[lib]
+name = "embedded_blossom"
+path = "src/lib.rs"
+crate-type = ["lib", "staticlib"]
+
+[[bin]]
+name = "embedded_blossom"
+path = "src/main.rs"
+
+[features]
+default = []
+riscv = ["riscv-rt"]
+staticlib = []
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+riscv-rt = { version = "0.11.0", optional = true }
+panic-halt = "0.2.0"
+heapless = "0.7.16"
+micro-blossom-nostd = { path = "../blossom-nostd", version = "0.0.0", default-features = false, features = [
+    # "u16_index",  # it saves 2x memory but becomes 1.5x slower because of type conversion instructions 
+    "unsafe_unwrap",
+    "dangerous_unwrap",
+] }
+konst = "0.3.6"
+num = { version = "0.4.1", default-features = false }
+num-derive = "0.4.1"
+num-traits = { version = "0.2.17", default-features = false }
+cty = "0.2.2"
+# lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
+# spin = "0.9.8"
+
+# see https://craigjb.com/2020/01/22/ecp5/
+[profile.release]
+opt-level = 3
+codegen-units = 1       # better optimizations
+debug = true            # symbols are nice and they don't increase the size on Flash
+lto = true              # better optimizations and smaller binary size
+overflow-checks = false
+panic = "abort"
