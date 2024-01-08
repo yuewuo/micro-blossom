@@ -4,7 +4,7 @@ VIVADO_DIR = $(NAME)_vivado
 XSA_FILE = $(NAME).xsa
 VITIS_DIR = $(NAME)_vitis
 
-all: build
+all: vitis
 
 $(XSA_FILE):
 	@echo generating hardware platform description \($(XSA_FILE)\) using Vivado

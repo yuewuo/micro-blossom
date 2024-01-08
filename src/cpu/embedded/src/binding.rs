@@ -9,7 +9,7 @@ pub mod extern_c {
         pub fn test_write32(value: uint32_t);
         pub fn test_read32() -> uint32_t;
         pub fn set_leds(mask: uint32_t);
-        pub fn get_time() -> uint32_t;
+        pub fn get_time() -> uint64_t;
     }
 }
 

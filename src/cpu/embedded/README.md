@@ -61,3 +61,10 @@ Note that the BRAM is configured to be dual port, so although A72 accesses it us
 EMBEDDED_BLOSSOM_MAIN=test_bram make xilinx
 # TODO: run makefile in the FPGA folder
 ```
+
+If you want to view the content of the compiled static library, you can use the Vitis toolchain like below.
+Note that not all functions in the static libraries are referred, and most of them should be removed in the final binary.
+```sh
+/tools/Xilinx/Vitis/2023.2/gnu/aarch64/lin/aarch64-none/bin/aarch64-none-elf-objdump -d ./target/aarch64-unknown-none/release/libembedded_blossom.a > aarch64.dump
+/tools/Xilinx/Vitis/2023.2/gnu/armr5/lin/gcc-arm-none-eabi/bin/armr5-none-eabi-objdump -d ./target/armv7r-none-eabihf/release/libembedded_blossom.a > armv7r.dump
+```

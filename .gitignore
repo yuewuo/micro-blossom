@@ -64,3 +64,4 @@ vitis_journal.py
 
 vivado.*
 .Xil
+*.dump
