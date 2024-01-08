@@ -58,8 +58,12 @@ Note that the BRAM is configured to be dual port, so although A72 accesses it us
 `0x8000_0000`, they are essentially the same memory.
 
 ```sh
+# build Rust staticlib
 EMBEDDED_BLOSSOM_MAIN=test_bram make xilinx
-# TODO: run makefile in the FPGA folder
+# build FPGA image including the CPU executable
+make -C ../../fpga/Xilinx/VMK180_BRAM
+# run the image
+make -C ../../fpga/Xilinx/VMK180_BRAM run_r5
 ```
 
 If you want to view the content of the compiled static library, you can use the Vitis toolchain like below.

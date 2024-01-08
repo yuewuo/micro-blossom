@@ -1,19 +1,6 @@
 import os
-import shutil
-import vitis
-# see <Vitis_Installation_Dir>/cli/examples for examples
-
-name = "vmk180_bram"
-
-cpu_ids = ["r5", "a72"]
-cpus = [f"psv_cortex{id}_0" for id in cpu_ids]
-rust_project = "../../../cpu/embedded"
-archs = ["armv7r-none-eabihf", "aarch64-unknown-none"]
-profile = "release"
-# profile = "debug"
-rust_libname = "libembedded_blossom"
-workspace = f"./{name}_vitis"
-import_files = ["binding.c", "binding.h", "main.c"]
+from common import *
+import vitis # see <Vitis_Installation_Dir>/cli/examples for examples
 
 # open or create workspace
 if os.path.exists(workspace):
@@ -54,5 +41,5 @@ for cpu_id, cpu, arch in zip(cpu_ids, cpus, archs):
             ld_script.update_ld_section(section=section, region="psv_r5_tcm_ram_0")
         # also put program into OCM
         ld_script.update_ld_section(section=".text", region="psv_ocm_0")
-    component.clean()  # clean build: it doesn't take too long anyway, just linking the Rust program
+    # component.clean()  # clean build: it doesn't take too long anyway, just linking the Rust program
     component.build(target="hw")
