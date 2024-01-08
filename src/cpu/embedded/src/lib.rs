@@ -14,9 +14,6 @@ use micro_blossom_nostd::primal_module_embedded::*;
 use micro_blossom_nostd::util::*;
 use panic_halt as _;
 
-#[cfg(feature = "riscv")]
-use riscv_driver::*;
-
 // by default guarantees working at d=15, but can increase if needed
 // the value should be a power of 2, because otherwise it's a lot slower to initialize
 pub const MAX_NODE_NUM: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("MAX_NODE_NUM"), "32")));
