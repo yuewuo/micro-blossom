@@ -1,5 +1,4 @@
 all: armv7r aarch64 riscv
-	@echo specify build targets, see Makefile for more details
 
 clean:
 	cargo clean
@@ -23,6 +22,7 @@ riscv-debug:
 	riscv32-unknown-elf-objcopy -O binary target/$(RISCV_TARGET)/debug/embedded_blossom target/$(RISCV_TARGET)/debug/embedded_blossom.bin
 	ls -al target/$(RISCV_TARGET)/debug/embedded_blossom.bin
 
+xilinx: armv7r aarch64
 
 # use by Cortex R5F as Xilinx Versal RPU
 armv7r: armv7r-release armv7r-debug
@@ -35,6 +35,7 @@ armv7r-release:
 armv7r-debug:
 	cargo build --lib --target $(ARMV7R_TARGET)
 
+# use by Cortex A53 or A72 as Xilinx Versal APU
 aarch64: aarch64-release aarch64-debug
 
 AARCH64_TARGET ?= aarch64-unknown-none
@@ -44,4 +45,3 @@ aarch64-release:
 
 aarch64-debug:
 	cargo build --lib --target $(AARCH64_TARGET)
-

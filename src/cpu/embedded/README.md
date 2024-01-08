@@ -12,6 +12,8 @@ When provided in Rust (e.g. see `src/riscv_driver.rs`), there is no need to do s
 
 The entry of the program is `rust_main()` defined in `src/lib.rs`.
 When a binary is expected, an entry point must be defined in `src/main.rs` depending on the specific platform.
+You can find example main functions in the `src/mains` folders.
+By default it runs `src/mains/hello_world.rs` but you can change it by `EMBEDDED_BLOSSOM_MAIN=hello_world make`.
 
 ## RiscV
 
@@ -30,9 +32,9 @@ We can build the binary using `make riscv`.
 It generates executable binary under `target/riscv32i-unknown-none-elf/(release|debug)/embedded_blossom`.
 Note that the linker script is provided at `riscv-memory.x` and user can modify it according to their hardware.
 
-## Processing System of Xilinx FPGAs
+## PS of Xilinx FPGAs
 
-A Xilinx SoC usually comes with a PS that combines APUs (application processor) and RPUs (real-time processor).
+A Xilinx SoC usually comes with a PS (processing system) that combines APUs (application processor) and RPUs (real-time processor).
 The APU is either Arm Cortex A53 (Ultrascale+) or A72 (Versal) and the RPU is Arm Cortex R5(F).
 The APUs, regardless of its model, runs the same `aarch64` architecture, while the RPUs are `armv7r` architecture.
 
@@ -44,3 +46,18 @@ In order to reduce the effort to learn the tools and automate the design and tes
 can generate the whole program without even opening Vivado or Vitis.
 Note that you can also learn how to manually operate in those tools by reading the script, or even copy-paste the commands
 into the TCL console provided by Vivado.
+
+```sh
+make xilinx  # build static library for both aarch64 and armv7r
+```
+
+There are several projects in `src/fpga/Xilinx` folder, see `src/fpga/Xilinx/README.md` for more information.
+As an example, the following command will build the whole image of a simple application with 2GB LPDDR4 and 8KB BRAM on the PL
+side shared by both A72 and R5F in the Versal VMK180 evaluation borad.
+Note that the BRAM is configured to be dual port, so although A72 accesses it using `0xA400_0000` while R5F accesses it using 
+`0x8000_0000`, they are essentially the same memory.
+
+```sh
+EMBEDDED_BLOSSOM_MAIN=test_bram make xilinx
+# TODO: run makefile in the FPGA folder
+```

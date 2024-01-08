@@ -2,17 +2,14 @@ use core::arch::asm;
 pub use core::fmt::Write;
 
 pub mod extern_c {
-    extern "C" {
-        pub fn print_char(c: cty::c_char);
-        pub fn test_write32(value: cty::uint32_t);
-        pub fn test_read32() -> cty::uint32_t;
-        pub fn set_leds(mask: cty::uint32_t);
-    }
-}
+    use cty::*;
 
-pub fn set_leds(mask: u32) {
-    unsafe {
-        extern_c::set_leds(mask);
+    extern "C" {
+        pub fn print_char(c: c_char);
+        pub fn test_write32(value: uint32_t);
+        pub fn test_read32() -> uint32_t;
+        pub fn set_leds(mask: uint32_t);
+        pub fn get_time() -> uint32_t;
     }
 }
 
@@ -39,8 +36,10 @@ macro_rules! println {
         writeln!(&mut printer, $($arg)*).unwrap();
     })
 }
+#[allow(unused_imports)]
+pub use println;
 
-fn nop_delay(cycles: u32) {
+pub fn nop_delay(cycles: u32) {
     for _ in 0..cycles {
         unsafe {
             asm!("nop");

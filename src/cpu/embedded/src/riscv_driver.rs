@@ -139,7 +139,7 @@ extern "C" fn print_char(_c: cty::c_char) {
 
 #[cfg(feature = "riscv")]
 #[no_mangle]
-extern "C" fn test_write32(value: cty::uint32_t) {
+extern "C" fn test_write32(_value: cty::uint32_t) {
     unimplemented!()
 }
 
