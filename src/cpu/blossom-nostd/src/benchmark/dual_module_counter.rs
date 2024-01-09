@@ -12,14 +12,12 @@ pub type DualModuleCounter = DualModuleStackless<DualModuleCounterDriver>;
 pub struct DualModuleCounterDriver {
     pub count_set_speed: usize,
     pub count_set_blossom: usize,
-    pub count_grow: usize,
 }
 
 impl DualStacklessDriver for DualModuleCounterDriver {
     fn reset(&mut self) {
         self.count_set_speed = 0;
         self.count_set_blossom = 0;
-        self.count_grow = 0;
     }
     fn set_speed(&mut self, _is_blossom: bool, _node: CompactNodeIndex, _speed: CompactGrowState) {
         self.count_set_speed += 1;
@@ -40,7 +38,6 @@ impl DualModuleCounterDriver {
         Self {
             count_set_speed: 0,
             count_set_blossom: 0,
-            count_grow: 0,
         }
     }
 }

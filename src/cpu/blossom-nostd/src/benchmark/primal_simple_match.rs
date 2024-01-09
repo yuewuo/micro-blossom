@@ -23,7 +23,7 @@ impl<const MAX_NODE_NUM: usize, const DOUBLE_MAX_NODE_NUM: usize> PrimalSimpleMa
     }
 
     pub fn run(&mut self, count: usize) {
-        debug_assert!(count * 2 < MAX_NODE_NUM);
+        debug_assert!(count * 2 <= MAX_NODE_NUM);
         let mut index = 0;
         for _ in 0..count {
             self.primal_module.resolve(
@@ -44,5 +44,24 @@ impl<const MAX_NODE_NUM: usize, const DOUBLE_MAX_NODE_NUM: usize> PrimalSimpleMa
     pub fn reset(&mut self) {
         self.primal_module.reset();
         self.dual_module.reset();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn benchmark_primal_simple_match_basic() {
+        // cargo test benchmark_primal_simple_match_basic -- --nocapture
+        const N: usize = 128;
+        const DOUBLE_N: usize = 2 * N;
+        let mut tester: PrimalSimpleMatch<N, DOUBLE_N> = PrimalSimpleMatch::new();
+        for _ in 0..3 {
+            tester.run(N / 2);
+            println!("count_set_speed: {}", tester.dual_module.driver.count_set_speed);
+            println!("count_set_blossom: {}", tester.dual_module.driver.count_set_blossom);
+            tester.reset();
+        }
     }
 }

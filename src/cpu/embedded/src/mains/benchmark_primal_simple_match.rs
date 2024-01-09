@@ -38,6 +38,8 @@ pub fn main() {
         let inner_repeat = 2000;
         for _ in 0..inner_repeat {
             tester.run(500);
+            // println!("count_set_speed: {}", tester.dual_module.driver.count_set_speed);
+            // println!("count_set_blossom: {}", tester.dual_module.driver.count_set_blossom);
             tester.reset();
         }
         // TODO: end timer
