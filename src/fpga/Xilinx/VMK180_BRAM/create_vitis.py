@@ -31,6 +31,7 @@ for cpu_id, cpu, arch in zip(cpu_ids, cpus, archs):
     rust_staticlib = os.path.join(os.path.abspath(rust_project), "target", arch, profile, f"{rust_libname}.a")
     assert os.path.exists(rust_staticlib), f"rust static lib not found at {rust_staticlib}, please compile it"
     component.set_app_config(key="USER_LINK_LIBRARIES", values=rust_staticlib)
+    component.set_app_config(key="USER_COMPILE_OPTIMIZATION_OTHER_FLAGS", values="-flto")  # enable link-time optimization
     component.set_app_config(key="USER_LINK_OTHER_FLAGS", values="-Wl,-gc-sections")  # remove unused function sections
     ld_script = component.get_ld_script()
     if cpu_id == "r5":

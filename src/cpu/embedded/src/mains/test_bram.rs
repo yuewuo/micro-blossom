@@ -23,10 +23,18 @@ pub fn main() {
     write_benchmarker.autotune();
     write_benchmarker.run(3);
 
-    println!("\n4. Write-Read Speed Test");
+    println!("\n4. Write-then-Read Speed Test");
     let mut write_benchmarker = Benchmarker::new(|| {
         unsafe { black_box(extern_c::test_write32(1234)) };
         unsafe { black_box(extern_c::test_read32()) };
+    });
+    write_benchmarker.autotune();
+    write_benchmarker.run(3);
+
+    println!("\n5. Read-then-Write Speed Test");
+    let mut write_benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::test_read32()) };
+        unsafe { black_box(extern_c::test_write32(1234)) };
     });
     write_benchmarker.autotune();
     write_benchmarker.run(3);
@@ -42,10 +50,10 @@ A72:
 
 2. Write Speed Test
 [benchmarker] autotune
-[benchmarker] automatic batch size = 46666120
-[1/3] per_op: 21.43 ns, freq: 46.66618 MHz
-[2/3] per_op: 21.43 ns, freq: 46.66618 MHz
-[3/3] per_op: 21.43 ns, freq: 46.66618 MHz
+[benchmarker] automatic batch size = 46666124
+[1/3] per_op: 16.43 ns, freq: 60.86893 MHz
+[2/3] per_op: 16.43 ns, freq: 60.86893 MHz
+[3/3] per_op: 21.43 ns, freq: 46.66619 MHz
 
 3. Read Speed Test
 [benchmarker] autotune
@@ -54,19 +62,27 @@ A72:
 [2/3] per_op: 125.72 ns, freq: 7.95446 MHz
 [3/3] per_op: 125.72 ns, freq: 7.95446 MHz
 
-4. Write-Read Speed Test
+4. Write-then-Read Speed Test
 [benchmarker] autotune
-[benchmarker] automatic batch size = 4605219
-[1/3] per_op: 217.14 ns, freq: 4.60523 MHz
-[2/3] per_op: 217.14 ns, freq: 4.60523 MHz
-[3/3] per_op: 217.14 ns, freq: 4.60523 MHz
+[benchmarker] automatic batch size = 4615755
+[1/3] per_op: 216.65 ns, freq: 4.61582 MHz
+[2/3] per_op: 216.64 ns, freq: 4.61593 MHz
+[3/3] per_op: 216.64 ns, freq: 4.61588 MHz
+
+5. Read-then-Write Speed Test
+[benchmarker] autotune
+[benchmarker] automatic batch size = 4616127
+[1/3] per_op: 216.63 ns, freq: 4.61606 MHz
+[2/3] per_op: 216.62 ns, freq: 4.61627 MHz
+[3/3] per_op: 216.63 ns, freq: 4.61622 MHz
+
 
 
 R5F:
 
 2. Write Speed Test
 [benchmarker] autotune
-[benchmarker] automatic batch size = 6451537
+[benchmarker] automatic batch size = 6451538
 [1/3] per_op: 155.00 ns, freq: 6.45155 MHz
 [2/3] per_op: 155.00 ns, freq: 6.45155 MHz
 [3/3] per_op: 155.00 ns, freq: 6.45155 MHz
@@ -78,12 +94,19 @@ R5F:
 [2/3] per_op: 145.00 ns, freq: 6.89648 MHz
 [3/3] per_op: 145.00 ns, freq: 6.89648 MHz
 
-4. Write-Read Speed Test
+4. Write-then-Read Speed Test
 [benchmarker] autotune
 [benchmarker] automatic batch size = 3333294
 [1/3] per_op: 300.00 ns, freq: 3.33330 MHz
 [2/3] per_op: 300.00 ns, freq: 3.33330 MHz
 [3/3] per_op: 300.00 ns, freq: 3.33330 MHz
+
+5. Read-then-Write Speed Test
+[benchmarker] autotune
+[benchmarker] automatic batch size = 3389790
+[1/3] per_op: 295.00 ns, freq: 3.38980 MHz
+[2/3] per_op: 295.00 ns, freq: 3.38980 MHz
+[3/3] per_op: 295.00 ns, freq: 3.38980 MHz
 
 
 */
