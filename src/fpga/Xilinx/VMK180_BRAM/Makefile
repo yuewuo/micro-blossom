@@ -26,12 +26,14 @@ vitis: $(XSA_FILE)
 	vitis -s create_vitis.py
 
 run_r5:
-# TODO: run only r5
-	xsdb ./run_xsdb.tcl
+	xsdb ./run_xsdb.tcl run_r5
+run_r5_quick:
+	xsdb ./run_xsdb.tcl run_r5 quick
 
 run_a72:
-# TODO: run only a72
-	xsdb ./run_xsdb.tcl
+	xsdb ./run_xsdb.tcl run_a72
+run_a72_quick:
+	xsdb ./run_xsdb.tcl run_a72 quick
 
 clean:
 	@read -p "Building the project from scratch takes a long time. Do you want to delete it? [y/N]: " answer; \
