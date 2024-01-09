@@ -22,7 +22,7 @@ riscv-debug:
 	riscv32-unknown-elf-objcopy -O binary target/$(RISCV_TARGET)/debug/embedded_blossom target/$(RISCV_TARGET)/debug/embedded_blossom.bin
 	ls -al target/$(RISCV_TARGET)/debug/embedded_blossom.bin
 
-xilinx: armv7r aarch64
+Xilinx: armv7r aarch64
 
 # use by Cortex R5F as Xilinx Versal RPU
 armv7r: armv7r-release armv7r-debug

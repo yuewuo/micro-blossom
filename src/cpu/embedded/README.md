@@ -48,7 +48,7 @@ Note that you can also learn how to manually operate in those tools by reading t
 into the TCL console provided by Vivado.
 
 ```sh
-make xilinx  # build static library for both aarch64 and armv7r
+make Xilinx  # build static library for both aarch64 and armv7r
 ```
 
 There are several projects in `src/fpga/Xilinx` folder, see `src/fpga/Xilinx/README.md` for more information.
@@ -59,7 +59,7 @@ Note that the BRAM is configured to be dual port, so although A72 accesses it us
 
 ```sh
 # build Rust staticlib
-EMBEDDED_BLOSSOM_MAIN=test_bram make xilinx
+EMBEDDED_BLOSSOM_MAIN=test_bram make Xilinx
 # build FPGA image including the CPU executable
 make -C ../../fpga/Xilinx/VMK180_BRAM
 # flash the image and run the program

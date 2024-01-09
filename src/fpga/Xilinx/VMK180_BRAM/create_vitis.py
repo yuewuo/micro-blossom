@@ -41,5 +41,6 @@ for cpu_id, cpu, arch in zip(cpu_ids, cpus, archs):
             ld_script.update_ld_section(section=section, region="psv_r5_tcm_ram_0")
         # also put program into OCM
         ld_script.update_ld_section(section=".text", region="psv_ocm_0")
+        ld_script.update_ld_section(section=".data", region="psv_ocm_0")
     # component.clean()  # clean build: it doesn't take too long anyway, just linking the Rust program
     component.build(target="hw")

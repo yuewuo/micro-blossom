@@ -33,10 +33,15 @@ if { $reset_system } {
         # -mem-ranges [list {0x80000000 0x9fffffff} {0xa4000000 0xafffffff} {0xb0000000 0xbfffffff}]
 }
 
+# first reset both R5 and A72
+targets -set -nocase -filter {name =~ "*R5*#0"}
+rst -processor -clear-registers
+targets -set -nocase -filter {name =~ "*A72*#0"}
+rst -processor -clear-registers
+
 # run on R5
 if { $run_r5 } {
     targets -set -nocase -filter {name =~ "*R5*#0"}
-    rst -processor -clear-registers
     dow ./${name}_vitis/benchmark_r5/build/benchmark_r5.elf
     con
 }
@@ -44,7 +49,6 @@ if { $run_r5 } {
 # run on A72
 if { $run_a72 } {
     targets -set -nocase -filter {name =~ "*A72*#0"}
-    rst -processor -clear-registers
     dow ./${name}_vitis/benchmark_a72/build/benchmark_a72.elf
     con
 }
