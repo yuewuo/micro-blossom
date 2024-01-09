@@ -41,14 +41,24 @@ pub fn main() {
         println!("    start in {count}");
         sleep(1.);
     }
-    let start = unsafe { extern_c::get_native_time() };
+    let mut start = unsafe { extern_c::get_native_time() };
+    let mut global_diff = 0.;
+    // note: this complex implementation is needed because some timer implementation is not capable of
+    // recording long time difference, e.g., in Versal board A72 they have 32 bit timer clocked at 150MHz: only capable
+    // of recording 28.6s difference. We need to actively accumulating the global timer.
     for idx in 0..10000 {
         loop {
             compiler_fence(Ordering::SeqCst);
             let end = unsafe { extern_c::get_native_time() };
-            let diff = unsafe { extern_c::diff_native_time(start, end) };
+            let local_diff = unsafe { extern_c::diff_native_time(start, end) };
+            let diff = global_diff + local_diff;
+            // avoid overflow by moving the start every 0.5s
+            if local_diff > 0.5 {
+                start = end;
+                global_diff += local_diff;
+            }
             if diff >= idx as f32 {
-                println!("tick {idx}: start: {start}, end: {end}, diff: {diff}");
+                println!("tick {idx}");
                 break;
             }
         }

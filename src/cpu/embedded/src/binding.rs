@@ -49,18 +49,23 @@ pub fn nop_delay(cycles: u32) {
     }
 }
 
+/// note that it might not be safe to sleep for a long time depending on the C implementation
 pub fn sleep(duration: f32) {
-    let start = unsafe { extern_c::get_native_time() };
-    let mut last_diff = 0.; // monitor timer overflow
+    let mut start = unsafe { extern_c::get_native_time() };
+    let mut global_diff = 0.;
+    // note: this complex implementation is needed because some timer implementation is not capable of
+    // recording long time difference, e.g., in Versal board A72 they have 32 bit timer clocked at 150MHz: only capable
+    // of recording 28.6s difference. We need to actively accumulating the global timer.
     loop {
         compiler_fence(Ordering::SeqCst);
         let end = unsafe { extern_c::get_native_time() };
-        let diff = unsafe { extern_c::diff_native_time(start, end) };
-        if diff < last_diff {
-            println!("[error] time overflowed");
-            panic!();
+        let local_diff = unsafe { extern_c::diff_native_time(start, end) };
+        let diff = global_diff + local_diff;
+        // avoid overflow by moving the start every 0.5s
+        if local_diff > 0.5 {
+            start = end;
+            global_diff += local_diff;
         }
-        last_diff = diff;
         if diff >= duration {
             return;
         }

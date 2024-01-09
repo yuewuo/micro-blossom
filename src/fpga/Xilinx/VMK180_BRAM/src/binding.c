@@ -37,11 +37,12 @@ uint64_t get_native_time()
 float diff_native_time(uint64_t start, uint64_t end)
 {
     XTime native_duration;
-    // if (end < start)
-    // {
-    //     native_duration = ((-1) - start) + end;
-    // }
-    // else
+    if (end < start)
+    {
+        // note that XTime_GetTime actually returns 32 bit clock, even though XTime definition is 64 bits....
+        native_duration = (((uint32_t)-1) - start) + end;
+    }
+    else
     {
         native_duration = end - start;
     }
