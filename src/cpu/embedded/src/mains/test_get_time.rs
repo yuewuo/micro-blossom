@@ -1,4 +1,5 @@
 use crate::binding::*;
+use crate::util::*;
 use core::sync::atomic::{compiler_fence, Ordering};
 
 /// check whether the get_time function works properly by using `nop_delay`
@@ -50,14 +51,14 @@ pub fn main() {
         loop {
             compiler_fence(Ordering::SeqCst);
             let end = unsafe { extern_c::get_native_time() };
-            let local_diff = unsafe { extern_c::diff_native_time(start, end) };
+            let local_diff = unsafe { extern_c::diff_native_time(start, end) } as f64;
             let diff = global_diff + local_diff;
             // avoid overflow by moving the start every 0.5s
             if local_diff > 0.5 {
                 start = end;
                 global_diff += local_diff;
             }
-            if diff >= idx as f32 {
+            if diff >= idx as f64 {
                 println!("tick {idx}");
                 break;
             }

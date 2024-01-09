@@ -1,6 +1,5 @@
 use core::arch::asm;
 pub use core::fmt::Write;
-use core::sync::atomic::{compiler_fence, Ordering};
 
 pub mod extern_c {
     use cty::*;
@@ -45,29 +44,6 @@ pub fn nop_delay(cycles: u32) {
     for _ in 0..cycles {
         unsafe {
             asm!("nop");
-        }
-    }
-}
-
-/// note that it might not be safe to sleep for a long time depending on the C implementation
-pub fn sleep(duration: f32) {
-    let mut start = unsafe { extern_c::get_native_time() };
-    let mut global_diff = 0.;
-    // note: this complex implementation is needed because some timer implementation is not capable of
-    // recording long time difference, e.g., in Versal board A72 they have 32 bit timer clocked at 150MHz: only capable
-    // of recording 28.6s difference. We need to actively accumulating the global timer.
-    loop {
-        compiler_fence(Ordering::SeqCst);
-        let end = unsafe { extern_c::get_native_time() };
-        let local_diff = unsafe { extern_c::diff_native_time(start, end) };
-        let diff = global_diff + local_diff;
-        // avoid overflow by moving the start every 0.5s
-        if local_diff > 0.5 {
-            start = end;
-            global_diff += local_diff;
-        }
-        if diff >= duration {
-            return;
         }
     }
 }
