@@ -27,12 +27,12 @@ vitis: $(XSA_FILE)
 
 run_r5:
 	xsdb ./run_xsdb.tcl run_r5
-run_r5_quick:
+run_r5_q:
 	xsdb ./run_xsdb.tcl run_r5 quick
 
 run_a72:
 	xsdb ./run_xsdb.tcl run_a72
-run_a72_quick:
+run_a72_q:
 	xsdb ./run_xsdb.tcl run_a72 quick
 
 clean:

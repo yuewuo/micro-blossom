@@ -66,8 +66,8 @@ make -C ../../fpga/Xilinx/VMK180_BRAM
 make -C ../../fpga/Xilinx/VMK180_BRAM run_r5
 make -C ../../fpga/Xilinx/VMK180_BRAM run_a72
 # if the hardware XSA is not changed, we can avoid reseting the whole system but only reload CPU program
-make -C ../../fpga/Xilinx/VMK180_BRAM run_r5_quick
-make -C ../../fpga/Xilinx/VMK180_BRAM run_a72_quick
+make -C ../../fpga/Xilinx/VMK180_BRAM run_r5_q
+make -C ../../fpga/Xilinx/VMK180_BRAM run_a72_q
 ```
 
 If you want to view the content of the compiled static library, you can use the Vitis toolchain like below.
