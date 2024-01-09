@@ -25,14 +25,22 @@ vitis: $(XSA_FILE)
 	@echo creating vitis workspace at $(VITIS_DIR)
 	vitis -s create_vitis.py
 
-run_r5:
+R5_ELF = ./$(VITIS_DIR)/benchmark_r5/build/benchmark_r5.elf
+A72_ELF = ./$(VITIS_DIR)/benchmark_a72/build/benchmark_a72.elf
+
+$(R5_ELF):
+	$(MAKE) vitis
+$(A72_ELF):
+	$(MAKE) vitis
+
+run_r5: $(R5_ELF)
 	xsdb ./run_xsdb.tcl run_r5
-run_r5_q:
+run_r5_q: $(R5_ELF)
 	xsdb ./run_xsdb.tcl run_r5 quick
 
-run_a72:
+run_a72: $(A72_ELF)
 	xsdb ./run_xsdb.tcl run_a72
-run_a72_q:
+run_a72_q: $(A72_ELF)
 	xsdb ./run_xsdb.tcl run_a72 quick
 
 clean:

@@ -27,6 +27,10 @@ void test_write32(uint32_t value)
     Xil_Out32(BRAM_BASE, value);
 }
 
+void set_leds(uint32_t mask)
+{
+}
+
 uint64_t get_native_time()
 {
     XTime time_val;

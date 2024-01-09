@@ -5,8 +5,8 @@
 
 int main()
 {
-    Xil_DCacheEnable();
-    Xil_ICacheEnable();
+    // Xil_DCacheEnable();
+    // Xil_ICacheEnable();
 
     rust_main();
     return 0;

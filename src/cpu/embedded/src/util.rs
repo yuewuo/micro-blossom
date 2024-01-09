@@ -48,18 +48,23 @@ where
         // find proper batch size
         let mut batch_size = 1;
         loop {
+            compiler_fence(Ordering::SeqCst);
             let start = unsafe { extern_c::get_native_time() };
+            compiler_fence(Ordering::SeqCst);
             for _ in 0..batch_size {
                 black_box((self.routine)());
             }
+            compiler_fence(Ordering::SeqCst);
             let end = unsafe { extern_c::get_native_time() };
-            let diff = unsafe { extern_c::diff_native_time(start, end) };
+            compiler_fence(Ordering::SeqCst);
+            let diff = unsafe { extern_c::diff_native_time(start, end) } as f64;
+            println!("start: {start}, end: {end}, diff: {diff}");
             if diff > 10. {
                 println!("the routine takes too long, potentially cause timer overflow, abort");
                 panic!();
             }
             if diff >= 0.1 {
-                batch_size = core::cmp::max(1, (1.0 / diff * (batch_size as f32)) as usize);
+                batch_size = core::cmp::max(1, (1.0 / diff * (batch_size as f64)) as usize);
                 break;
             }
             batch_size *= 2;
