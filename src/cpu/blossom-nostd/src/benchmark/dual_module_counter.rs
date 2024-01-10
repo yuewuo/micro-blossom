@@ -34,7 +34,7 @@ impl DualStacklessDriver for DualModuleCounterDriver {
 }
 
 impl DualModuleCounterDriver {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             count_set_speed: 0,
             count_set_blossom: 0,

@@ -53,11 +53,14 @@ fn binary_heap_debug_formatter<const N: usize, T: std::fmt::Debug + Ord>(
 }
 
 impl<const N: usize> BlossomTracker<N> {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             hit_zero_events: BinaryHeap::new(),
             timestamp: 0,
-            first_index: ni!(0),
+            first_index: match CompactNodeIndex::new(0) {
+                Some(index) => index,
+                None => unreachable!(),
+            },
             checkpoints: Vec::new(),
             grow_states: Vec::new(),
         }

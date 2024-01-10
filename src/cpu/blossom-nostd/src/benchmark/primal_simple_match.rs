@@ -15,7 +15,7 @@ pub struct PrimalSimpleMatch<const MAX_NODE_NUM: usize, const DOUBLE_MAX_NODE_NU
 }
 
 impl<const MAX_NODE_NUM: usize, const DOUBLE_MAX_NODE_NUM: usize> PrimalSimpleMatch<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM> {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             primal_module: PrimalModuleEmbedded::new(),
             dual_module: DualModuleStackless::new(DualModuleCounterDriver::new()),

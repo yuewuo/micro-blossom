@@ -61,7 +61,7 @@ pub enum CompactMatchTarget {
     VirtualVertex(CompactVertexIndex),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct TouchingLink {
     /// touching through node index
     pub touch: Option<CompactNodeIndex>,

@@ -83,7 +83,7 @@ impl<D: DualStacklessDriver + DualTrackedDriver, const N: usize> DualStacklessDr
 }
 
 impl<D: DualStacklessDriver + DualTrackedDriver, const N: usize> DualDriverTracked<D, N> {
-    pub fn new(driver: D) -> Self {
+    pub const fn new(driver: D) -> Self {
         Self {
             driver,
             blossom_tracker: BlossomTracker::new(),

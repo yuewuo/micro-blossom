@@ -77,7 +77,7 @@ impl<D: DualStacklessDriver> DualInterface for DualModuleStackless<D> {
 }
 
 impl<D: DualStacklessDriver> DualModuleStackless<D> {
-    pub fn new(driver: D) -> Self {
+    pub const fn new(driver: D) -> Self {
         Self { driver }
     }
 

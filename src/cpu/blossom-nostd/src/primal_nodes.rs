@@ -22,7 +22,7 @@ pub struct PrimalNodes<const N: usize, const DOUBLE_N: usize> {
 /// the primal node is designed to have exactly 8 fields (32 bytes or 8 bytes in total, w/wo u16_index feature).
 /// this simplifies the design on
 #[cfg_attr(any(test, feature = "std"), derive(Debug))]
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct PrimalNode {
     /// an active outer blossom can have three different grow states, but the state of an inner node
     /// (those created as the children of another blossom) is None
@@ -45,11 +45,10 @@ pub struct PrimalNode {
 }
 
 impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
-    pub fn new() -> Self {
-        debug_assert_eq!(N * 2, DOUBLE_N);
-        const PRIMAL_NODE_NONE: Option<PrimalNode> = None;
+    pub const fn new() -> Self {
+        // assert_eq!(N * 2, DOUBLE_N);
         Self {
-            buffer: [PRIMAL_NODE_NONE; DOUBLE_N],
+            buffer: [None; DOUBLE_N],
             first_blossom_child: [None; N],
             count_defects: 0,
             count_blossoms: 0,

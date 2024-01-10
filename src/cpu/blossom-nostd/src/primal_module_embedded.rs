@@ -19,7 +19,7 @@ pub struct PrimalModuleEmbedded<const N: usize, const DOUBLE_N: usize> {
 }
 
 impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             nodes: PrimalNodes::new(),
         }

@@ -31,6 +31,7 @@ where
 {
     pub routine: F,
     pub batch_size: usize,
+    pub inner_loops: usize,
 }
 
 impl<F> Benchmarker<F>
@@ -38,7 +39,11 @@ where
     F: FnMut(),
 {
     pub fn new(routine: F) -> Self {
-        Self { routine, batch_size: 1 }
+        Self {
+            routine,
+            batch_size: 1,
+            inner_loops: 1,
+        }
     }
 
     /// run a batch of benchmarker function, so that each batch takes at least 1s
@@ -56,9 +61,7 @@ where
             }
             compiler_fence(Ordering::SeqCst);
             let end = unsafe { extern_c::get_native_time() };
-            compiler_fence(Ordering::SeqCst);
             let diff = unsafe { extern_c::diff_native_time(start, end) } as f64;
-            println!("start: {start}, end: {end}, diff: {diff}");
             if diff > 10. {
                 println!("the routine takes too long, potentially cause timer overflow, abort");
                 panic!();
@@ -81,7 +84,7 @@ where
             }
             let end = unsafe { extern_c::get_native_time() };
             let diff = unsafe { extern_c::diff_native_time(start, end) } as f64;
-            let time_per_op = diff / (self.batch_size as f64);
+            let time_per_op = diff / (self.batch_size as f64) / (self.inner_loops as f64);
             println!(
                 "[{}/{round}] per_op: {:.2} ns, freq: {:.5} MHz",
                 batch_idx + 1,
