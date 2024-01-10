@@ -7,6 +7,21 @@
 
 #define RISCV_DRIVER_BASE_ADDRESS 4060086272
 
+typedef struct Conflict {
+  uint16_t node_1;
+  uint16_t node_2;
+  uint16_t touch_1;
+  uint16_t touch_2;
+  uint16_t vertex_1;
+  uint16_t vertex_2;
+} Conflict;
+
+typedef struct AccResult {
+  uint16_t length;
+  uint16_t grown;
+  struct Conflict conflict;
+} AccResult;
+
 void rust_main(void);
 
 extern void print_char(char c);
@@ -21,10 +36,4 @@ extern uint64_t get_native_time(void);
 
 extern float diff_native_time(uint64_t start, uint64_t end);
 
-void set_leds(uint32_t mask);
-
-void print_char(char _c);
-
-void test_write32(uint32_t _value);
-
-uint32_t test_read32(void);
+extern struct AccResult find_obstacle(void);

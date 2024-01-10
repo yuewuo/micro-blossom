@@ -4,6 +4,24 @@ pub use core::fmt::Write;
 pub mod extern_c {
     use cty::*;
 
+    #[derive(Debug, Clone)]
+    #[repr(C)]
+    pub struct Obstacle {
+        pub grown: uint16_t,
+        pub conflict: Conflict,
+    }
+
+    #[derive(Debug, Clone)]
+    #[repr(C)]
+    pub struct Conflict {
+        pub node_1: uint16_t,
+        pub node_2: uint16_t,
+        pub touch_1: uint16_t,
+        pub touch_2: uint16_t,
+        pub vertex_1: uint16_t,
+        pub vertex_2: uint16_t,
+    }
+
     extern "C" {
         pub fn print_char(c: c_char);
         pub fn test_write32(value: uint32_t);
@@ -11,6 +29,7 @@ pub mod extern_c {
         pub fn set_leds(mask: uint32_t);
         pub fn get_native_time() -> uint64_t;
         pub fn diff_native_time(start: uint64_t, end: uint64_t) -> c_float;
+        pub fn find_obstacle() -> Obstacle;
     }
 }
 
