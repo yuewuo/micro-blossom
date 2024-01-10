@@ -6,6 +6,10 @@ import io.circe.parser.decode
 import collection.mutable.ArrayBuffer
 import org.scalatest.funsuite.AnyFunSuite
 
+object DualConfig {
+  def version = Integer.parseInt("24" + "01" + "10" + "c0", 16) // year - month - date - 'c'revision
+}
+
 case class DualConfig(
     var vertexBits: Int = 15,
     var weightBits: Int = 30,
@@ -13,6 +17,7 @@ case class DualConfig(
     var broadcastDelay: Int = 1,
     var convergecastDelay: Int = 1,
     var contextDepth: Int = 1, // how many different contexts are supported
+    var obstacleChannels: Int = 1, // how many obstacles are collected at once in parallel
     // optional features
     var supportAddDefectVertex: Boolean = true,
     // load graph either from parameter or from file
@@ -28,7 +33,6 @@ case class DualConfig(
   def contextBits = log2Up(contextDepth)
   def IndexNone = (1 << vertexBits) - 1
   def LengthNone = (1 << weightBits) - 1
-  def readLatencyLegacy = broadcastDelay + convergecastDelay + 5 // TODO: remove
   def readLatency = { // from sending the command to receiving the obstacle
     val contextDelay = (contextDepth != 1).toInt // when there is context switching, delay 1 clock due to memory fetch
     broadcastDelay + convergecastDelay + injectRegisters.length + contextDelay

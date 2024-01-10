@@ -416,7 +416,6 @@ class DistributedDualEstimation extends AnyFunSuite {
 
   test("logic delay") {
     val configurations = List(
-      // TODO: estimate resource usage after correctness verification
       // synth: 387, impl: 310 Slice LUTs (0.14% on ZCU106), or 407 CLB LUTs (0.05% on VMK180)
       (Local.dualConfig("code_capacity_d5"), "code capacity repetition d=5"),
       // synth: 1589, impl: 1309 Slice LUTs (0.6% on ZCU106), or 1719 CLB LUTs (0.19% on VMK180)

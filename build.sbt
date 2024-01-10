@@ -2,7 +2,7 @@ ThisBuild / version := "1.0"
 ThisBuild / scalaVersion := "2.12.12"
 ThisBuild / organization := "org.yecl"
 
-val spinalVersion = "1.9.3"
+val spinalVersion = "1.10.0"
 val vexRiscV = RootProject(uri("https://github.com/yuewuo/VexRiscv.git"))
 
 lazy val microblossom = (project in file("."))

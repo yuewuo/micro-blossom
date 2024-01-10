@@ -3,11 +3,6 @@
 //! Insertion and popping the largest element have `O(log n)` time complexity. Checking the largest
 //! / smallest element is `O(1)`.
 
-// TODO not yet implemented
-// Converting a vector to a binary heap can be done in-place, and has `O(n)` complexity. A binary
-// heap can also be converted to a sorted vector in-place, allowing it to be used for an `O(n log
-// n)` in-place heapsort.
-
 use core::{
     cmp::Ordering,
     fmt,
