@@ -123,28 +123,29 @@ impl RiscVCommandDriver {
     }
 }
 
-#[cfg(feature = "riscv")]
-#[no_mangle]
-extern "C" fn set_leds(mask: cty::uint32_t) {
-    unsafe {
-        *(0xF0000000 as *mut u32) = mask;
+cfg_if::cfg_if! {
+    if #[cfg(feature = "riscv")] {
+
+        #[no_mangle]
+        extern "C" fn set_leds(mask: cty::uint32_t) {
+            unsafe {
+                *(0xF0000000 as *mut u32) = mask;
+            }
+        }
+
+        #[no_mangle]
+        extern "C" fn print_char(_c: cty::c_char) {
+            // TODO
+        }
+
+        #[no_mangle]
+        extern "C" fn test_write32(_value: cty::uint32_t) {
+            unimplemented!()
+        }
+
+        #[no_mangle]
+        extern "C" fn test_read32() -> cty::uint32_t {
+            unimplemented!()
+        }
     }
-}
-
-#[cfg(feature = "riscv")]
-#[no_mangle]
-extern "C" fn print_char(_c: cty::c_char) {
-    // TODO
-}
-
-#[cfg(feature = "riscv")]
-#[no_mangle]
-extern "C" fn test_write32(_value: cty::uint32_t) {
-    unimplemented!()
-}
-
-#[cfg(feature = "riscv")]
-#[no_mangle]
-extern "C" fn test_read32() -> cty::uint32_t {
-    unimplemented!()
 }

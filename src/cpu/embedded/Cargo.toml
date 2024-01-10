@@ -52,6 +52,9 @@ automod = "1.0"
 # lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 # spin = "0.9.8"
 
+[build-dependencies]
+cbindgen = "0.26.0"
+
 # see https://craigjb.com/2020/01/22/ecp5/
 [profile.release]
 opt-level = 3

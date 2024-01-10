@@ -1,4 +1,5 @@
 import os
+import shutil
 from common import *
 import vitis # see <Vitis_Installation_Dir>/cli/examples for examples
 
@@ -27,6 +28,9 @@ for cpu_id, cpu, arch in zip(cpu_ids, cpus, archs):
     except Exception:
         component = client.create_app_component(name=f"benchmark_{cpu_id}", platform=platform_xpfm, domain=f"standalone_{cpu}")
     # import source file and patch the application
+    rust_cbind_header = os.path.join(os.path.abspath(rust_project), "target", arch, f"binding.h")
+    assert os.path.exists(rust_cbind_header), f"rust cbind header not found at {rust_staticlib}, please compile it"
+    shutil.copy(rust_cbind_header, "./src/binding.h")
     component.import_files(from_loc="./src", files=import_files, dest_dir_in_cmp="src")
     rust_staticlib = os.path.join(os.path.abspath(rust_project), "target", arch, profile, f"{rust_libname}.a")
     assert os.path.exists(rust_staticlib), f"rust static lib not found at {rust_staticlib}, please compile it"
