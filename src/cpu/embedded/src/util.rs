@@ -49,7 +49,7 @@ where
     /// run a batch of benchmarker function, so that each batch takes at least 1s
     /// (but no more than 10s to avoid timer overflow)
     pub fn autotune(&mut self) {
-        println!("[benchmarker] autotune");
+        print!("[benchmarker] autotune ... ");
         // find proper batch size
         let mut batch_size = 1;
         loop {
@@ -73,7 +73,7 @@ where
             batch_size *= 2;
         }
         self.batch_size = batch_size;
-        println!("[benchmarker] automatic batch size = {batch_size}");
+        println!("batch size = {batch_size}");
     }
 
     pub fn run(&mut self, round: usize) {

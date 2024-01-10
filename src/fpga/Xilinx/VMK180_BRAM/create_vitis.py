@@ -34,14 +34,15 @@ for cpu_id, cpu, arch in zip(cpu_ids, cpus, archs):
     component.set_app_config(key="USER_COMPILE_OPTIMIZATION_OTHER_FLAGS", values="-flto")  # enable link-time optimization
     component.set_app_config(key="USER_LINK_OTHER_FLAGS", values="-Wl,-gc-sections")  # remove unused function sections
     ld_script = component.get_ld_script()
+    section_updates = []
     if cpu_id == "r5":
         # avoid going through DRAM for stack and statically allocated objects
         # use lock-step mode (disable split mode) so that all 256KB TCM is available to RPU core 0
         ld_script.update_memory_region(name="psv_r5_tcm_ram_0", base_address="0", size="0x40000")  # 256KB
-        for section in [".stack", ".bss", ".sbss", ".tbss"]:
-            ld_script.update_ld_section(section=section, region="psv_r5_tcm_ram_0")
-        # also put program into OCM
-        ld_script.update_ld_section(section=".text", region="psv_ocm_0")
-        ld_script.update_ld_section(section=".data", region="psv_ocm_0")
-    component.clean()  # clean build: it doesn't take too long anyway, just linking the Rust program
-    component.build(target="hw")
+        section_updates.append(([".stack", ".bss", ".sbss", ".tbss", ".text", ".vectors", ".bootdata"], "psv_r5_tcm_ram_0"))
+        section_updates.append(([".data"], "psv_ocm_0"))  # .data section contains initialized global data
+    for sections, region in section_updates:
+        for section in sections:
+            ld_script.update_ld_section(section=section, region=region)
+    # component.clean()  # clean build: it doesn't take too long anyway, just linking the Rust program
+    assert component.build(target="hw") == 0, "build failed"

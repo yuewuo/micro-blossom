@@ -30,6 +30,16 @@ impl Write for Printer {
 }
 
 #[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => ({
+        let mut printer = Printer;
+        write!(&mut printer, $($arg)*).unwrap();
+    })
+}
+#[allow(unused_imports)]
+pub use print;
+
+#[macro_export]
 macro_rules! println {
     () => (print!("\n"));
     ($($arg:tt)*) => ({

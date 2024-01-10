@@ -6,7 +6,9 @@ use konst::{option, primitive::parse_usize, result::unwrap_ctx};
 use micro_blossom_nostd::benchmark::primal_simple_match::*;
 
 // the value should be 2^k, otherwise it's a lot slower to initialize
-pub const MAX_NODE_NUM: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("MAX_NODE_NUM"), "1024")));
+// given 256KB memory, maximum size is 256 * 1024 / 34 / 2 = 3855, but other sections may also use some memory
+// 3800 guarantees to support up to d=15, but given physical error rate below threshold, it supports d=31 without a problem
+pub const MAX_NODE_NUM: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("MAX_NODE_NUM"), "3600")));
 pub const DOUBLE_MAX_NODE_NUM: usize = MAX_NODE_NUM * 2;
 
 static mut TESTER: UnsafeCell<PrimalSimpleMatch<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>> =
@@ -32,18 +34,18 @@ Results: A72 is significantly faster than R5F
 
 A72:
 
-[benchmarker] automatic batch size = 7964
-[1/3] per_op: 245.22 ns, freq: 4.07797 MHz
-[2/3] per_op: 245.20 ns, freq: 4.07823 MHz
-[3/3] per_op: 245.20 ns, freq: 4.07823 MHz
+[benchmarker] autotune ... batch size = 18166
+[1/3] per_op: 30.58 ns, freq: 32.70060 MHz
+[2/3] per_op: 30.58 ns, freq: 32.70018 MHz
+[3/3] per_op: 30.58 ns, freq: 32.70018 MHz
 
 
 R5F:
 
-[benchmarker] automatic batch size = 64414
-[1/3] per_op: 30.57 ns, freq: 32.70786 MHz
-[2/3] per_op: 30.57 ns, freq: 32.71084 MHz
-[3/3] per_op: 30.57 ns, freq: 32.71084 MHz
+[benchmarker] autotune ... batch size = 18166
+[1/3] per_op: 30.58 ns, freq: 32.70060 MHz
+[2/3] per_op: 30.58 ns, freq: 32.70018 MHz
+[3/3] per_op: 30.58 ns, freq: 32.70018 MHz
 
 */
 
