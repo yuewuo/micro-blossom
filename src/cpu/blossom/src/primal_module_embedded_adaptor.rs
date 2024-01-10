@@ -161,18 +161,18 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
             }
             let adapted_conflict = match conflict {
                 MaxUpdateLength::Conflicting((node_1, touch_1), (node_2, touch_2)) => CompactObstacle::Conflict {
-                    node_1: Some(*self.ptr_to_index.get(&node_1).unwrap()),
-                    node_2: Some(*self.ptr_to_index.get(&node_2).unwrap()),
-                    touch_1: Some(*self.ptr_to_index.get(&touch_1).unwrap()),
-                    touch_2: Some(*self.ptr_to_index.get(&touch_2).unwrap()),
+                    node_1: self.ptr_to_index.get(&node_1).unwrap().option(),
+                    node_2: self.ptr_to_index.get(&node_2).unwrap().option(),
+                    touch_1: self.ptr_to_index.get(&touch_1).unwrap().option(),
+                    touch_2: self.ptr_to_index.get(&touch_2).unwrap().option(),
                     vertex_1: ni!(0),
                     vertex_2: ni!(0),
                 },
                 MaxUpdateLength::TouchingVirtual((node, touch), (virtual_vertex, _is_mirror)) => CompactObstacle::Conflict {
-                    node_1: Some(*self.ptr_to_index.get(&node).unwrap()),
-                    node_2: None,
-                    touch_1: Some(*self.ptr_to_index.get(&touch).unwrap()),
-                    touch_2: None,
+                    node_1: self.ptr_to_index.get(&node).unwrap().option(),
+                    node_2: None.into(),
+                    touch_1: self.ptr_to_index.get(&touch).unwrap().option(),
+                    touch_2: None.into(),
                     vertex_1: ni!(0),
                     vertex_2: ni!(virtual_vertex),
                 },
@@ -270,8 +270,8 @@ impl FusionVisualizer for PrimalModuleEmbeddedAdaptor {
             if !primal_node.is_outer_blossom() {
                 continue;
             }
-            let parent = primal_node.parent.map(|parent| parent.get());
-            let parent_touch = primal_node.link.touch.map(|parent| parent.get());
+            let parent = primal_node.parent.option().map(|parent| parent.get());
+            let parent_touch = primal_node.link.touch.option().map(|parent| parent.get());
             let mut root_index = *node_index;
             let mut depth = 0;
             while self.primal_module.nodes.get_node(root_index).parent.is_some() {
@@ -281,7 +281,7 @@ impl FusionVisualizer for PrimalModuleEmbeddedAdaptor {
             let mut children = vec![];
             let mut children_touching = vec![];
             let mut child = primal_node.first_child;
-            while let Some(child_index) = child {
+            while let Some(child_index) = child.option() {
                 let primal_child = self.primal_module.nodes.get_node(child_index);
                 children.push(child_index.get());
                 children_touching.push(primal_child.link.peer_touch.unwrap().get());
@@ -313,8 +313,8 @@ impl<const N: usize, const DN: usize> FusionVisualizer for PrimalModuleEmbedded<
                 continue;
             }
             let primal_node = self.nodes.get_node(ni!(node_index));
-            let parent = primal_node.parent.map(|parent| parent.get());
-            let parent_touch = primal_node.link.touch.map(|parent| parent.get());
+            let parent = primal_node.parent.option().map(|parent| parent.get());
+            let parent_touch = primal_node.link.touch.option().map(|parent| parent.get());
             let mut root_index = ni!(node_index);
             let mut depth = 0;
             while self.nodes.get_node(root_index).parent.is_some() {
@@ -324,7 +324,7 @@ impl<const N: usize, const DN: usize> FusionVisualizer for PrimalModuleEmbedded<
             let mut children = vec![];
             let mut children_touching = vec![];
             let mut child = primal_node.first_child;
-            while let Some(child_index) = child {
+            while let Some(child_index) = child.option() {
                 let primal_child = self.nodes.get_node(child_index);
                 children.push(child_index.get());
                 children_touching.push(primal_child.link.peer_touch.unwrap().get());
@@ -377,7 +377,7 @@ impl<'a, const N: usize, const DN: usize> FusionVisualizer for DualNodesOf<'a, N
             }
             let is_blossom = self.nodes.is_blossom(ni!(node_index));
             let primal_node = self.nodes.get_node(ni!(node_index));
-            let parent = primal_node.parent.map(|parent| parent.get());
+            let parent = primal_node.parent.option().map(|parent| parent.get());
             let grow_state = primal_node.grow_state.unwrap_or(CompactGrowState::Stay);
             let parent_blossom = if primal_node.is_outer_blossom() { None } else { parent };
             let blossom = if is_blossom {

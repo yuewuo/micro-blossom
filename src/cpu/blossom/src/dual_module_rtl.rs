@@ -280,17 +280,17 @@ impl DualStacklessDriver for DualModuleRTLDriver {
                     };
                     return (
                         CompactObstacle::Conflict {
-                            node_1: Some(ni!(node_1)),
+                            node_1: ni!(node_1).option(),
                             node_2: if node_2 != VIRTUAL_NODE_INDEX {
-                                Some(ni!(node_2))
+                                ni!(node_2).option()
                             } else {
-                                None
+                                None.into()
                             },
-                            touch_1: Some(ni!(touch_1)),
+                            touch_1: ni!(touch_1).option(),
                             touch_2: if touch_2 != VIRTUAL_NODE_INDEX {
-                                Some(ni!(touch_2))
+                                ni!(touch_2).option()
                             } else {
-                                None
+                                None.into()
                             },
                             vertex_1: ni!(vertex_1),
                             vertex_2: ni!(vertex_2),

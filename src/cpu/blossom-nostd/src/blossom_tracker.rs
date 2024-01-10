@@ -57,7 +57,7 @@ impl<const N: usize> BlossomTracker<N> {
         Self {
             hit_zero_events: BinaryHeap::new(),
             timestamp: 0,
-            first_index: match CompactNodeIndex::new(0) {
+            first_index: match CompactNodeIndex::new(0).option() {
                 Some(index) => index,
                 None => unreachable!(),
             },

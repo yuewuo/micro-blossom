@@ -86,7 +86,7 @@ impl<D: DualInterface + DualInterfaceWithInitializer> DualModuleImpl for DualMod
                 vertex_1: _,
                 vertex_2,
             } => {
-                if let Some(node_2) = node_2 {
+                if let Some(node_2) = node_2.option() {
                     MaxUpdateLength::Conflicting(
                         (
                             self.nodes[node_1.unwrap().get() as usize].clone(),
@@ -159,10 +159,10 @@ impl<'a> PrimalInterface for MockPrimalInterface<'a> {
                         .read_recursive()
                         .index;
                     let link = TouchingLink {
-                        touch: Some(ni!(touch)),
-                        through: Some(ni!(0)),
-                        peer_touch: Some(ni!(peer_touch)),
-                        peer_through: Some(ni!(0)),
+                        touch: ni!(touch).option(),
+                        through: ni!(0).option(),
+                        peer_touch: ni!(peer_touch).option(),
+                        peer_through: ni!(0).option(),
                     };
                     func(self, ni!(peer_index), &link);
                 }

@@ -1,10 +1,14 @@
+pub use crate::nonmax;
+
 cfg_if::cfg_if! {
     if #[cfg(feature="u16_index")] {
         // use 16 bit data types, for less memory usage
         pub type CompactVertexIndex = nonmax::NonMaxU16;
+        pub type OptionCompactVertexIndex = nonmax::OptionNonMaxU16;
         pub type CompactVertexNum = u16;
     } else {
         pub type CompactVertexIndex = nonmax::NonMaxU32;
+        pub type OptionCompactVertexIndex = nonmax::OptionNonMaxU32;
         pub type CompactVertexNum = u32;
     }
 }
@@ -12,6 +16,9 @@ cfg_if::cfg_if! {
 pub type CompactNodeIndex = CompactVertexIndex;
 pub type CompactDefectIndex = CompactVertexIndex;
 pub type CompactVertexNodeIndex = CompactVertexIndex;
+pub type OptionCompactNodeIndex = OptionCompactVertexIndex;
+pub type OptionCompactDefectIndex = OptionCompactVertexIndex;
+pub type OptionCompactVertexNodeIndex = OptionCompactVertexIndex;
 pub type CompactNodeNum = CompactVertexNum;
 
 pub type CompactEdgeIndex = u32;
@@ -64,13 +71,13 @@ pub enum CompactMatchTarget {
 #[derive(Clone, Copy)]
 pub struct TouchingLink {
     /// touching through node index
-    pub touch: Option<CompactNodeIndex>,
+    pub touch: OptionCompactNodeIndex,
     /// touching through vertex
-    pub through: Option<CompactVertexIndex>,
+    pub through: OptionCompactVertexIndex,
     /// peer touches myself through node index
-    pub peer_touch: Option<CompactNodeIndex>,
+    pub peer_touch: OptionCompactNodeIndex,
     /// peer touches myself through vertex
-    pub peer_through: Option<CompactVertexIndex>,
+    pub peer_through: OptionCompactVertexIndex,
 }
 
 #[cfg(any(test, feature = "std"))]
@@ -104,7 +111,7 @@ cfg_if::cfg_if! {
         /// unsafe node index, constructed from any numerical type
         macro_rules! ni {
             ($value:expr) => {
-                unsafe { CompactNodeIndex::new($value as CompactNodeNum).unwrap_unchecked() }
+                unsafe { CompactNodeIndex::new_unchecked($value as CompactNodeNum) }
             };
         }
     } else {

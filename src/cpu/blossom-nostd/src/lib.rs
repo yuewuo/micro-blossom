@@ -7,6 +7,7 @@ pub mod dual_driver_tracked;
 pub mod dual_module_stackless;
 pub mod heapless;
 pub mod interface;
+pub mod nonmax;
 pub mod primal_module_embedded;
 pub mod primal_nodes;
 pub mod util;

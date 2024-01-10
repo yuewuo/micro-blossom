@@ -171,17 +171,17 @@ impl DualStacklessDriver for DualModuleScalaDriver {
             .unwrap();
             (
                 CompactObstacle::Conflict {
-                    node_1: Some(ni!(node_1)),
+                    node_1: ni!(node_1).option(),
                     node_2: if node_2 == i32::MAX as NodeIndex {
-                        None
+                        None.into()
                     } else {
-                        Some(ni!(node_2))
+                        ni!(node_2).option()
                     },
-                    touch_1: Some(ni!(touch_1)),
+                    touch_1: ni!(touch_1).option(),
                     touch_2: if touch_2 == i32::MAX as NodeIndex {
-                        None
+                        None.into()
                     } else {
-                        Some(ni!(touch_2))
+                        ni!(touch_2).option()
                     },
                     vertex_1: ni!(vertex_1),
                     vertex_2: ni!(vertex_2),

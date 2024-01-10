@@ -12,7 +12,7 @@ pub struct PrimalNodes<const N: usize, const DOUBLE_N: usize> {
     /// defect nodes starting from 0, blossom nodes starting from DOUBLE_N/2
     pub buffer: [Option<PrimalNode>; DOUBLE_N],
     /// the first child within a blossom
-    pub first_blossom_child: [Option<CompactNodeIndex>; N],
+    pub first_blossom_child: [OptionCompactNodeIndex; N],
     /// the number of defect nodes reported by the dual module, not necessarily all the defect nodes
     pub count_defects: usize,
     /// the number of allocated blossoms
@@ -30,14 +30,14 @@ pub struct PrimalNode {
     /// the parent in the alternating tree, or `NODE_NONE` if it doesn't have a parent;
     /// when the node is a root node, sibling means the parent in the alternating tree;
     /// when the node is within a blossom, then the parent means the parent blossom
-    pub parent: Option<CompactNodeIndex>,
+    pub parent: OptionCompactNodeIndex,
     /// the starting of the children, whether the children in the blossom cycle or in an alternating tree
-    pub first_child: Option<CompactNodeIndex>,
+    pub first_child: OptionCompactNodeIndex,
     /// the index of one remaining sibling if there exists any, otherwise `NODE_NONE`;
     /// when the node is a root node, sibling means some + node that has the same parent in the alternating tree, or
     ///     it means the temporary match;
     /// when the node is within a blossom, sibling means the next node in the odd cycle
-    pub sibling: Option<CompactNodeIndex>,
+    pub sibling: OptionCompactNodeIndex,
     /// a link between another node. Depending on the state of a node, the link has different meanings:
     /// when the node is a root node, then the link is pointing to its parent;
     /// when the node is within a blossom, then the link is pointing to its sibling (the odd cycle)
@@ -49,7 +49,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         // assert_eq!(N * 2, DOUBLE_N);
         Self {
             buffer: [None; DOUBLE_N],
-            first_blossom_child: [None; N],
+            first_blossom_child: [OptionCompactNodeIndex::NONE; N],
             count_defects: 0,
             count_blossoms: 0,
         }
@@ -170,7 +170,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
                 "cannot generate perfect matching with unmatched node: {}",
                 node_index
             );
-            if let Some(peer_index) = node.sibling {
+            if let Some(peer_index) = node.sibling.option() {
                 if peer_index.get() > node_index.get() {
                     func(node_index, CompactMatchTarget::Peer(peer_index), &node.link);
                 }
@@ -317,18 +317,18 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         self.set_speed(node_2, CompactGrowState::Stay, dual_module);
         let primal_node_1 = self.get_node_mut(node_1);
         primal_node_1.remove_from_alternating_tree();
-        primal_node_1.sibling = Some(node_2);
-        primal_node_1.link.touch = Some(touch_1);
-        primal_node_1.link.through = Some(vertex_1);
-        primal_node_1.link.peer_touch = Some(touch_2);
-        primal_node_1.link.peer_through = Some(vertex_2);
+        primal_node_1.sibling = node_2.option();
+        primal_node_1.link.touch = touch_1.option();
+        primal_node_1.link.through = vertex_1.option();
+        primal_node_1.link.peer_touch = touch_2.option();
+        primal_node_1.link.peer_through = vertex_2.option();
         let primal_node_2 = self.get_node_mut(node_2);
         primal_node_2.remove_from_alternating_tree();
-        primal_node_2.sibling = Some(node_1);
-        primal_node_2.link.touch = Some(touch_2);
-        primal_node_2.link.through = Some(vertex_2);
-        primal_node_2.link.peer_touch = Some(touch_1);
-        primal_node_2.link.peer_through = Some(vertex_1);
+        primal_node_2.sibling = node_1.option();
+        primal_node_2.link.touch = touch_2.option();
+        primal_node_2.link.through = vertex_2.option();
+        primal_node_2.link.peer_touch = touch_1.option();
+        primal_node_2.link.peer_through = vertex_1.option();
     }
 
     pub fn temporary_match_with_link(
@@ -361,18 +361,18 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         self.set_speed(node, CompactGrowState::Stay, dual_module);
         let primal_node = self.get_node_mut(node);
         primal_node.remove_from_alternating_tree();
-        primal_node.sibling = None;
-        primal_node.link.touch = Some(touch);
-        primal_node.link.through = Some(vertex);
-        primal_node.link.peer_touch = None;
-        primal_node.link.peer_through = Some(virtual_vertex);
+        primal_node.sibling.set_none();
+        primal_node.link.touch = touch.option();
+        primal_node.link.through = vertex.option();
+        primal_node.link.peer_touch.set_none();
+        primal_node.link.peer_through = virtual_vertex.option();
     }
 
     /// allocate a blank blossom
     pub fn allocate_blossom(&mut self, first_blossom_child: CompactNodeIndex) -> CompactNodeIndex {
         debug_assert!(self.count_blossoms < N, "blossom overflow");
         set!(self.buffer, N + self.count_blossoms, Some(PrimalNode::new()));
-        set!(self.first_blossom_child, self.count_blossoms, Some(first_blossom_child));
+        set!(self.first_blossom_child, self.count_blossoms, first_blossom_child.option());
         let blossom_index = ni!(N + self.count_blossoms);
         self.count_blossoms += 1;
         blossom_index
@@ -383,7 +383,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         debug_assert!(self.is_blossom(blossom_index), "do not dispose a defect vertex");
         debug_assert!(self.has_node(blossom_index), "do not dispose twice");
         set!(self.buffer, blossom_index.get() as usize, None);
-        set!(self.first_blossom_child, blossom_index.get() as usize - N, None);
+        set!(self.first_blossom_child, blossom_index.get() as usize - N, None.into());
     }
 }
 
@@ -391,9 +391,9 @@ impl PrimalNode {
     pub fn new() -> Self {
         Self {
             grow_state: Some(CompactGrowState::Grow),
-            parent: None,
-            first_child: None,
-            sibling: None,
+            parent: None.into(),
+            first_child: None.into(),
+            sibling: None.into(),
             link: TouchingLink::new(),
         }
     }
@@ -428,25 +428,25 @@ impl PrimalNode {
             self.is_outer_blossom(),
             "should not remove an inner node from alternating tree"
         );
-        self.parent = None;
-        self.first_child = None;
+        self.parent.set_none();
+        self.first_child.set_none();
     }
 
     pub fn remove_from_matching(&mut self) {
         debug_assert!(self.is_outer_blossom(), "should not remove an inner node from matching");
         debug_assert!(self.is_matched());
-        self.sibling = None;
-        self.link.touch = None;
-        self.link.through = None;
-        self.link.peer_touch = None;
-        self.link.peer_through = None;
+        self.sibling.set_none();
+        self.link.touch.set_none();
+        self.link.through.set_none();
+        self.link.peer_touch.set_none();
+        self.link.peer_through.set_none();
     }
 }
 
 impl PrimalNode {
     pub fn get_matched(&self) -> CompactMatchTarget {
         debug_assert!(self.is_matched());
-        if let Some(node_index) = self.sibling {
+        if let Some(node_index) = self.sibling.option() {
             CompactMatchTarget::Peer(node_index)
         } else {
             CompactMatchTarget::VirtualVertex(usu!(self.link.peer_through))
@@ -457,10 +457,10 @@ impl PrimalNode {
 impl TouchingLink {
     pub fn new() -> Self {
         Self {
-            touch: None,
-            through: None,
-            peer_touch: None,
-            peer_through: None,
+            touch: None.into(),
+            through: OptionCompactVertexIndex::NONE,
+            peer_touch: None.into(),
+            peer_through: OptionCompactVertexIndex::NONE,
         }
     }
 

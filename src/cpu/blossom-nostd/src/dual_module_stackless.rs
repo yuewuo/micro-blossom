@@ -142,7 +142,7 @@ mod tests {
     }
 
     pub struct MockPrimalNode {
-        parent: Option<CompactNodeIndex>,
+        parent: OptionCompactNodeIndex,
         children: Vec<CompactNodeIndex>,
     }
 
@@ -188,7 +188,7 @@ mod tests {
             self.nodes.insert(
                 node_index,
                 MockPrimalNode {
-                    parent: None,
+                    parent: None.into(),
                     children: vec![],
                 },
             );
@@ -199,9 +199,15 @@ mod tests {
             for child_index in children.iter() {
                 assert!(self.nodes.contains_key(child_index));
                 assert!(self.nodes[child_index].parent.is_none(), "child already has a parent");
-                self.nodes.get_mut(child_index).unwrap().parent = Some(blossom_index);
+                self.nodes.get_mut(child_index).unwrap().parent = blossom_index.option();
             }
-            self.nodes.insert(blossom_index, MockPrimalNode { parent: None, children });
+            self.nodes.insert(
+                blossom_index,
+                MockPrimalNode {
+                    parent: None.into(),
+                    children,
+                },
+            );
         }
     }
 

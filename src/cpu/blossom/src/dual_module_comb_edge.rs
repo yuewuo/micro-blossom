@@ -159,11 +159,11 @@ impl Edge {
                 };
                 if remaining == 0 {
                     return CompactObstacle::Conflict {
-                        node_1: left_shadow.node_index.and_then(node_mapper),
-                        touch_1: left_shadow.root_index.and_then(node_mapper),
+                        node_1: left_shadow.node_index.and_then(node_mapper).into(),
+                        touch_1: left_shadow.root_index.and_then(node_mapper).into(),
                         vertex_1: ni!(self.left_index),
-                        node_2: right_shadow.node_index.and_then(node_mapper),
-                        touch_2: right_shadow.root_index.and_then(node_mapper),
+                        node_2: right_shadow.node_index.and_then(node_mapper).into(),
+                        touch_2: right_shadow.root_index.and_then(node_mapper).into(),
                         vertex_2: ni!(self.right_index),
                     };
                 }

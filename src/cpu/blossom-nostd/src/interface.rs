@@ -20,11 +20,11 @@ pub enum CompactObstacle {
     /// some conflict needs the primal module to resolve
     Conflict {
         /// node_1 is assumed to be always normal node
-        node_1: Option<CompactNodeIndex>,
+        node_1: OptionCompactNodeIndex,
         /// node_2 could be NODE_NONE, which means it's touching a virtual vertex `vertex_2`
-        node_2: Option<CompactNodeIndex>,
-        touch_1: Option<CompactNodeIndex>,
-        touch_2: Option<CompactNodeIndex>,
+        node_2: OptionCompactNodeIndex,
+        touch_1: OptionCompactNodeIndex,
+        touch_2: OptionCompactNodeIndex,
         vertex_1: CompactVertexIndex,
         vertex_2: CompactVertexIndex,
     },
