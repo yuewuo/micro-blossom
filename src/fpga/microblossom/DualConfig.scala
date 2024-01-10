@@ -25,7 +25,6 @@ case class DualConfig(
   def edgeNum = graph.weighted_edges.length.toInt
   def offloaderNum = graph.offloading.length.toInt
   def instructionSpec = InstructionSpec(this)
-  def obstacleSpec = ObstacleSpec(this)
   def contextBits = log2Up(contextDepth)
   def IndexNone = (1 << vertexBits) - 1
   def LengthNone = (1 << weightBits) - 1
