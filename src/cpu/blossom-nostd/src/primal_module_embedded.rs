@@ -864,6 +864,7 @@ mod tests {
     #[test]
     fn primal_module_embedded_size() {
         // cargo test primal_module_embedded_size -- --nocapture
+        // cargo test --features u16_index primal_module_embedded_size -- --nocapture
         const N: usize = 1000000;
         const DOUBLE_N: usize = 2 * N;
         let total_size = core::mem::size_of::<PrimalModuleEmbedded<N, DOUBLE_N>>();

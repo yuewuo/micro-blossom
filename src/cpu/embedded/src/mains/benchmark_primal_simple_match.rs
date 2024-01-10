@@ -34,18 +34,18 @@ Results: A72 is significantly faster than R5F
 
 A72:
 
-[benchmarker] autotune ... batch size = 18166
-[1/3] per_op: 30.58 ns, freq: 32.70060 MHz
-[2/3] per_op: 30.58 ns, freq: 32.70018 MHz
-[3/3] per_op: 30.58 ns, freq: 32.70018 MHz
+[benchmarker] autotune ... batch size = 17398
+[1/3] per_op: 31.93 ns, freq: 31.31530 MHz
+[2/3] per_op: 31.94 ns, freq: 31.31297 MHz
+[3/3] per_op: 31.94 ns, freq: 31.31258 MHz
 
 
 R5F:
 
-[benchmarker] autotune ... batch size = 18166
-[1/3] per_op: 30.58 ns, freq: 32.70060 MHz
-[2/3] per_op: 30.58 ns, freq: 32.70018 MHz
-[3/3] per_op: 30.58 ns, freq: 32.70018 MHz
+[benchmarker] autotune ... batch size = 2922
+[1/3] per_op: 190.08 ns, freq: 5.26092 MHz
+[2/3] per_op: 190.07 ns, freq: 5.26133 MHz
+[3/3] per_op: 190.07 ns, freq: 5.26132 MHz
 
 */
 
