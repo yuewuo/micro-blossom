@@ -17,6 +17,7 @@ import microblossom.util._
 import microblossom.types._
 import microblossom.modules._
 import org.scalatest.funsuite.AnyFunSuite
+import scala.collection.mutable.ArrayBuffer
 
 case class MicroBlossom(config: DualConfig) extends Component {
   val io = new Bundle {
@@ -24,7 +25,12 @@ case class MicroBlossom(config: DualConfig) extends Component {
       AxiLite4(
         AxiLite4Config(
           // max d=31 (31^3 < 32768), for 1% physical error rate we have 18 reported obstacles on average
-          // 16 byte control (version 4, context depth 2, channels 1,), (instruction 4, context 2, length 2)
+          // 16 byte control
+          //   (version 4, context depth 2, #channels 1,)
+          //   (instruction 4, context_id 2)
+          // 16 byte return
+          //   (status 1, grown length: 2, context_id 2)
+          // 16 byte obstacle(s), the value changes according to `context_id`
           // the rest are `config.obstacleChannels` separate memory spaces obstacles * 16 bytes each
           addressWidth = log2Up(448),
           dataWidth = 64 // for less transaction
@@ -35,7 +41,7 @@ case class MicroBlossom(config: DualConfig) extends Component {
 
   val busif = AxiLite4BusInterface(io.bus, (0x000, 16 Byte))
 
-  // control fields
+  // control register
   val control = busif.newRegAt(address = 0, doc = "control fields")
   // note: although SpinalHDL recommend the use of `ROV`, it doesn't generate the name properly
   // thus I still use the old `RO` method
@@ -49,14 +55,29 @@ case class MicroBlossom(config: DualConfig) extends Component {
     SymbolName("obstacle_channels")
   ) := config.obstacleChannels
 
-  for (channelId <- 0 until config.obstacleChannels) {}
+  val obstacles = ArrayBuffer[Bits]()
+  for (channelId <- 0 until config.obstacleChannels) {
+    val obstacle_upper =
+      busif.newRegAt(address = 32 + channelId * 16, doc = s"obstacle $channelId upper half")(
+        SymbolName(s"obstacle_${channelId}_upper")
+      )
+    val obstacle_lower =
+      busif.newRegAt(address = 32 + channelId * 16 + 8, doc = s"obstacle $channelId lower half")(
+        SymbolName(s"obstacle_${channelId}_lower")
+      )
+    val obstacle = Reg(Bits(128 bit)) init 0
+    obstacle := obstacle | busif.writeData.resized
+    obstacle_upper.field(64 bits, AccessType.RO)(SymbolName("value")) := obstacle(127 downto 64)
+    obstacle_lower.field(64 bits, AccessType.RO)(SymbolName("value")) := obstacle(63 downto 0)
+    obstacles.append(obstacle)
+  }
 
   def genDocs() = {
     busif.accept(CHeaderGenerator("MicroBlossom", "MicroBlossom"))
-    busif.accept(HtmlGenerator("MicroBlossom", "Interupt Example"))
+    busif.accept(HtmlGenerator("MicroBlossom", "MicroBlossom"))
     busif.accept(JsonGenerator("MicroBlossom"))
-    busif.accept(RalfGenerator("MicroBlossom"))
-    busif.accept(SystemRdlGenerator("MicroBlossom", "MicroBlossom"))
+    // busif.accept(RalfGenerator("MicroBlossom"))
+    // busif.accept(SystemRdlGenerator("MicroBlossom", "MicroBlossom"))
   }
 
   this.genDocs()
