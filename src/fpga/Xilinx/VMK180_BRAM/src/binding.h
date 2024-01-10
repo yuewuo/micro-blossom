@@ -16,11 +16,10 @@ typedef struct Conflict {
   uint16_t vertex_2;
 } Conflict;
 
-typedef struct AccResult {
-  uint16_t length;
+typedef struct Obstacle {
   uint16_t grown;
   struct Conflict conflict;
-} AccResult;
+} Obstacle;
 
 void rust_main(void);
 
@@ -36,4 +35,4 @@ extern uint64_t get_native_time(void);
 
 extern float diff_native_time(uint64_t start, uint64_t end);
 
-extern struct AccResult find_obstacle(void);
+extern struct Obstacle find_obstacle(void);
