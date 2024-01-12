@@ -56,5 +56,6 @@ fn main() {
 
         println!("cargo:rerun-if-changed=riscv-memory.x");
         println!("cargo:rerun-if-changed=build.rs");
+        println!("cargo:rerun-if-changed=src/binding.rs");
     }
 }

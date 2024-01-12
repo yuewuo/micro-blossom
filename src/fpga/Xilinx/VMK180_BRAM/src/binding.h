@@ -25,9 +25,9 @@ void rust_main(void);
 
 extern void print_char(char c);
 
-extern void test_write32(uint32_t value);
+extern void test_write32(uint32_t bias, uint32_t value);
 
-extern uint32_t test_read32(void);
+extern uint32_t test_read32(uint32_t bias);
 
 extern void set_leds(uint32_t mask);
 

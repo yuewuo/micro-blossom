@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <assert.h>
 #include "binding.h"
 #include "xil_types.h"
 #include "xil_printf.h"
@@ -17,14 +18,16 @@ const UINTPTR BRAM_BASE = 0x80000000;
 const UINTPTR BRAM_BASE = 0xA4000000;
 #endif
 
-uint32_t test_read32()
+uint32_t test_read32(uint32_t bias)
 {
-    return Xil_In32(BRAM_BASE);
+    // assert(bias < 8192);
+    return Xil_In32(BRAM_BASE + bias);
 }
 
-void test_write32(uint32_t value)
+void test_write32(uint32_t bias, uint32_t value)
 {
-    Xil_Out32(BRAM_BASE, value);
+    // assert(bias < 8192);
+    Xil_Out32(BRAM_BASE + bias, value);
 }
 
 void set_leds(uint32_t)
