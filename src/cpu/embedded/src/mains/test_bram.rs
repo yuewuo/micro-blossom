@@ -80,6 +80,17 @@ Results: APU is faster than RPU even when comparing latency
 The round-trip time is 217ns in APU and it's 300ns in RPU, even though AXI in RPU is closer to the RPU without
 going through complex interconnect.
 
+Note 2022.1.12: actually A72 can access the LPD port and R5F can access the FPD port, in exchange.
+This can be enabled by the comments "cross-access" in src/fpga/Xilinx/VMK180_BRAM/src/binding.h.
+With that experiment, I found that A72 is faster in write because it can issue multiple writes without waiting for it.
+However, when A72 access the BRAM through the LDP AXI port, it becomes slower, down to 160ns per read or 280ns per
+    read-write pair. This conincidence with R5F data which also shows 160ns read latency.
+On the other hand, when R5 accesses the BRAM through the FPD AXI port, it becomes a lot slower.
+In fact, both read and write goes down to 215ns or 220ns.
+Thus, the conclusion is A72 should use FPD AXI while R5F should use LPD AXI.
+We should build two vivado projects to test them (if needed) instead of a single one.
+To avoid confusion, I'll only instantiate the FPD AXI because we won't be using R5F for the speed test.
+
 A72:
 
 2. Write Speed Test

@@ -18,6 +18,13 @@ const UINTPTR BRAM_BASE = 0x80000000;
 const UINTPTR BRAM_BASE = 0xA4000000;
 #endif
 
+// // cross-access, not optimal, but could work (A72 access LPD AXI, R5F access FPD AXI...)
+// #ifdef ARMR5
+// const UINTPTR BRAM_BASE = 0xA4000000;
+// #else
+// const UINTPTR BRAM_BASE = 0x80000000;
+// #endif
+
 uint32_t test_read32(uint32_t bias)
 {
     // assert(bias < 8192);
