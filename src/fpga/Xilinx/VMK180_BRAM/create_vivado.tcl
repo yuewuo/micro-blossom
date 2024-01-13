@@ -2,9 +2,9 @@ set name vmk180_bram
 
 create_project ${name} ./${name}_vivado -part xcvm1802-vsva2197-2MP-e-S
 set_property board_part xilinx.com:vmk180:part0:3.2 [current_project]
-create_bd_design "Versal_APU_RPU_perf" -mode batch
+create_bd_design "${name}" -mode batch
 
-instantiate_example_design -template xilinx.com:design:Versal_APU_RPU_perf:1.0 -design Versal_APU_RPU_perf -options { Preset.VALUE LPDDR4 }
+instantiate_example_design -template xilinx.com:design:Versal_APU_RPU_perf:1.0 -design ${name} -options { Preset.VALUE LPDDR4 }
 
 update_compile_order -fileset sources_1
 
