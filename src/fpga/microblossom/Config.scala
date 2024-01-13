@@ -42,3 +42,19 @@ object VersalAxi4Config {
     )
   }
 }
+
+object MinimalAxi4Config {
+  def apply(addressWidth: Int = 12) = {
+    Axi4Config(
+      addressWidth = addressWidth,
+      dataWidth = 64,
+      useId = false,
+      useRegion = false,
+      useBurst = false,
+      useLock = false,
+      useCache = false,
+      useSize = false,
+      useQos = false
+    )
+  }
+}

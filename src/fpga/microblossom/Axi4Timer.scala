@@ -22,10 +22,10 @@ import microblossom.modules._
 import org.scalatest.funsuite.AnyFunSuite
 import scala.collection.mutable.ArrayBuffer
 
-case class Axi4Timer() extends Component {
+case class Axi4Timer(baseAddress: BigInt = 0, axi4Config: Axi4Config = VersalAxi4Config()) extends Component {
   val io = new Bundle {
     val s0 = slave(
-      Axi4(VersalAxi4Config())
+      Axi4(axi4Config)
     )
   }
 
@@ -34,7 +34,7 @@ case class Axi4Timer() extends Component {
   val counter = Reg(UInt(64 bits)) init 0
   counter := counter + 1
 
-  factory.read(counter, BigInt("A4000000", 16))
+  factory.read(counter, baseAddress)
 
   Axi4SpecRenamer(io.s0) // to follow the naming convention
 }
@@ -63,11 +63,28 @@ class Axi4TimerTest extends AnyFunSuite {
 
 }
 
-// sbt "runMain Axi4TimerGenerate <folder>"
-object Axi4TimerGenerate extends App {
+// sbt "runMain Axi4TimerDirect <folder>"
+// create an AXI4 interface that can be directly plugged in with Versal FPD AXI4
+object Axi4TimerDirect extends App {
   if (args.length != 1) {
     Console.err.println("usage: <folder>")
     sys.exit(1)
   }
-  Config.argFolderPath(args(0)).generateVerilog(Axi4Timer())
+  Config.argFolderPath(args(0)).generateVerilog(Axi4Timer(BigInt("A4000000", 16)))
+}
+
+// sbt "runMain Axi4TimerMinimal <folder>"
+object Axi4TimerMinimal extends App {
+  if (args.length != 1) {
+    Console.err.println("usage: <folder>")
+    sys.exit(1)
+  }
+  Config
+    .argFolderPath(args(0))
+    .generateVerilog(
+      Axi4Timer(
+        baseAddress = 0,
+        axi4Config = MinimalAxi4Config(addressWidth = 3) // 8 bytes
+      )
+    )
 }
