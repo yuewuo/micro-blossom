@@ -2,7 +2,7 @@
 name = "vmk180_axi4_timer"
 workspace = f"./{name}_vitis"
 
-cpu_ids = ["a72"]
+cpu_ids = ["r5", "a72"]
 cpus = [f"psv_cortex{id}_0" for id in cpu_ids]
 
 rust_project = "../../../cpu/embedded"

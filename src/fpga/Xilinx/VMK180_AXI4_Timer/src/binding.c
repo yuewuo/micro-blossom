@@ -17,7 +17,7 @@ const float TIMER_FREQUENCY = 200e6; // 200MHz
 
 uint64_t get_native_time()
 {
-    return Xil_In32(TIMER_BASE);
+    return Xil_In64(TIMER_BASE);
 }
 
 float diff_native_time(uint64_t start, uint64_t end)

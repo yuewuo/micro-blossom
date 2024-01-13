@@ -1,5 +1,6 @@
 use crate::binding::*;
 use crate::util::*;
+use core::hint::black_box;
 use core::sync::atomic::{compiler_fence, Ordering};
 
 /*
@@ -42,7 +43,7 @@ pub fn main() {
     sleep(1.);
     println!("[end] sleep for 1s");
 
-    println!("\n3. Test AXI4 speed")
+    println!("\n3. Test AXI4 speed");
     let mut timer_benchmarker = Benchmarker::new(|| {
         unsafe { black_box(extern_c::get_native_time()) };
     });
@@ -54,7 +55,7 @@ pub fn main() {
         println!("    start in {count}");
         sleep(1.);
     }
-    let mut start = unsafe { extern_c::get_native_time() };
+    let start = unsafe { extern_c::get_native_time() };
     for idx in 0..10000 {
         loop {
             compiler_fence(Ordering::SeqCst);

@@ -34,7 +34,7 @@ case class Axi4Timer() extends Component {
   val counter = Reg(UInt(64 bits)) init 0
   counter := counter + 1
 
-  factory.read(counter, 0)
+  factory.read(counter, BigInt("A4000000", 16))
 
   Axi4SpecRenamer(io.s0) // to follow the naming convention
 }
