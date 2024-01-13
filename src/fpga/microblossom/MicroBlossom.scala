@@ -37,30 +37,33 @@ case class VirtualMicroBlossom() extends Bundle {
   val status = Bits(16 bits)
 }
 
-case class MicroBlossom(config: DualConfig) extends Component {
+// max d=31 (31^3 < 32768), for 0.1% physical error rate we have 18 reported obstacles on average
+// since there is no need to save memory space (256MB), we just allocate whatever convenient
+// 1. 8KB control block at [0, 0x1000]
+//    0: (RO) 64 bits timer counter
+//    8: (RO) 32 bits version register
+//    12: (RO) 32 bits context depth
+//    16: (RO) 8 bits number of obstacle channels (we're not using 100+ obstacle channels...)
+//    24: (RW) (32 bits instruction, 16 bits context id)
+//    the following 4KB section is designed to allow burst writes (e.g. use xsdb "mwr -bin -file" command)
+//    0x1000: (RW) (32 bits instruction, 16 bits context id)
+//    0x1008: (RW) (32 bits instruction, 16 bits context id)
+//    0x1010: ... repeat for 512: in total 4KB space
+// 2. 2MB context readouts at [0x20_0000, 0x40_0000), each context is 4KB space
+//    0: (RO) 64 bits obstacle timestamp
+//    8: (RW) 32 bits grown value (for primal offloading)
+//
+//    32: (RO) 128 bits obstacle value [0]
+//    : (RO) 128 bits obstacle value [1]
+//    48: (RO) 128 bits obstacle value [2]
+//       ...
+case class MicroBlossom(
+    config: DualConfig,
+    baseAddress: BigInt = 0,
+    axi4Config: Axi4Config = VersalAxi4Config(addressWidth = log2Up(4 MiB))
+) extends Component {
   val io = new Bundle {
-    val bus = slave(
-      Axi4(
-        Axi4Config(
-          // max d=31 (31^3 < 32768), for 1% physical error rate we have 18 reported obstacles on average
-          // 16 byte control
-          //   (version 4, context depth 2, #channels 1,)
-          //   64-bit timer
-          // 16 byte message
-          //   (instruction 4, context_id 2)
-          //   (status 1, grown length: 2, context_id 2)
-          //
-          // following the vector values for each context entry
-          //   4 control (status 1, )
-          //   16 byte: 12 byte obstacle + 2 byte grown
-          // the rest are `config.obstacleChannels` separate memory spaces obstacles * 16 bytes each
-          addressWidth = log2Up(32 + 32 * config.obstacleChannels),
-          dataWidth = 64, // for less transaction
-          useId = false, // no need for now
-          useQos = false
-        )
-      )
-    )
+    val bus = slave(Axi4(axi4Config))
   }
 
   val factory = Axi4SlaveFactory(io.bus)
@@ -143,4 +146,15 @@ class MicroBlossomTest extends AnyFunSuite {
 
   }
 
+}
+
+// sbt "runMain MicroBlossomVerilog <config> <folder>"
+// e.g. sbt "runMain MicroBlossomVerilog ./resources/graphs/example_code_capacity_d3.json gen"
+object MicroBlossomVerilog extends App {
+  if (args.length != 2) {
+    Console.err.println("usage: <config> <folder>")
+    sys.exit(1)
+  }
+  val config = DualConfig(filename = args(0))
+  Config.argFolderPath(args(1)).generateVerilog(MicroBlossom(config))
 }

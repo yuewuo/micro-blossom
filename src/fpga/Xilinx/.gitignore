@@ -1,0 +1,6 @@
+*_verilog
+*_vivado
+*_vitis
+*.xsa
+
+binding.h
