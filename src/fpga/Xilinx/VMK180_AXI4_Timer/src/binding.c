@@ -12,7 +12,7 @@ void print_char(char c)
     putchar(c);
 }
 
-const UINTPTR TIMER_BASE = 0xA4000000;
+const UINTPTR TIMER_BASE = 0x400000000;
 const float TIMER_FREQUENCY = 200e6; // 200MHz
 
 uint64_t get_native_time()

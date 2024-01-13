@@ -31,9 +31,9 @@ object Config {
 }
 
 object VersalAxi4Config {
-  def apply() = {
+  def apply(addressWidth: Int = 44) = {
     Axi4Config(
-      addressWidth = 44,
+      addressWidth = addressWidth,
       dataWidth = 64,
       idWidth = 16,
       arUserWidth = 16,

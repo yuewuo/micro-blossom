@@ -70,7 +70,10 @@ object Axi4TimerDirect extends App {
     Console.err.println("usage: <folder>")
     sys.exit(1)
   }
-  Config.argFolderPath(args(0)).generateVerilog(Axi4Timer(BigInt("A4000000", 16)))
+  // [option 1] use full 44 bit address, but have to hardcode with base address, which is 0xA400_0000
+  // Config.argFolderPath(args(0)).generateVerilog(Axi4Timer(BigInt("A4000000", 16)))
+  // [option 2 (preferred)] use only 28 bit address, don't have to hardcode the base address anymore in the Verilog
+  Config.argFolderPath(args(0)).generateVerilog(Axi4Timer(axi4Config = VersalAxi4Config(addressWidth = 28))) // 256MB
 }
 
 // sbt "runMain Axi4TimerMinimal <folder>"
