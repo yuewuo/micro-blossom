@@ -3,9 +3,8 @@ use crate::util::*;
 use core::sync::atomic::{compiler_fence, Ordering};
 
 /*
-EMBEDDED_BLOSSOM_MAIN=test_get_time make Xilinx && make -C ../../fpga/Xilinx/VMK180_BRAM
-make -C ../../fpga/Xilinx/VMK180_BRAM run_a72
-make -C ../../fpga/Xilinx/VMK180_BRAM run_r5
+EMBEDDED_BLOSSOM_MAIN=test_axi4_timer make Xilinx && make -C ../../fpga/Xilinx/VMK180_AXI4_Timer
+make -C ../../fpga/Xilinx/VMK180_AXI4_Timer run_a72
 */
 
 /// check whether the get_time function works properly by using `nop_delay`
@@ -43,27 +42,24 @@ pub fn main() {
     sleep(1.);
     println!("[end] sleep for 1s");
 
-    println!("\n3. Test alignment");
+    println!("\n3. Test AXI4 speed")
+    let mut timer_benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::get_native_time()) };
+    });
+    timer_benchmarker.autotune();
+    timer_benchmarker.run(3);
+
+    println!("\n4. Test alignment");
     for count in [3, 2, 1] {
         println!("    start in {count}");
         sleep(1.);
     }
     let mut start = unsafe { extern_c::get_native_time() };
-    let mut global_diff = 0.;
-    // note: this complex implementation is needed because some timer implementation is not capable of
-    // recording long time difference, e.g., in Versal board A72 they have 32 bit timer clocked at 150MHz: only capable
-    // of recording 28.6s difference. We need to actively accumulating the global timer.
     for idx in 0..10000 {
         loop {
             compiler_fence(Ordering::SeqCst);
             let end = unsafe { extern_c::get_native_time() };
-            let local_diff = unsafe { extern_c::diff_native_time(start, end) } as f64;
-            let diff = global_diff + local_diff;
-            // avoid overflow by moving the start every 0.5s
-            if local_diff > 0.5 {
-                start = end;
-                global_diff += local_diff;
-            }
+            let diff = unsafe { extern_c::diff_native_time(start, end) } as f64;
             if diff >= idx as f64 {
                 println!("tick {idx}");
                 break;

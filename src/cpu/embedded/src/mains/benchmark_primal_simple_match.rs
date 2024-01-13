@@ -5,6 +5,12 @@ use core::hint::black_box;
 use konst::{option, primitive::parse_usize, result::unwrap_ctx};
 use micro_blossom_nostd::benchmark::primal_simple_match::*;
 
+/*
+EMBEDDED_BLOSSOM_MAIN=benchmark_primal_simple_match make Xilinx && make -C ../../fpga/Xilinx/VMK180_BRAM
+make -C ../../fpga/Xilinx/VMK180_BRAM run_a72
+make -C ../../fpga/Xilinx/VMK180_BRAM run_r5
+*/
+
 // the value should be 2^k, otherwise it's a lot slower to initialize
 // given 256KB memory, maximum size is 256 * 1024 / 34 / 2 = 3855, but other sections may also use some memory
 // 3800 guarantees to support up to d=15, but given physical error rate below threshold, it supports d=31 without a problem

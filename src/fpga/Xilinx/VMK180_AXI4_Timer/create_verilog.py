@@ -4,12 +4,11 @@ Create the verilog file from Scala in a certain folder relative to this script
 
 import os
 import subprocess
-
-target_name = "vmk180_axi4_timer_verilog"
+from common import *
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_path = os.path.abspath(os.path.join(script_dir, "..", "..", "..", ".."))
-target_path = os.path.join(script_dir, target_name)
+target_path = os.path.join(script_dir, f"{name}_verilog")
 
 assert os.path.exists(os.path.join(project_path, "build.sbt")), "wrong project path"
 

@@ -2,6 +2,12 @@ use crate::binding::*;
 use crate::util::*;
 use core::hint::black_box;
 
+/*
+EMBEDDED_BLOSSOM_MAIN=test_bram make Xilinx && make -C ../../fpga/Xilinx/VMK180_BRAM
+make -C ../../fpga/Xilinx/VMK180_BRAM run_a72
+make -C ../../fpga/Xilinx/VMK180_BRAM run_r5
+*/
+
 pub fn main() {
     println!("\n1. Simple BRAM read/write");
     let value = 1234;

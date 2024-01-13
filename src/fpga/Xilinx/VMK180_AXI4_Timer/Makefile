@@ -1,4 +1,4 @@
-NAME = vmk180_bram
+NAME = vmk180_axi4_timer
 
 VIVADO_DIR = $(NAME)_vivado
 XSA_FILE = $(NAME).xsa
@@ -25,18 +25,10 @@ vitis: $(XSA_FILE)
 	@echo creating vitis workspace at $(VITIS_DIR)
 	vitis -s create_vitis.py
 
-R5_ELF = ./$(VITIS_DIR)/benchmark_r5/build/benchmark_r5.elf
 A72_ELF = ./$(VITIS_DIR)/benchmark_a72/build/benchmark_a72.elf
 
-$(R5_ELF):
-	$(MAKE) vitis
 $(A72_ELF):
 	$(MAKE) vitis
-
-run_r5: $(R5_ELF)
-	xsdb ./run_xsdb.tcl run_r5
-run_r5_q: $(R5_ELF)
-	xsdb ./run_xsdb.tcl run_r5 quick
 
 run_a72: $(A72_ELF)
 	xsdb ./run_xsdb.tcl run_a72
@@ -47,6 +39,7 @@ clean:
 	@read -p "Building the project from scratch takes a long time. Do you want to delete it? [y/N]: " answer; \
 	if [ "$$answer" = "y" ]; then \
 		echo "cleaning..."; \
+		rm -rf $(NAME)_verilog; \
 		rm -rf $(NAME)_vitis; \
 		rm -rf $(NAME)_vivado; \
 		rm -f *.xsa; \
