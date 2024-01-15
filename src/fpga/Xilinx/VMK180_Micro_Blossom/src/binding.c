@@ -34,3 +34,19 @@ MicroBlossomHardwareInfo get_hardware_info()
     hardware_info.obstacle_channels = Xil_In8(UB_BASE + 16);
     return hardware_info;
 }
+
+void clear_instruction_counter()
+{
+    Xil_Out32(UB_BASE + 20, 0);
+}
+
+uint32_t get_instruction_counter()
+{
+    return Xil_In32(UB_BASE + 20);
+}
+
+void execute_instruction(uint32_t instruction, uint16_t context_id)
+{
+    uint64_t data = ((uint64_t)instruction) | (((uint64_t)context_id) << 32);
+    Xil_Out64(UB_BASE + 4096, data);
+}

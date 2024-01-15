@@ -38,7 +38,11 @@ pub mod extern_c {
         pub fn get_native_time() -> uint64_t;
         pub fn diff_native_time(start: uint64_t, end: uint64_t) -> c_float;
         pub fn find_obstacle() -> Obstacle;
+
         pub fn get_hardware_info() -> MicroBlossomHardwareInfo;
+        pub fn clear_instruction_counter();
+        pub fn get_instruction_counter() -> uint32_t;
+        pub fn execute_instruction(instruction: uint32_t, context_id: uint16_t);
     }
 }
 

@@ -12,6 +12,7 @@ import spinal.lib.bus.amba4.axi._
 import spinal.lib.bus.amba4.axilite._
 import spinal.lib.bus.amba4.axilite.sim._
 import spinal.lib.bus.regif._
+import spinal.lib.bus.misc._
 import spinal.core.sim._
 import microblossom._
 import microblossom.util._
@@ -44,10 +45,10 @@ case class VirtualMicroBlossom() extends Bundle {
 //    8: (RO) 32 bits version register
 //    12: (RO) 32 bits context depth
 //    16: (RO) 8 bits number of obstacle channels (we're not using 100+ obstacle channels...)
-//    24: (RW) (32 bits instruction, 16 bits context id)
+//    20: (RW) 32 bits instruction counter
 //    the following 4KB section is designed to allow burst writes (e.g. use xsdb "mwr -bin -file" command)
-//    0x1000: (RW) (32 bits instruction, 16 bits context id)
-//    0x1008: (RW) (32 bits instruction, 16 bits context id)
+//    0x1000: (WO) (32 bits instruction, 16 bits context id)
+//    0x1008: (WO) (32 bits instruction, 16 bits context id)
 //    0x1010: ... repeat for 512: in total 4KB space
 // 2. 2MB context readouts at [0x20_0000, 0x40_0000), each context is 4KB space
 //    0: (RO) 64 bits obstacle timestamp
@@ -79,12 +80,26 @@ case class MicroBlossom(
   // 12: (RO) 32 bits context depth
   // 16: (RO) 8 bits number of obstacle channels (we're not using 100+ obstacle channels...)
   val hardwareInfo = new Area {
-    // micro-blossom version
-    factory.read(U(DualConfig.version, 32 bits), baseAddress + 8)
-    // context depth
-    factory.read(U(config.contextDepth, 32 bits), baseAddress + 8, bitOffset = 32)
-    // the number of obtacle channels
-    factory.read(U(config.obstacleChannels, 8 bits), baseAddress + 16)
+    factory.read(U(DualConfig.version, 32 bits), baseAddress + 8, documentation = "micro-blossom version")
+    factory.read(U(config.contextDepth, 32 bits), baseAddress + 8, bitOffset = 32, documentation = "context depth")
+    factory.read(U(config.obstacleChannels, 8 bits), baseAddress + 16, documentation = "the number of obtacle channels")
+    val instructionCounter =
+      factory.createReadAndWrite(
+        UInt(32 bits),
+        baseAddress + 16,
+        bitOffset = 32,
+        documentation = "instruction counter"
+      ) init (0)
+  }
+
+  val instruction = new Area {
+    factory.onWritePrimitive(
+      SizeMapping(base = baseAddress + 4096, size = 4096),
+      haltSensitive = false,
+      documentation = "instruction array"
+    ) {
+      hardwareInfo.instructionCounter := hardwareInfo.instructionCounter + 1
+    }
   }
 
   Axi4SpecRenamer(io.s0)
