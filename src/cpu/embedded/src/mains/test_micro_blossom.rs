@@ -19,4 +19,9 @@ pub fn main() {
 
     println!("\n1. Timer Sanity Check");
     sanity_check_get_time();
+
+    println!("\n2. Read Hardware Information");
+    let hardware_info = unsafe { extern_c::get_hardware_info() };
+    println!("version: {:#08x}", hardware_info.version);
+    println!("{hardware_info:#?}");
 }

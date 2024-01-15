@@ -75,54 +75,17 @@ case class MicroBlossom(
     factory.read(value, baseAddress + 0)
   }
 
-  // val busif = AxiLite4BusInterface(io.bus, (0x000, 32 Byte))
-  // // control register
-  // val control = busif.newRegAt(address = 0, doc = "control registers")
-  // // note: although SpinalHDL recommend the use of `ROV`, it doesn't generate the name properly
-  // // thus I still use the old `RO` method
-  // control.field(32 bits, AccessType.RO, DualConfig.version, doc = "micro-blossom version")(
-  //   SymbolName("version")
-  // ) := DualConfig.version
-  // control.field(16 bits, AccessType.RO, config.contextDepth, doc = "context depth")(
-  //   SymbolName("context_depth")
-  // ) := config.contextDepth
-  // control.field(8 bits, AccessType.RO, config.obstacleChannels, doc = "the number of obtacle channels")(
-  //   SymbolName("obstacle_channels")
-  // ) := config.obstacleChannels
-
-  // // timer register
-  // val timerReg = busif.newRegAt(address = 8, doc = "64-bit timer")
-  // val
-  // timerReg.field(32 bits, AccessType.RO, DualConfig.version, doc = "micro-blossom version")(
-  //   SymbolName("version")
-  // ) := DualConfig.version
-
-  // val obstacles = ArrayBuffer[Bits]()
-  // for (channelId <- 0 until config.obstacleChannels) {
-  //   val obstacle_upper =
-  //     busif.newRegAt(address = 32 + channelId * 16, doc = s"obstacle $channelId upper half")(
-  //       SymbolName(s"obstacle_${channelId}_upper")
-  //     )
-  //   val obstacle_lower =
-  //     busif.newRegAt(address = 32 + channelId * 16 + 8, doc = s"obstacle $channelId lower half")(
-  //       SymbolName(s"obstacle_${channelId}_lower")
-  //     )
-  //   val obstacle = Reg(Bits(128 bit)) init 0
-  //   obstacle := obstacle | busif.writeData.resized
-  //   obstacle_upper.field(64 bits, AccessType.RO)(SymbolName("value")) := obstacle(127 downto 64)
-  //   obstacle_lower.field(64 bits, AccessType.RO)(SymbolName("value")) := obstacle(63 downto 0)
-  //   obstacles.append(obstacle)
-  // }
-
-  // def genDocs() = {
-  //   busif.accept(CHeaderGenerator("MicroBlossom", "MicroBlossom"))
-  //   busif.accept(HtmlGenerator("MicroBlossom", "MicroBlossom"))
-  //   busif.accept(JsonGenerator("MicroBlossom"))
-  //   // busif.accept(RalfGenerator("MicroBlossom"))
-  //   // busif.accept(SystemRdlGenerator("MicroBlossom", "MicroBlossom"))
-  // }
-
-  // this.genDocs()
+  // 8: (RO) 32 bits version register
+  // 12: (RO) 32 bits context depth
+  // 16: (RO) 8 bits number of obstacle channels (we're not using 100+ obstacle channels...)
+  val hardwareInfo = new Area {
+    // micro-blossom version
+    factory.read(U(DualConfig.version, 32 bits), baseAddress + 8)
+    // context depth
+    factory.read(U(config.contextDepth, 32 bits), baseAddress + 8, bitOffset = 32)
+    // the number of obtacle channels
+    factory.read(U(config.obstacleChannels, 8 bits), baseAddress + 16)
+  }
 
   Axi4SpecRenamer(io.s0)
 }
@@ -156,7 +119,7 @@ class MicroBlossomTest extends AnyFunSuite {
 }
 
 // sbt "runMain MicroBlossomVerilog <config> <folder>"
-// e.g. sbt "runMain MicroBlossomVerilog ./resources/graphs/example_code_capacity_d3.json gen"
+// (e.g.) sbt "runMain MicroBlossomVerilog ./resources/graphs/example_code_capacity_d3.json gen"
 object MicroBlossomVerilog extends App {
   if (args.length != 2) {
     Console.err.println("usage: <config> <folder>")

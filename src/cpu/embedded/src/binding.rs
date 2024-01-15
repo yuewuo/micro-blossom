@@ -22,6 +22,14 @@ pub mod extern_c {
         pub vertex_2: uint16_t,
     }
 
+    #[derive(Debug, Clone)]
+    #[repr(C)]
+    pub struct MicroBlossomHardwareInfo {
+        pub version: uint32_t,
+        pub context_depth: uint32_t,
+        pub obstacle_channels: uint8_t,
+    }
+
     extern "C" {
         pub fn print_char(c: c_char);
         pub fn test_write32(bias: uint32_t, value: uint32_t);
@@ -30,6 +38,7 @@ pub mod extern_c {
         pub fn get_native_time() -> uint64_t;
         pub fn diff_native_time(start: uint64_t, end: uint64_t) -> c_float;
         pub fn find_obstacle() -> Obstacle;
+        pub fn get_hardware_info() -> MicroBlossomHardwareInfo;
     }
 }
 

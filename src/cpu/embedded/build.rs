@@ -24,6 +24,9 @@ fn get_cargo_target_dir() -> Result<std::path::PathBuf, Box<dyn std::error::Erro
 fn main() {
     println!("cargo:rerun-if-env-changed=EMBEDDED_BLOSSOM_MAIN");
     println!("cargo:rerun-if-env-changed=MAX_NODE_NUM");
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=src/binding.rs");
+
     let out_dir = env::var("OUT_DIR").expect("No out dir");
     let embedded_blossom_main = env::var("EMBEDDED_BLOSSOM_MAIN").unwrap_or_else(|_| "hello_world".to_string());
     let dest_path = Path::new(&out_dir);
@@ -55,7 +58,5 @@ fn main() {
         println!("cargo:rustc-link-search={}", dest_path.display());
 
         println!("cargo:rerun-if-changed=riscv-memory.x");
-        println!("cargo:rerun-if-changed=build.rs");
-        println!("cargo:rerun-if-changed=src/binding.rs");
     }
 }

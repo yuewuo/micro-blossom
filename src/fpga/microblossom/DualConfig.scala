@@ -7,7 +7,7 @@ import collection.mutable.ArrayBuffer
 import org.scalatest.funsuite.AnyFunSuite
 
 object DualConfig {
-  def version = Integer.parseInt("24" + "01" + "10" + "c0", 16) // year - month - date - 'c'revision
+  def version = Integer.parseInt("24" + "01" + "14" + "c0", 16) // year - month - date - 'c'revision
 }
 
 case class DualConfig(
