@@ -68,6 +68,13 @@ case class MicroBlossom(
 
   val factory = Axi4SlaveFactory(io.s0)
 
+  // 0: (RO) 64 bits timer counter
+  val counter = new Area {
+    val value = Reg(UInt(64 bits)) init 0
+    value := value + 1
+    factory.read(value, baseAddress + 0)
+  }
+
   // val busif = AxiLite4BusInterface(io.bus, (0x000, 32 Byte))
   // // control register
   // val control = busif.newRegAt(address = 0, doc = "control registers")
