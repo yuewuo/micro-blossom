@@ -1,10 +1,11 @@
+package microblossom
+
 /*
  * # 64 bit timer
  *
  * This module provides an alternative for the implementation of `get_native_time`, which
  * is 32 bit and too naive. Also, this module helps me to learn how to create an AXI4-compatible
  * package, so that more complex designs could follow.
- *
  *
  */
 

@@ -16,4 +16,4 @@ if not os.path.exists(target_path):
     os.makedirs(target_path)
 
 # call sbt to generate the verilog at `target_path`
-subprocess.Popen(f'sbt "runMain Axi4TimerMinimal {target_path}"', shell=True, cwd=project_path).wait()
+subprocess.Popen(f'sbt "runMain microblossom.Axi4TimerMinimal {target_path}"', shell=True, cwd=project_path).wait()

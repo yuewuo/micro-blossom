@@ -37,12 +37,12 @@ MicroBlossomHardwareInfo get_hardware_info()
 
 void clear_instruction_counter()
 {
-    Xil_Out32(UB_BASE + 20, 0);
+    Xil_Out32(UB_BASE + 24, 0);
 }
 
 uint32_t get_instruction_counter()
 {
-    return Xil_In32(UB_BASE + 20);
+    return Xil_In32(UB_BASE + 24);
 }
 
 void execute_instruction(uint32_t instruction, uint16_t context_id)
