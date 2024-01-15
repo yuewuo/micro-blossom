@@ -4,10 +4,21 @@ VIVADO_DIR = $(NAME)_vivado
 XSA_FILE = $(NAME).xsa
 VITIS_DIR = $(NAME)_vitis
 
+DUAL_CONFIG_FILEPATH ?=
+
 all: vitis
 
 $(XSA_FILE):
 	@echo generating hardware platform description \($(XSA_FILE)\) using Vivado
+
+	@if [ "$(DUAL_CONFIG_FILEPATH)" = "" ]; then \
+		echo "DUAL_CONFIG_FILEPATH is not set, required for building vivado project"; \
+		exit 1; \
+	fi
+	@if ! [ -f "$(DUAL_CONFIG_FILEPATH)" ]; then \
+		echo "$(DUAL_CONFIG_FILEPATH) does not exist"; \
+		exit 1; \
+	fi
 
 	@if [ -d "$(VIVADO_DIR)" ]; then \
 		read -p "$(VIVADO_DIR) exists. Do you want to delete it? [y/N]: " answer; \
@@ -19,7 +30,7 @@ $(XSA_FILE):
 			exit 1; \
 		fi \
 	fi
-	vivado -mode batch -s create_vivado.tcl
+	vivado -mode batch -s create_vivado.tcl -tclargs $(DUAL_CONFIG_FILEPATH)
 
 vitis: $(XSA_FILE)
 	@echo creating vitis workspace at $(VITIS_DIR)

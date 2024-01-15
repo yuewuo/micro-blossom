@@ -1,6 +1,14 @@
 set name vmk180_micro_blossom
 set ip_name MicroBlossom
 
+if { $argc != 1 } {
+    puts "Usage: <dual_config_filepath>"
+    puts "Please try again."
+    exit 1
+} else {
+    set dual_config_filepath [lindex $argv 0]
+}
+
 create_project ${name} ./${name}_vivado -part xcvm1802-vsva2197-2MP-e-S
 set_property board_part xilinx.com:vmk180:part0:3.2 [current_project]
 create_bd_design "${name}" -mode batch
@@ -11,7 +19,7 @@ instantiate_example_design -template xilinx.com:design:Versal_APU_RPU_perf:1.0 -
 
 # create IP
 exec rm -rf ${name}_verilog
-exec python3 ./create_verilog.py
+exec python3 ./create_verilog.py "$dual_config_filepath"
 ipx::infer_core -vendor user.org -library user -taxonomy /UserIP ./${name}_verilog
 ipx::unload_core ${name}_verilog/component.xml
 set_property ip_repo_paths ${name}_verilog [current_project]
@@ -48,7 +56,7 @@ connect_bd_net [get_bd_pins versal_cips_0/pl0_ref_clk] [get_bd_pins proc_sys_res
 
 # assign address
 assign_bd_address -target_address_space /versal_cips_0/M_AXI_FPD [get_bd_addr_segs ${ip_name}_0/s0/reg0] -force
-set_property range 4MB [get_bd_addr_segs versal_cips_0/M_AXI_FPD/SEG_${ip_name}_0_reg0]
+set_property range 4M [get_bd_addr_segs versal_cips_0/M_AXI_FPD/SEG_${ip_name}_0_reg0]
 set_property offset 0x400000000 [get_bd_addr_segs versal_cips_0/M_AXI_FPD/SEG_${ip_name}_0_reg0]
 
 # # create an ILA to monitor the transactions

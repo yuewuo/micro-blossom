@@ -63,10 +63,10 @@ case class MicroBlossom(
     axi4Config: Axi4Config = VersalAxi4Config(addressWidth = log2Up(4 MiB))
 ) extends Component {
   val io = new Bundle {
-    val bus = slave(Axi4(axi4Config))
+    val s0 = slave(Axi4(axi4Config))
   }
 
-  val factory = Axi4SlaveFactory(io.bus)
+  val factory = Axi4SlaveFactory(io.s0)
 
   // val busif = AxiLite4BusInterface(io.bus, (0x000, 32 Byte))
   // // control register
@@ -117,7 +117,7 @@ case class MicroBlossom(
 
   // this.genDocs()
 
-  Axi4SpecRenamer(io.bus)
+  Axi4SpecRenamer(io.s0)
 }
 
 // sbt 'testOnly *MicroBlossomTest'

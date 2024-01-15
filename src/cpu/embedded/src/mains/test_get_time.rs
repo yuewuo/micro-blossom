@@ -9,7 +9,7 @@ make -C ../../fpga/Xilinx/VMK180_BRAM run_r5
 */
 
 /// check whether the get_time function works properly by using `nop_delay`
-fn sanity_check() {
+pub fn sanity_check() {
     let start = unsafe { extern_c::get_native_time() };
     compiler_fence(Ordering::SeqCst);
     nop_delay(2 * 1000 * 1000 * 5); // assuming the CPU is not faster than 5GHz, such delay should be more than 2ms
