@@ -313,6 +313,8 @@ name = "micro-blossom-nostd"
 version = "0.0.0"
 dependencies = [
  "cfg-if",
+ "num-derive",
+ "num-traits",
  "panic-halt",
 ]
 

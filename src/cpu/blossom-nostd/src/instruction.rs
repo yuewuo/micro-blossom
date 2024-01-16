@@ -64,11 +64,19 @@ impl Instruction32 {
         FromPrimitive::from_u32((self.0 >> 15) & ((1 << 2) - 1)).unwrap()
     }
 
+    #[cfg(any(test, feature = "std"))]
     pub fn string_detailed(self) -> String {
         format!("{:?} = {:#08X} = {} = {:#032b}", self, self.0, self.0, self.0)
     }
+    #[cfg(any(test, feature = "std"))]
     pub fn print_detailed(self) {
         println!("{}", self.string_detailed());
+    }
+}
+
+impl Into<u32> for Instruction32 {
+    fn into(self) -> u32 {
+        self.0
     }
 }
 

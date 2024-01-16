@@ -47,6 +47,10 @@ uint32_t get_instruction_counter()
 
 void execute_instruction(uint32_t instruction, uint16_t context_id)
 {
+#ifdef ARMR5
+#error "not implemented"
+#else
     uint64_t data = ((uint64_t)instruction) | (((uint64_t)context_id) << 32);
     Xil_Out64(UB_BASE + 4096, data);
+#endif
 }

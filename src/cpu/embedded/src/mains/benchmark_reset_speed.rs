@@ -1,0 +1,47 @@
+use crate::binding::*;
+use crate::mains::test_get_time::sanity_check as sanity_check_get_time;
+use crate::util::*;
+use core::hint::black_box;
+use micro_blossom_nostd::instruction::*;
+
+/*
+ * when building the Vivado project, we need to specify the dual config; also run "make clean" when HDL changes
+make -C ../../fpga/Xilinx/VMK180_Micro_Blossom clean
+make -C ../../fpga/Xilinx/VMK180_Micro_Blossom DUAL_CONFIG_FILEPATH=$(pwd)/../../../resources/graphs/example_circuit_level_d3.json
+ * later on when we only build the Vitis project, there is no need to specify the dual config path
+EMBEDDED_BLOSSOM_MAIN=benchmark_reset_speed make Xilinx && make -C ../../fpga/Xilinx/VMK180_Micro_Blossom
+make -C ../../fpga/Xilinx/VMK180_Micro_Blossom run_a72
+*/
+
+pub fn main() {
+    println!("Benchmark Reset Speed");
+
+    println!("\n1. Timer Sanity Check");
+    sanity_check_get_time();
+
+    println!("\n2. Read Hardware Information");
+    let hardware_info = unsafe { extern_c::get_hardware_info() };
+    println!("version: {:#08x}", hardware_info.version);
+    println!("{hardware_info:#?}");
+
+    println!("\n3. Benchmark Single Context Reset");
+    let mut instruction_benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::execute_instruction(Instruction32::reset().into(), 0)) };
+    });
+    instruction_benchmarker.autotune();
+    instruction_benchmarker.run(3);
+
+    println!("\n4. Benchmark Multi Context Reset");
+    let context_count = core::cmp::min(32, hardware_info.context_depth);
+    if context_count == 1 {
+        println!("[warning] only one context is supported by hardware");
+    }
+    let mut instruction_benchmarker = Benchmarker::new(|| {
+        for context_id in 0..context_count as u16 {
+            unsafe { black_box(extern_c::execute_instruction(Instruction32::reset().into(), context_id)) };
+        }
+    });
+    instruction_benchmarker.inner_loops = context_count as usize;
+    instruction_benchmarker.autotune();
+    instruction_benchmarker.run(3);
+}
