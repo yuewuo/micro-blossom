@@ -74,7 +74,7 @@ object ExtendedOpCode {
   def Reserved = Integer.parseInt("011", 2)
   def Reset = Integer.parseInt("100", 2)
   def LoadSyndromeExternal = Integer.parseInt("101", 2)
-  def AddDefectVertex = Integer.parseInt("0110", 2)
+  def AddDefectVertex = Integer.parseInt("110", 2)
   def Reserved2 = Integer.parseInt("111", 2)
 }
 

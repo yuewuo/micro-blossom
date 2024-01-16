@@ -1,4 +1,5 @@
 pub use crate::nonmax;
+use num_derive::FromPrimitive;
 
 cfg_if::cfg_if! {
     if #[cfg(feature="u16_index")] {
@@ -34,7 +35,7 @@ cfg_if::cfg_if! {
 pub type TreeDepth = usize;
 
 #[repr(u8)]
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, FromPrimitive)]
 pub enum CompactGrowState {
     Stay = 0,
     Grow = 1,

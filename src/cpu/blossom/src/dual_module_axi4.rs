@@ -11,6 +11,7 @@ use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
+use micro_blossom_nostd::instruction::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
 use rand::{distributions::Alphanumeric, Rng};
@@ -25,6 +26,8 @@ use wait_timeout::ChildExt;
 pub struct DualModuleAxi4Driver {
     pub link: Mutex<Link>,
     pub host_name: String,
+    pub use64bus: bool,
+    pub context_id: u16,
 }
 
 pub struct Link {
@@ -71,6 +74,8 @@ impl DualModuleAxi4Driver {
         assert_eq!(line, "simulation started\n");
         let mut value = Self {
             host_name,
+            use64bus,
+            context_id: 0,
             link: Mutex::new(Link {
                 port,
                 child,
@@ -90,16 +95,23 @@ impl DualModuleAxi4Driver {
             .collect();
         Self::new_with_name(initializer, host_name)
     }
+
+    pub fn execute_instruction(&mut self, instruction: Instruction32, context_id: u16) {
+        if self.use64bus {
+            let data = (instruction.0 as u64) | ((context_id as u64) << 32);
+            write!(self.link.lock().unwrap().writer, "write(4096, {data})\n").unwrap();
+        } else {
+            unimplemented!()
+        }
+    }
 }
 
 impl DualStacklessDriver for DualModuleAxi4Driver {
     fn reset(&mut self) {
-        // write!(self.link.lock().unwrap().writer, "reset()\n").unwrap();
-        unimplemented!()
+        self.execute_instruction(Instruction32::reset(), self.context_id)
     }
     fn set_speed(&mut self, _is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState) {
-        // write!(self.link.lock().unwrap().writer, "set_speed({node}, {speed:?})\n").unwrap();
-        unimplemented!()
+        self.execute_instruction(Instruction32::set_speed(node, speed), self.context_id)
     }
     fn set_blossom(&mut self, node: CompactNodeIndex, blossom: CompactNodeIndex) {
         // write!(self.link.lock().unwrap().writer, "set_blossom({node}, {blossom})\n").unwrap();
@@ -232,9 +244,6 @@ mod tests {
     // to use visualization, we need the folder of fusion-blossom repo
     // e.g. export FUSION_DIR=/Users/wuyue/Documents/GitHub/fusion-blossom
 
-    /// reported the wrong virtual matching;
-    /// reason: vertex 1 should have been propagated by its neighbor 0 but it's not
-    /// reason: mis-type `when(updateValid) {` to `when(executeValid) {`
     #[test]
     fn dual_module_axi4_basic_1() {
         // cargo test dual_module_axi4_basic_1 -- --nocapture

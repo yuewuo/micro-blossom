@@ -6,6 +6,7 @@ pub mod blossom_tracker;
 pub mod dual_driver_tracked;
 pub mod dual_module_stackless;
 pub mod heapless;
+pub mod instruction;
 pub mod interface;
 pub mod nonmax;
 pub mod primal_module_embedded;
