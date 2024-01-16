@@ -48,7 +48,7 @@ case class VirtualMicroBlossom() extends Bundle {
 //    8: (RO) 32 bits version register
 //    12: (RO) 32 bits context depth
 //    16: (RO) 8 bits number of obstacle channels (we're not using 100+ obstacle channels...)
-//    20: (RW) 32 bits instruction counter
+//    24: (RW) 32 bits instruction counter
 //  - (64 bits only) the following 4KB section is designed to allow burst writes (e.g. use xsdb "mwr -bin -file" command)
 //    0x1000: (WO) (32 bits instruction, 16 bits context id)
 //    0x1008: (WO) (32 bits instruction, 16 bits context id)
@@ -211,14 +211,19 @@ class MicroBlossomTest extends AnyFunSuite {
 
     Config.sim
       .compile(MicroBlossomAxiLite4(config))
+      // .compile(MicroBlossomAxiLite4Bus32(config))
       .doSim("logic validity") { dut =>
         dut.clockDomain.forkStimulus(period = 10)
 
-      val driver = AxiLite4Driver(dut.io.s0, dut.clockDomain)
-      driver.reset()
+        val driver = AxiLite4TypedDriver(dut.io.s0, dut.clockDomain)
 
-      val version = driver.read(8)
-      printf("version: %x\n", version)
+        val version = driver.read_32(8)
+        printf("version: %x\n", version)
+        assert(version == DualConfig.version)
+        val contextDepth = driver.read_32(12)
+        assert(contextDepth == config.contextDepth)
+        val obstacleChannels = driver.read_8(16)
+        assert(obstacleChannels == config.obstacleChannels)
       }
 
   }
