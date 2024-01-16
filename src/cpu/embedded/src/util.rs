@@ -32,6 +32,10 @@ where
     pub routine: F,
     pub batch_size: usize,
     pub inner_loops: usize,
+    /// each train step takes at least these amount of time
+    pub train_time: f64,
+    /// each batch will approximately take this amount of time
+    pub batch_time: f64,
 }
 
 impl<F> Benchmarker<F>
@@ -43,6 +47,8 @@ where
             routine,
             batch_size: 1,
             inner_loops: 1,
+            train_time: if cfg![feature = "tiny_benchmark_time"] { 1e-5 } else { 0.1 },
+            batch_time: if cfg![feature = "tiny_benchmark_time"] { 1e-4 } else { 1.0 },
         }
     }
 
@@ -66,8 +72,8 @@ where
                 println!("the routine takes too long, potentially cause timer overflow, abort");
                 panic!();
             }
-            if diff >= 0.1 {
-                batch_size = core::cmp::max(1, (1.0 / diff * (batch_size as f64)) as usize);
+            if diff >= self.train_time {
+                batch_size = core::cmp::max(1, (self.batch_time / diff * (batch_size as f64)) as usize);
                 break;
             }
             batch_size *= 2;

@@ -20,7 +20,7 @@ cfg_if::cfg_if! {
 #[derive(Parser, Clone)]
 #[clap(author = clap::crate_authors!(", "))]
 #[clap(version = env!("CARGO_PKG_VERSION"))]
-#[clap(about = "Fusion Blossom Algorithm for fast Quantum Error Correction Decoding")]
+#[clap(about = "Micro Blossom Algorithm for fast Quantum Error Correction Decoding")]
 #[clap(color = clap::ColorChoice::Auto)]
 #[clap(propagate_version = true)]
 #[clap(subcommand_required = true)]

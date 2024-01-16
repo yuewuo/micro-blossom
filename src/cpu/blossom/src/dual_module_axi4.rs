@@ -7,6 +7,7 @@
 use crate::dual_module_adaptor::*;
 use crate::resources::*;
 use crate::util::*;
+use embedded_blossom::extern_c::MicroBlossomHardwareInfo;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::dual_driver_tracked::*;
@@ -21,6 +22,7 @@ use std::io::{BufReader, LineWriter};
 use std::net::{TcpListener, TcpStream};
 use std::process::{Child, Command};
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 use wait_timeout::ChildExt;
 
 pub struct DualModuleAxi4Driver {
@@ -28,6 +30,7 @@ pub struct DualModuleAxi4Driver {
     pub host_name: String,
     pub use64bus: bool,
     pub context_id: u16,
+    pub simulation_duration: Duration,
 }
 
 pub struct Link {
@@ -46,7 +49,10 @@ impl DualInterfaceWithInitializer for DualModuleAxi4 {
 }
 
 impl DualModuleAxi4Driver {
-    pub fn new_with_name(initializer: &SolverInitializer, host_name: String) -> std::io::Result<Self> {
+    pub fn new_with_name_raw(mut micro_blossom: MicroBlossomSingle, host_name: String) -> std::io::Result<Self> {
+        // TODO: later on support offloading
+        micro_blossom.offloading.0.clear();
+
         let use64bus = true;
         let hostname = "127.0.0.1";
         let listener = TcpListener::bind(format!("{hostname}:0"))?;
@@ -63,9 +69,6 @@ impl DualModuleAxi4Driver {
         let mut line = String::new();
         reader.read_line(&mut line)?;
         assert_eq!(line, "MicroBlossomHost v0.0.1, ask for decoding graph\n", "handshake error");
-        // in simulation, positions doesn't matter because it's not going to affect the timing constraint
-        let mut micro_blossom = MicroBlossomSingle::new_initializer_only(initializer);
-        micro_blossom.offloading.0.clear(); // TODO: later on support offloading
         write!(writer, "{}\n", serde_json::to_string(&micro_blossom).unwrap())?;
         write!(writer, "{}\n", if cfg!(test) { "with waveform" } else { "no waveform" })?;
         write!(writer, "{}\n", if use64bus { "64 bits bus" } else { "32 bits bus" })?;
@@ -76,6 +79,7 @@ impl DualModuleAxi4Driver {
             host_name,
             use64bus,
             context_id: 0,
+            simulation_duration: Duration::ZERO,
             link: Mutex::new(Link {
                 port,
                 child,
@@ -87,6 +91,11 @@ impl DualModuleAxi4Driver {
         Ok(value)
     }
 
+    pub fn new_with_name(initializer: &SolverInitializer, host_name: String) -> std::io::Result<Self> {
+        // in simulation, positions doesn't matter because it's not going to affect the timing constraint
+        Self::new_with_name_raw(MicroBlossomSingle::new_initializer_only(initializer), host_name)
+    }
+
     pub fn new(initializer: &SolverInitializer) -> std::io::Result<Self> {
         let host_name = rand::thread_rng()
             .sample_iter(&Alphanumeric)
@@ -96,12 +105,62 @@ impl DualModuleAxi4Driver {
         Self::new_with_name(initializer, host_name)
     }
 
+    fn memory_write(&mut self, num_bytes: usize, address: usize, data: usize) -> std::io::Result<()> {
+        let begin = Instant::now();
+        write!(self.link.lock().unwrap().writer, "write({num_bytes}, {address}, {data})\n")?;
+        self.simulation_duration += begin.elapsed();
+        Ok(())
+    }
+    pub fn memory_write_64(&mut self, address: usize, data: u64) -> std::io::Result<()> {
+        self.memory_write(8, address, data as usize)
+    }
+    pub fn memory_write_32(&mut self, address: usize, data: u32) -> std::io::Result<()> {
+        self.memory_write(4, address, data as usize)
+    }
+    pub fn memory_write_16(&mut self, address: usize, data: u16) -> std::io::Result<()> {
+        self.memory_write(2, address, data as usize)
+    }
+    pub fn memory_write_8(&mut self, address: usize, data: u8) -> std::io::Result<()> {
+        self.memory_write(1, address, data as usize)
+    }
+
+    fn memory_read(&mut self, num_bytes: usize, address: usize) -> std::io::Result<usize> {
+        let begin = Instant::now();
+        let mut link = self.link.lock().unwrap();
+        write!(link.writer, "read({num_bytes}, {address})\n")?;
+        let mut line = String::new();
+        link.reader.read_line(&mut line)?;
+        let value = scan_fmt!(&line, "{d}", usize).unwrap();
+        self.simulation_duration += begin.elapsed();
+        Ok(value)
+    }
+    pub fn memory_read_64(&mut self, address: usize) -> std::io::Result<u64> {
+        self.memory_read(8, address).map(|v| v as u64)
+    }
+    pub fn memory_read_32(&mut self, address: usize) -> std::io::Result<u32> {
+        self.memory_read(4, address).map(|v| v as u32)
+    }
+    pub fn memory_read_16(&mut self, address: usize) -> std::io::Result<u16> {
+        self.memory_read(2, address).map(|v| v as u16)
+    }
+    pub fn memory_read_8(&mut self, address: usize) -> std::io::Result<u8> {
+        self.memory_read(1, address).map(|v| v as u8)
+    }
+
     pub fn execute_instruction(&mut self, instruction: Instruction32, context_id: u16) {
         if self.use64bus {
             let data = (instruction.0 as u64) | ((context_id as u64) << 32);
-            write!(self.link.lock().unwrap().writer, "write(4096, {data})\n").unwrap();
+            self.memory_write_64(4096, data).unwrap();
         } else {
             unimplemented!()
+        }
+    }
+
+    pub fn get_hardware_info(&mut self) -> MicroBlossomHardwareInfo {
+        MicroBlossomHardwareInfo {
+            version: self.memory_read_32(8).unwrap(),
+            context_depth: self.memory_read_32(12).unwrap(),
+            obstacle_channels: self.memory_read_8(16).unwrap(),
         }
     }
 }

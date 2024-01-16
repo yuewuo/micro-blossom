@@ -55,9 +55,13 @@ micro-blossom-nostd = { path = "../blossom-nostd", features = [
     "std",
     "obstacle_potentially_outdated",
 ] }
+embedded-blossom = { path = "../embedded", default-features = false, features = [
+    "tiny_benchmark_time",
+] }
 heapless = "0.8.0"
 konst = "0.3.6"
 wait-timeout = "0.2.0"
 scan_fmt = "0.2.6"
 mwmatching = "0.1.1"
 num_cpus = "1.13.0"
+cty = "0.2.2"

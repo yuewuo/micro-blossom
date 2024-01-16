@@ -29,6 +29,7 @@ fn main() {
 
     let out_dir = env::var("OUT_DIR").expect("No out dir");
     let embedded_blossom_main = env::var("EMBEDDED_BLOSSOM_MAIN").unwrap_or_else(|_| "hello_world".to_string());
+    println!("cargo:rustc-env=EMBEDDED_BLOSSOM_MAIN_NAME={}", embedded_blossom_main);
     let dest_path = Path::new(&out_dir);
 
     // generate embedded_blossom_main.rs

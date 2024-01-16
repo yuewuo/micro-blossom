@@ -83,7 +83,10 @@ impl Drop for DualModuleScalaDriver {
 }
 
 impl DualModuleScalaDriver {
-    pub fn new_with_name(initializer: &SolverInitializer, host_name: String) -> std::io::Result<Self> {
+    pub fn new_with_name_raw(mut micro_blossom: MicroBlossomSingle, host_name: String) -> std::io::Result<Self> {
+        // TODO: later on support offloading
+        micro_blossom.offloading.0.clear();
+
         let hostname = "127.0.0.1";
         let listener = TcpListener::bind(format!("{hostname}:0"))?;
         let port = listener.local_addr()?.port();
@@ -99,9 +102,6 @@ impl DualModuleScalaDriver {
         let mut line = String::new();
         reader.read_line(&mut line)?;
         assert_eq!(line, "DualHost v0.0.1, ask for decoding graph\n", "handshake error");
-        // in simulation, positions doesn't matter because it's not going to affect the timing constraint
-        let mut micro_blossom = MicroBlossomSingle::new_initializer_only(initializer);
-        micro_blossom.offloading.0.clear(); // TODO: later on support offloading
         write!(writer, "{}\n", serde_json::to_string(&micro_blossom).unwrap())?;
         write!(writer, "{}\n", if cfg!(test) { "with waveform" } else { "no waveform" })?;
         line.clear();
@@ -117,6 +117,11 @@ impl DualModuleScalaDriver {
                 writer,
             }),
         })
+    }
+
+    pub fn new_with_name(initializer: &SolverInitializer, host_name: String) -> std::io::Result<Self> {
+        // in simulation, positions doesn't matter because it's not going to affect the timing constraint
+        Self::new_with_name_raw(MicroBlossomSingle::new_initializer_only(initializer), host_name)
     }
 
     pub fn new(initializer: &SolverInitializer) -> std::io::Result<Self> {
