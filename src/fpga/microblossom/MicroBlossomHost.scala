@@ -52,18 +52,30 @@ object MicroBlossomHost extends App {
 
     var command = inStream.readLine()
     var withWaveform = false
-    if (command == "with waveform") {
-      simConfig.withFstWave
-      withWaveform = true
-    } else if (command == "no waveform") {
-      simConfig.allOptimisation
-    } else {
-      throw new IllegalArgumentException
+    command match {
+      case "with waveform" => {
+        simConfig.withFstWave
+        withWaveform = true
+      }
+      case "no waveform" => simConfig.allOptimisation
+      case _             => throw new IllegalArgumentException
+    }
+
+    command = inStream.readLine()
+    var use64bus = true
+    command match {
+      case "64 bits bus" => use64bus = true
+      case "32 bits bus" => use64bus = false
+      case _             => throw new IllegalArgumentException
     }
 
     simConfig
       .compile({
-        val dut = MicroBlossomAxiLite4(config)
+        val dut = if (use64bus) {
+          MicroBlossomAxiLite4(config)
+        } else {
+          MicroBlossomAxiLite4Bus32(config)
+        }
         if (withWaveform) {
           // dut.simMakePublicSnapshot()  // TODO: implement
         }
@@ -82,13 +94,10 @@ object MicroBlossomHost extends App {
           cycleCounter += 1
         }
 
-        // dut.io.message.valid #= false
-        // dut.io.message.instruction #= 0
-        // dut.clockDomain.forkStimulus(period = 10)
-
+        dut.clockDomain.forkStimulus(period = 10)
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
-        // dut.simExecute(ioConfig.instructionSpec.generateReset())
+        val driver = AxiLite4TypedDriver(dut.io.s0, dut.clockDomain)
 
         // start hosting the commands
         var maxGrowth = Long.MaxValue
@@ -99,6 +108,24 @@ object MicroBlossomHost extends App {
             if (command == "quit") {
               println("requested quit, breaking...")
               break
+            } else if (command.startsWith("read(")) {
+              // format: read(numBytes, address)
+              // example: read(64, 0)
+              val parameters = command.substring("read(".length, command.length - 1).split(", ")
+              assert(parameters.length == 2)
+              val numBytes = parameters(0).toInt
+              val address = BigInt(parameters(1))
+              val data = driver.readBytes(address, numBytes)
+              outStream.println(s"$data")
+            } else if (command.startsWith("write(")) {
+              // format: write(numBytes, address, data)
+              // example: write(64, 0, 123)
+              val parameters = command.substring("write(".length, command.length - 1).split(", ")
+              assert(parameters.length == 3)
+              val numBytes = parameters(0).toInt
+              val address = BigInt(parameters(1))
+              val data = BigInt(parameters(2))
+              driver.writeBytes(address, data, numBytes)
             } else {
               println("[error] unknown command: %s".format(command))
             }

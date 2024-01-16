@@ -16,7 +16,7 @@ case class AxiLite4TypedDriver(axi: AxiLite4, clockDomain: ClockDomain) {
   require(dataWidth == 64 || dataWidth == 32, "only 64 bits or 32 bits bus is supported")
   val is64bus = dataWidth == 64
 
-  def read_bytes(address: BigInt, numBytes: Int): BigInt = {
+  def readBytes(address: BigInt, numBytes: Int): BigInt = {
     assert(numBytes == 1 || numBytes == 2 || numBytes == 4 || numBytes == 8)
     assert(address % numBytes == 0, "address is not aligned")
     if (!is64bus && numBytes == 8) {
@@ -30,12 +30,12 @@ case class AxiLite4TypedDriver(axi: AxiLite4, clockDomain: ClockDomain) {
     }
   }
 
-  def read_64(address: BigInt): BigInt = read_bytes(address, 8)
-  def read_32(address: BigInt): BigInt = read_bytes(address, 4)
-  def read_16(address: BigInt): BigInt = read_bytes(address, 2)
-  def read_8(address: BigInt): BigInt = read_bytes(address, 1)
+  def read_64(address: BigInt): BigInt = readBytes(address, 8)
+  def read_32(address: BigInt): BigInt = readBytes(address, 4)
+  def read_16(address: BigInt): BigInt = readBytes(address, 2)
+  def read_8(address: BigInt): BigInt = readBytes(address, 1)
 
-  def write_bytes(address: BigInt, data: BigInt, numBytes: Int) = {
+  def writeBytes(address: BigInt, data: BigInt, numBytes: Int) = {
     assert(numBytes == 1 || numBytes == 2 || numBytes == 4 || numBytes == 8)
     assert(address % numBytes == 0, "address is not aligned")
     assert(data >= 0 && data < (BigInt(1) << (numBytes * 8)))
@@ -50,10 +50,10 @@ case class AxiLite4TypedDriver(axi: AxiLite4, clockDomain: ClockDomain) {
     }
   }
 
-  def write_64(address: BigInt, data: BigInt) = write_bytes(address, data, 8)
-  def write_32(address: BigInt, data: BigInt) = write_bytes(address, data, 4)
-  def write_16(address: BigInt, data: BigInt) = write_bytes(address, data, 2)
-  def write_8(address: BigInt, data: BigInt) = write_bytes(address, data, 1)
+  def write_64(address: BigInt, data: BigInt) = writeBytes(address, data, 8)
+  def write_32(address: BigInt, data: BigInt) = writeBytes(address, data, 4)
+  def write_16(address: BigInt, data: BigInt) = writeBytes(address, data, 2)
+  def write_8(address: BigInt, data: BigInt) = writeBytes(address, data, 1)
 
 }
 

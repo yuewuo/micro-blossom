@@ -1,5 +1,6 @@
 pub mod cli;
 pub mod dual_module_adaptor;
+pub mod dual_module_axi4;
 pub mod dual_module_comb;
 pub mod dual_module_comb_edge;
 pub mod dual_module_comb_offloading;

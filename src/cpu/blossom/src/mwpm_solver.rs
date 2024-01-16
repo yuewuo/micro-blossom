@@ -1,4 +1,5 @@
 use crate::dual_module_adaptor::*;
+use crate::dual_module_axi4::*;
 use crate::dual_module_comb::*;
 use crate::dual_module_rtl::*;
 use crate::dual_module_scala::*;
@@ -307,42 +308,8 @@ impl PrimalDualSolver for SolverEmbeddedRTL {
     }
     fn perfect_matching_visualizer(&mut self, visualizer: Option<&mut Visualizer>) -> PerfectMatching {
         // this perfect matching is not necessarily complete when some of the matchings are inside the dual module
-        let mut perfect_matching = PerfectMatching::new();
-        let interface_ptr = DualModuleInterfacePtr::new_empty();
-        let belonging = interface_ptr.downgrade();
-        self.primal_module
-            .iterate_perfect_matching(|_, node_index, match_target, _link| {
-                let node = DualNodePtr::new_value(DualNode {
-                    index: node_index.get() as NodeIndex,
-                    class: DualNodeClass::DefectVertex {
-                        defect_index: self.defect_nodes[node_index.get() as usize],
-                    },
-                    grow_state: DualNodeGrowState::Stay,
-                    parent_blossom: None,
-                    dual_variable_cache: (0, 0),
-                    belonging: belonging.clone(),
-                });
-                match match_target {
-                    CompactMatchTarget::Peer(peer_index) => {
-                        let peer = DualNodePtr::new_value(DualNode {
-                            index: peer_index.get() as NodeIndex,
-                            class: DualNodeClass::DefectVertex {
-                                defect_index: self.defect_nodes[peer_index.get() as usize],
-                            },
-                            grow_state: DualNodeGrowState::Stay,
-                            parent_blossom: None,
-                            dual_variable_cache: (0, 0),
-                            belonging: belonging.clone(),
-                        });
-                        perfect_matching.peer_matchings.push((node, peer));
-                    }
-                    CompactMatchTarget::VirtualVertex(virtual_index) => {
-                        perfect_matching
-                            .virtual_matchings
-                            .push((node, virtual_index.get() as VertexIndex));
-                    }
-                }
-            });
+        let (mut perfect_matching, belonging) =
+            perfect_matching_from_embedded_primal(&mut self.primal_module, &self.defect_nodes);
         // also add pre matchings from the dual driver
         let dual_module = &self.dual_module.driver.driver;
         let pre_matchings = dual_module.get_pre_matchings();
@@ -499,42 +466,7 @@ impl PrimalDualSolver for SolverDualScala {
     }
     fn perfect_matching_visualizer(&mut self, visualizer: Option<&mut Visualizer>) -> PerfectMatching {
         // this perfect matching is not necessarily complete when some of the matchings are inside the dual module
-        let mut perfect_matching = PerfectMatching::new();
-        let interface_ptr = DualModuleInterfacePtr::new_empty();
-        let belonging = interface_ptr.downgrade();
-        self.primal_module
-            .iterate_perfect_matching(|_, node_index, match_target, _link| {
-                let node = DualNodePtr::new_value(DualNode {
-                    index: node_index.get() as NodeIndex,
-                    class: DualNodeClass::DefectVertex {
-                        defect_index: self.defect_nodes[node_index.get() as usize],
-                    },
-                    grow_state: DualNodeGrowState::Stay,
-                    parent_blossom: None,
-                    dual_variable_cache: (0, 0),
-                    belonging: belonging.clone(),
-                });
-                match match_target {
-                    CompactMatchTarget::Peer(peer_index) => {
-                        let peer = DualNodePtr::new_value(DualNode {
-                            index: peer_index.get() as NodeIndex,
-                            class: DualNodeClass::DefectVertex {
-                                defect_index: self.defect_nodes[peer_index.get() as usize],
-                            },
-                            grow_state: DualNodeGrowState::Stay,
-                            parent_blossom: None,
-                            dual_variable_cache: (0, 0),
-                            belonging: belonging.clone(),
-                        });
-                        perfect_matching.peer_matchings.push((node, peer));
-                    }
-                    CompactMatchTarget::VirtualVertex(virtual_index) => {
-                        perfect_matching
-                            .virtual_matchings
-                            .push((node, virtual_index.get() as VertexIndex));
-                    }
-                }
-            });
+        let (perfect_matching, _) = perfect_matching_from_embedded_primal(&mut self.primal_module, &self.defect_nodes);
         if let Some(visualizer) = visualizer {
             visualizer
                 .snapshot_combined("perfect matching".to_string(), vec![self, &perfect_matching])
@@ -646,44 +578,11 @@ impl PrimalDualSolver for SolverDualComb {
             }
         }
     }
+
     fn perfect_matching_visualizer(&mut self, visualizer: Option<&mut Visualizer>) -> PerfectMatching {
         // this perfect matching is not necessarily complete when some of the matchings are inside the dual module
-        let mut perfect_matching = PerfectMatching::new();
-        let interface_ptr = DualModuleInterfacePtr::new_empty();
-        let belonging = interface_ptr.downgrade();
-        self.primal_module
-            .iterate_perfect_matching(|_, node_index, match_target, _link| {
-                let node = DualNodePtr::new_value(DualNode {
-                    index: node_index.get() as NodeIndex,
-                    class: DualNodeClass::DefectVertex {
-                        defect_index: self.defect_nodes[node_index.get() as usize],
-                    },
-                    grow_state: DualNodeGrowState::Stay,
-                    parent_blossom: None,
-                    dual_variable_cache: (0, 0),
-                    belonging: belonging.clone(),
-                });
-                match match_target {
-                    CompactMatchTarget::Peer(peer_index) => {
-                        let peer = DualNodePtr::new_value(DualNode {
-                            index: peer_index.get() as NodeIndex,
-                            class: DualNodeClass::DefectVertex {
-                                defect_index: self.defect_nodes[peer_index.get() as usize],
-                            },
-                            grow_state: DualNodeGrowState::Stay,
-                            parent_blossom: None,
-                            dual_variable_cache: (0, 0),
-                            belonging: belonging.clone(),
-                        });
-                        perfect_matching.peer_matchings.push((node, peer));
-                    }
-                    CompactMatchTarget::VirtualVertex(virtual_index) => {
-                        perfect_matching
-                            .virtual_matchings
-                            .push((node, virtual_index.get() as VertexIndex));
-                    }
-                }
-            });
+        let (mut perfect_matching, belonging) =
+            perfect_matching_from_embedded_primal(&mut self.primal_module, &self.defect_nodes);
         // also add pre matchings from the dual driver
         let dual_module = &self.dual_module.driver.driver;
         let pre_matchings = dual_module.get_pre_matchings();
@@ -776,4 +675,172 @@ impl PrimalDualSolver for SolverDualComb {
             },
         })
     }
+}
+
+pub struct SolverDualAxi4 {
+    pub dual_module: DualModuleAxi4,
+    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
+    subgraph_builder: SubGraphBuilder,
+    defect_nodes: Vec<VertexIndex>,
+    pub max_iterations: usize, // to debug the infinite loop cases: save a waveform in the middle
+}
+
+impl FusionVisualizer for SolverDualAxi4 {
+    fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+        let mut value = self.dual_module.driver.driver.snapshot(abbrev);
+        snapshot_combine_values(&mut value, self.primal_module.snapshot(abbrev), abbrev);
+        snapshot_combine_values(&mut value, DualNodesOf::new(&self.primal_module).snapshot(abbrev), abbrev);
+        value
+    }
+}
+
+impl SolverDualAxi4 {
+    pub fn new(initializer: &SolverInitializer) -> Self {
+        Self {
+            dual_module: DualModuleAxi4::new_with_initializer(initializer),
+            primal_module: PrimalModuleEmbedded::new(),
+            subgraph_builder: SubGraphBuilder::new(initializer),
+            defect_nodes: vec![],
+            max_iterations: usize::MAX,
+        }
+    }
+
+    pub fn new_with_name(initializer: &SolverInitializer, host_name: String) -> Self {
+        Self {
+            dual_module: DualModuleStackless::new(DualDriverTracked::new(
+                DualModuleAxi4Driver::new_with_name(initializer, host_name).unwrap(),
+            )),
+            primal_module: PrimalModuleEmbedded::new(),
+            subgraph_builder: SubGraphBuilder::new(initializer),
+            defect_nodes: vec![],
+            max_iterations: usize::MAX,
+        }
+    }
+
+    pub fn with_max_iterations(mut self, max_iterations: usize) -> Self {
+        self.max_iterations = max_iterations;
+        self
+    }
+}
+
+impl PrimalDualSolver for SolverDualAxi4 {
+    fn clear(&mut self) {
+        self.primal_module.reset();
+        self.dual_module.reset();
+        self.subgraph_builder.clear();
+        self.defect_nodes.clear();
+    }
+    fn solve_visualizer(&mut self, syndrome_pattern: &SyndromePattern, mut visualizer: Option<&mut Visualizer>) {
+        assert!(syndrome_pattern.erasures.is_empty());
+        assert!(syndrome_pattern.dynamic_weights.is_empty());
+        assert!(self.defect_nodes.is_empty(), "must call `clear` between different runs");
+        for (node_index, &defect_index) in syndrome_pattern.defect_vertices.iter().enumerate() {
+            self.dual_module.add_defect(ni!(defect_index), ni!(node_index));
+            self.defect_nodes.push(defect_index);
+        }
+        if let Some(visualizer) = visualizer.as_mut() {
+            visualizer.snapshot_combined("syndrome".to_string(), vec![self]).unwrap();
+        }
+        let (mut obstacle, _) = self.dual_module.find_obstacle();
+        let mut iteration = 0;
+        while !obstacle.is_none() && iteration < self.max_iterations {
+            iteration += 1;
+            // println!("obstacle: {obstacle:?}");
+            debug_assert!(
+                obstacle.is_obstacle(),
+                "dual module should spontaneously process all finite growth"
+            );
+            if let Some(visualizer) = visualizer.as_mut() {
+                visualizer.snapshot_combined(format!("{obstacle:?}"), vec![self]).unwrap();
+            }
+            self.primal_module.resolve(&mut self.dual_module, obstacle);
+            (obstacle, _) = self.dual_module.find_obstacle();
+        }
+        if let Some(visualizer) = visualizer.as_mut() {
+            visualizer.snapshot_combined("solved".to_string(), vec![self]).unwrap();
+        }
+        let perfect_matching = self.perfect_matching();
+        self.subgraph_builder.load_perfect_matching(&perfect_matching);
+    }
+    fn perfect_matching_visualizer(&mut self, visualizer: Option<&mut Visualizer>) -> PerfectMatching {
+        // this perfect matching is not necessarily complete when some of the matchings are inside the dual module
+        let (perfect_matching, _) = perfect_matching_from_embedded_primal(&mut self.primal_module, &self.defect_nodes);
+        if let Some(visualizer) = visualizer {
+            visualizer
+                .snapshot_combined("perfect matching".to_string(), vec![self, &perfect_matching])
+                .unwrap();
+        }
+        perfect_matching
+    }
+    fn subgraph_visualizer(&mut self, visualizer: Option<&mut Visualizer>) -> Vec<EdgeIndex> {
+        let perfect_matching = self.perfect_matching();
+        self.subgraph_builder.load_perfect_matching(&perfect_matching);
+        let subgraph = self.subgraph_builder.get_subgraph();
+        if let Some(visualizer) = visualizer {
+            visualizer
+                .snapshot_combined(
+                    "perfect matching and subgraph".to_string(),
+                    vec![
+                        &self.dual_module.driver.driver,
+                        &DualNodesOf::new(&self.primal_module),
+                        &perfect_matching,
+                        &VisualizeSubgraph::new(&subgraph),
+                    ],
+                )
+                .unwrap();
+        }
+        subgraph
+    }
+    fn sum_dual_variables(&self) -> Weight {
+        // cannot adapt: neither the primal nor dual node know all the information
+        self.subgraph_builder.total_weight()
+    }
+    fn generate_profiler_report(&self) -> serde_json::Value {
+        json!({
+            // "dual": self.dual_module.generate_profiler_report(),
+            // "primal": self.primal_module.generate_profiler_report(),
+        })
+    }
+}
+
+fn perfect_matching_from_embedded_primal<const N: usize, const DN: usize>(
+    primal_module: &mut PrimalModuleEmbedded<N, DN>,
+    defect_nodes: &[VertexIndex],
+) -> (PerfectMatching, DualModuleInterfaceWeak) {
+    let mut perfect_matching = PerfectMatching::new();
+    let interface_ptr = DualModuleInterfacePtr::new_empty();
+    let belonging = interface_ptr.downgrade();
+    primal_module.iterate_perfect_matching(|_, node_index, match_target, _link| {
+        let node = DualNodePtr::new_value(DualNode {
+            index: node_index.get() as NodeIndex,
+            class: DualNodeClass::DefectVertex {
+                defect_index: defect_nodes[node_index.get() as usize],
+            },
+            grow_state: DualNodeGrowState::Stay,
+            parent_blossom: None,
+            dual_variable_cache: (0, 0),
+            belonging: belonging.clone(),
+        });
+        match match_target {
+            CompactMatchTarget::Peer(peer_index) => {
+                let peer = DualNodePtr::new_value(DualNode {
+                    index: peer_index.get() as NodeIndex,
+                    class: DualNodeClass::DefectVertex {
+                        defect_index: defect_nodes[peer_index.get() as usize],
+                    },
+                    grow_state: DualNodeGrowState::Stay,
+                    parent_blossom: None,
+                    dual_variable_cache: (0, 0),
+                    belonging: belonging.clone(),
+                });
+                perfect_matching.peer_matchings.push((node, peer));
+            }
+            CompactMatchTarget::VirtualVertex(virtual_index) => {
+                perfect_matching
+                    .virtual_matchings
+                    .push((node, virtual_index.get() as VertexIndex));
+            }
+        }
+    });
+    (perfect_matching, belonging)
 }
