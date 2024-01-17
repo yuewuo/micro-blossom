@@ -31,6 +31,7 @@ pub struct DualModuleAxi4Driver {
     pub use64bus: bool,
     pub context_id: u16,
     pub simulation_duration: Duration,
+    pub with_waveform: bool,
 }
 
 pub struct Link {
@@ -49,7 +50,11 @@ impl DualInterfaceWithInitializer for DualModuleAxi4 {
 }
 
 impl DualModuleAxi4Driver {
-    pub fn new_with_name_raw(mut micro_blossom: MicroBlossomSingle, host_name: String) -> std::io::Result<Self> {
+    pub fn new_with_name_raw(
+        mut micro_blossom: MicroBlossomSingle,
+        host_name: String,
+        with_waveform: bool,
+    ) -> std::io::Result<Self> {
         // TODO: later on support offloading
         micro_blossom.offloading.0.clear();
 
@@ -70,7 +75,7 @@ impl DualModuleAxi4Driver {
         reader.read_line(&mut line)?;
         assert_eq!(line, "MicroBlossomHost v0.0.1, ask for decoding graph\n", "handshake error");
         write!(writer, "{}\n", serde_json::to_string(&micro_blossom).unwrap())?;
-        write!(writer, "{}\n", if cfg!(test) { "with waveform" } else { "no waveform" })?;
+        write!(writer, "{}\n", if with_waveform { "with waveform" } else { "no waveform" })?;
         write!(writer, "{}\n", if use64bus { "64 bits bus" } else { "32 bits bus" })?;
         line.clear();
         reader.read_line(&mut line)?;
@@ -79,6 +84,7 @@ impl DualModuleAxi4Driver {
             host_name,
             use64bus,
             context_id: 0,
+            with_waveform,
             simulation_duration: Duration::ZERO,
             link: Mutex::new(Link {
                 port,
@@ -93,7 +99,7 @@ impl DualModuleAxi4Driver {
 
     pub fn new_with_name(initializer: &SolverInitializer, host_name: String) -> std::io::Result<Self> {
         // in simulation, positions doesn't matter because it's not going to affect the timing constraint
-        Self::new_with_name_raw(MicroBlossomSingle::new_initializer_only(initializer), host_name)
+        Self::new_with_name_raw(MicroBlossomSingle::new_initializer_only(initializer), host_name, cfg!(test))
     }
 
     pub fn new(initializer: &SolverInitializer) -> std::io::Result<Self> {
@@ -275,7 +281,7 @@ impl Drop for DualModuleAxi4Driver {
         } else {
             println!("Scala process quit normally");
         }
-        if cfg!(test) {
+        if self.with_waveform {
             // only delete binary but keep original waveforms
             match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/rtl", self.host_name)) {
                 Err(e) => println!("Could not remove rtl folder: {}", e),

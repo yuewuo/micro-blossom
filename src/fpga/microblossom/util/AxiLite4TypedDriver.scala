@@ -10,7 +10,8 @@ import microblossom.util._
 import org.scalatest.funsuite.AnyFunSuite
 
 case class AxiLite4TypedDriver(axi: AxiLite4, clockDomain: ClockDomain) {
-  val driver = AxiLite4Driver(axi, clockDomain)
+  // val driver = AxiLite4Driver(axi, clockDomain)
+  val driver = AxiLite4DriverDeterministic(axi, clockDomain)
 
   val dataWidth = axi.config.dataWidth
   require(dataWidth == 64 || dataWidth == 32, "only 64 bits or 32 bits bus is supported")

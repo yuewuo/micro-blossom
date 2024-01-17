@@ -6,9 +6,15 @@
 //!
 //! First generate the resources using `cargo run --bin micro-blossom`.
 //!
-//! cargo run --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
-//! EMBEDDED_BLOSSOM_MAIN=test_get_time cargo run --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json  # note: it's normal that sleep() will take almost forever
-//! EMBEDDED_BLOSSOM_MAIN=benchmark_reset_speed cargo run --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
+//! ```sh
+//! cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
+//! EMBEDDED_BLOSSOM_MAIN=test_get_time cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json  # note: it's normal that sleep() will take almost forever
+//!
+//! EMBEDDED_BLOSSOM_MAIN=benchmark_reset_speed cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
+//! gtkwave ../../../simWorkspace/MicroBlossomHost/benchmark_reset_speed/hosted.fst
+//!
+//! EMBEDDED_BLOSSOM_MAIN=benchmark_primal_simple_match cargo --release run --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
+//! ```
 //!
 
 use clap::Parser;
@@ -25,7 +31,7 @@ use std::time::Instant;
 
 // assume 200 MHz clock
 const MICRO_BLOSSOM_FREQUENCY: f64 = 200e6;
-const CONSIDER_CPU_TIME: bool = false;
+const CONSIDER_CPU_TIME: bool = true;
 
 #[derive(Parser, Clone)]
 #[clap(author = clap::crate_authors!(", "))]
@@ -48,8 +54,8 @@ impl EmbeddedSimulator {
         {
             let mut driver = SIMULATOR_DRIVER.lock();
             assert!(driver.is_none(), "EmbeddedSimulator::run should not be executed twice");
-            let _ =
-                driver.insert(DualModuleAxi4Driver::new_with_name_raw(micro_blossom, RUST_MAIN_NAME.to_string()).unwrap());
+            let _ = driver
+                .insert(DualModuleAxi4Driver::new_with_name_raw(micro_blossom, RUST_MAIN_NAME.to_string(), true).unwrap());
         }
         get_native_time();
         rust_main_raw();
