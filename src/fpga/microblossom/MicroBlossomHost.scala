@@ -56,6 +56,11 @@ object MicroBlossomHost extends App {
     val convergecastDelay = readNamedValue("convergecast_delay").toInt
     val obstacleChannels = readNamedValue("obstacle_channels").toInt
     val supportAddDefectVertex = readNamedValue("support_add_defect_vertex").toBoolean
+    val injectRegistersJson = readNamedValue("inject_registers")
+    val injectRegisters = decode[Seq[String]](injectRegistersJson) match {
+      case Right(value) => value
+      case Left(ex)     => throw ex
+    }
 
     // construct and compile a MicroBlossom module for simulation
     val config = DualConfig(
@@ -64,7 +69,8 @@ object MicroBlossomHost extends App {
       broadcastDelay = broadcastDelay,
       convergecastDelay = convergecastDelay,
       obstacleChannels = obstacleChannels,
-      supportAddDefectVertex = supportAddDefectVertex
+      supportAddDefectVertex = supportAddDefectVertex,
+      injectRegisters = injectRegisters
     )
     config.sanityCheck()
     val simConfig = SimConfig

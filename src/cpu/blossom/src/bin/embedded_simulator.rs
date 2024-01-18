@@ -10,7 +10,7 @@
 //! cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
 //! EMBEDDED_BLOSSOM_MAIN=test_get_time cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json  # note: it's normal that sleep() will take almost forever
 //!
-//! EMBEDDED_BLOSSOM_MAIN=benchmark_reset_speed cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
+//! EMBEDDED_BLOSSOM_MAIN=benchmark_reset_speed WITH_WAVEFORM=1 cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
 //! gtkwave ../../../simWorkspace/MicroBlossomHost/benchmark_reset_speed/hosted.fst
 //!
 //! EMBEDDED_BLOSSOM_MAIN=benchmark_primal_simple_match cargo --release run --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
@@ -28,12 +28,20 @@ use micro_blossom::dual_module_axi4::*;
 use micro_blossom::resources::MicroBlossomSingle;
 use micro_blossom_nostd::instruction::Instruction32;
 use parking_lot::Mutex;
+use std::env;
 use std::fs;
 use std::time::Instant;
 
-// assume 200 MHz clock
-const MICRO_BLOSSOM_FREQUENCY: f64 = 200e6;
-const CONSIDER_CPU_TIME: bool = true;
+lazy_static! {
+    pub static ref MICRO_BLOSSOM_FREQUENCY: f64 = match env::var("MICRO_BLOSSOM_FREQUENCY") {
+        Ok(value) => value.parse().unwrap(),
+        Err(_) => 200e6,  // assume 200 MHz clock
+    };
+    pub static ref CONSIDER_CPU_TIME: bool = match env::var("CONSIDER_CPU_TIME") {
+        Ok(value) => value.parse().unwrap(),
+        Err(_) => true, // by default consider CPU time
+    };
+}
 
 #[derive(Parser, Clone)]
 #[clap(author = clap::crate_authors!(", "))]
@@ -105,8 +113,8 @@ lazy_static! {
 extern "C" fn get_native_time() -> u64 {
     let mut locked = SIMULATOR_DRIVER.lock();
     let driver = locked.as_mut().unwrap();
-    let nanos = driver.memory_read_64(0).unwrap() as f64 / MICRO_BLOSSOM_FREQUENCY * 1e9;
-    if CONSIDER_CPU_TIME {
+    let nanos = driver.memory_read_64(0).unwrap() as f64 / *MICRO_BLOSSOM_FREQUENCY * 1e9;
+    if *CONSIDER_CPU_TIME {
         nanos.round() as u64 + ((BEGIN_TIME.elapsed().as_nanos() - driver.simulation_duration.as_nanos()) as u64)
     } else {
         nanos.round() as u64

@@ -44,6 +44,8 @@ pub struct DualConfig {
     pub obstacle_channels: usize,
     #[derivative(Default(value = "*dual_config_default::SUPPORT_ADD_DEFECT_VERTEX"))]
     pub support_add_defect_vertex: bool,
+    #[derivative(Default(value = "dual_config_default::INJECT_REGISTERS.clone()"))]
+    pub inject_registers: Vec<String>,
 }
 
 pub struct DualModuleAxi4Driver {
@@ -339,6 +341,10 @@ pub mod dual_config_default {
         pub static ref WITH_WAVEFORM: bool = (cfg!(test) || is_set("WITH_WAVEFORM")) && !is_set("NO_WAVEFORM");
         pub static ref USE_64_BUS: bool = !is_set("USE_32_BUS");
         pub static ref SUPPORT_ADD_DEFECT_VERTEX: bool = !is_set("NO_ADD_DEFECT_VERTEX");
+        pub static ref INJECT_REGISTERS: Vec<String> = match env::var("INJECT_REGISTERS") {
+            Ok(value) => value.split(',').map(|a| a.to_string()).collect(),
+            Err(_) => vec![],
+        };
     }
 }
 impl DualConfig {
