@@ -110,15 +110,63 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       ) init (0)
   }
 
+  // keep track of some history
+  val initHistoryEntry = HistoryEntry(config)
+  initHistoryEntry.valid := False
+  if (config.contextBits > 0) {
+    initHistoryEntry.contextId := 0
+  }
+  require(config.readLatency >= 2)
+  val historyEntries = Vec.fill(config.readLatency)(Reg(HistoryEntry(config)) init initHistoryEntry)
+  // shift register
+  for (i <- 0 until config.readLatency - 1) {
+    historyEntries(i + 1) := historyEntries(i)
+  }
+  val nextHistoryEntry = HistoryEntry(config)
+  nextHistoryEntry.valid := False
+  if (config.contextBits > 0) {
+    nextHistoryEntry.contextId := 0
+  }
+
   val instruction = new Area {
-    if (is64bus) {
-      factory.onWritePrimitive(
-        SizeMapping(base = 4096, size = 4096),
-        haltSensitive = false,
-        documentation = "instruction array (64 bits)"
-      ) {
-        hardwareInfo.instructionCounter := hardwareInfo.instructionCounter + 1
+    val writeInstruction = Bits(32 bits)
+    val writeContextId = UInt(16 bits)
+    def onAskWrite() = {
+      // block writing to avoid data race if there exists any writes within config.executeLatency
+      val blockers = Vec.fill(config.executeLatency)(Bool)
+      for (i <- 0 until config.executeLatency) {
+        if (config.contextBits > 0) {
+          blockers(i) := historyEntries(i).valid &&
+            historyEntries(i).contextId === writeContextId.resize(config.contextBits)
+        } else {
+          blockers(i) := historyEntries(i).valid
+        }
       }
+      val isBlocked = Bool
+      if (config.executeLatency > 0) {
+        isBlocked := blockers.reduceBalancedTree(_ | _)
+      } else {
+        isBlocked := False
+      }
+      when(isBlocked) {
+        factory.writeHalt()
+      }
+    }
+    def onDoWrite() = {
+      hardwareInfo.instructionCounter := hardwareInfo.instructionCounter + 1
+      // execute the instruction
+      nextHistoryEntry.valid := True
+      if (config.contextBits > 0) {
+        nextHistoryEntry.contextId := writeContextId.resize(config.contextBits)
+      }
+    }
+    if (is64bus) {
+      val mapping = SizeMapping(base = 4096, size = 4096)
+      val documentation = "instruction array (64 bits)"
+      factory.nonStopWrite(writeInstruction, bitOffset = 0)
+      factory.nonStopWrite(writeContextId, bitOffset = 32)
+      factory.onWritePrimitive(mapping, haltSensitive = false, documentation)(onAskWrite)
+      factory.onWritePrimitive(mapping, haltSensitive = true, documentation)(onDoWrite)
     } else {
       factory.onWritePrimitive(
         SizeMapping(base = 65536, size = 65536),
@@ -130,8 +178,15 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     }
   }
 
+  historyEntries(0) := nextHistoryEntry
+
   rawFactory.printDataModel()
 
+}
+
+case class HistoryEntry(config: DualConfig) extends Bundle {
+  val valid = Bool
+  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 }
 
 object MicroBlossomAxi4 {

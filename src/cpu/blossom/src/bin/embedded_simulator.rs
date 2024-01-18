@@ -16,6 +16,8 @@
 //! EMBEDDED_BLOSSOM_MAIN=benchmark_primal_simple_match cargo --release run --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
 //! ```
 //!
+//! For more use cases and details, see https://docs.google.com/document/d/1HA6VL_ywSoCpS7PODIA8HeTbg_VIbbpyqtazdunSRvc/edit?usp=sharing
+//!
 
 use clap::Parser;
 use cty::c_char;
@@ -54,8 +56,10 @@ impl EmbeddedSimulator {
         {
             let mut driver = SIMULATOR_DRIVER.lock();
             assert!(driver.is_none(), "EmbeddedSimulator::run should not be executed twice");
-            let _ = driver
-                .insert(DualModuleAxi4Driver::new_with_name_raw(micro_blossom, RUST_MAIN_NAME.to_string(), true).unwrap());
+            let _ = driver.insert(
+                DualModuleAxi4Driver::new_with_name_raw(micro_blossom, RUST_MAIN_NAME.to_string(), Default::default())
+                    .unwrap(),
+            );
         }
         get_native_time();
         rust_main_raw();

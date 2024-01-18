@@ -7,6 +7,7 @@
 use crate::dual_module_adaptor::*;
 use crate::resources::*;
 use crate::util::*;
+use derivative::Derivative;
 use embedded_blossom::extern_c::MicroBlossomHardwareInfo;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
@@ -17,6 +18,7 @@ use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
 use rand::{distributions::Alphanumeric, Rng};
 use scan_fmt::*;
+use serde::Serialize;
 use std::io::prelude::*;
 use std::io::{BufReader, LineWriter};
 use std::net::{TcpListener, TcpStream};
@@ -25,13 +27,31 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use wait_timeout::ChildExt;
 
+#[derive(Serialize, Derivative)]
+#[derivative(Default)]
+pub struct DualConfig {
+    #[derivative(Default(value = "*dual_config_default::WITH_WAVEFORM"))]
+    pub with_waveform: bool,
+    #[derivative(Default(value = "*dual_config_default::USE_64_BUS"))]
+    pub use_64_bus: bool,
+    #[derivative(Default(value = "dual_config_default::env_usize(\"CONTEXT_DEPTH\", 1)"))]
+    pub context_depth: usize,
+    #[derivative(Default(value = "dual_config_default::env_usize(\"BROADCAST_DELAY\", 1)"))]
+    pub broadcast_delay: usize,
+    #[derivative(Default(value = "dual_config_default::env_usize(\"CONVERGECAST_DELAY\", 1)"))]
+    pub convergecast_delay: usize,
+    #[derivative(Default(value = "dual_config_default::env_usize(\"OBSTACLE_CHANNELS\", 1)"))]
+    pub obstacle_channels: usize,
+    #[derivative(Default(value = "*dual_config_default::SUPPORT_ADD_DEFECT_VERTEX"))]
+    pub support_add_defect_vertex: bool,
+}
+
 pub struct DualModuleAxi4Driver {
     pub link: Mutex<Link>,
     pub host_name: String,
-    pub use64bus: bool,
     pub context_id: u16,
     pub simulation_duration: Duration,
-    pub with_waveform: bool,
+    pub dual_config: DualConfig,
 }
 
 pub struct Link {
@@ -53,12 +73,10 @@ impl DualModuleAxi4Driver {
     pub fn new_with_name_raw(
         mut micro_blossom: MicroBlossomSingle,
         host_name: String,
-        with_waveform: bool,
+        dual_config: DualConfig,
     ) -> std::io::Result<Self> {
         // TODO: later on support offloading
         micro_blossom.offloading.0.clear();
-
-        let use64bus = true;
         let hostname = "127.0.0.1";
         let listener = TcpListener::bind(format!("{hostname}:0"))?;
         let port = listener.local_addr()?.port();
@@ -75,16 +93,14 @@ impl DualModuleAxi4Driver {
         reader.read_line(&mut line)?;
         assert_eq!(line, "MicroBlossomHost v0.0.1, ask for decoding graph\n", "handshake error");
         write!(writer, "{}\n", serde_json::to_string(&micro_blossom).unwrap())?;
-        write!(writer, "{}\n", if with_waveform { "with waveform" } else { "no waveform" })?;
-        write!(writer, "{}\n", if use64bus { "64 bits bus" } else { "32 bits bus" })?;
+        dual_config.write_to(&mut writer)?;
         line.clear();
         reader.read_line(&mut line)?;
         assert_eq!(line, "simulation started\n");
         let mut value = Self {
             host_name,
-            use64bus,
             context_id: 0,
-            with_waveform,
+            dual_config,
             simulation_duration: Duration::ZERO,
             link: Mutex::new(Link {
                 port,
@@ -99,7 +115,11 @@ impl DualModuleAxi4Driver {
 
     pub fn new_with_name(initializer: &SolverInitializer, host_name: String) -> std::io::Result<Self> {
         // in simulation, positions doesn't matter because it's not going to affect the timing constraint
-        Self::new_with_name_raw(MicroBlossomSingle::new_initializer_only(initializer), host_name, cfg!(test))
+        Self::new_with_name_raw(
+            MicroBlossomSingle::new_initializer_only(initializer),
+            host_name,
+            Default::default(),
+        )
     }
 
     pub fn new(initializer: &SolverInitializer) -> std::io::Result<Self> {
@@ -154,7 +174,7 @@ impl DualModuleAxi4Driver {
     }
 
     pub fn execute_instruction(&mut self, instruction: Instruction32, context_id: u16) {
-        if self.use64bus {
+        if self.dual_config.use_64_bus {
             let data = (instruction.0 as u64) | ((context_id as u64) << 32);
             self.memory_write_64(4096, data).unwrap();
         } else {
@@ -281,7 +301,7 @@ impl Drop for DualModuleAxi4Driver {
         } else {
             println!("Scala process quit normally");
         }
-        if self.with_waveform {
+        if self.dual_config.with_waveform {
             // only delete binary but keep original waveforms
             match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/rtl", self.host_name)) {
                 Err(e) => println!("Could not remove rtl folder: {}", e),
@@ -297,6 +317,38 @@ impl Drop for DualModuleAxi4Driver {
                 Ok(_) => println!("Successfully remove build folder"),
             }
         }
+    }
+}
+
+pub mod dual_config_default {
+    use lazy_static::lazy_static;
+    use std::env;
+    pub fn is_set(name: &str) -> bool {
+        match env::var(name) {
+            Ok(value) => value != "",
+            Err(_) => false,
+        }
+    }
+    pub fn env_usize(name: &str, default: usize) -> usize {
+        match env::var(name) {
+            Ok(value) => value.parse().unwrap(),
+            Err(_) => default,
+        }
+    }
+    lazy_static! {
+        pub static ref WITH_WAVEFORM: bool = (cfg!(test) || is_set("WITH_WAVEFORM")) && !is_set("NO_WAVEFORM");
+        pub static ref USE_64_BUS: bool = !is_set("USE_32_BUS");
+        pub static ref SUPPORT_ADD_DEFECT_VERTEX: bool = !is_set("NO_ADD_DEFECT_VERTEX");
+    }
+}
+impl DualConfig {
+    pub fn write_to(&self, writer: &mut impl Write) -> std::io::Result<()> {
+        let value = serde_json::to_value(self).unwrap();
+        let object = value.as_object().unwrap();
+        for (key, value) in object {
+            write!(writer, "{} = {}\n", key, value)?;
+        }
+        Ok(())
     }
 }
 

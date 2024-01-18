@@ -42,31 +42,39 @@ object MicroBlossomHost extends App {
       case Left(ex)     => throw ex
     }
 
+    def readNamedValue(name: String): String = {
+      val command = inStream.readLine()
+      println(command)
+      assert(command.startsWith(s"$name = "))
+      command.substring(s"$name = ".length, command.length)
+    }
+
+    val withWaveform = readNamedValue("with_waveform").toBoolean
+    val use64bus = readNamedValue("use_64_bus").toBoolean
+    val contextDepth = readNamedValue("context_depth").toInt
+    val broadcastDelay = readNamedValue("broadcast_delay").toInt
+    val convergecastDelay = readNamedValue("convergecast_delay").toInt
+    val obstacleChannels = readNamedValue("obstacle_channels").toInt
+    val supportAddDefectVertex = readNamedValue("support_add_defect_vertex").toBoolean
+
     // construct and compile a MicroBlossom module for simulation
-    val config = DualConfig(graph = graph)
+    val config = DualConfig(
+      graph = graph,
+      contextDepth = contextDepth,
+      broadcastDelay = broadcastDelay,
+      convergecastDelay = convergecastDelay,
+      obstacleChannels = obstacleChannels,
+      supportAddDefectVertex = supportAddDefectVertex
+    )
     config.sanityCheck()
     val simConfig = SimConfig
       .withConfig(Config.spinal())
       .workspacePath(workspacePath)
       .workspaceName(host_name)
-
-    var command = inStream.readLine()
-    var withWaveform = false
-    command match {
-      case "with waveform" => {
-        simConfig.withFstWave
-        withWaveform = true
-      }
-      case "no waveform" => simConfig.allOptimisation
-      case _             => throw new IllegalArgumentException
-    }
-
-    command = inStream.readLine()
-    var use64bus = true
-    command match {
-      case "64 bits bus" => use64bus = true
-      case "32 bits bus" => use64bus = false
-      case _             => throw new IllegalArgumentException
+    if (withWaveform) {
+      simConfig.withFstWave
+    } else {
+      simConfig.allOptimisation
     }
 
     simConfig
@@ -103,7 +111,7 @@ object MicroBlossomHost extends App {
         var maxGrowth = Long.MaxValue
         breakable {
           while (true) {
-            command = inStream.readLine()
+            val command = inStream.readLine()
             // println("[%d] %s".format(cycleCounter, command))
             if (command == "quit") {
               println("requested quit, breaking...")
@@ -127,7 +135,7 @@ object MicroBlossomHost extends App {
               val data = BigInt(parameters(2))
               driver.writeBytes(address, data, numBytes)
             } else {
-              println("[error] unknown command: %s".format(command))
+              throw new Exception(s"[error] unknown command: $command")
             }
           }
         }

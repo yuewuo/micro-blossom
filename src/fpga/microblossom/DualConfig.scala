@@ -33,9 +33,12 @@ case class DualConfig(
   def contextBits = log2Up(contextDepth)
   def IndexNone = (1 << vertexBits) - 1
   def LengthNone = (1 << weightBits) - 1
-  def readLatency = { // from sending the command to receiving the obstacle
+  def executeLatency = { // from sending the command to finishing the writes
     val contextDelay = (contextDepth != 1).toInt // when there is context switching, delay 1 clock due to memory fetch
-    broadcastDelay + convergecastDelay + injectRegisters.length + contextDelay
+    injectRegisters.length + contextDelay
+  }
+  def readLatency = { // from sending the command to receiving the obstacle
+    broadcastDelay + convergecastDelay + executeLatency
   }
 
   private val virtualVertices = collection.mutable.Set[Int]()

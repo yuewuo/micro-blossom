@@ -36,7 +36,8 @@ cfg-if = "1.0.0"
 priority-queue = "1.2.1"
 parking_lot = { version = "0.12.1", features = ["hardware-lock-elision"] }
 serde = { version = "1.0.117", features = ["derive", "rc"] }
-serde_json = "1.0.59"
+# preserve_order necessary for communication with MicroBlossomHost.scala
+serde_json = { version = "1.0.59", features = ["preserve_order"] }
 chrono = "0.4.19"
 derivative = "2.2.0"
 urlencoding = "2.1.0"
