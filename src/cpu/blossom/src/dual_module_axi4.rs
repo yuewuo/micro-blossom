@@ -305,10 +305,10 @@ impl Drop for DualModuleAxi4Driver {
         }
         if self.dual_config.with_waveform {
             // only delete binary but keep original waveforms
-            match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/rtl", self.host_name)) {
-                Err(e) => println!("Could not remove rtl folder: {}", e),
-                Ok(_) => println!("Successfully remove rtl folder"),
-            }
+            // match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/rtl", self.host_name)) {
+            //     Err(e) => println!("Could not remove rtl folder: {}", e),
+            //     Ok(_) => println!("Successfully remove rtl folder"),
+            // }
             match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/verilator", self.host_name)) {
                 Err(e) => println!("Could not remove verilator folder: {}", e),
                 Ok(_) => println!("Successfully remove verilator folder"),

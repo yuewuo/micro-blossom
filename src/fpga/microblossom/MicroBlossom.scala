@@ -110,12 +110,15 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       ) init (0)
   }
 
-  // keep track of some history
+  // instantiate distributed dual
+  val dual = DistributedDual(config)
+  dual.io.message.valid := False
+  dual.io.message.assignDontCareToUnasigned()
+
+  // keep track of some history to avoid data races
   val initHistoryEntry = HistoryEntry(config)
   initHistoryEntry.valid := False
-  if (config.contextBits > 0) {
-    initHistoryEntry.contextId := 0
-  }
+  initHistoryEntry.assignDontCareToUnasigned()
   require(config.readLatency >= 2)
   val historyEntries = Vec.fill(config.readLatency)(Reg(HistoryEntry(config)) init initHistoryEntry)
   // shift register
@@ -124,9 +127,7 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   }
   val nextHistoryEntry = HistoryEntry(config)
   nextHistoryEntry.valid := False
-  if (config.contextBits > 0) {
-    nextHistoryEntry.contextId := 0
-  }
+  nextHistoryEntry.assignDontCareToUnasigned()
 
   val instruction = new Area {
     val writeInstruction = Bits(32 bits)
@@ -158,6 +159,12 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       nextHistoryEntry.valid := True
       if (config.contextBits > 0) {
         nextHistoryEntry.contextId := writeContextId.resize(config.contextBits)
+      }
+      // report(L"doing Write instruction = $writeInstruction, contextId = $writeContextId")
+      dual.io.message.valid := True
+      dual.io.message.instruction := writeInstruction
+      if (config.contextBits > 0) {
+        dual.io.message.contextId := writeContextId.resize(config.contextBits)
       }
     }
     if (is64bus) {
