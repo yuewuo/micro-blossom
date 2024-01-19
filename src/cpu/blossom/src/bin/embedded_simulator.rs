@@ -151,3 +151,13 @@ extern "C" fn get_obstacle(head: *mut ReadoutHead, conflicts: *mut ReadoutConfli
         .get_obstacle(head, slice, context_id)
         .unwrap();
 }
+
+#[no_mangle]
+extern "C" fn clear_instruction_counter() {
+    SIMULATOR_DRIVER.lock().as_mut().unwrap().memory_write_32(24, 0).unwrap()
+}
+
+#[no_mangle]
+extern "C" fn get_instruction_counter() -> u32 {
+    SIMULATOR_DRIVER.lock().as_mut().unwrap().memory_read_32(24).unwrap()
+}

@@ -102,7 +102,14 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
       }
     }
   }
-  io.maxGrowable := maxGrowableConvergcastTree(config.graph.vertex_edge_binary_tree.nodes.length - 1).resized
+
+  val selectedMaxGrowable = maxGrowableConvergcastTree(config.graph.vertex_edge_binary_tree.nodes.length - 1)
+  require(io.maxGrowable.getBitsWidth >= selectedMaxGrowable.getBitsWidth)
+  when(selectedMaxGrowable.length === selectedMaxGrowable.length.maxValue) {
+    io.maxGrowable.length := io.maxGrowable.length.maxValue
+  } otherwise {
+    io.maxGrowable.length := selectedMaxGrowable.length.resized
+  }
 
   // build convergecast tree of conflict
   val conflictConvergecastTree =

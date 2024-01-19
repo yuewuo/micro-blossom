@@ -132,7 +132,7 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   dual.io.message.assignDontCareToUnasigned()
 
   // keep track of some history to avoid data races
-  val readoutLatency = config.readLatency // TODO: add any latency from the readout logic
+  val readoutLatency = config.readLatency + 1 // add 1 clock latency from the readout memory
   val initHistoryEntry = HistoryEntry(config)
   initHistoryEntry.valid := False
   initHistoryEntry.assignDontCareToUnasigned()
@@ -212,12 +212,12 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       Mem(ConvergecastConflict(config.vertexBits), config.contextDepth)
     })
 
-    val historyEntry = historyEntries(config.readLatency - 1)
+    val currentEntry = HistoryEntry(config)
+    currentEntry := historyEntries(config.readLatency - 1)
     val currentId = if (config.contextBits > 0) {
-      historyEntry.contextId
+      currentEntry.contextId
     } else { UInt(0 bits) }
-    val currentValid = historyEntry.valid
-    when(currentValid) {
+    when(currentEntry.valid) {
       growable.write(currentId, dual.io.maxGrowable.length)
     }
   }
@@ -257,11 +257,11 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       hardwareInfo.readoutCounter := hardwareInfo.readoutCounter + 1
       if (is64bus) {
         when(contextAddress === 0) {
-          readValue := contextGrowable.resize(16 bits) ## U(0, 48 bits)
+          readValue := U(0, 48 bits) ## contextGrowable.resize(16 bits)
         }
       } else {
         when(contextAddress === 0) {
-          readValue := contextGrowable.resize(16 bits) ## U(0, 16 bits)
+          readValue := U(0, 16 bits) ## contextGrowable.resize(16 bits)
         }
       }
 

@@ -90,7 +90,11 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   }
 
   stages.offloadSet.message := message
-  stages.offloadSet.state := fetchState
+  stages.offloadSet.state := Mux(
+    message.isReset || !message.valid,
+    VertexState.resetValue(config, vertexIndex),
+    fetchState
+  )
 
   stages.offloadSet2.connect(stages.offloadGet)
 
@@ -178,8 +182,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   io.maxGrowable := vertexResponse.io.maxGrowable
 
   // write back
-  val writeState =
-    Mux(stages.updateGet3.compact.isReset, VertexState.resetValue(config, vertexIndex), stages.updateGet3.state)
+  val writeState = stages.updateGet3.state
   if (config.contextBits > 0) {
     ram.write(
       address = stages.updateGet3.compact.contextId,

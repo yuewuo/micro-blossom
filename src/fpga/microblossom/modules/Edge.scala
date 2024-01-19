@@ -77,7 +77,7 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
     message := io.message
   }
 
-  stages.offloadSet.state := fetchState
+  stages.offloadSet.state := Mux(message.isReset || !message.valid, EdgeState.resetValue(config, edgeIndex), fetchState)
   stages.offloadSet.compact.connect(message)
 
   stages.offloadSet2.connect(stages.offloadGet)

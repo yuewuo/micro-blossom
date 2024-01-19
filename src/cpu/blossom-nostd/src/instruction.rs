@@ -33,6 +33,12 @@ impl Instruction32 {
     pub fn reset() -> Self {
         Self(EXTENDED_OP_CODE_ENABLE | EXTENDED_OP_CODE_RESET)
     }
+    pub fn add_defect_vertex(vertex: CompactVertexIndex, node: CompactNodeIndex) -> Self {
+        let field_vertex = (vertex.get() as u32) << 17;
+        assert!(node.get() < (1 << 11));
+        let field_node = (node.get() as u32) << 6;
+        Self(field_vertex | field_node | EXTENDED_OP_CODE_ENABLE | EXTENDED_OP_CODE_ADD_DEFECT_VERTEX)
+    }
 
     pub fn is_extended(self) -> bool {
         (self.0 & EXTENDED_OP_CODE_ENABLE) != 0
