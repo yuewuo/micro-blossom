@@ -21,7 +21,7 @@
 
 use clap::Parser;
 use cty::c_char;
-use embedded_blossom::extern_c::MicroBlossomHardwareInfo;
+use embedded_blossom::extern_c::*;
 use embedded_blossom::{rust_main_raw, RUST_MAIN_NAME};
 use lazy_static::lazy_static;
 use micro_blossom::dual_module_axi4::*;
@@ -128,7 +128,7 @@ extern "C" fn diff_native_time(start: u64, end: u64) -> f32 {
 
 #[no_mangle]
 extern "C" fn get_hardware_info() -> MicroBlossomHardwareInfo {
-    SIMULATOR_DRIVER.lock().as_mut().unwrap().get_hardware_info()
+    SIMULATOR_DRIVER.lock().as_mut().unwrap().get_hardware_info().unwrap()
 }
 
 #[no_mangle]
@@ -138,4 +138,16 @@ extern "C" fn execute_instruction(instruction: u32, context_id: u16) {
         .as_mut()
         .unwrap()
         .execute_instruction(Instruction32(instruction), context_id)
+}
+
+#[no_mangle]
+extern "C" fn get_obstacle(head: *mut ReadoutHead, conflicts: *mut ReadoutConflict, obstacle_channels: u8, context_id: u16) {
+    let head = unsafe { &mut *head };
+    let slice = unsafe { std::slice::from_raw_parts_mut(conflicts, obstacle_channels as usize) };
+    SIMULATOR_DRIVER
+        .lock()
+        .as_mut()
+        .unwrap()
+        .get_obstacle(head, slice, context_id)
+        .unwrap();
 }

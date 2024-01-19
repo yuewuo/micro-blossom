@@ -42,13 +42,14 @@ case class VirtualMicroBlossom() extends Bundle {
 }
 
 // max d=31 (31^3 < 32768), for 0.1% physical error rate we have 18 reported obstacles on average
-// since there is no need to save memory space (256MB), we just allocate whatever convenient
+// since there is no need to save memory space, we just allocate whatever convenient; for now we assume 8MB
 // 1. 128KB control block at [0, 0x1000]
 //    0: (RO) 64 bits timer counter
 //    8: (RO) 32 bits version register
 //    12: (RO) 32 bits context depth
 //    16: (RO) 8 bits number of obstacle channels (we're not using 100+ obstacle channels...)
 //    24: (RW) 32 bits instruction counter
+//    32: (RW) 32 bits readout counter
 //  - (64 bits only) the following 4KB section is designed to allow burst writes (e.g. use xsdb "mwr -bin -file" command)
 //    0x1000: (WO) (32 bits instruction, 16 bits context id)
 //    0x1008: (WO) (32 bits instruction, 16 bits context id)
@@ -57,14 +58,20 @@ case class VirtualMicroBlossom() extends Bundle {
 //    0x10000: 32 bits instruction for context 0
 //    0x10004: 32 bits instruction for context 1
 //    0x1FFFC: ... repeat for 65536: in total 64KB space
-// 2. 2MB context readouts at [0x20_0000, 0x40_0000), each context is 4KB space
-//    0: (RO) 64 bits obstacle timestamp
-//    8: (RW) 32 bits grown value (for primal offloading)
+// 2. 4MB context readouts at [0x40_0000, 0x80_0000), each context takes 1KB space, assuming no more than 4K contexts
+//    [context 0]
+//      0: (RO) 16 bits growable value (writing to this position has no effect)
+//      2: (RW) 16 bits maximum growth (offloaded primal), when 0, disable offloaded primal
+//      4: (RW) 32 bits accumulated grown value (for primal offloading)
+//      (at most 62 concurrent obstacle report, already large enough)
+//      32: (RO) 128 bits obstacle value [0] (96 bits obstacle value, 8 bits is_valid)
+//      48: (RO) 128 bits obstacle value [1]
+//      64: (RO) 128 bits obstacle value [2]
+//         ...
+//    [context 1]
+//      1024: (RO) 32 bits growable value, when 0, the obstacle values are valid
+//         ...
 //
-//    32: (RO) 128 bits obstacle value [0]
-//    : (RO) 128 bits obstacle value [1]
-//    48: (RO) 128 bits obstacle value [2]
-//       ...
 case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     config: DualConfig,
     baseAddress: BigInt = 0,
@@ -108,6 +115,12 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
         address = 24,
         documentation = "instruction counter"
       ) init (0)
+    val readoutCounter =
+      factory.createWriteAndReadMultiWord(
+        UInt(32 bits),
+        address = 32,
+        documentation = "readout counter"
+      ) init (0)
   }
 
   // instantiate distributed dual
@@ -116,13 +129,14 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   dual.io.message.assignDontCareToUnasigned()
 
   // keep track of some history to avoid data races
+  val readoutLatency = config.readLatency // TODO: add any latency from the readout logic
   val initHistoryEntry = HistoryEntry(config)
   initHistoryEntry.valid := False
   initHistoryEntry.assignDontCareToUnasigned()
-  require(config.readLatency >= 2)
-  val historyEntries = Vec.fill(config.readLatency)(Reg(HistoryEntry(config)) init initHistoryEntry)
+  require(readoutLatency >= 2)
+  val historyEntries = Vec.fill(readoutLatency)(Reg(HistoryEntry(config)) init initHistoryEntry)
   // shift register
-  for (i <- 0 until config.readLatency - 1) {
+  for (i <- 0 until readoutLatency - 1) {
     historyEntries(i + 1) := historyEntries(i)
   }
   val nextHistoryEntry = HistoryEntry(config)
@@ -168,24 +182,58 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       }
     }
     if (is64bus) {
-      val mapping = SizeMapping(base = 4096, size = 4096)
+      val mapping = SizeMapping(base = 4 KiB, size = 4 KiB)
       val documentation = "instruction array (64 bits)"
       factory.nonStopWrite(writeInstruction, bitOffset = 0)
       factory.nonStopWrite(writeContextId, bitOffset = 32)
       factory.onWritePrimitive(mapping, haltSensitive = false, documentation)(onAskWrite)
       factory.onWritePrimitive(mapping, haltSensitive = true, documentation)(onDoWrite)
     } else {
-      factory.onWritePrimitive(
-        SizeMapping(base = 65536, size = 65536),
-        haltSensitive = false,
-        documentation = "instruction array (32 bits)"
-      ) {
-        hardwareInfo.instructionCounter := hardwareInfo.instructionCounter + 1
-      }
+      val mapping = SizeMapping(base = 64 KiB, size = 64 KiB)
+      val documentation = "instruction array (32 bits)"
+      factory.nonStopWrite(writeInstruction, bitOffset = 0)
+      writeContextId := factory.writeAddress().resize(log2Up(64 KiB))
+      factory.onWritePrimitive(mapping, haltSensitive = false, documentation)(onAskWrite)
+      factory.onWritePrimitive(mapping, haltSensitive = true, documentation)(onDoWrite)
     }
   }
 
   historyEntries(0) := nextHistoryEntry
+
+  val readouts = new Area {
+    // each entry is 1KB
+    val contextAddress: UInt = factory.readAddress().resize(10)
+    val readContextId: UInt = (factory.readAddress() >> 10).resize(12)
+    // report(L"readContextId = $readContextId")
+    def onAskRead() = {
+      val blockers = Vec.fill(readoutLatency)(Bool)
+      for (i <- 0 until readoutLatency) {
+        if (config.contextBits > 0) {
+          blockers(i) := historyEntries(i).valid &&
+            historyEntries(i).contextId === readContextId.resize(config.contextBits)
+        } else {
+          blockers(i) := historyEntries(i).valid
+        }
+      }
+      val isBlocked = Bool
+      if (readoutLatency > 0) {
+        isBlocked := blockers.reduceBalancedTree(_ | _)
+      } else {
+        isBlocked := False
+      }
+      when(isBlocked) {
+        factory.readHalt()
+      }
+    }
+    def onDoRead() = {
+      hardwareInfo.readoutCounter := hardwareInfo.readoutCounter + 1
+      // when(contextAddress === 0)
+    }
+    val mapping = SizeMapping(base = 4 MiB, size = 4 MiB)
+    val documentation = "readout array (1 KB each, 4K of them at most)"
+    factory.onReadPrimitive(mapping, haltSensitive = false, documentation)(onAskRead)
+    factory.onReadPrimitive(mapping, haltSensitive = true, documentation)(onDoRead)
+  }
 
   rawFactory.printDataModel()
 
@@ -200,7 +248,7 @@ object MicroBlossomAxi4 {
   def apply(
       config: DualConfig,
       baseAddress: BigInt = 0,
-      axi4Config: Axi4Config = VersalAxi4Config(addressWidth = log2Up(4 MiB))
+      axi4Config: Axi4Config = VersalAxi4Config(addressWidth = log2Up(8 MiB))
   ) = {
     MicroBlossom(
       config,
@@ -212,15 +260,20 @@ object MicroBlossomAxi4 {
 }
 
 object MicroBlossomAxiLite4 {
+  def renamedAxiLite4(config: AxiLite4Config) = {
+    val axiLite4 = AxiLite4(config)
+    AxiLite4SpecRenamer(axiLite4)
+    axiLite4
+  }
   def apply(
       config: DualConfig,
       baseAddress: BigInt = 0,
-      axiLite4Config: AxiLite4Config = AxiLite4Config(addressWidth = log2Up(4 MiB), dataWidth = 64)
+      axiLite4Config: AxiLite4Config = AxiLite4Config(addressWidth = log2Up(8 MiB), dataWidth = 64)
   ) = {
-    MicroBlossom(
+    MicroBlossom[AxiLite4, AxiLite4SlaveFactory](
       config,
       baseAddress,
-      () => AxiLite4SpecRenamer(AxiLite4(axiLite4Config)),
+      () => renamedAxiLite4(axiLite4Config),
       (x: AxiLite4) => AxiLite4SlaveFactory(x)
     )
   }
@@ -230,12 +283,12 @@ object MicroBlossomAxiLite4Bus32 {
   def apply(
       config: DualConfig,
       baseAddress: BigInt = 0,
-      axiLite4Config: AxiLite4Config = AxiLite4Config(addressWidth = log2Up(4 MiB), dataWidth = 32)
+      axiLite4Config: AxiLite4Config = AxiLite4Config(addressWidth = log2Up(8 MiB), dataWidth = 32)
   ) = {
-    MicroBlossom(
+    MicroBlossom[AxiLite4, AxiLite4SlaveFactory](
       config,
       baseAddress,
-      () => AxiLite4SpecRenamer(AxiLite4(axiLite4Config)),
+      () => MicroBlossomAxiLite4.renamedAxiLite4(axiLite4Config),
       (x: AxiLite4) => AxiLite4SlaveFactory(x)
     )
   }
@@ -248,7 +301,7 @@ object MicroBlossomWishboneBus32 {
   def apply(
       config: DualConfig,
       baseAddress: BigInt = 0,
-      wishboneConfig: WishboneConfig = WishboneConfig(addressWidth = log2Up(4 MiB), dataWidth = 32)
+      wishboneConfig: WishboneConfig = WishboneConfig(addressWidth = log2Up(8 MiB), dataWidth = 32)
   ) = {
     MicroBlossom(
       config,

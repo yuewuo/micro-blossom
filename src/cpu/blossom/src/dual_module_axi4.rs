@@ -8,7 +8,7 @@ use crate::dual_module_adaptor::*;
 use crate::resources::*;
 use crate::util::*;
 use derivative::Derivative;
-use embedded_blossom::extern_c::MicroBlossomHardwareInfo;
+use embedded_blossom::extern_c::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::dual_driver_tracked::*;
@@ -184,12 +184,41 @@ impl DualModuleAxi4Driver {
         }
     }
 
-    pub fn get_hardware_info(&mut self) -> MicroBlossomHardwareInfo {
-        MicroBlossomHardwareInfo {
-            version: self.memory_read_32(8).unwrap(),
-            context_depth: self.memory_read_32(12).unwrap(),
-            obstacle_channels: self.memory_read_8(16).unwrap(),
+    pub fn get_hardware_info(&mut self) -> std::io::Result<MicroBlossomHardwareInfo> {
+        Ok(MicroBlossomHardwareInfo {
+            version: self.memory_read_32(8)?,
+            context_depth: self.memory_read_32(12)?,
+            obstacle_channels: self.memory_read_8(16)?,
+        })
+    }
+
+    pub const READOUT_BASE: usize = 4 * 1024 * 1024;
+
+    pub fn get_obstacle(
+        &mut self,
+        head: &mut ReadoutHead,
+        conflicts: &mut [ReadoutConflict],
+        context_id: u16,
+    ) -> std::io::Result<()> {
+        let base = Self::READOUT_BASE + 1024 * context_id as usize;
+        let raw_head = self.memory_read_64(base)?;
+        head.growable = raw_head as u16;
+        head.accumulated_grown = (raw_head >> 16) as u16;
+        head.maximum_growth = (raw_head >> 32) as u16;
+        for i in 0..conflicts.len() {
+            let conflict = &mut conflicts[i];
+            let conflict_base = base + 32 + i * 16;
+            let raw_1 = self.memory_read_64(conflict_base)?;
+            let raw_2 = self.memory_read_64(conflict_base + 8)?;
+            conflict.node_1 = raw_1 as u16;
+            conflict.node_2 = (raw_1 >> 16) as u16;
+            conflict.touch_1 = (raw_1 >> 32) as u16;
+            conflict.touch_2 = (raw_1 >> 48) as u16;
+            conflict.vertex_1 = raw_2 as u16;
+            conflict.vertex_2 = (raw_2 >> 16) as u16;
+            conflict.valid = (raw_2 >> 32) as u8;
         }
+        Ok(())
     }
 }
 
@@ -305,10 +334,12 @@ impl Drop for DualModuleAxi4Driver {
         }
         if self.dual_config.with_waveform {
             // only delete binary but keep original waveforms
-            // match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/rtl", self.host_name)) {
-            //     Err(e) => println!("Could not remove rtl folder: {}", e),
-            //     Ok(_) => println!("Successfully remove rtl folder"),
-            // }
+            if !dual_config_default::is_set("KEEP_RTL_FOLDER") {
+                match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/rtl", self.host_name)) {
+                    Err(e) => println!("Could not remove rtl folder: {}", e),
+                    Ok(_) => println!("Successfully remove rtl folder"),
+                }
+            }
             match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/verilator", self.host_name)) {
                 Err(e) => println!("Could not remove verilator folder: {}", e),
                 Ok(_) => println!("Successfully remove verilator folder"),

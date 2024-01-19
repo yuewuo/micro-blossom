@@ -43,7 +43,7 @@ object EdgeResponse {
           when(isBothGrow) {
             assert(
               assertion = remaining(0) === False,
-              message = "when both ends are growing, the remaining length must be a even number",
+              message = L"when both ends are growing, the remaining length $remaining must be a even number",
               severity = ERROR
             )
             maxLength.length := remaining |>> 1

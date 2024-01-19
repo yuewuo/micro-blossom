@@ -6,20 +6,24 @@ pub mod extern_c {
 
     #[derive(Debug, Clone)]
     #[repr(C)]
-    pub struct Obstacle {
-        pub grown: uint16_t,
-        pub conflict: Conflict,
+    pub struct ReadoutHead {
+        /// usually `growable` and `accumulated_grown` are read simultaneously
+        pub growable: uint16_t,
+        pub accumulated_grown: uint16_t,
+        /// write to `maximum_growth` will automatically clear `accumulated_grown`
+        pub maximum_growth: uint16_t,
     }
 
     #[derive(Debug, Clone)]
     #[repr(C)]
-    pub struct Conflict {
+    pub struct ReadoutConflict {
         pub node_1: uint16_t,
         pub node_2: uint16_t,
         pub touch_1: uint16_t,
         pub touch_2: uint16_t,
         pub vertex_1: uint16_t,
         pub vertex_2: uint16_t,
+        pub valid: uint8_t,
     }
 
     #[derive(Debug, Clone)]
@@ -37,12 +41,41 @@ pub mod extern_c {
         pub fn set_leds(mask: uint32_t);
         pub fn get_native_time() -> uint64_t;
         pub fn diff_native_time(start: uint64_t, end: uint64_t) -> c_float;
-        pub fn find_obstacle() -> Obstacle;
 
         pub fn get_hardware_info() -> MicroBlossomHardwareInfo;
         pub fn clear_instruction_counter();
         pub fn get_instruction_counter() -> uint32_t;
         pub fn execute_instruction(instruction: uint32_t, context_id: uint16_t);
+        pub fn get_obstacle(
+            head: *mut ReadoutHead,
+            conflicts: *mut ReadoutConflict,
+            obstacle_channels: uint8_t,
+            context_id: uint16_t,
+        );
+    }
+
+    impl ReadoutConflict {
+        pub fn invalid() -> Self {
+            Self {
+                node_1: 0,
+                node_2: 0,
+                touch_1: 0,
+                touch_2: 0,
+                vertex_1: 0,
+                vertex_2: 0,
+                valid: 0,
+            }
+        }
+    }
+
+    impl ReadoutHead {
+        pub fn new() -> Self {
+            Self {
+                maximum_growth: 0,
+                accumulated_grown: 0,
+                growable: 0,
+            }
+        }
     }
 }
 

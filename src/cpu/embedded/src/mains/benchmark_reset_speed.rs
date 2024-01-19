@@ -32,9 +32,18 @@ pub fn main() {
     instruction_benchmarker.run(3);
 
     println!("\n4. Benchmark Multi Context Reset");
-    let context_count = core::cmp::min(32, hardware_info.context_depth);
-    if context_count == 1 {
-        println!("[warning] only one context is supported by hardware");
+    let context_count = 32; // note: for systems without such many context, the address is wrapped back
+    if hardware_info.context_depth < context_count {
+        println!("\n\n\n");
+        println!("*******************************");
+        println!("[Warning] the benchmark may not work as expected");
+        println!(
+            "  the actual context depth is {}, smaller than 32",
+            hardware_info.context_depth
+        );
+        println!("  some benchmark may not observe speed up in batch mode");
+        println!("*******************************");
+        println!("\n\n\n");
     }
     let mut instruction_benchmarker = Benchmarker::new(|| {
         for context_id in 0..context_count as u16 {
@@ -44,4 +53,35 @@ pub fn main() {
     instruction_benchmarker.inner_loops = context_count as usize;
     instruction_benchmarker.autotune();
     instruction_benchmarker.run(3);
+
+    let mut head = extern_c::ReadoutHead::new();
+    let mut conflicts: [extern_c::ReadoutConflict; 4] = core::array::from_fn(|_| extern_c::ReadoutConflict::invalid());
+
+    println!("\n5. Benchmark Read Obstacle");
+    let mut readout_benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 1, 0)) };
+    });
+    readout_benchmarker.autotune();
+    readout_benchmarker.run(3);
+
+    println!("\n6. Benchmark Reset and then Read Obstacle");
+    let mut readout_benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::execute_instruction(Instruction32::reset().into(), 0)) };
+        unsafe { black_box(extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 1, 0)) };
+    });
+    readout_benchmarker.autotune();
+    readout_benchmarker.run(3);
+
+    println!("\n7. Benchmark 32 Batch Reset and then Read Obstacle");
+    let mut readout_benchmarker = Benchmarker::new(|| {
+        for context_id in 0..context_count as u16 {
+            unsafe { black_box(extern_c::execute_instruction(Instruction32::reset().into(), context_id)) };
+        }
+        for context_id in 0..context_count as u16 {
+            unsafe { black_box(extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 1, context_id)) };
+        }
+    });
+    readout_benchmarker.inner_loops = context_count as usize;
+    readout_benchmarker.autotune();
+    readout_benchmarker.run(3);
 }
