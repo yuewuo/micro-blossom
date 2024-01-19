@@ -17,7 +17,8 @@ object EdgeResponse {
       rightShadow: VertexShadowResult,
       leftVertex: Bits,
       rightVertex: Bits,
-      remaining: UInt
+      remaining: UInt,
+      assertRemainingParity: Bool // only used for debug printing
   ) = {
     require(leftVertex.getWidth == conflict.vertex1.getWidth)
     require(rightVertex.getWidth == conflict.vertex2.getWidth)
@@ -42,7 +43,7 @@ object EdgeResponse {
         } otherwise {
           when(isBothGrow) {
             assert(
-              assertion = remaining(0) === False,
+              assertion = !assertRemainingParity || remaining(0) === False,
               message = L"when both ends are growing, the remaining length $remaining must be a even number",
               severity = ERROR
             )
@@ -65,6 +66,7 @@ case class EdgeResponse(vertexBits: Int, weightBits: Int) extends Component {
     val leftVertex = in(Bits(vertexBits bits))
     val rightVertex = in(Bits(vertexBits bits))
     val remaining = in(UInt(weightBits bits))
+    val assertRemainingParity = in(Bool)
 
     val maxLength = out(ConvergecastMaxLength(weightBits))
     val conflict = out(ConvergecastConflict(vertexBits))
@@ -77,7 +79,8 @@ case class EdgeResponse(vertexBits: Int, weightBits: Int) extends Component {
     io.rightShadow,
     io.leftVertex,
     io.rightVertex,
-    io.remaining
+    io.remaining,
+    io.assertRemainingParity
   )
 
 }
