@@ -137,7 +137,6 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   edgeResponse.io.leftVertex := leftVertex
   edgeResponse.io.rightVertex := rightVertex
   edgeResponse.io.remaining := stages.updateGet3.remaining
-  edgeResponse.io.assertRemainingParity := !stages.updateGet3.compact.isReset // do not assert at reset
   io.maxLength := edgeResponse.io.maxLength
   io.conflict := edgeResponse.io.conflict
 
