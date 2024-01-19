@@ -64,7 +64,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
       )
     )
     // final outputs
-    val maxLength = out(ConvergecastMaxLength(config.weightBits))
+    val maxGrowable = out(ConvergecastMaxGrowable(config.weightBits))
   }
 
   val stages = Vertex.getStages(config, vertexIndex)
@@ -175,7 +175,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
 
   val vertexResponse = VertexResponse(config, vertexIndex)
   vertexResponse.io.state := stages.updateGet3.state
-  io.maxLength := vertexResponse.io.maxLength
+  io.maxGrowable := vertexResponse.io.maxGrowable
 
   // write back
   val writeState =

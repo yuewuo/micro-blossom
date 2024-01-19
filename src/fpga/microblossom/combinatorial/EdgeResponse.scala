@@ -11,7 +11,7 @@ import microblossom.types._
 
 object EdgeResponse {
   def build(
-      maxLength: ConvergecastMaxLength, // output
+      maxGrowable: ConvergecastMaxGrowable, // output
       conflict: ConvergecastConflict, // output
       leftShadow: VertexShadowResult,
       rightShadow: VertexShadowResult,
@@ -27,7 +27,7 @@ object EdgeResponse {
       (leftShadow.speed === Speed.Grow && rightShadow.speed === Speed.Stay) ||
       (leftShadow.speed === Speed.Stay && rightShadow.speed === Speed.Grow)
 
-    maxLength.length := maxLength.length.maxValue
+    maxGrowable.length := maxGrowable.length.maxValue
     conflict.valid := False
     conflict.node1 := leftShadow.node
     conflict.node2 := rightShadow.node
@@ -46,9 +46,9 @@ object EdgeResponse {
             //   message = L"when both ends are growing, the remaining length $remaining must be a even number",
             //   severity = ERROR
             // )
-            maxLength.length := remaining |>> 1
+            maxGrowable.length := remaining |>> 1
           } otherwise {
-            maxLength.length := remaining
+            maxGrowable.length := remaining
           }
         }
       }
@@ -66,12 +66,12 @@ case class EdgeResponse(vertexBits: Int, weightBits: Int) extends Component {
     val rightVertex = in(Bits(vertexBits bits))
     val remaining = in(UInt(weightBits bits))
 
-    val maxLength = out(ConvergecastMaxLength(weightBits))
+    val maxGrowable = out(ConvergecastMaxGrowable(weightBits))
     val conflict = out(ConvergecastConflict(vertexBits))
   }
 
   EdgeResponse.build(
-    io.maxLength,
+    io.maxGrowable,
     io.conflict,
     io.leftShadow,
     io.rightShadow,

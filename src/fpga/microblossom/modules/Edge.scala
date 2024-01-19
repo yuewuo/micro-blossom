@@ -51,7 +51,7 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
     val leftVertexInput = in(Vertex.getStages(config, leftVertex).getStageOutput)
     val rightVertexInput = in(Vertex.getStages(config, rightVertex).getStageOutput)
     // final outputs
-    val maxLength = out(ConvergecastMaxLength(config.weightBits))
+    val maxGrowable = out(ConvergecastMaxGrowable(config.weightBits))
     val conflict = out(ConvergecastConflict(config.vertexBits))
   }
 
@@ -137,7 +137,7 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   edgeResponse.io.leftVertex := leftVertex
   edgeResponse.io.rightVertex := rightVertex
   edgeResponse.io.remaining := stages.updateGet3.remaining
-  io.maxLength := edgeResponse.io.maxLength
+  io.maxGrowable := edgeResponse.io.maxGrowable
   io.conflict := edgeResponse.io.conflict
 
   // write back

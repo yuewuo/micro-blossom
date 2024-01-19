@@ -123,13 +123,13 @@ object DualHost extends App {
               assert(parameters.length == 1)
               maxGrowth = parameters(0).toLong
             } else if (command == "find_obstacle()") {
-              val (maxLength, conflict, grown) = dut.simFindObstacle(maxGrowth)
+              val (maxGrowable, conflict, grown) = dut.simFindObstacle(maxGrowth)
               maxGrowth -= grown
               if (!conflict.valid) {
                 outStream.println(
                   "NonZeroGrow(%d), %d".format(
-                    if (maxLength.length == ioConfig.LengthNone) { Int.MaxValue }
-                    else { maxLength.length },
+                    if (maxGrowable.length == ioConfig.LengthNone) { Int.MaxValue }
+                    else { maxGrowable.length },
                     grown
                   )
                 )

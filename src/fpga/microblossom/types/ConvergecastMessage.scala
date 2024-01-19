@@ -4,7 +4,7 @@ import spinal.core._
 import spinal.lib._
 import microblossom._
 
-case class ConvergecastMaxLength(weightBits: Int) extends Bundle {
+case class ConvergecastMaxGrowable(weightBits: Int) extends Bundle {
   val length = UInt(weightBits bits)
 }
 
@@ -18,7 +18,7 @@ case class ConvergecastConflict(vertexBits: Int) extends Bundle {
   val vertex2 = Bits(vertexBits bits)
 }
 
-case class DataMaxLength(
+case class DataMaxGrowable(
     var length: Int
 )
 

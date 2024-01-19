@@ -21,7 +21,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
   val io = new Bundle {
     val message = in(BroadcastMessage(ioConfig, explicitReset = false))
 
-    val maxLength = out(ConvergecastMaxLength(ioConfig.weightBits))
+    val maxGrowable = out(ConvergecastMaxGrowable(ioConfig.weightBits))
     val conflict = out(ConvergecastConflict(ioConfig.vertexBits))
   }
 
@@ -82,27 +82,27 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
     offloader.io.edgeInputOffloadGet3 := edges(edgeIndex).io.stageOutputs.offloadGet3
   }
 
-  // build convergecast tree for maxLength
-  val maxLengthConvergcastTree =
-    Vec.fill(config.graph.vertex_edge_binary_tree.nodes.length)(ConvergecastMaxLength(config.weightBits))
+  // build convergecast tree for maxGrowable
+  val maxGrowableConvergcastTree =
+    Vec.fill(config.graph.vertex_edge_binary_tree.nodes.length)(ConvergecastMaxGrowable(config.weightBits))
   for ((treeNode, index) <- config.graph.vertex_edge_binary_tree.nodes.zipWithIndex) {
     if (index < config.vertexNum) {
       val vertexIndex = index
-      maxLengthConvergcastTree(index) := vertices(vertexIndex).io.maxLength
+      maxGrowableConvergcastTree(index) := vertices(vertexIndex).io.maxGrowable
     } else if (index < config.vertexNum + config.edgeNum) {
       val edgeIndex = index - config.vertexNum
-      maxLengthConvergcastTree(index) := edges(edgeIndex).io.maxLength
+      maxGrowableConvergcastTree(index) := edges(edgeIndex).io.maxGrowable
     } else {
-      val left = maxLengthConvergcastTree(treeNode.l.get.toInt)
-      val right = maxLengthConvergcastTree(treeNode.r.get.toInt)
+      val left = maxGrowableConvergcastTree(treeNode.l.get.toInt)
+      val right = maxGrowableConvergcastTree(treeNode.r.get.toInt)
       when(left.length < right.length) {
-        maxLengthConvergcastTree(index) := left
+        maxGrowableConvergcastTree(index) := left
       } otherwise {
-        maxLengthConvergcastTree(index) := right
+        maxGrowableConvergcastTree(index) := right
       }
     }
   }
-  io.maxLength := maxLengthConvergcastTree(config.graph.vertex_edge_binary_tree.nodes.length - 1).resized
+  io.maxGrowable := maxGrowableConvergcastTree(config.graph.vertex_edge_binary_tree.nodes.length - 1).resized
 
   // build convergecast tree of conflict
   val conflictConvergecastTree =
@@ -139,7 +139,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
   io.conflict.vertex1 := convergecastedConflict.vertex1.resized
   io.conflict.vertex2 := convergecastedConflict.vertex2.resized
 
-  def simExecute(instruction: Long): (DataMaxLength, DataConflict) = {
+  def simExecute(instruction: Long): (DataMaxGrowable, DataConflict) = {
     io.message.valid #= true
     io.message.instruction #= instruction
     clockDomain.waitSampling()
@@ -147,7 +147,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
     for (idx <- 0 until config.readLatency) { clockDomain.waitSampling() }
     sleep(1)
     (
-      DataMaxLength(io.maxLength.length.toInt),
+      DataMaxGrowable(io.maxGrowable.length.toInt),
       DataConflict(
         io.conflict.valid.toBoolean,
         io.conflict.node1.toInt,
@@ -176,12 +176,12 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
   }
 
   // a temporary solution without primal offloading
-  def simFindObstacle(maxGrowth: Long): (DataMaxLength, DataConflict, Long) = {
-    var (maxLength, conflict) = simExecute(ioConfig.instructionSpec.generateFindObstacle())
+  def simFindObstacle(maxGrowth: Long): (DataMaxGrowable, DataConflict, Long) = {
+    var (maxGrowable, conflict) = simExecute(ioConfig.instructionSpec.generateFindObstacle())
     var grown = 0.toLong
     breakable {
-      while (maxLength.length > 0 && !conflict.valid) {
-        var length = maxLength.length.toLong
+      while (maxGrowable.length > 0 && !conflict.valid) {
+        var length = maxGrowable.length.toLong
         if (length == ioConfig.LengthNone) {
           break
         }
@@ -194,11 +194,11 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
         grown += length
         simExecute(ioConfig.instructionSpec.generateGrow(length))
         val update = simExecute(ioConfig.instructionSpec.generateFindObstacle())
-        maxLength = update._1
+        maxGrowable = update._1
         conflict = update._2
       }
     }
-    (maxLength, conflict, grown)
+    (maxGrowable, conflict, grown)
   }
 
   // take a snapshot of the dual module, in the format of fusion blossom visualization
@@ -325,14 +325,14 @@ class DistributedDualTest extends AnyFunSuite {
 
         dut.simExecute(ioConfig.instructionSpec.generateReset())
         dut.simExecute(ioConfig.instructionSpec.generateAddDefect(0, 0))
-        var (maxLength, conflict) = dut.simExecute(ioConfig.instructionSpec.generateFindObstacle())
+        var (maxGrowable, conflict) = dut.simExecute(ioConfig.instructionSpec.generateFindObstacle())
 
-        assert(maxLength.length == 2) // at most grow 2
+        assert(maxGrowable.length == 2) // at most grow 2
         assert(conflict.valid == false)
 
         dut.simExecute(ioConfig.instructionSpec.generateGrow(1))
-        var (maxLength2, conflict2) = dut.simExecute(ioConfig.instructionSpec.generateFindObstacle())
-        assert(maxLength2.length == 1)
+        var (maxGrowable2, conflict2) = dut.simExecute(ioConfig.instructionSpec.generateFindObstacle())
+        assert(maxGrowable2.length == 1)
         assert(conflict2.valid == false)
 
         val (_, conflict3, grown3) = dut.simFindObstacle(1)

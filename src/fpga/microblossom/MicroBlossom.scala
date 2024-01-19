@@ -124,7 +124,10 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   }
 
   // instantiate distributed dual
-  val dual = DistributedDual(config)
+  val ioConfig = DualConfig()
+  ioConfig.contextDepth = config.contextDepth
+  ioConfig.weightBits = 16
+  val dual = DistributedDual(config, ioConfig)
   dual.io.message.valid := False
   dual.io.message.assignDontCareToUnasigned()
 
@@ -200,17 +203,40 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
 
   historyEntries(0) := nextHistoryEntry
 
+  // managing the context data from
+  val context = new Area {
+    val growable = Mem(UInt(16 bits), config.contextDepth)
+    val maximumGrowth = Mem(UInt(16 bits), config.contextDepth)
+    val accumulatedGrowth = Mem(UInt(16 bits), config.contextDepth)
+    val conflicts = List.tabulate(config.obstacleChannels)(_ => {
+      Mem(ConvergecastConflict(config.vertexBits), config.contextDepth)
+    })
+
+    val historyEntry = historyEntries(config.readLatency - 1)
+    val currentId = if (config.contextBits > 0) {
+      historyEntry.contextId
+    } else { UInt(0 bits) }
+    val currentValid = historyEntry.valid
+    when(currentValid) {
+      growable.write(currentId, dual.io.maxGrowable.length)
+    }
+  }
+
   val readouts = new Area {
     // each entry is 1KB
     val contextAddress: UInt = factory.readAddress().resize(10)
-    val readContextId: UInt = (factory.readAddress() >> 10).resize(12)
+    val readContextId: UInt = (factory.readAddress() >> 10).resize(config.contextBits)
+    // readout values
+    val readValue = if (is64bus) { Bits(64 bits).assignDontCare() }
+    else { Bits(32 bits).assignDontCare() }
     // report(L"readContextId = $readContextId")
+    val contextGrowable = UInt(16 bits).assignDontCare()
     def onAskRead() = {
       val blockers = Vec.fill(readoutLatency)(Bool)
       for (i <- 0 until readoutLatency) {
         if (config.contextBits > 0) {
           blockers(i) := historyEntries(i).valid &&
-            historyEntries(i).contextId === readContextId.resize(config.contextBits)
+            historyEntries(i).contextId === readContextId
         } else {
           blockers(i) := historyEntries(i).valid
         }
@@ -221,16 +247,28 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       } else {
         isBlocked := False
       }
+      // regardless of whether it's blocked, put the address in ram first so that it's ready the next cycle
+      contextGrowable := context.growable.readSync(readContextId)
       when(isBlocked) {
         factory.readHalt()
       }
     }
     def onDoRead() = {
       hardwareInfo.readoutCounter := hardwareInfo.readoutCounter + 1
-      // when(contextAddress === 0)
+      if (is64bus) {
+        when(contextAddress === 0) {
+          readValue := contextGrowable.resize(16 bits) ## U(0, 48 bits)
+        }
+      } else {
+        when(contextAddress === 0) {
+          readValue := contextGrowable.resize(16 bits) ## U(0, 16 bits)
+        }
+      }
+
     }
     val mapping = SizeMapping(base = 4 MiB, size = 4 MiB)
     val documentation = "readout array (1 KB each, 4K of them at most)"
+    factory.readPrimitive(readValue, mapping, 0, "readouts")
     factory.onReadPrimitive(mapping, haltSensitive = false, documentation)(onAskRead)
     factory.onReadPrimitive(mapping, haltSensitive = true, documentation)(onDoRead)
   }

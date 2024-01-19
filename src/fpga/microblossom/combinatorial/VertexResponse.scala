@@ -11,19 +11,19 @@ import microblossom.types._
 
 object VertexResponse {
   def build(
-      maxLength: ConvergecastMaxLength, // output
+      maxGrowable: ConvergecastMaxGrowable, // output
       state: VertexState
   ) = {
 
-    maxLength.length := maxLength.length.maxValue
+    maxGrowable.length := maxGrowable.length.maxValue
 
     when(state.speed === Speed.Shrink) {
-      if (state.grown.getWidth > maxLength.length.getWidth) {
-        when(!state.grown(state.grown.high downto maxLength.length.getWidth).orR) {
-          maxLength.length := state.grown.resized
+      if (state.grown.getWidth > maxGrowable.length.getWidth) {
+        when(!state.grown(state.grown.high downto maxGrowable.length.getWidth).orR) {
+          maxGrowable.length := state.grown.resized
         }
       } else {
-        maxLength.length := state.grown.resized
+        maxGrowable.length := state.grown.resized
       }
     }
 
@@ -35,10 +35,10 @@ case class VertexResponse(config: DualConfig, vertexIndex: Int) extends Componen
   val io = new Bundle {
     val state = in(VertexState(config.vertexBits, config.grownBitsOf(vertexIndex)))
 
-    val maxLength = out(ConvergecastMaxLength(config.weightBits))
+    val maxGrowable = out(ConvergecastMaxGrowable(config.weightBits))
   }
 
-  VertexResponse.build(io.maxLength, io.state)
+  VertexResponse.build(io.maxGrowable, io.state)
 
 }
 
