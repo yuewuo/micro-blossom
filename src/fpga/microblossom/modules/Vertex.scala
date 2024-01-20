@@ -79,6 +79,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   if (config.contextBits > 0) {
     // fetch stage, delay the instruction
     ram = Mem(VertexState(config.vertexBits, config.grownBitsOf(vertexIndex)), config.contextDepth)
+    ram.setTechnology(ramBlock)
     fetchState := ram.readSync(
       address = io.message.contextId,
       enable = io.message.valid

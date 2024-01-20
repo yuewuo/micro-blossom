@@ -67,6 +67,7 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   if (config.contextBits > 0) {
     // fetch stage, delay the instruction
     ram = Mem(EdgeState(config.weightBits), config.contextDepth)
+    ram.setTechnology(ramBlock)
     fetchState := ram.readSync(
       address = io.message.contextId,
       enable = io.message.valid
