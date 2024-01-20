@@ -90,11 +90,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   }
 
   stages.offloadSet.message := message
-  stages.offloadSet.state := Mux(
-    message.isReset || !message.valid,
-    VertexState.resetValue(config, vertexIndex),
-    fetchState
-  )
+  stages.offloadSet.state := Mux(message.isReset, VertexState.resetValue(config, vertexIndex), fetchState)
 
   stages.offloadSet2.connect(stages.offloadGet)
 

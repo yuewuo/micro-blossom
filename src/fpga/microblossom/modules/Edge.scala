@@ -77,7 +77,7 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
     message := io.message
   }
 
-  stages.offloadSet.state := Mux(message.isReset || !message.valid, EdgeState.resetValue(config, edgeIndex), fetchState)
+  stages.offloadSet.state := Mux(message.isReset, EdgeState.resetValue(config, edgeIndex), fetchState)
   stages.offloadSet.compact.connect(message)
 
   stages.offloadSet2.connect(stages.offloadGet)
@@ -141,8 +141,7 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   io.conflict := edgeResponse.io.conflict
 
   // write back
-  val writeState =
-    Mux(stages.updateGet3.compact.isReset, EdgeState.resetValue(config, edgeIndex), stages.updateGet3.state)
+  val writeState = stages.updateGet3.state
   if (config.contextBits > 0) {
     ram.write(
       address = stages.updateGet3.compact.contextId,
