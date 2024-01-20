@@ -1,12 +1,13 @@
 set name vmk180_micro_blossom
 set ip_name MicroBlossom
 
-if { $argc != 1 } {
-    puts "Usage: <dual_config_filepath>"
+if { $argc != 2 } {
+    puts "Usage: <dual_config_filepath> <clock frequency in MHz>"
     puts "Please try again."
     exit 1
 } else {
     set dual_config_filepath [lindex $argv 0]
+    scan [lindex $argv 1] %f clock_frequency
 }
 
 create_project ${name} ./${name}_vivado -part xcvm1802-vsva2197-2MP-e-S
@@ -32,20 +33,20 @@ update_ip_catalog -rebuild -scan_changes
 
 
 # configure CIPS
-# expose 200MHz clock from PS
+# expose {clock_frequency}MHz clock from PS
 # expose AXI_FPD
 # expose a PL reset
 startgroup
 set_property -dict [list \
   CONFIG.PS_PMC_CONFIG { \
     PS_USE_PMCPL_CLK0 {1} \
-    PMC_CRP_PL0_REF_CTRL_FREQMHZ {200} \
     PS_USE_M_AXI_FPD {1} \
     PS_M_AXI_FPD_DATA_WIDTH {64} \
     PS_NUM_FABRIC_RESETS {1} \
   } \
 ] [get_bd_cells versal_cips_0]
 endgroup
+set_property -dict [list CONFIG.PS_PMC_CONFIG "PMC_CRP_PL0_REF_CTRL_FREQMHZ $clock_frequency"] [get_bd_cells versal_cips_0]
 
 # create and connect my AXI4 IP
 create_bd_cell -type ip -vlnv user.org:user:${ip_name}:1.0 ${ip_name}_0

@@ -31,7 +31,7 @@ pub mod extern_c {
     pub struct MicroBlossomHardwareInfo {
         pub version: uint32_t,
         pub context_depth: uint32_t,
-        pub obstacle_channels: uint8_t,
+        pub conflict_channels: uint8_t,
     }
 
     extern "C" {
@@ -49,7 +49,7 @@ pub mod extern_c {
         pub fn get_obstacle(
             head: *mut ReadoutHead,
             conflicts: *mut ReadoutConflict,
-            obstacle_channels: uint8_t,
+            conflict_channels: uint8_t,
             context_id: uint16_t,
         );
     }

@@ -71,6 +71,7 @@ case class Stages[
     val update3: () => Update3 = () => new Bundle {}
 ) extends Bundle {
   private val namedStages = Map[String, Stage]()
+  def stageNames = namedStages.keys
   private def addNamedStage(name: String, setter: Bundle, getter: Bundle) = {
     namedStages += (name -> Stage(setter, getter))
   }

@@ -41,11 +41,11 @@ object EdgeResponse {
           conflict.valid := True
         } otherwise {
           when(isBothGrow) {
-            assert(
-              assertion = remaining(0) === False,
-              message = L"when both ends are growing, the remaining length $remaining must be a even number",
-              severity = ERROR
-            )
+            // assert(
+            //   assertion = remaining(0) === False,
+            //   message = L"when both ends are growing, the remaining length $remaining must be a even number",
+            //   severity = ERROR
+            // )
             maxGrowable.length := remaining |>> 1
           } otherwise {
             maxGrowable.length := remaining

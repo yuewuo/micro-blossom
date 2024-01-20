@@ -40,15 +40,15 @@ pub struct DualConfig {
     pub broadcast_delay: usize,
     #[derivative(Default(value = "dual_config_default::env_usize(\"CONVERGECAST_DELAY\", 1)"))]
     pub convergecast_delay: usize,
-    #[derivative(Default(value = "dual_config_default::env_usize(\"OBSTACLE_CHANNELS\", 1)"))]
-    pub obstacle_channels: usize,
+    #[derivative(Default(value = "dual_config_default::env_usize(\"CONFLICT_CHANNELS\", 1)"))]
+    pub conflict_channels: usize,
     #[derivative(Default(value = "*dual_config_default::SUPPORT_ADD_DEFECT_VERTEX"))]
     pub support_add_defect_vertex: bool,
     #[derivative(Default(value = "dual_config_default::INJECT_REGISTERS.clone()"))]
     pub inject_registers: Vec<String>,
 }
 
-pub const MAX_OBSTACLE_CHANNELS: usize = 62;
+pub const MAX_CONFLICT_CHANNELS: usize = 62;
 
 pub struct DualModuleAxi4Driver {
     pub link: Mutex<Link>,
@@ -103,8 +103,8 @@ impl DualModuleAxi4Driver {
         line.clear();
         reader.read_line(&mut line)?;
         assert_eq!(line, "simulation started\n");
-        assert!(dual_config.obstacle_channels <= MAX_OBSTACLE_CHANNELS);
-        let obstacle_channels = dual_config.obstacle_channels;
+        assert!(dual_config.conflict_channels <= MAX_CONFLICT_CHANNELS);
+        let conflict_channels = dual_config.conflict_channels;
         let mut value = Self {
             host_name,
             context_id: 0,
@@ -117,7 +117,7 @@ impl DualModuleAxi4Driver {
                 writer,
             }),
             head: ReadoutHead::new(),
-            conflicts: (0..obstacle_channels).map(|_| ReadoutConflict::invalid()).collect(),
+            conflicts: (0..conflict_channels).map(|_| ReadoutConflict::invalid()).collect(),
         };
         value.reset();
         Ok(value)
@@ -196,7 +196,7 @@ impl DualModuleAxi4Driver {
         Ok(MicroBlossomHardwareInfo {
             version: self.memory_read_32(8)?,
             context_depth: self.memory_read_32(12)?,
-            obstacle_channels: self.memory_read_8(16)?,
+            conflict_channels: self.memory_read_8(16)?,
         })
     }
 

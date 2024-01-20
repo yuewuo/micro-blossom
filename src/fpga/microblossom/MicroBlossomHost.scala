@@ -54,7 +54,7 @@ object MicroBlossomHost extends App {
     val contextDepth = readNamedValue("context_depth").toInt
     val broadcastDelay = readNamedValue("broadcast_delay").toInt
     val convergecastDelay = readNamedValue("convergecast_delay").toInt
-    val obstacleChannels = readNamedValue("obstacle_channels").toInt
+    val conflictChannels = readNamedValue("conflict_channels").toInt
     val supportAddDefectVertex = readNamedValue("support_add_defect_vertex").toBoolean
     val injectRegistersJson = readNamedValue("inject_registers")
     val injectRegisters = decode[Seq[String]](injectRegistersJson) match {
@@ -68,7 +68,7 @@ object MicroBlossomHost extends App {
       contextDepth = contextDepth,
       broadcastDelay = broadcastDelay,
       convergecastDelay = convergecastDelay,
-      obstacleChannels = obstacleChannels,
+      conflictChannels = conflictChannels,
       supportAddDefectVertex = supportAddDefectVertex,
       injectRegisters = injectRegisters
     )

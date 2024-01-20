@@ -17,7 +17,7 @@ case class DualConfig(
     var broadcastDelay: Int = 1,
     var convergecastDelay: Int = 1,
     var contextDepth: Int = 1, // how many different contexts are supported
-    var obstacleChannels: Int = 1, // how many obstacles are collected at once in parallel
+    var conflictChannels: Int = 1, // how many conflicts are collected at once in parallel
     // optional features
     var supportAddDefectVertex: Boolean = true,
     // load graph either from parameter or from file

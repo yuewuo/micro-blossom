@@ -5,6 +5,7 @@ XSA_FILE = $(NAME).xsa
 VITIS_DIR = $(NAME)_vitis
 
 DUAL_CONFIG_FILEPATH ?=
+CLOCK_FREQUENCY ?= 200
 
 all: vitis
 
@@ -30,7 +31,7 @@ $(XSA_FILE):
 			exit 1; \
 		fi \
 	fi
-	vivado -mode batch -s create_vivado.tcl -tclargs $(DUAL_CONFIG_FILEPATH)
+	vivado -mode batch -s create_vivado.tcl -tclargs $(DUAL_CONFIG_FILEPATH) $(CLOCK_FREQUENCY)
 
 vitis: $(XSA_FILE)
 	@echo creating vitis workspace at $(VITIS_DIR)

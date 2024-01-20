@@ -21,8 +21,10 @@ import microblossom._
 import microblossom.util._
 import microblossom.types._
 import microblossom.modules._
+import microblossom.stage._
 import org.scalatest.funsuite.AnyFunSuite
 import scala.collection.mutable.ArrayBuffer
+import org.rogach.scallop._
 
 /*
  * A single MicroBlossom module can be virtualized as multiple modules,
@@ -47,7 +49,7 @@ case class VirtualMicroBlossom() extends Bundle {
 //    0: (RO) 64 bits timer counter
 //    8: (RO) 32 bits version register
 //    12: (RO) 32 bits context depth
-//    16: (RO) 8 bits number of obstacle channels (we're not using 100+ obstacle channels...)
+//    16: (RO) 8 bits number of conflict channels (we're not using 100+ conflict channels...)
 //    24: (RW) 32 bits instruction counter
 //    32: (RW) 32 bits readout counter
 //  - (64 bits only) the following 4KB section is designed to allow burst writes (e.g. use xsdb "mwr -bin -file" command)
@@ -74,7 +76,7 @@ case class VirtualMicroBlossom() extends Bundle {
 //         ...
 //
 case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
-    config: DualConfig,
+    dualConfig: DualConfig,
     baseAddress: BigInt = 0,
     interfaceBuilder: () => T,
     slaveFactory: (T) => F
@@ -98,15 +100,15 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
 
   // 8: (RO) 32 bits version register
   // 12: (RO) 32 bits context depth
-  // 16: (RO) 8 bits number of obstacle channels (we're not using 100+ obstacle channels...)
+  // 16: (RO) 8 bits number of conflict channels (we're not using 100+ conflict channels...)
   val hardwareInfo = new Area {
     factory.readMultiWord(
-      U(config.contextDepth, 32 bits) ## U(DualConfig.version, 32 bits),
+      U(dualConfig.contextDepth, 32 bits) ## U(DualConfig.version, 32 bits),
       address = 8,
       documentation = "micro-blossom version and context depth"
     )
     factory.readMultiWord(
-      U(config.obstacleChannels, 8 bits),
+      U(dualConfig.conflictChannels, 8 bits),
       address = 16,
       documentation = "the number of obtacle channels"
     )
@@ -126,24 +128,24 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
 
   // instantiate distributed dual
   val ioConfig = DualConfig()
-  ioConfig.contextDepth = config.contextDepth
+  ioConfig.contextDepth = dualConfig.contextDepth
   ioConfig.weightBits = 16
-  val dual = DistributedDual(config, ioConfig)
+  val dual = DistributedDual(dualConfig, ioConfig)
   dual.io.message.valid := False
   dual.io.message.assignDontCareToUnasigned()
 
   // keep track of some history to avoid data races
-  val readoutLatency = config.readLatency + 1 // add 1 clock latency from the readout memory
-  val initHistoryEntry = HistoryEntry(config)
+  val readoutLatency = dualConfig.readLatency + 1 // add 1 clock latency from the readout memory
+  val initHistoryEntry = HistoryEntry(dualConfig)
   initHistoryEntry.valid := False
   initHistoryEntry.assignDontCareToUnasigned()
   require(readoutLatency >= 2)
-  val historyEntries = Vec.fill(readoutLatency)(Reg(HistoryEntry(config)) init initHistoryEntry)
+  val historyEntries = Vec.fill(readoutLatency)(Reg(HistoryEntry(dualConfig)) init initHistoryEntry)
   // shift register
   for (i <- 0 until readoutLatency - 1) {
     historyEntries(i + 1) := historyEntries(i)
   }
-  val nextHistoryEntry = HistoryEntry(config)
+  val nextHistoryEntry = HistoryEntry(dualConfig)
   nextHistoryEntry.valid := False
   nextHistoryEntry.assignDontCareToUnasigned()
 
@@ -152,17 +154,17 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     val writeContextId = UInt(16 bits)
     def onAskWrite() = {
       // block writing to avoid data race if there exists any writes within config.executeLatency
-      val blockers = Vec.fill(config.executeLatency)(Bool)
-      for (i <- 0 until config.executeLatency) {
-        if (config.contextBits > 0) {
+      val blockers = Vec.fill(dualConfig.executeLatency)(Bool)
+      for (i <- 0 until dualConfig.executeLatency) {
+        if (dualConfig.contextBits > 0) {
           blockers(i) := historyEntries(i).valid &&
-            historyEntries(i).contextId === writeContextId.resize(config.contextBits)
+            historyEntries(i).contextId === writeContextId.resize(dualConfig.contextBits)
         } else {
           blockers(i) := historyEntries(i).valid
         }
       }
       val isBlocked = Bool
-      if (config.executeLatency > 0) {
+      if (dualConfig.executeLatency > 0) {
         isBlocked := blockers.reduceBalancedTree(_ | _)
       } else {
         isBlocked := False
@@ -175,14 +177,14 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       hardwareInfo.instructionCounter := hardwareInfo.instructionCounter + 1
       // execute the instruction
       nextHistoryEntry.valid := True
-      if (config.contextBits > 0) {
-        nextHistoryEntry.contextId := writeContextId.resize(config.contextBits)
+      if (dualConfig.contextBits > 0) {
+        nextHistoryEntry.contextId := writeContextId.resize(dualConfig.contextBits)
       }
       // report(L"doing Write instruction = $writeInstruction, contextId = $writeContextId")
       dual.io.message.valid := True
       dual.io.message.instruction := writeInstruction
-      if (config.contextBits > 0) {
-        dual.io.message.contextId := writeContextId.resize(config.contextBits)
+      if (dualConfig.contextBits > 0) {
+        dual.io.message.contextId := writeContextId.resize(dualConfig.contextBits)
       }
     }
     if (is64bus) {
@@ -206,16 +208,16 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
 
   // managing the context data from
   val context = new Area {
-    val growable = Mem(UInt(16 bits), config.contextDepth)
-    val maximumGrowth = Mem(UInt(16 bits), config.contextDepth)
-    val accumulatedGrowth = Mem(UInt(16 bits), config.contextDepth)
-    val conflicts = List.tabulate(config.obstacleChannels)(_ => {
-      Mem(ConvergecastConflict(config.vertexBits), config.contextDepth)
+    val growable = Mem(UInt(16 bits), dualConfig.contextDepth)
+    val maximumGrowth = Mem(UInt(16 bits), dualConfig.contextDepth)
+    val accumulatedGrowth = Mem(UInt(16 bits), dualConfig.contextDepth)
+    val conflicts = List.tabulate(dualConfig.conflictChannels)(_ => {
+      Mem(ConvergecastConflict(dualConfig.vertexBits), dualConfig.contextDepth)
     })
 
-    val currentEntry = HistoryEntry(config)
-    currentEntry := historyEntries(config.readLatency - 1)
-    val currentId = if (config.contextBits > 0) {
+    val currentEntry = HistoryEntry(dualConfig)
+    currentEntry := historyEntries(dualConfig.readLatency - 1)
+    val currentId = if (dualConfig.contextBits > 0) {
       currentEntry.contextId
     } else { UInt(0 bits) }
     when(currentEntry.valid) {
@@ -226,7 +228,7 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   val readouts = new Area {
     // each entry is 1KB
     val contextAddress: UInt = factory.readAddress().resize(10)
-    val readContextId: UInt = (factory.readAddress() >> 10).resize(config.contextBits)
+    val readContextId: UInt = (factory.readAddress() >> 10).resize(dualConfig.contextBits)
     val previousAskRead = Reg(Bool) init False
     previousAskRead := False
     // readout values
@@ -238,7 +240,7 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       previousAskRead := True
       val blockers = Vec.fill(readoutLatency)(Bool)
       for (i <- 0 until readoutLatency) {
-        if (config.contextBits > 0) {
+        if (dualConfig.contextBits > 0) {
           blockers(i) := historyEntries(i).valid &&
             historyEntries(i).contextId === readContextId
         } else {
@@ -286,74 +288,6 @@ case class HistoryEntry(config: DualConfig) extends Bundle {
   val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
 }
 
-object MicroBlossomAxi4 {
-  def apply(
-      config: DualConfig,
-      baseAddress: BigInt = 0,
-      axi4Config: Axi4Config = VersalAxi4Config(addressWidth = log2Up(8 MiB))
-  ) = {
-    MicroBlossom(
-      config,
-      baseAddress,
-      () => Axi4SpecRenamer(Axi4(axi4Config)),
-      (x: Axi4) => Axi4SlaveFactory(x)
-    )
-  }
-}
-
-object MicroBlossomAxiLite4 {
-  def renamedAxiLite4(config: AxiLite4Config) = {
-    val axiLite4 = AxiLite4(config)
-    AxiLite4SpecRenamer(axiLite4)
-    axiLite4
-  }
-  def apply(
-      config: DualConfig,
-      baseAddress: BigInt = 0,
-      axiLite4Config: AxiLite4Config = AxiLite4Config(addressWidth = log2Up(8 MiB), dataWidth = 64)
-  ) = {
-    MicroBlossom[AxiLite4, AxiLite4SlaveFactory](
-      config,
-      baseAddress,
-      () => renamedAxiLite4(axiLite4Config),
-      (x: AxiLite4) => AxiLite4SlaveFactory(x)
-    )
-  }
-}
-
-object MicroBlossomAxiLite4Bus32 {
-  def apply(
-      config: DualConfig,
-      baseAddress: BigInt = 0,
-      axiLite4Config: AxiLite4Config = AxiLite4Config(addressWidth = log2Up(8 MiB), dataWidth = 32)
-  ) = {
-    MicroBlossom[AxiLite4, AxiLite4SlaveFactory](
-      config,
-      baseAddress,
-      () => MicroBlossomAxiLite4.renamedAxiLite4(axiLite4Config),
-      (x: AxiLite4) => AxiLite4SlaveFactory(x)
-    )
-  }
-}
-
-// efabless uses 32 bits Wishbone interface, which is a lot simpler than AXI4
-// https://caravel-harness.readthedocs.io/en/latest/
-// https://caravel-mgmt-soc-litex.readthedocs.io/en/latest/
-object MicroBlossomWishboneBus32 {
-  def apply(
-      config: DualConfig,
-      baseAddress: BigInt = 0,
-      wishboneConfig: WishboneConfig = WishboneConfig(addressWidth = log2Up(8 MiB), dataWidth = 32)
-  ) = {
-    MicroBlossom(
-      config,
-      baseAddress,
-      () => Wishbone(wishboneConfig),
-      (x: Wishbone) => WishboneSlaveFactory(x)
-    )
-  }
-}
-
 // sbt 'testOnly *MicroBlossomTest'
 class MicroBlossomTest extends AnyFunSuite {
 
@@ -379,8 +313,8 @@ class MicroBlossomTest extends AnyFunSuite {
         assert(version == DualConfig.version)
         val contextDepth = driver.read_32(12)
         assert(contextDepth == config.contextDepth)
-        val obstacleChannels = driver.read_8(16)
-        assert(obstacleChannels == config.obstacleChannels)
+        val conflictChannels = driver.read_8(16)
+        assert(conflictChannels == config.conflictChannels)
       }
 
   }
@@ -399,11 +333,52 @@ object MicroBlossomVerilog extends App {
   if (args.length >= 3) {
     busType = args(2)
   }
-  busType match {
-    case "Axi4"          => Config.argFolderPath(args(1)).generateVerilog(MicroBlossomAxi4(config))
-    case "AxiLite4"      => Config.argFolderPath(args(1)).generateVerilog(MicroBlossomAxiLite4(config))
-    case "AxiLite4Bus32" => Config.argFolderPath(args(1)).generateVerilog(MicroBlossomAxiLite4Bus32(config))
-    case "WishboneBus32" => Config.argFolderPath(args(1)).generateVerilog(MicroBlossomWishboneBus32(config))
-    case _               => throw new Exception(s"bus type $busType is not recognized")
+  val component = MicroBlossomBusType.generateByName(busType, config = config)
+  Config.argFolderPath(args(1)).generateVerilog(component)
+}
+
+class MicroBlossomGeneratorConf(arguments: Seq[String]) extends ScallopConf(arguments) {
+  val graph = opt[String](required = true, descr = "see ./resources/graphs/README.md for more details")
+  val outputDir = opt[String](default = Some("gen"), descr = "by default generate the output at ./gen")
+  val busType = opt[String](default = Some("Axi4"), descr = s"options: ${MicroBlossomBusType.options.mkString(", ")}")
+  val languageHdl = opt[String](default = Some("verilog"), descr = "options: Verilog, VHDL, SystemVerilog")
+  val baseAddress = opt[BigInt](default = Some(0), descr = "base address of the memory-mapped module, default to 0")
+  // DualConfig
+  val broadcastDelay = opt[Int](default = Some(1))
+  val convergecastDelay = opt[Int](default = Some(1))
+  val contextDepth = opt[Int](default = Some(1), descr = "how many contexts supported")
+  val conflictChannels = opt[Int](default = Some(1), descr = "how many conflicts are reported at once")
+  val supportAddDefectVertex = opt[Boolean](descr = "support AddDefectVertex instruction")
+  val injectRegisters =
+    opt[List[String]](
+      default = Some(List()),
+      descr = s"insert register at select stages: ${Stages().stageNames.mkString(", ")}"
+    )
+  verify()
+}
+
+// sbt "runMain microblossom.MicroBlossomGenerator --help"
+// (e.g.) sbt "runMain microblossom.MicroBlossomGenerator --graph ./resources/graphs/example_code_capacity_d3.json"
+object MicroBlossomGenerator extends App {
+  val conf = new MicroBlossomGeneratorConf(args)
+  val config = DualConfig(
+    filename = conf.graph(),
+    broadcastDelay = conf.broadcastDelay(),
+    convergecastDelay = conf.convergecastDelay(),
+    contextDepth = conf.contextDepth(),
+    conflictChannels = conf.conflictChannels(),
+    supportAddDefectVertex = conf.supportAddDefectVertex(),
+    injectRegisters = conf.injectRegisters()
+  )
+  val genConfig = Config.argFolderPath(conf.outputDir())
+  // note: deliberately not creating `component` here, otherwise it encounters null pointer error of GlobalData.get()....
+  conf.languageHdl() match {
+    case "verilog" | "Verilog" =>
+      genConfig.generateVerilog(MicroBlossomBusType.generateByName(conf.busType(), config, conf.baseAddress()))
+    case "VHDL" | "vhdl" | "Vhdl" =>
+      genConfig.generateVhdl(MicroBlossomBusType.generateByName(conf.busType(), config, conf.baseAddress()))
+    case "SystemVerilog" | "systemverilog" =>
+      genConfig.generateSystemVerilog(MicroBlossomBusType.generateByName(conf.busType(), config, conf.baseAddress()))
+    case _ => throw new Exception(s"HDL language ${conf.languageHdl()} is not recognized")
   }
 }

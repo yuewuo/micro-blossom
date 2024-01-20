@@ -31,7 +31,7 @@ MicroBlossomHardwareInfo get_hardware_info()
     MicroBlossomHardwareInfo hardware_info;
     hardware_info.version = Xil_In32(UB_BASE + 8);
     hardware_info.context_depth = Xil_In32(UB_BASE + 12);
-    hardware_info.obstacle_channels = Xil_In8(UB_BASE + 16);
+    hardware_info.conflict_channels = Xil_In8(UB_BASE + 16);
     return hardware_info;
 }
 
