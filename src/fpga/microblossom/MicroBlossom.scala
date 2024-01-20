@@ -61,8 +61,9 @@ case class VirtualMicroBlossom() extends Bundle {
 // 2. 4MB context readouts at [0x40_0000, 0x80_0000), each context takes 1KB space, assuming no more than 4K contexts
 //    [context 0]
 //      0: (RO) 16 bits growable value (writing to this position has no effect)
-//      2: (RW) 16 bits maximum growth (offloaded primal), when 0, disable offloaded primal
-//      4: (RW) 32 bits accumulated grown value (for primal offloading)
+//      2: (RW) 16 bits accumulated grown value (for primal offloading)
+//      4: (RW) 16 bits maximum growth (offloaded primal), when 0, disable offloaded primal,
+//                  write to this field will automatically clear accumulated grown value
 //      (at most 62 concurrent obstacle report, already large enough)
 //      32: (RO) 128 bits obstacle value [0] (96 bits obstacle value, 8 bits is_valid)
 //      48: (RO) 128 bits obstacle value [1]

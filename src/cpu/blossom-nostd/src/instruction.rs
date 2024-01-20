@@ -30,6 +30,15 @@ impl Instruction32 {
         let field_speed = (speed as u32) << 15;
         Self(field_node | field_speed | OP_CODE_SET_SPEED)
     }
+    pub fn set_blossom(node: CompactNodeIndex, blossom: CompactNodeIndex) -> Self {
+        let field_node = (node.get() as u32) << 17;
+        let field_blossom = (blossom.get() as u32) << 2;
+        Self(field_node | field_blossom | OP_CODE_SET_BLOSSOM)
+    }
+    pub fn grow(length: CompactWeight) -> Self {
+        let field_length = (length as u32) << 2;
+        Self(field_length | OP_CODE_GROW)
+    }
     pub fn reset() -> Self {
         Self(EXTENDED_OP_CODE_ENABLE | EXTENDED_OP_CODE_RESET)
     }

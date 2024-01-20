@@ -138,18 +138,23 @@ extern "C" fn execute_instruction(instruction: u32, context_id: u16) {
         .as_mut()
         .unwrap()
         .execute_instruction(Instruction32(instruction), context_id)
+        .unwrap();
 }
 
 #[no_mangle]
 extern "C" fn get_obstacle(head: *mut ReadoutHead, conflicts: *mut ReadoutConflict, obstacle_channels: u8, context_id: u16) {
     let head = unsafe { &mut *head };
     let slice = unsafe { std::slice::from_raw_parts_mut(conflicts, obstacle_channels as usize) };
-    SIMULATOR_DRIVER
-        .lock()
-        .as_mut()
-        .unwrap()
-        .get_obstacle(head, slice, context_id)
-        .unwrap();
+    let mut locked = SIMULATOR_DRIVER.lock();
+    let driver = locked.as_mut().unwrap();
+    if obstacle_channels as usize != driver.conflicts.len() {
+        driver.conflicts = (0..obstacle_channels).map(|_| ReadoutConflict::invalid()).collect();
+    }
+    driver.get_obstacle(context_id).unwrap();
+    *head = driver.head.clone();
+    for i in 0..obstacle_channels as usize {
+        slice[i] = driver.conflicts[i].clone();
+    }
 }
 
 #[no_mangle]

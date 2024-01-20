@@ -48,12 +48,16 @@ pub struct DualConfig {
     pub inject_registers: Vec<String>,
 }
 
+pub const MAX_OBSTACLE_CHANNELS: usize = 62;
+
 pub struct DualModuleAxi4Driver {
     pub link: Mutex<Link>,
     pub host_name: String,
     pub context_id: u16,
     pub simulation_duration: Duration,
     pub dual_config: DualConfig,
+    pub head: ReadoutHead,
+    pub conflicts: Vec<ReadoutConflict>,
 }
 
 pub struct Link {
@@ -99,6 +103,8 @@ impl DualModuleAxi4Driver {
         line.clear();
         reader.read_line(&mut line)?;
         assert_eq!(line, "simulation started\n");
+        assert!(dual_config.obstacle_channels <= MAX_OBSTACLE_CHANNELS);
+        let obstacle_channels = dual_config.obstacle_channels;
         let mut value = Self {
             host_name,
             context_id: 0,
@@ -110,6 +116,8 @@ impl DualModuleAxi4Driver {
                 reader,
                 writer,
             }),
+            head: ReadoutHead::new(),
+            conflicts: (0..obstacle_channels).map(|_| ReadoutConflict::invalid()).collect(),
         };
         value.reset();
         Ok(value)
@@ -175,12 +183,12 @@ impl DualModuleAxi4Driver {
         self.memory_read(1, address).map(|v| v as u8)
     }
 
-    pub fn execute_instruction(&mut self, instruction: Instruction32, context_id: u16) {
+    pub fn execute_instruction(&mut self, instruction: Instruction32, context_id: u16) -> std::io::Result<()> {
         if self.dual_config.use_64_bus {
             let data = (instruction.0 as u64) | ((context_id as u64) << 32);
-            self.memory_write_64(4096, data).unwrap();
+            self.memory_write_64(4096, data)
         } else {
-            unimplemented!()
+            self.memory_write_32(64 * 1024 + 4 * context_id as usize, instruction.0)
         }
     }
 
@@ -194,22 +202,17 @@ impl DualModuleAxi4Driver {
 
     pub const READOUT_BASE: usize = 4 * 1024 * 1024;
 
-    pub fn get_obstacle(
-        &mut self,
-        head: &mut ReadoutHead,
-        conflicts: &mut [ReadoutConflict],
-        context_id: u16,
-    ) -> std::io::Result<()> {
+    pub fn get_obstacle(&mut self, context_id: u16) -> std::io::Result<()> {
         let base = Self::READOUT_BASE + 1024 * context_id as usize;
         let raw_head = self.memory_read_64(base)?;
-        head.growable = raw_head as u16;
-        head.accumulated_grown = (raw_head >> 16) as u16;
-        head.maximum_growth = (raw_head >> 32) as u16;
-        for i in 0..conflicts.len() {
-            let conflict = &mut conflicts[i];
+        self.head.growable = raw_head as u16;
+        self.head.accumulated_grown = (raw_head >> 16) as u16;
+        self.head.maximum_growth = (raw_head >> 32) as u16;
+        for i in 0..self.conflicts.len() {
             let conflict_base = base + 32 + i * 16;
             let raw_1 = self.memory_read_64(conflict_base)?;
             let raw_2 = self.memory_read_64(conflict_base + 8)?;
+            let conflict = &mut self.conflicts[i];
             conflict.node_1 = raw_1 as u16;
             conflict.node_2 = (raw_1 >> 16) as u16;
             conflict.touch_1 = (raw_1 >> 32) as u16;
@@ -220,95 +223,86 @@ impl DualModuleAxi4Driver {
         }
         Ok(())
     }
+
+    pub fn set_maximum_growth(&mut self, length: CompactWeight, context_id: u16) -> std::io::Result<()> {
+        let base = Self::READOUT_BASE + 1024 * context_id as usize;
+        self.memory_write_16(base + 4, length as u16)
+    }
 }
 
 impl DualStacklessDriver for DualModuleAxi4Driver {
     fn reset(&mut self) {
-        self.execute_instruction(Instruction32::reset(), self.context_id)
+        self.execute_instruction(Instruction32::reset(), self.context_id).unwrap();
     }
     fn set_speed(&mut self, _is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState) {
         self.execute_instruction(Instruction32::set_speed(node, speed), self.context_id)
+            .unwrap();
     }
     fn set_blossom(&mut self, node: CompactNodeIndex, blossom: CompactNodeIndex) {
-        // write!(self.link.lock().unwrap().writer, "set_blossom({node}, {blossom})\n").unwrap();
-        unimplemented!()
+        self.execute_instruction(Instruction32::set_blossom(node, blossom), self.context_id)
+            .unwrap();
     }
     fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
-        // write!(self.link.lock().unwrap().writer, "find_obstacle()\n").unwrap();
-        // let mut line = String::new();
-        // self.link.lock().unwrap().reader.read_line(&mut line).unwrap();
-        // // println!("find_obstacle -> {}", line);
-        // if line.starts_with("NonZeroGrow(") {
-        //     let (length, grown) = scan_fmt!(&line, "NonZeroGrow({d}), {d}", Weight, Weight).unwrap();
-        //     (
-        //         if length == i32::MAX as Weight {
-        //             CompactObstacle::None
-        //         } else {
-        //             CompactObstacle::GrowLength {
-        //                 length: length as CompactWeight,
-        //             }
-        //         },
-        //         grown as CompactWeight,
-        //     )
-        // } else if line.starts_with("Conflict(") {
-        //     let (node_1, node_2, touch_1, touch_2, vertex_1, vertex_2, grown) = scan_fmt!(
-        //         &line,
-        //         "Conflict({d}, {d}, {d}, {d}, {d}, {d}), {d}",
-        //         NodeIndex,
-        //         NodeIndex,
-        //         NodeIndex,
-        //         NodeIndex,
-        //         NodeIndex,
-        //         NodeIndex,
-        //         Weight
-        //     )
-        //     .unwrap();
-        //     (
-        //         CompactObstacle::Conflict {
-        //             node_1: ni!(node_1).option(),
-        //             node_2: if node_2 == i32::MAX as NodeIndex {
-        //                 None.into()
-        //             } else {
-        //                 ni!(node_2).option()
-        //             },
-        //             touch_1: ni!(touch_1).option(),
-        //             touch_2: if touch_2 == i32::MAX as NodeIndex {
-        //                 None.into()
-        //             } else {
-        //                 ni!(touch_2).option()
-        //             },
-        //             vertex_1: ni!(vertex_1),
-        //             vertex_2: ni!(vertex_2),
-        //         },
-        //         grown as CompactWeight,
-        //     )
-        // } else {
-        //     unreachable!()
-        // }
-        unimplemented!()
+        self.get_obstacle(self.context_id).unwrap();
+        let grown = self.head.accumulated_grown as CompactWeight;
+        if self.head.growable == u16::MAX {
+            (CompactObstacle::None, grown)
+        } else if self.head.growable != 0 {
+            (
+                CompactObstacle::GrowLength {
+                    length: self.head.growable as CompactWeight,
+                },
+                grown,
+            )
+        } else {
+            // find a single obstacle from the list of obstacles
+            for conflict in self.conflicts.iter() {
+                if conflict.valid != 0 {
+                    return (
+                        CompactObstacle::Conflict {
+                            node_1: ni!(conflict.node_1).option(),
+                            node_2: if conflict.node_2 == u16::MAX {
+                                None.into()
+                            } else {
+                                ni!(conflict.node_2).option()
+                            },
+                            touch_1: ni!(conflict.touch_1).option(),
+                            touch_2: if conflict.touch_2 == u16::MAX {
+                                None.into()
+                            } else {
+                                ni!(conflict.touch_2).option()
+                            },
+                            vertex_1: ni!(conflict.vertex_1),
+                            vertex_2: ni!(conflict.vertex_2),
+                        },
+                        grown,
+                    );
+                }
+            }
+            unreachable!()
+        }
     }
     fn add_defect(&mut self, vertex: CompactVertexIndex, node: CompactNodeIndex) {
-        // write!(self.link.lock().unwrap().writer, "add_defect({vertex}, {node})\n").unwrap();
-        unimplemented!()
+        self.execute_instruction(Instruction32::add_defect_vertex(vertex, node), self.context_id)
+            .unwrap();
     }
 }
 
 impl DualTrackedDriver for DualModuleAxi4Driver {
     fn set_maximum_growth(&mut self, length: CompactWeight) {
-        // write!(self.link.lock().unwrap().writer, "set_maximum_growth({length})\n").unwrap();
-        unimplemented!()
+        self.set_maximum_growth(length, self.context_id).unwrap();
     }
 }
 
 impl FusionVisualizer for DualModuleAxi4Driver {
     #[allow(clippy::unnecessary_cast)]
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
-        // write!(self.link.lock().unwrap().writer, "snapshot({abbrev})\n").unwrap();
-        // let mut line = String::new();
-        // self.link.lock().unwrap().reader.read_line(&mut line).unwrap();
-        // std::thread::sleep(std::time::Duration::from_millis(1000));
-        // serde_json::from_str(&line).unwrap()
-        unimplemented!()
+        assert_eq!(self.dual_config.context_depth, 1, "context snapshot is not yet supported");
+        write!(self.link.lock().unwrap().writer, "snapshot({abbrev})\n").unwrap();
+        let mut line = String::new();
+        self.link.lock().unwrap().reader.read_line(&mut line).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(1000));
+        serde_json::from_str(&line).unwrap()
     }
 }
 

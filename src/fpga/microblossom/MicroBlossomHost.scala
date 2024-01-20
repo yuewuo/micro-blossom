@@ -91,7 +91,7 @@ object MicroBlossomHost extends App {
           MicroBlossomAxiLite4Bus32(config)
         }
         if (withWaveform) {
-          // dut.simMakePublicSnapshot()  // TODO: implement
+          dut.dual.simMakePublicSnapshot()
         }
         dut
       })
@@ -140,6 +140,11 @@ object MicroBlossomHost extends App {
               val address = BigInt(parameters(1))
               val data = BigInt(parameters(2))
               driver.writeBytes(address, data, numBytes)
+            } else if (command.startsWith("snapshot(")) {
+              val parameters = command.substring("snapshot(".length, command.length - 1).split(", ")
+              assert(parameters.length == 1)
+              val abbrev = parameters(0).toBoolean
+              outStream.println(dut.dual.simSnapshot(abbrev).noSpacesSortKeys)
             } else {
               throw new Exception(s"[error] unknown command: $command")
             }

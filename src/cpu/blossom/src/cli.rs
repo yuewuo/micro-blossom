@@ -118,6 +118,8 @@ pub enum PrimalDualType {
     Serial,
     /// log error into a file for later fetch
     ErrorPatternLogger,
+    /// embedded primal + Axi4 simulation dual
+    DualAxi4,
 }
 
 #[derive(Args, Clone)]
@@ -388,6 +390,10 @@ impl PrimalDualType {
             Self::DualScala => {
                 assert_eq!(primal_dual_config, json!({}));
                 Box::new(SolverDualScala::new(initializer))
+            }
+            Self::DualAxi4 => {
+                assert_eq!(primal_dual_config, json!({}));
+                Box::new(SolverDualAxi4::new(initializer))
             }
             Self::EmbeddedRTLPreMatching => {
                 assert_eq!(primal_dual_config, json!({}));
