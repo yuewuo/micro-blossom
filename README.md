@@ -6,9 +6,13 @@ Distributed MWPM decoder for Quantum Error Correction
 
 - src: source code
   - fpga: the FPGA source code, including generator scripts
+    - microblossom: Scala code for MicroBlossom module
+    - Xilinx: xilinx project build scripts
   - cpu: the CPU source code
+    - blossom: code for development and testing on a host machine
+    - blossom-nostd: nostd code that is designed to run in embedded environment but can also run in OS
+    - embedded: build binary for embedded system
 - projects: Vivado projects
-
 
 ## Installation
 
@@ -39,7 +43,7 @@ sudo apt install zlibc zlib1g zlib1g-dev  # Ubuntu only (ignore if gives error)
 git clone https://github.com/verilator/verilator   # Only first time
 cd verilator
 git pull
-git checkout v5.014      # pin to this specific version 
+git checkout v5.014      # pin to this specific version
 
 autoconf         # Create ./configure script
 ./configure      # Configure and create Makefile
@@ -58,7 +62,7 @@ git clone git@github.com:SpinalHDL/VexRiscv.git --recursive
 I include the installation for both Ubuntu and MacOS. MacOS doesn't seem to work...: `Error: target 'fpga_spinal.cpu0' init failed`
 when I run `openocd -c 'set VEXRISCV_YAML ../VexRiscv/cpu0.yaml' -f tcl/target/vexriscv_sim.cfg`.
 
-**Update**: OpenOCD uses GDB instead of LLDB, but GDB does not support apple silicon, only x86. Thus, it is impossible to 
+**Update**: OpenOCD uses GDB instead of LLDB, but GDB does not support apple silicon, only x86. Thus, it is impossible to
 interactively debug the CPU with M1 Macs. However, the verilator and VexRiscV/SpinalHDL runs on M1 Macs without a problem.
 We can debug the design on a x86 Linux machine and do other staffs on Macs.
 
@@ -170,7 +174,7 @@ make
 ```sh
 cargo install cargo-show-asm
 cargo asm --rust --target riscv32i-unknown-none-elf --bin embedded_blossom
-cargo asm --rust --target riscv32i-unknown-none-elf --lib 
+cargo asm --rust --target riscv32i-unknown-none-elf --lib
 ```
 
 ### How to run scala test
@@ -178,6 +182,20 @@ cargo asm --rust --target riscv32i-unknown-none-elf --lib
 ```sh
 sbt test  # test all
 sbt 'testOnly *DualConfigTest'
+```
+
+### How to run Scala functions in parallel
+
+We cannot use sbt in this case, because multiple builds will interfere with each other.
+Also, it's not efficient to rebuild the binary every time we run something.
+
+Note: you need to install proper version of scala.
+
+```sh
+# build a single package with all dependencies at target/scala-2.12/microblossom.jar
+sbt assembly
+# run some main functino
+scala -classpath target/scala-2.12/microblossom.jar microblossom.MicroBlossomGenerator --help
 ```
 
 ### Download SpinalHDL library for development
@@ -251,7 +269,7 @@ Official VexRiscV uses Scala 2.11.12, but in this project I want to use `circe` 
 I tried to bump up the VexRiscV version to 2.13.12 but it shows a lot of errors.
 Bumping to 2.12.12 is fine, so we can stay here for a while.
 The updated repo is at [git@github.com:yuewuo/VexRiscv.git](git@github.com:yuewuo/VexRiscv.git).
-The tested commands are: 
+The tested commands are:
 
 ```sh
 sbt "runMain vexriscv.demo.Briey"  # try to build briey

@@ -10,6 +10,12 @@ lazy val microblossom = (project in file("."))
   .settings(
     Compile / scalaSource := baseDirectory.value / "src" / "fpga",
     Test / scalaSource := baseDirectory.value / "src" / "fpga",
+    assembly / assemblyJarName := "microblossom.jar",
+    assembly / test := {},
+    assembly / assemblyMergeStrategy := {
+      case PathList("META-INF", _*) => MergeStrategy.discard
+      case _                        => MergeStrategy.first
+    },
     libraryDependencies ++= Seq(
       "com.github.spinalhdl" % "spinalhdl-core_2.12" % spinalVersion,
       "com.github.spinalhdl" % "spinalhdl-lib_2.12" % spinalVersion,
