@@ -227,12 +227,15 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     // each entry is 1KB
     val contextAddress: UInt = factory.readAddress().resize(10)
     val readContextId: UInt = (factory.readAddress() >> 10).resize(config.contextBits)
+    val previousAskRead = Reg(Bool) init False
+    previousAskRead := False
     // readout values
     val readValue = if (is64bus) { Bits(64 bits).assignDontCare() }
     else { Bits(32 bits).assignDontCare() }
     // report(L"readContextId = $readContextId")
     val contextGrowable = UInt(16 bits).assignDontCare()
     def onAskRead() = {
+      previousAskRead := True
       val blockers = Vec.fill(readoutLatency)(Bool)
       for (i <- 0 until readoutLatency) {
         if (config.contextBits > 0) {
@@ -250,7 +253,7 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       }
       // regardless of whether it's blocked, put the address in ram first so that it's ready the next cycle
       contextGrowable := context.growable.readSync(readContextId)
-      when(isBlocked) {
+      when(isBlocked || !previousAskRead) { // always halt for a clock cycle if previous cycle is not asking read
         factory.readHalt()
       }
     }
