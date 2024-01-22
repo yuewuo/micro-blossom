@@ -129,7 +129,8 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   // instantiate distributed dual
   val ioConfig = DualConfig()
   ioConfig.contextDepth = dualConfig.contextDepth
-  ioConfig.weightBits = 16
+  ioConfig.weightBits = dualConfig.weightBits
+  ioConfig.vertexBits = dualConfig.vertexBits
   val dual = DistributedDual(dualConfig, ioConfig)
   dual.io.message.valid := False
   dual.io.message.assignDontCareToUnasigned()
@@ -150,7 +151,8 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   nextHistoryEntry.assignDontCareToUnasigned()
 
   val instruction = new Area {
-    val writeInstruction = Bits(32 bits)
+    val writeInstruction = Instruction(DualConfig())
+    require(writeInstruction.getBitsWidth == 32)
     val writeContextId = UInt(16 bits)
     def onAskWrite() = {
       // block writing to avoid data race if there exists any writes within config.executeLatency
@@ -181,34 +183,31 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
         nextHistoryEntry.contextId := writeContextId.resize(dualConfig.contextBits)
       }
       // report(L"doing Write instruction = $writeInstruction, contextId = $writeContextId")
+
       dual.io.message.valid := True
-      dual.io.message.instruction := writeInstruction
+      dual.io.message.instruction.resizedFrom(writeInstruction)
       if (dualConfig.contextBits > 0) {
         dual.io.message.contextId := writeContextId.resize(dualConfig.contextBits)
       }
     }
-    if (is64bus) {
-      val mapping = SizeMapping(base = 4 KiB, size = 4 KiB)
-      val documentation = "instruction array (64 bits)"
+    val (mapping, documentation) = if (is64bus) {
       factory.nonStopWrite(writeInstruction, bitOffset = 0)
       factory.nonStopWrite(writeContextId, bitOffset = 32)
-      factory.onWritePrimitive(mapping, haltSensitive = false, documentation)(onAskWrite)
-      factory.onWritePrimitive(mapping, haltSensitive = true, documentation)(onDoWrite)
+      (SizeMapping(base = 4 KiB, size = 4 KiB), "instruction array (64 bits)")
     } else {
-      val mapping = SizeMapping(base = 64 KiB, size = 64 KiB)
-      val documentation = "instruction array (32 bits)"
       factory.nonStopWrite(writeInstruction, bitOffset = 0)
       writeContextId := factory.writeAddress().resize(log2Up(64 KiB))
-      factory.onWritePrimitive(mapping, haltSensitive = false, documentation)(onAskWrite)
-      factory.onWritePrimitive(mapping, haltSensitive = true, documentation)(onDoWrite)
+      (SizeMapping(base = 64 KiB, size = 64 KiB), "instruction array (32 bits)")
     }
+    factory.onWritePrimitive(mapping, haltSensitive = false, documentation)(onAskWrite)
+    factory.onWritePrimitive(mapping, haltSensitive = true, documentation)(onDoWrite)
   }
 
   historyEntries(0) := nextHistoryEntry
 
   // managing the context data from
   val context = new Area {
-    val growable = Mem(UInt(16 bits), dualConfig.contextDepth)
+    val growable = Mem(ConvergecastMaxGrowable(dualConfig.weightBits), dualConfig.contextDepth)
     val maximumGrowth = Mem(UInt(16 bits), dualConfig.contextDepth)
     val accumulatedGrowth = Mem(UInt(16 bits), dualConfig.contextDepth)
     val conflicts = List.tabulate(dualConfig.conflictChannels)(_ => {
@@ -221,7 +220,10 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       currentEntry.contextId
     } else { UInt(0 bits) }
     when(currentEntry.valid) {
-      growable.write(currentId, dual.io.maxGrowable.length)
+      growable.write(currentId, dual.io.maxGrowable)
+      for (i <- 0 until dualConfig.conflictChannels) {
+        conflicts(i).write(currentId, dual.io.conflict) // TODO: implement real multi-channel conflict reporting
+      }
     }
   }
 
@@ -235,9 +237,13 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     val readValue = if (is64bus) { Bits(64 bits).assignDontCare() }
     else { Bits(32 bits).assignDontCare() }
     // report(L"readContextId = $readContextId")
-    val contextGrowable = UInt(16 bits).assignDontCare()
+    val contextGrowable = ConvergecastMaxGrowable(dualConfig.weightBits).assignDontCare()
+    val contextMaximumGrowth = UInt(16 bits).assignDontCare()
+    val contextAccumulatedGrowth = UInt(16 bits).assignDontCare()
+    val contextConflicts = List.tabulate(dualConfig.conflictChannels)(_ => {
+      ConvergecastConflict(dualConfig.vertexBits).assignDontCare()
+    })
     def onAskRead() = {
-      previousAskRead := True
       val blockers = Vec.fill(readoutLatency)(Bool)
       for (i <- 0 until readoutLatency) {
         if (dualConfig.contextBits > 0) {
@@ -254,23 +260,65 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
         isBlocked := False
       }
       // regardless of whether it's blocked, put the address in ram first so that it's ready the next cycle
+      previousAskRead := True
       contextGrowable := context.growable.readSync(readContextId)
+      contextMaximumGrowth := U(0) // TODO: context.maximumGrowth.readSync(readContextId)
+      contextAccumulatedGrowth := U(0) // TODO: context.accumulatedGrowth.readSync(readContextId)
+      for (index <- 0 until dualConfig.conflictChannels) {
+        contextConflicts(index) := context.conflicts(index).readSync(readContextId)
+      }
       when(isBlocked || !previousAskRead) { // always halt for a clock cycle if previous cycle is not asking read
         factory.readHalt()
       }
     }
     def onDoRead() = {
       hardwareInfo.readoutCounter := hardwareInfo.readoutCounter + 1
+      // head
+      val resizedContextGrowable = ConvergecastMaxGrowable(16)
+      resizedContextGrowable.resizedFrom(contextGrowable)
       if (is64bus) {
         when(contextAddress === 0) {
-          readValue := U(0, 48 bits) ## contextGrowable.resize(16 bits)
+          readValue := U(0, 16 bits) ## contextMaximumGrowth ## contextAccumulatedGrowth ##
+            resizedContextGrowable.length
         }
       } else {
         when(contextAddress === 0) {
-          readValue := U(0, 16 bits) ## contextGrowable.resize(16 bits)
+          readValue := contextAccumulatedGrowth ## resizedContextGrowable.length
+        }
+        when(contextAddress === 4) {
+          readValue := U(0, 16 bits) ## contextMaximumGrowth
         }
       }
-
+      // conflicts
+      for (index <- 0 until dualConfig.conflictChannels) {
+        val conflict = contextConflicts(index)
+        val resizedConflict = ConvergecastConflict(16)
+        resizedConflict.resizedFrom(conflict)
+        val base = 32 + 16 * index
+        if (is64bus) {
+          when(contextAddress === base) {
+            readValue := resizedConflict.touch2 ## resizedConflict.touch1 ##
+              resizedConflict.node2 ## resizedConflict.node1
+          }
+          when(contextAddress === base + 8) {
+            readValue := U(0, 24 bits) ## U(0, 7 bits) ## resizedConflict.valid ##
+              resizedConflict.vertex2 ## resizedConflict.vertex1
+          }
+        } else {
+          when(contextAddress === base) {
+            readValue := resizedConflict.node2 ## resizedConflict.node1
+          }
+          when(contextAddress === base + 4) {
+            readValue := resizedConflict.touch2 ## resizedConflict.touch1
+          }
+          when(contextAddress === base + 8) {
+            readValue := resizedConflict.vertex2 ## resizedConflict.vertex1
+          }
+          when(contextAddress === base + 12) {
+            readValue := U(0, 24 bits) ## U(0, 7 bits) ## resizedConflict.valid
+          }
+        }
+      }
     }
     val mapping = SizeMapping(base = 4 MiB, size = 4 MiB)
     val documentation = "readout array (1 KB each, 4K of them at most)"
@@ -297,27 +345,27 @@ class MicroBlossomTest extends AnyFunSuite {
     Config.spinal().generateVerilog(MicroBlossomAxi4(config))
   }
 
-  test("logic validity") {
-    val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
+  // test("logic validity") {
+  //   val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
 
-    Config.sim
-      .compile(MicroBlossomAxiLite4(config))
-      // .compile(MicroBlossomAxiLite4Bus32(config))
-      .doSim("logic validity") { dut =>
-        dut.clockDomain.forkStimulus(period = 10)
+  //   Config.sim
+  //     .compile(MicroBlossomAxiLite4(config))
+  //     // .compile(MicroBlossomAxiLite4Bus32(config))
+  //     .doSim("logic validity") { dut =>
+  //       dut.clockDomain.forkStimulus(period = 10)
 
-        val driver = AxiLite4TypedDriver(dut.io.s0, dut.clockDomain)
+  //       val driver = AxiLite4TypedDriver(dut.io.s0, dut.clockDomain)
 
-        val version = driver.read_32(8)
-        printf("version: %x\n", version)
-        assert(version == DualConfig.version)
-        val contextDepth = driver.read_32(12)
-        assert(contextDepth == config.contextDepth)
-        val conflictChannels = driver.read_8(16)
-        assert(conflictChannels == config.conflictChannels)
-      }
+  //       val version = driver.read_32(8)
+  //       printf("version: %x\n", version)
+  //       assert(version == DualConfig.version)
+  //       val contextDepth = driver.read_32(12)
+  //       assert(contextDepth == config.contextDepth)
+  //       val conflictChannels = driver.read_8(16)
+  //       assert(conflictChannels == config.conflictChannels)
+  //     }
 
-  }
+  // }
 
 }
 

@@ -8,31 +8,31 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
   val spec = config.instructionSpec
   setWidth(spec.numBits)
 
-  def widthConvertedFrom(instruction: Instruction) = {
-    opCode := instruction.opCode
-    switch(instruction.opCode.asUInt) {
+  def resizedFrom(source: Instruction) = {
+    opCode := source.opCode
+    switch(source.opCode.asUInt) {
       is(OpCode.SetBlossom) {
-        field1 := instruction.field1.resized // node
-        field2 := instruction.field2.resized // blossom
+        field1 := source.field1.resized // node
+        field2 := source.field2.resized // blossom
       }
       is(OpCode.Match) {
-        field1 := instruction.field1.resized // vertex_1
-        field2 := instruction.field2.resized // vertex_2
+        field1 := source.field1.resized // vertex_1
+        field2 := source.field2.resized // vertex_2
       }
       is(OpCode.SetSpeed) {
-        when(instruction.extensionIndicator === B"0") {
-          field1 := instruction.field1.resized
-          speed := instruction.speed
+        when(source.extensionIndicator === B"0") {
+          field1 := source.field1.resized
+          speed := source.speed
           setSpeedZero.clearAll()
         } otherwise {
-          field1 := instruction.field1.resized
-          extendedField2 := instruction.extendedField2.resized
-          extendedOpCode := instruction.extendedOpCode
-          extensionIndicator := instruction.extensionIndicator
+          field1 := source.field1.resized
+          extendedField2 := source.extendedField2.resized
+          extendedOpCode := source.extendedOpCode
+          extensionIndicator := source.extensionIndicator
         }
       }
       is(OpCode.Grow) {
-        sliceOf(spec.lengthRange) := instruction.length.asBits.resized // length
+        sliceOf(spec.lengthRange) := source.length.asBits.resized // length
         if (config.weightBits < 2 * config.vertexBits) { growZero.clearAll() }
       }
     }

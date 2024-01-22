@@ -9,6 +9,17 @@ case class BroadcastMessage(config: DualConfig, explicitReset: Boolean = true) e
   val instruction = Instruction(config)
   val isReset = explicitReset generate Bool
   val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+
+  def resizedFrom(source: BroadcastMessage) = {
+    valid := source.valid
+    instruction.resizedFrom(source.instruction)
+    if (explicitReset) {
+      isReset := source.isReset
+    }
+    if (config.contextBits > 0) {
+      contextId := source.contextId
+    }
+  }
 }
 
 case class BroadcastCompact(config: DualConfig) extends Bundle {

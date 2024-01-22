@@ -12,7 +12,7 @@ void print_char(char c)
     putchar(c);
 }
 
-const UINTPTR UB_BASE = 0x400000000;
+const uintptr_t UB_BASE = 0x400000000;
 const float TIMER_FREQUENCY = 200e6; // 200MHz
 
 uint64_t get_native_time()
@@ -48,9 +48,35 @@ uint32_t get_instruction_counter()
 void execute_instruction(uint32_t instruction, uint16_t context_id)
 {
 #ifdef ARMR5
-#error "not implemented"
+    Xil_Out32(64 * 1024 + 4 * context_id, instruction);
 #else
     uint64_t data = ((uint64_t)instruction) | (((uint64_t)context_id) << 32);
     Xil_Out64(UB_BASE + 4096, data);
 #endif
+}
+
+void get_obstacle(struct ReadoutHead *head,
+                  struct ReadoutConflict *conflicts,
+                  uint8_t conflict_channels,
+                  uint16_t context_id)
+{
+    uintptr_t base = UB_BASE + 1024 * context_id;
+    uint64_t raw_head = Xil_In64(base);
+    head->growable = raw_head;
+    head->accumulated_grown = raw_head >> 16;
+    head->maximum_growth = raw_head >> 32;
+    for (int i = 0; i < conflict_channels; ++i)
+    {
+        uintptr_t conflict_base = base + 32 + i * 16;
+        uint64_t raw_1 = Xil_In64(conflict_base);
+        uint64_t raw_2 = Xil_In64(conflict_base + 8);
+        struct ReadoutConflict *conflict = conflicts + i;
+        conflict->node_1 = raw_1;
+        conflict->node_2 = raw_1 >> 16;
+        conflict->touch_1 = raw_1 >> 32;
+        conflict->touch_2 = raw_1 >> 48;
+        conflict->vertex_1 = raw_2;
+        conflict->vertex_2 = raw_2 >> 16;
+        conflict->valid = raw_2 >> 32;
+    }
 }

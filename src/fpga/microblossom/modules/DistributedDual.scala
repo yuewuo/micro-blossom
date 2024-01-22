@@ -27,7 +27,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
 
   // width conversion
   val broadcastMessage = BroadcastMessage(config)
-  broadcastMessage.instruction.widthConvertedFrom(io.message.instruction)
+  broadcastMessage.instruction.resizedFrom(io.message.instruction)
   broadcastMessage.valid := io.message.valid
   if (config.contextBits > 0) { broadcastMessage.contextId := io.message.contextId }
   broadcastMessage.isReset := io.message.instruction.isReset
@@ -105,12 +105,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
   }
 
   val selectedMaxGrowable = maxGrowableConvergcastTree(config.graph.vertex_edge_binary_tree.nodes.length - 1)
-  require(io.maxGrowable.getBitsWidth >= selectedMaxGrowable.getBitsWidth)
-  when(selectedMaxGrowable.length === selectedMaxGrowable.length.maxValue) {
-    io.maxGrowable.length := io.maxGrowable.length.maxValue
-  } otherwise {
-    io.maxGrowable.length := selectedMaxGrowable.length.resized
-  }
+  io.maxGrowable.resizedFrom(selectedMaxGrowable)
 
   // build convergecast tree of conflict
   val conflictConvergecastTree =
@@ -131,21 +126,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
   }
   val convergecastedConflict =
     Delay(RegNext(conflictConvergecastTree(config.graph.edge_binary_tree.nodes.length - 1)), config.convergecastDelay)
-  io.conflict.valid := convergecastedConflict.valid
-  def resizeConnectUp(source: Bits, target: Bits) = {
-    target := source.resized
-    if (target.getWidth > source.getWidth) {
-      when(source === (1 << source.getWidth) - 1) {
-        target(target.getWidth - 1 downto source.getWidth).setAll()
-      }
-    }
-  }
-  resizeConnectUp(convergecastedConflict.node1, io.conflict.node1)
-  resizeConnectUp(convergecastedConflict.node2, io.conflict.node2)
-  resizeConnectUp(convergecastedConflict.touch1, io.conflict.touch1)
-  resizeConnectUp(convergecastedConflict.touch2, io.conflict.touch2)
-  io.conflict.vertex1 := convergecastedConflict.vertex1.resized
-  io.conflict.vertex2 := convergecastedConflict.vertex2.resized
+  io.conflict.resizedFrom(convergecastedConflict)
 
   def simExecute(instruction: Long): (DataMaxGrowable, DataConflict) = {
     io.message.valid #= true

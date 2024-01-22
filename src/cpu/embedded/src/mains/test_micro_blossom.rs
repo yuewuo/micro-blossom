@@ -42,20 +42,30 @@ pub fn main() {
         println!("    reset");
         unsafe { extern_c::execute_instruction(Instruction32::reset().into(), 0) };
         for _ in 0..nop {
-            unsafe { extern_c::execute_instruction(Instruction32::reset().into(), 1) };
+            if cfg!(feature = "tiny_benchmark_time") {
+                unsafe { extern_c::execute_instruction(Instruction32::reserved().into(), 1) };
+            } else {
+                nop_delay(10);
+            }
         }
         let mut head = extern_c::ReadoutHead::new();
         let mut conflicts: [extern_c::ReadoutConflict; 4] = core::array::from_fn(|_| extern_c::ReadoutConflict::invalid());
         println!("    get obstacle");
         unsafe { extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 1, 0) };
+        println!("head.growable = {}", head.growable);
         assert_eq!(head.growable, u16::MAX); // because there is no defect yet
         println!("    add defect");
         unsafe { extern_c::execute_instruction(Instruction32::add_defect_vertex(ni!(1), ni!(0)).into(), 0) };
         for _ in 0..nop {
-            unsafe { extern_c::execute_instruction(Instruction32::reset().into(), 1) };
+            if cfg!(feature = "tiny_benchmark_time") {
+                unsafe { extern_c::execute_instruction(Instruction32::reserved().into(), 1) };
+            } else {
+                nop_delay(10);
+            }
         }
         println!("    get obstacle");
         unsafe { extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 1, 0) };
+        println!("conflicts: {conflicts:#?}");
         assert_eq!(head.growable, 2);
     }
 }
