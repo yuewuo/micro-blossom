@@ -176,30 +176,26 @@ class EdgeTest extends AnyFunSuite {
 
 }
 
-// sbt 'testOnly microblossom.modules.EdgeEstimation'
-class EdgeEstimation extends AnyFunSuite {
-
-  test("logic delay") {
-    def dualConfig(name: String): DualConfig = {
-      DualConfig(filename = s"./resources/graphs/example_$name.json"),
-    }
-    val configurations = List(
-      // 7xLUT6, 1xLUT5, 3xLUT4 -> 11
-      (dualConfig("code_capacity_d5"), 1, "code capacity 2 neighbors"),
-      // 9xLUT6, 3xLUT4 -> 12
-      (dualConfig("code_capacity_rotated_d5"), 12, "code capacity 4 neighbors"),
-      // 6xLUT6, 4xLUT5, 5xLUT4, 1xLUT3 -> 16
-      (dualConfig("phenomenological_rotated_d5"), 141, "phenomenological 6 neighbors"),
-      // 19xLUT6, 9xLUT4, 5xLUT2, 1xCARRY4 -> 34
-      (dualConfig("circuit_level_d5"), 365, "circuit-level 12 neighbors"),
-      // 18xLUT6, 2xLUT5, 11xLUT4, 4xLUT2, 1xCARRY4 -> 36
-      (dualConfig("circuit_level_d11"), 4719, "circuit-level 12 neighbors")
-    )
-    for ((config, edgeIndex, name) <- configurations) {
-      val reports = Vivado.report(Edge(config, edgeIndex))
-      println(s"$name:")
-      reports.resource.primitivesTable.print()
-    }
+// sbt "runMain microblossom.modules.EdgeEstimation"
+object EdgeEstimation extends App {
+  def dualConfig(name: String): DualConfig = {
+    DualConfig(filename = s"./resources/graphs/example_$name.json"),
   }
-
+  val configurations = List(
+    // 7xLUT6, 1xLUT5, 3xLUT4 -> 11
+    (dualConfig("code_capacity_d5"), 1, "code capacity 2 neighbors"),
+    // 9xLUT6, 3xLUT4 -> 12
+    (dualConfig("code_capacity_rotated_d5"), 12, "code capacity 4 neighbors"),
+    // 6xLUT6, 4xLUT5, 5xLUT4, 1xLUT3 -> 16
+    (dualConfig("phenomenological_rotated_d5"), 141, "phenomenological 6 neighbors"),
+    // 19xLUT6, 9xLUT4, 5xLUT2, 1xCARRY4 -> 34
+    (dualConfig("circuit_level_d5"), 365, "circuit-level 12 neighbors"),
+    // 18xLUT6, 2xLUT5, 11xLUT4, 4xLUT2, 1xCARRY4 -> 36
+    (dualConfig("circuit_level_d11"), 4719, "circuit-level 12 neighbors")
+  )
+  for ((config, edgeIndex, name) <- configurations) {
+    val reports = Vivado.report(Edge(config, edgeIndex))
+    println(s"$name:")
+    reports.resource.primitivesTable.print()
+  }
 }

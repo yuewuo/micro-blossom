@@ -82,32 +82,28 @@ class VertexPropagatingPeerTest extends AnyFunSuite {
 
 }
 
-// sbt 'testOnly microblossom.combinatorial.VertexPropagatingPeerEstimation'
-class VertexPropagatingPeerEstimation extends AnyFunSuite {
-
-  test("logic delay") {
-    def dualConfig(name: String): DualConfig = {
-      DualConfig(filename = s"./resources/graphs/example_$name.json"),
-    }
-    val configurations = List(
-      // delay: 0.36ns
-      // resource: 1xLUT6, 10xLUT5, 1xLUT4 -> 12
-      (dualConfig("code_capacity_d5"), 1, "code capacity 2 neighbors"),
-      // delay: 0.54ns
-      // resource: 2xLUT6, 25xLUT5, 1xLUT3 -> 28
-      (dualConfig("code_capacity_rotated_d5"), 10, "code capacity 4 neighbors"),
-      // delay: 0.63ns
-      // resource: 4xLUT6, 64xLUT5 -> 68
-      (dualConfig("phenomenological_rotated_d5"), 64, "phenomenological 6 neighbors"),
-      // delay: 0.95ns (LUT3 -> LUT5 -> LUT5)
-      // resource: 4xLUT6, 93xLUT5, 1xLUT4, 3xLUT3 -> 101
-      (dualConfig("circuit_level_d5"), 63, "circuit-level 12 neighbors")
-    )
-    for ((config, vertexIndex, name) <- configurations) {
-      val reports = Vivado.report(VertexPropagatingPeer(config, vertexIndex))
-      println(s"$name: ${reports.timing.getPathDelaysExcludingIOWorst}ns")
-      reports.resource.primitivesTable.print()
-    }
+// sbt 'runMain microblossom.combinatorial.VertexPropagatingPeerEstimation'
+object VertexPropagatingPeerEstimation extends App {
+  def dualConfig(name: String): DualConfig = {
+    DualConfig(filename = s"./resources/graphs/example_$name.json"),
   }
-
+  val configurations = List(
+    // delay: 0.36ns
+    // resource: 1xLUT6, 10xLUT5, 1xLUT4 -> 12
+    (dualConfig("code_capacity_d5"), 1, "code capacity 2 neighbors"),
+    // delay: 0.54ns
+    // resource: 2xLUT6, 25xLUT5, 1xLUT3 -> 28
+    (dualConfig("code_capacity_rotated_d5"), 10, "code capacity 4 neighbors"),
+    // delay: 0.63ns
+    // resource: 4xLUT6, 64xLUT5 -> 68
+    (dualConfig("phenomenological_rotated_d5"), 64, "phenomenological 6 neighbors"),
+    // delay: 0.95ns (LUT3 -> LUT5 -> LUT5)
+    // resource: 4xLUT6, 93xLUT5, 1xLUT4, 3xLUT3 -> 101
+    (dualConfig("circuit_level_d5"), 63, "circuit-level 12 neighbors")
+  )
+  for ((config, vertexIndex, name) <- configurations) {
+    val reports = Vivado.report(VertexPropagatingPeer(config, vertexIndex))
+    println(s"$name: ${reports.timing.getPathDelaysExcludingIOWorst}ns")
+    reports.resource.primitivesTable.print()
+  }
 }

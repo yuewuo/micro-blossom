@@ -64,15 +64,11 @@ class OffloadDefectMatchTest extends AnyFunSuite {
 
 }
 
-// sbt 'testOnly microblossom.combinatorial.OffloadDefectMatchEstimation'
-class OffloadDefectMatchEstimation extends AnyFunSuite {
-
-  test("logic delay") {
-    // delay: 0.36ns (LUT5 -> LUT5)
-    // resource: 2xLUT5
-    val reports = Vivado.report(OffloadDefectMatch())
-    println(s"${reports.timing.getPathDelaysExcludingIOWorst}ns")
-    reports.resource.primitivesTable.print()
-  }
-
+// sbt 'runMain microblossom.combinatorial.OffloadDefectMatchEstimation'
+object OffloadDefectMatchEstimation extends App {
+  // delay: 0.36ns (LUT5 -> LUT5)
+  // resource: 2xLUT5
+  val reports = Vivado.report(OffloadDefectMatch())
+  println(s"${reports.timing.getPathDelaysExcludingIOWorst}ns")
+  reports.resource.primitivesTable.print()
 }

@@ -113,36 +113,32 @@ class OffloaderTest extends AnyFunSuite {
 
 }
 
-// sbt 'testOnly microblossom.modules.OffloaderEstimation'
-class OffloaderEstimation extends AnyFunSuite {
-
-  test("logic delay") {
-    def dualConfig(name: String): DualConfig = {
-      DualConfig(filename = s"./resources/graphs/example_$name.json"),
-    }
-    val configurations = List(
-      // 2xLUT5
-      (dualConfig("code_capacity_d5"), 0, "code capacity, defect match (3 / 5)"),
-      // 2xLUT5, 1xLUT4 -> 3
-      (dualConfig("code_capacity_d5"), 3, "code capacity, virtual match (2 / 5)"),
-      // 2xLUT5
-      (dualConfig("code_capacity_rotated_d5"), 0, "code capacity rotated, defect match (15 / 25)"),
-      // 2xLUT6, 3xLUT5, 1xLUT4 -> 6
-      (dualConfig("code_capacity_rotated_d5"), 15 + 5, "code capacity rotated, virtual match (10 / 25)"),
-      // 2xLUT5
-      (dualConfig("phenomenological_rotated_d5"), 0, "phenomenological, defect match (150 / 270)"),
-      // 2xLUT6, 3xLUT5, 1xLUT4 -> 6
-      (dualConfig("phenomenological_rotated_d5"), 150 + 60, "phenomenological, virtual match (120 / 270)"),
-      // 2xLUT5
-      (dualConfig("circuit_level_d5"), 0, "circuit-level, defect match (501, 561)"),
-      // 12xLUT6, 1xLUT2 -> 13
-      (dualConfig("circuit_level_d5"), 501 + 30, "circuit-level, virtual match (60, 561)")
-    )
-    for ((config, offloaderIndex, name) <- configurations) {
-      val reports = Vivado.report(Offloader(config, offloaderIndex))
-      println(s"$name:")
-      reports.resource.primitivesTable.print()
-    }
+// sbt "runMain microblossom.modules.OffloaderEstimation"
+object OffloaderEstimation extends App {
+  def dualConfig(name: String): DualConfig = {
+    DualConfig(filename = s"./resources/graphs/example_$name.json"),
   }
-
+  val configurations = List(
+    // 2xLUT5
+    (dualConfig("code_capacity_d5"), 0, "code capacity, defect match (3 / 5)"),
+    // 2xLUT5, 1xLUT4 -> 3
+    (dualConfig("code_capacity_d5"), 3, "code capacity, virtual match (2 / 5)"),
+    // 2xLUT5
+    (dualConfig("code_capacity_rotated_d5"), 0, "code capacity rotated, defect match (15 / 25)"),
+    // 2xLUT6, 3xLUT5, 1xLUT4 -> 6
+    (dualConfig("code_capacity_rotated_d5"), 15 + 5, "code capacity rotated, virtual match (10 / 25)"),
+    // 2xLUT5
+    (dualConfig("phenomenological_rotated_d5"), 0, "phenomenological, defect match (150 / 270)"),
+    // 2xLUT6, 3xLUT5, 1xLUT4 -> 6
+    (dualConfig("phenomenological_rotated_d5"), 150 + 60, "phenomenological, virtual match (120 / 270)"),
+    // 2xLUT5
+    (dualConfig("circuit_level_d5"), 0, "circuit-level, defect match (501, 561)"),
+    // 12xLUT6, 1xLUT2 -> 13
+    (dualConfig("circuit_level_d5"), 501 + 30, "circuit-level, virtual match (60, 561)")
+  )
+  for ((config, offloaderIndex, name) <- configurations) {
+    val reports = Vivado.report(Offloader(config, offloaderIndex))
+    println(s"$name:")
+    reports.resource.primitivesTable.print()
+  }
 }

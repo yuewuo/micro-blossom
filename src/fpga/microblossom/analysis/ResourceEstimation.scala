@@ -9,7 +9,6 @@ import microblossom.types._
 import microblossom.combinatorial._
 import microblossom.modules._
 import microblossom.util.Vivado
-import org.scalatest.funsuite.AnyFunSuite
 import scala.collection.mutable.Map
 import scala.collection.mutable.ArrayBuffer
 import scala.util.matching.Regex
@@ -89,317 +88,295 @@ case class AggregatedReport[Key](
   }
 }
 
-// sbt 'testOnly microblossom.analysis.ResourceEstimationEdgeIsTight'
-class ResourceEstimationEdgeIsTight extends AnyFunSuite {
-  test("estimation") {
-    case class Key(leftGrownBits: Int, rightGrownBits: Int) {}
-    val aggregated = AggregatedReport[Key]()
-    for (d <- Config.distances) {
-      val reports = Map[Key, RepeatedReport]()
-      val config = Config.dualConfig(d)
-      for (edgeIndex <- 0 until config.edgeNum) {
-        val (leftVertex, rightVertex) = config.incidentVerticesOf(edgeIndex)
-        val leftGrownBits = config.grownBitsOf(leftVertex)
-        val rightGrownBits = config.grownBitsOf(rightVertex)
-        val key = Key(leftGrownBits, rightGrownBits)
-        if (reports.contains(key)) {
-          for (_ <- 0 until 2) { // because each edge has two component
-            reports(key) ++
-          }
-        } else {
-          val repeatedReport =
-            RepeatedReport(Config.report(EdgeIsTight(leftGrownBits, rightGrownBits, config.weightBits)))
-          println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
-          reports += ((key, repeatedReport))
+// sbt 'runMain microblossom.analysis.ResourceEstimationEdgeIsTight'
+object ResourceEstimationEdgeIsTight extends App {
+  case class Key(leftGrownBits: Int, rightGrownBits: Int) {}
+  val aggregated = AggregatedReport[Key]()
+  for (d <- Config.distances) {
+    val reports = Map[Key, RepeatedReport]()
+    val config = Config.dualConfig(d)
+    for (edgeIndex <- 0 until config.edgeNum) {
+      val (leftVertex, rightVertex) = config.incidentVerticesOf(edgeIndex)
+      val leftGrownBits = config.grownBitsOf(leftVertex)
+      val rightGrownBits = config.grownBitsOf(rightVertex)
+      val key = Key(leftGrownBits, rightGrownBits)
+      if (reports.contains(key)) {
+        for (_ <- 0 until 2) { // because each edge has two component
           reports(key) ++
         }
+      } else {
+        val repeatedReport =
+          RepeatedReport(Config.report(EdgeIsTight(leftGrownBits, rightGrownBits, config.weightBits)))
+        println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
+        reports += ((key, repeatedReport))
+        reports(key) ++
       }
-      aggregated += ((s"d = $d", reports))
-      println(aggregated.simpleReport())
-      println(this.getClass.getSimpleName)
-      println(aggregated.detailedReport())
     }
+    aggregated += ((s"d = $d", reports))
+    println(aggregated.simpleReport())
+    println(this.getClass.getSimpleName)
+    println(aggregated.detailedReport())
   }
 }
 
-// sbt 'testOnly microblossom.analysis.ResourceEstimationEdgeRemaining'
-class ResourceEstimationEdgeRemaining extends AnyFunSuite {
-  test("estimation") {
-    case class Key(leftGrownBits: Int, rightGrownBits: Int) {}
-    val aggregated = AggregatedReport[Key]()
-    for (d <- Config.distances) {
-      val reports = Map[Key, RepeatedReport]()
-      val config = Config.dualConfig(d)
-      for (edgeIndex <- 0 until config.edgeNum) {
-        val (leftVertex, rightVertex) = config.incidentVerticesOf(edgeIndex)
-        val leftGrownBits = config.grownBitsOf(leftVertex)
-        val rightGrownBits = config.grownBitsOf(rightVertex)
-        val key = Key(leftGrownBits, rightGrownBits)
-        if (reports.contains(key)) {
-          reports(key) ++
-        } else {
-          val repeatedReport =
-            RepeatedReport(Config.report(EdgeRemaining(leftGrownBits, rightGrownBits, config.weightBits)))
-          println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
-          reports += ((key, repeatedReport))
-        }
+// sbt 'runMain microblossom.analysis.ResourceEstimationEdgeRemaining'
+object ResourceEstimationEdgeRemaining extends App {
+  case class Key(leftGrownBits: Int, rightGrownBits: Int) {}
+  val aggregated = AggregatedReport[Key]()
+  for (d <- Config.distances) {
+    val reports = Map[Key, RepeatedReport]()
+    val config = Config.dualConfig(d)
+    for (edgeIndex <- 0 until config.edgeNum) {
+      val (leftVertex, rightVertex) = config.incidentVerticesOf(edgeIndex)
+      val leftGrownBits = config.grownBitsOf(leftVertex)
+      val rightGrownBits = config.grownBitsOf(rightVertex)
+      val key = Key(leftGrownBits, rightGrownBits)
+      if (reports.contains(key)) {
+        reports(key) ++
+      } else {
+        val repeatedReport =
+          RepeatedReport(Config.report(EdgeRemaining(leftGrownBits, rightGrownBits, config.weightBits)))
+        println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
+        reports += ((key, repeatedReport))
       }
-      aggregated += ((s"d = $d", reports))
-      println(aggregated.simpleReport())
-      println(this.getClass.getSimpleName)
-      println(aggregated.detailedReport())
     }
+    aggregated += ((s"d = $d", reports))
+    println(aggregated.simpleReport())
+    println(this.getClass.getSimpleName)
+    println(aggregated.detailedReport())
   }
 }
 
-// sbt 'testOnly microblossom.analysis.ResourceEstimationEdgeResponse'
-class ResourceEstimationEdgeResponse extends AnyFunSuite {
-  test("estimation") {
-    case class Key() {}
-    val aggregated = AggregatedReport[Key]()
-    for (d <- Config.distances) {
-      val reports = Map[Key, RepeatedReport]()
-      val config = Config.dualConfig(d)
-      for (edgeIndex <- 0 until config.edgeNum) {
-        val key = Key()
-        if (reports.contains(key)) {
-          reports(key) ++
-        } else {
-          val repeatedReport =
-            RepeatedReport(Config.report(EdgeResponse(config.vertexBits, config.weightBits)))
-          println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
-          reports += ((key, repeatedReport))
-        }
+// sbt 'runMain microblossom.analysis.ResourceEstimationEdgeResponse'
+object ResourceEstimationEdgeResponse extends App {
+  case class Key() {}
+  val aggregated = AggregatedReport[Key]()
+  for (d <- Config.distances) {
+    val reports = Map[Key, RepeatedReport]()
+    val config = Config.dualConfig(d)
+    for (edgeIndex <- 0 until config.edgeNum) {
+      val key = Key()
+      if (reports.contains(key)) {
+        reports(key) ++
+      } else {
+        val repeatedReport =
+          RepeatedReport(Config.report(EdgeResponse(config.vertexBits, config.weightBits)))
+        println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
+        reports += ((key, repeatedReport))
       }
-      aggregated += ((s"d = $d", reports))
-      println(aggregated.simpleReport())
-      println(this.getClass.getSimpleName)
-      println(aggregated.detailedReport())
     }
+    aggregated += ((s"d = $d", reports))
+    println(aggregated.simpleReport())
+    println(this.getClass.getSimpleName)
+    println(aggregated.detailedReport())
   }
 }
 
-// sbt 'testOnly microblossom.analysis.ResourceEstimationOffloader'
-class ResourceEstimationOffloader extends AnyFunSuite {
-  test("estimation") {
-    case class Key(offloaderType: String, numVertices: Int, numEdges: Int) {}
-    val aggregated = AggregatedReport[Key]()
-    for (d <- Config.distances) {
-      val reports = Map[Key, RepeatedReport]()
-      val config = Config.dualConfig(d)
-      for (offloaderIndex <- 0 until config.offloaderNum) {
-        val (_edgeIndex, neighborVertices, neighborEdges) = config.offloaderInformation(offloaderIndex)
-        val key = Key(config.offloaderTypeOf(offloaderIndex), neighborVertices.length, neighborEdges.length)
-        if (reports.contains(key)) {
-          reports(key) ++
-        } else {
-          val repeatedReport =
-            RepeatedReport(Config.report(Offloader(config, offloaderIndex)))
-          println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
-          reports += ((key, repeatedReport))
-        }
+// sbt 'runMain microblossom.analysis.ResourceEstimationOffloader'
+object ResourceEstimationOffloader extends App {
+  case class Key(offloaderType: String, numVertices: Int, numEdges: Int) {}
+  val aggregated = AggregatedReport[Key]()
+  for (d <- Config.distances) {
+    val reports = Map[Key, RepeatedReport]()
+    val config = Config.dualConfig(d)
+    for (offloaderIndex <- 0 until config.offloaderNum) {
+      val (_edgeIndex, neighborVertices, neighborEdges) = config.offloaderInformation(offloaderIndex)
+      val key = Key(config.offloaderTypeOf(offloaderIndex), neighborVertices.length, neighborEdges.length)
+      if (reports.contains(key)) {
+        reports(key) ++
+      } else {
+        val repeatedReport =
+          RepeatedReport(Config.report(Offloader(config, offloaderIndex)))
+        println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
+        reports += ((key, repeatedReport))
       }
-      aggregated += ((s"d = $d", reports))
-      println(aggregated.simpleReport())
-      println(this.getClass.getSimpleName)
-      println(aggregated.detailedReport())
     }
+    aggregated += ((s"d = $d", reports))
+    println(aggregated.simpleReport())
+    println(this.getClass.getSimpleName)
+    println(aggregated.detailedReport())
   }
 }
 
-// sbt 'testOnly microblossom.analysis.ResourceEstimationVertexOffloadStalled'
-class ResourceEstimationVertexOffloadStalled extends AnyFunSuite {
-  test("estimation") {
-    case class Key(numEdges: Int) {}
-    val aggregated = AggregatedReport[Key]()
-    for (d <- Config.distances) {
-      val reports = Map[Key, RepeatedReport]()
-      val config = Config.dualConfig(d)
-      for (vertexIndex <- 0 until config.vertexNum) {
-        val numEdges = config.numIncidentEdgeOf(vertexIndex)
-        val key = Key(numEdges)
-        if (reports.contains(key)) {
-          reports(key) ++
-        } else {
-          val repeatedReport =
-            RepeatedReport(Config.report(OffloadStalled(numEdges)))
-          println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
-          reports += ((key, repeatedReport))
-        }
+// sbt 'runMain microblossom.analysis.ResourceEstimationVertexOffloadStalled'
+object ResourceEstimationVertexOffloadStalled extends App {
+  case class Key(numEdges: Int) {}
+  val aggregated = AggregatedReport[Key]()
+  for (d <- Config.distances) {
+    val reports = Map[Key, RepeatedReport]()
+    val config = Config.dualConfig(d)
+    for (vertexIndex <- 0 until config.vertexNum) {
+      val numEdges = config.numIncidentEdgeOf(vertexIndex)
+      val key = Key(numEdges)
+      if (reports.contains(key)) {
+        reports(key) ++
+      } else {
+        val repeatedReport =
+          RepeatedReport(Config.report(OffloadStalled(numEdges)))
+        println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
+        reports += ((key, repeatedReport))
       }
-      aggregated += ((s"d = $d", reports))
-      println(aggregated.simpleReport())
-      println(this.getClass.getSimpleName)
-      println(aggregated.detailedReport())
     }
+    aggregated += ((s"d = $d", reports))
+    println(aggregated.simpleReport())
+    println(this.getClass.getSimpleName)
+    println(aggregated.detailedReport())
   }
 }
 
-// sbt 'testOnly microblossom.analysis.ResourceEstimationVertexIsUniqueTight'
-class ResourceEstimationVertexIsUniqueTight extends AnyFunSuite {
-  test("estimation") {
-    case class Key(numEdges: Int) {}
-    val aggregated = AggregatedReport[Key]()
-    for (d <- Config.distances) {
-      val reports = Map[Key, RepeatedReport]()
-      val config = Config.dualConfig(d)
-      for (vertexIndex <- 0 until config.vertexNum) {
-        val numEdges = config.numIncidentEdgeOf(vertexIndex)
-        val key = Key(numEdges)
-        if (reports.contains(key)) {
-          reports(key) ++
-        } else {
-          val repeatedReport =
-            RepeatedReport(Config.report(VertexIsUniqueTight(numEdges)))
-          println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
-          reports += ((key, repeatedReport))
-        }
+// sbt 'runMain microblossom.analysis.ResourceEstimationVertexIsUniqueTight'
+object ResourceEstimationVertexIsUniqueTight extends App {
+  case class Key(numEdges: Int) {}
+  val aggregated = AggregatedReport[Key]()
+  for (d <- Config.distances) {
+    val reports = Map[Key, RepeatedReport]()
+    val config = Config.dualConfig(d)
+    for (vertexIndex <- 0 until config.vertexNum) {
+      val numEdges = config.numIncidentEdgeOf(vertexIndex)
+      val key = Key(numEdges)
+      if (reports.contains(key)) {
+        reports(key) ++
+      } else {
+        val repeatedReport =
+          RepeatedReport(Config.report(VertexIsUniqueTight(numEdges)))
+        println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
+        reports += ((key, repeatedReport))
       }
-      aggregated += ((s"d = $d", reports))
-      println(aggregated.simpleReport())
-      println(this.getClass.getSimpleName)
-      println(aggregated.detailedReport())
     }
+    aggregated += ((s"d = $d", reports))
+    println(aggregated.simpleReport())
+    println(this.getClass.getSimpleName)
+    println(aggregated.detailedReport())
   }
 }
 
-// sbt 'testOnly microblossom.analysis.ResourceEstimationVertexPostExecuteState'
-class ResourceEstimationVertexPostExecuteState extends AnyFunSuite {
-  test("estimation") {
-    case class Key(grownBits: Int) {}
-    val aggregated = AggregatedReport[Key]()
-    for (d <- Config.distances) {
-      val reports = Map[Key, RepeatedReport]()
-      val config = Config.dualConfig(d)
-      for (vertexIndex <- 0 until config.vertexNum) {
-        val grownBits = config.grownBitsOf(vertexIndex)
-        val key = Key(grownBits)
-        if (reports.contains(key)) {
-          reports(key) ++
-        } else {
-          val repeatedReport =
-            RepeatedReport(Config.report(VertexPostExecuteState(config, vertexIndex)))
-          println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
-          reports += ((key, repeatedReport))
-        }
+// sbt 'runMain microblossom.analysis.ResourceEstimationVertexPostExecuteState'
+object ResourceEstimationVertexPostExecuteState extends App {
+  case class Key(grownBits: Int) {}
+  val aggregated = AggregatedReport[Key]()
+  for (d <- Config.distances) {
+    val reports = Map[Key, RepeatedReport]()
+    val config = Config.dualConfig(d)
+    for (vertexIndex <- 0 until config.vertexNum) {
+      val grownBits = config.grownBitsOf(vertexIndex)
+      val key = Key(grownBits)
+      if (reports.contains(key)) {
+        reports(key) ++
+      } else {
+        val repeatedReport =
+          RepeatedReport(Config.report(VertexPostExecuteState(config, vertexIndex)))
+        println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
+        reports += ((key, repeatedReport))
       }
-      aggregated += ((s"d = $d", reports))
-      println(aggregated.simpleReport())
-      println(this.getClass.getSimpleName)
-      println(aggregated.detailedReport())
     }
+    aggregated += ((s"d = $d", reports))
+    println(aggregated.simpleReport())
+    println(this.getClass.getSimpleName)
+    println(aggregated.detailedReport())
   }
 }
 
-// sbt 'testOnly microblossom.analysis.ResourceEstimationVertexPostUpdateState'
-class ResourceEstimationVertexPostUpdateState extends AnyFunSuite {
-  test("estimation") {
-    case class Key(grownBits: Int) {}
-    val aggregated = AggregatedReport[Key]()
-    for (d <- Config.distances) {
-      val reports = Map[Key, RepeatedReport]()
-      val config = Config.dualConfig(d)
-      for (vertexIndex <- 0 until config.vertexNum) {
-        val grownBits = config.grownBitsOf(vertexIndex)
-        val key = Key(grownBits)
-        if (reports.contains(key)) {
-          reports(key) ++
-        } else {
-          val repeatedReport =
-            RepeatedReport(Config.report(VertexPostUpdateState(config, vertexIndex)))
-          println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
-          reports += ((key, repeatedReport))
-        }
+// sbt 'runMain microblossom.analysis.ResourceEstimationVertexPostUpdateState'
+object ResourceEstimationVertexPostUpdateState extends App {
+  case class Key(grownBits: Int) {}
+  val aggregated = AggregatedReport[Key]()
+  for (d <- Config.distances) {
+    val reports = Map[Key, RepeatedReport]()
+    val config = Config.dualConfig(d)
+    for (vertexIndex <- 0 until config.vertexNum) {
+      val grownBits = config.grownBitsOf(vertexIndex)
+      val key = Key(grownBits)
+      if (reports.contains(key)) {
+        reports(key) ++
+      } else {
+        val repeatedReport =
+          RepeatedReport(Config.report(VertexPostUpdateState(config, vertexIndex)))
+        println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
+        reports += ((key, repeatedReport))
       }
-      aggregated += ((s"d = $d", reports))
-      println(aggregated.simpleReport())
-      println(this.getClass.getSimpleName)
-      println(aggregated.detailedReport())
     }
+    aggregated += ((s"d = $d", reports))
+    println(aggregated.simpleReport())
+    println(this.getClass.getSimpleName)
+    println(aggregated.detailedReport())
   }
 }
 
-// sbt 'testOnly microblossom.analysis.ResourceEstimationVertexPropagatingPeer'
-class ResourceEstimationVertexPropagatingPeer extends AnyFunSuite {
-  test("estimation") {
-    case class Key(grownBits: Int, numNeighbors: Int) {}
-    val aggregated = AggregatedReport[Key]()
-    for (d <- Config.distances) {
-      val reports = Map[Key, RepeatedReport]()
-      val config = Config.dualConfig(d)
-      for (vertexIndex <- 0 until config.vertexNum) {
-        val grownBits = config.grownBitsOf(vertexIndex)
-        val numNeighbors = config.numIncidentEdgeOf(vertexIndex)
-        val key = Key(grownBits, numNeighbors)
-        if (reports.contains(key)) {
-          reports(key) ++
-        } else {
-          val repeatedReport =
-            RepeatedReport(Config.report(VertexPropagatingPeer(config, vertexIndex)))
-          println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
-          reports += ((key, repeatedReport))
-        }
+// sbt 'runMain microblossom.analysis.ResourceEstimationVertexPropagatingPeer'
+object ResourceEstimationVertexPropagatingPeer extends App {
+  case class Key(grownBits: Int, numNeighbors: Int) {}
+  val aggregated = AggregatedReport[Key]()
+  for (d <- Config.distances) {
+    val reports = Map[Key, RepeatedReport]()
+    val config = Config.dualConfig(d)
+    for (vertexIndex <- 0 until config.vertexNum) {
+      val grownBits = config.grownBitsOf(vertexIndex)
+      val numNeighbors = config.numIncidentEdgeOf(vertexIndex)
+      val key = Key(grownBits, numNeighbors)
+      if (reports.contains(key)) {
+        reports(key) ++
+      } else {
+        val repeatedReport =
+          RepeatedReport(Config.report(VertexPropagatingPeer(config, vertexIndex)))
+        println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
+        reports += ((key, repeatedReport))
       }
-      aggregated += ((s"d = $d", reports))
-      println(aggregated.simpleReport())
-      println(this.getClass.getSimpleName)
-      println(aggregated.detailedReport())
     }
+    aggregated += ((s"d = $d", reports))
+    println(aggregated.simpleReport())
+    println(this.getClass.getSimpleName)
+    println(aggregated.detailedReport())
   }
 }
 
-// sbt 'testOnly microblossom.analysis.ResourceEstimationVertexResponse'
-class ResourceEstimationVertexResponse extends AnyFunSuite {
-  test("estimation") {
-    case class Key(grownBits: Int) {}
-    val aggregated = AggregatedReport[Key]()
-    for (d <- Config.distances) {
-      val reports = Map[Key, RepeatedReport]()
-      val config = Config.dualConfig(d)
-      for (vertexIndex <- 0 until config.vertexNum) {
-        val grownBits = config.grownBitsOf(vertexIndex)
-        val key = Key(grownBits)
-        if (reports.contains(key)) {
-          reports(key) ++
-        } else {
-          val repeatedReport =
-            RepeatedReport(Config.report(VertexResponse(config, vertexIndex)))
-          println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
-          reports += ((key, repeatedReport))
-        }
+// sbt 'runMain microblossom.analysis.ResourceEstimationVertexResponse'
+object ResourceEstimationVertexResponse extends App {
+  case class Key(grownBits: Int) {}
+  val aggregated = AggregatedReport[Key]()
+  for (d <- Config.distances) {
+    val reports = Map[Key, RepeatedReport]()
+    val config = Config.dualConfig(d)
+    for (vertexIndex <- 0 until config.vertexNum) {
+      val grownBits = config.grownBitsOf(vertexIndex)
+      val key = Key(grownBits)
+      if (reports.contains(key)) {
+        reports(key) ++
+      } else {
+        val repeatedReport =
+          RepeatedReport(Config.report(VertexResponse(config, vertexIndex)))
+        println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
+        reports += ((key, repeatedReport))
       }
-      aggregated += ((s"d = $d", reports))
-      println(aggregated.simpleReport())
-      println(this.getClass.getSimpleName)
-      println(aggregated.detailedReport())
     }
+    aggregated += ((s"d = $d", reports))
+    println(aggregated.simpleReport())
+    println(this.getClass.getSimpleName)
+    println(aggregated.detailedReport())
   }
 }
 
-// sbt 'testOnly microblossom.analysis.ResourceEstimationVertexShadow'
-class ResourceEstimationVertexShadow extends AnyFunSuite {
-  test("estimation") {
-    case class Key(grownBits: Int) {}
-    val aggregated = AggregatedReport[Key]()
-    for (d <- Config.distances) {
-      val reports = Map[Key, RepeatedReport]()
-      val config = Config.dualConfig(d)
-      for (vertexIndex <- 0 until config.vertexNum) {
-        val grownBits = config.grownBitsOf(vertexIndex)
-        val key = Key(grownBits)
-        if (reports.contains(key)) {
-          reports(key) ++
-        } else {
-          val repeatedReport =
-            RepeatedReport(Config.report(VertexShadow(config, vertexIndex)))
-          println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
-          reports += ((key, repeatedReport))
-        }
+// sbt 'runMain microblossom.analysis.ResourceEstimationVertexShadow'
+object ResourceEstimationVertexShadow extends App {
+  case class Key(grownBits: Int) {}
+  val aggregated = AggregatedReport[Key]()
+  for (d <- Config.distances) {
+    val reports = Map[Key, RepeatedReport]()
+    val config = Config.dualConfig(d)
+    for (vertexIndex <- 0 until config.vertexNum) {
+      val grownBits = config.grownBitsOf(vertexIndex)
+      val key = Key(grownBits)
+      if (reports.contains(key)) {
+        reports(key) ++
+      } else {
+        val repeatedReport =
+          RepeatedReport(Config.report(VertexShadow(config, vertexIndex)))
+        println(s"d = $d, $key single: ${repeatedReport.countSingleCLBLUT} LUTs")
+        reports += ((key, repeatedReport))
       }
-      aggregated += ((s"d = $d", reports))
-      println(aggregated.simpleReport())
-      println(this.getClass.getSimpleName)
-      println(aggregated.detailedReport())
     }
+    aggregated += ((s"d = $d", reports))
+    println(aggregated.simpleReport())
+    println(this.getClass.getSimpleName)
+    println(aggregated.detailedReport())
   }
 }
