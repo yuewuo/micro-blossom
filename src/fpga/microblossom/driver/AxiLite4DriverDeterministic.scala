@@ -1,4 +1,4 @@
-package microblossom.util
+package microblossom.driver
 
 import spinal.core._
 import spinal.lib._
@@ -18,7 +18,6 @@ case class AxiLite4DriverDeterministic(axi: AxiLite4, clockDomain: ClockDomain) 
     axi.ar.valid #= false
     axi.r.ready #= true
     axi.b.ready #= true
-
   }
 
   reset()

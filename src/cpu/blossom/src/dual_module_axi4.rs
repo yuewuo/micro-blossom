@@ -32,6 +32,8 @@ use wait_timeout::ChildExt;
 pub struct DualConfig {
     #[derivative(Default(value = "*dual_config_default::WITH_WAVEFORM"))]
     pub with_waveform: bool,
+    #[derivative(Default(value = "(*dual_config_default::BUS_TYPE).clone()"))]
+    pub bus_type: String,
     #[derivative(Default(value = "*dual_config_default::USE_64_BUS"))]
     pub use_64_bus: bool,
     #[derivative(Default(value = "dual_config_default::env_usize(\"CONTEXT_DEPTH\", 1)"))]
@@ -364,6 +366,7 @@ pub mod dual_config_default {
     }
     lazy_static! {
         pub static ref WITH_WAVEFORM: bool = (cfg!(test) || is_set("WITH_WAVEFORM")) && !is_set("NO_WAVEFORM");
+        pub static ref BUS_TYPE: String = env::var("BUS_TYPE").unwrap_or("AxiLite4".to_string());
         pub static ref USE_64_BUS: bool = !is_set("USE_32_BUS");
         pub static ref SUPPORT_ADD_DEFECT_VERTEX: bool = !is_set("NO_ADD_DEFECT_VERTEX");
         pub static ref INJECT_REGISTERS: Vec<String> = match env::var("INJECT_REGISTERS") {

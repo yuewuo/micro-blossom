@@ -10,13 +10,16 @@ package microblossom
 
 import java.io._
 import java.net._
-import util._
-import spinal.core._
-import spinal.core.sim._
 import io.circe.parser.decode
 import scala.reflect.io.Directory
 import scala.util.control.Breaks._
-import modules._
+import microblossom.util._
+import microblossom.modules._
+import microblossom.driver._
+import spinal.core._
+import spinal.lib._
+import spinal.core.sim._
+import spinal.lib.bus.misc._
 
 // sbt "runMain microblossom.MicroBlossomHost localhost 4123 test"
 object MicroBlossomHost extends App {
@@ -50,6 +53,10 @@ object MicroBlossomHost extends App {
     }
 
     val withWaveform = readNamedValue("with_waveform").toBoolean
+    val busType = decode[String](readNamedValue("bus_type")) match {
+      case Right(value) => value
+      case Left(ex)     => throw ex
+    }
     val use64bus = readNamedValue("use_64_bus").toBoolean
     val contextDepth = readNamedValue("context_depth").toInt
     val broadcastDelay = readNamedValue("broadcast_delay").toInt
@@ -85,17 +92,31 @@ object MicroBlossomHost extends App {
 
     simConfig
       .compile({
-        val dut = if (use64bus) {
-          MicroBlossomAxiLite4(config)
+        val component: Component = if (busType == "Axi4") {
+          require(use64bus, "only 64 bits supported for Axi4 interface")
+          MicroBlossomAxi4(config)
+        } else if (busType == "AxiLite4") {
+          if (use64bus) {
+            MicroBlossomAxiLite4(config)
+          } else {
+            MicroBlossomAxiLite4Bus32(config)
+          }
+        } else if (busType == "Wishbone") {
+          require(!use64bus, "only 32 bits supported for Wishbone interface")
+          MicroBlossomWishboneBus32(config)
         } else {
-          MicroBlossomAxiLite4Bus32(config)
+          throw new Exception(s"unrecognized busType $busType")
         }
+        require(component.isInstanceOf[MicroBlossom[IMasterSlave, BusSlaveFactoryDelayed]])
+        val dut = component.asInstanceOf[MicroBlossom[IMasterSlave, BusSlaveFactoryDelayed]]
         if (withWaveform) {
           dut.dual.simMakePublicSnapshot()
         }
-        dut
+        component
       })
-      .doSim("hosted") { dut =>
+      .doSim("hosted") { component =>
+        val dut = component.asInstanceOf[MicroBlossom[IMasterSlave, BusSlaveFactoryDelayed]]
+
         outStream.println("simulation started")
         if (withWaveform) {
           println("view waveform: `gtkwave %s/%s/hosted.fst`".format(workspacePath, host_name))
@@ -108,17 +129,18 @@ object MicroBlossomHost extends App {
           cycleCounter += 1
         }
 
+        val driver = dut.getSimDriver()
+        driver.reset()
+
         dut.clockDomain.forkStimulus(period = 10)
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
-
-        val driver = AxiLite4TypedDriver(dut.io.s0, dut.clockDomain)
 
         // start hosting the commands
         var maxGrowth = Long.MaxValue
         breakable {
           while (true) {
             val command = inStream.readLine()
-            // println("[%d] %s".format(cycleCounter, command))
+            println("[%d] %s".format(cycleCounter, command))
             if (command == "quit") {
               println("requested quit, breaking...")
               break

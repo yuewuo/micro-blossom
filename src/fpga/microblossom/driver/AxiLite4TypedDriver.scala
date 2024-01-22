@@ -1,4 +1,4 @@
-package microblossom.util
+package microblossom.driver
 
 import spinal.core._
 import spinal.lib._
@@ -9,9 +9,13 @@ import microblossom._
 import microblossom.util._
 import org.scalatest.funsuite.AnyFunSuite
 
-case class AxiLite4TypedDriver(axi: AxiLite4, clockDomain: ClockDomain) {
+case class AxiLite4TypedDriver(axi: AxiLite4, clockDomain: ClockDomain) extends TypedDriver {
   // val driver = AxiLite4Driver(axi, clockDomain)
   val driver = AxiLite4DriverDeterministic(axi, clockDomain)
+
+  def reset(): Unit = {
+    driver.reset()
+  }
 
   val dataWidth = axi.config.dataWidth
   require(dataWidth == 64 || dataWidth == 32, "only 64 bits or 32 bits bus is supported")
@@ -31,11 +35,6 @@ case class AxiLite4TypedDriver(axi: AxiLite4, clockDomain: ClockDomain) {
     }
   }
 
-  def read_64(address: BigInt): BigInt = readBytes(address, 8)
-  def read_32(address: BigInt): BigInt = readBytes(address, 4)
-  def read_16(address: BigInt): BigInt = readBytes(address, 2)
-  def read_8(address: BigInt): BigInt = readBytes(address, 1)
-
   def writeBytes(address: BigInt, data: BigInt, numBytes: Int) = {
     assert(numBytes == 1 || numBytes == 2 || numBytes == 4 || numBytes == 8)
     assert(address % numBytes == 0, "address is not aligned")
@@ -50,11 +49,6 @@ case class AxiLite4TypedDriver(axi: AxiLite4, clockDomain: ClockDomain) {
       driver.write((address >> shift) << shift, data << ((address % (dataWidth / 8)) * 8).intValue())
     }
   }
-
-  def write_64(address: BigInt, data: BigInt) = writeBytes(address, data, 8)
-  def write_32(address: BigInt, data: BigInt) = writeBytes(address, data, 4)
-  def write_16(address: BigInt, data: BigInt) = writeBytes(address, data, 2)
-  def write_8(address: BigInt, data: BigInt) = writeBytes(address, data, 1)
 
 }
 

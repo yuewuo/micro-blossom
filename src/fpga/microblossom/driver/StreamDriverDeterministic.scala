@@ -54,7 +54,7 @@ class StreamDriverDeterministic[T <: Data](stream: Stream[T], clockDomain: Clock
   clockDomain.onSamplings(fsm)
 
   def reset() = {
-    state = 0
+    state = 1
     stream.valid #= false
   }
 }

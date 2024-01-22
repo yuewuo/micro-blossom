@@ -19,6 +19,7 @@ import spinal.lib.bus.misc._
 import spinal.core.sim._
 import microblossom._
 import microblossom.util._
+import microblossom.driver._
 import microblossom.types._
 import microblossom.modules._
 import microblossom.stage._
@@ -327,7 +328,17 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     factory.onReadPrimitive(mapping, haltSensitive = true, documentation)(onDoRead)
   }
 
-  rawFactory.printDataModel()
+  // rawFactory.printDataModel()
+
+  def getSimDriver(): TypedDriver = {
+    if (io.s0.isInstanceOf[AxiLite4]) {
+      AxiLite4TypedDriver(io.s0.asInstanceOf[AxiLite4], clockDomain)
+    } else if (io.s0.isInstanceOf[Axi4]) {
+      Axi4TypedDriver(io.s0.asInstanceOf[Axi4], clockDomain)
+    } else {
+      throw new Exception("simulater driver not implemented")
+    }
+  }
 
 }
 
@@ -345,27 +356,27 @@ class MicroBlossomTest extends AnyFunSuite {
     Config.spinal().generateVerilog(MicroBlossomAxi4(config))
   }
 
-  // test("logic validity") {
-  //   val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
+  test("logic validity") {
+    val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
 
-  //   Config.sim
-  //     .compile(MicroBlossomAxiLite4(config))
-  //     // .compile(MicroBlossomAxiLite4Bus32(config))
-  //     .doSim("logic validity") { dut =>
-  //       dut.clockDomain.forkStimulus(period = 10)
+    Config.sim
+      .compile(MicroBlossomAxiLite4(config))
+      // .compile(MicroBlossomAxiLite4Bus32(config))
+      .doSim("logic validity") { dut =>
+        dut.clockDomain.forkStimulus(period = 10)
 
-  //       val driver = AxiLite4TypedDriver(dut.io.s0, dut.clockDomain)
+        val driver = dut.getSimDriver()
 
-  //       val version = driver.read_32(8)
-  //       printf("version: %x\n", version)
-  //       assert(version == DualConfig.version)
-  //       val contextDepth = driver.read_32(12)
-  //       assert(contextDepth == config.contextDepth)
-  //       val conflictChannels = driver.read_8(16)
-  //       assert(conflictChannels == config.conflictChannels)
-  //     }
+        val version = driver.read_32(8)
+        printf("version: %x\n", version)
+        assert(version == DualConfig.version)
+        val contextDepth = driver.read_32(12)
+        assert(contextDepth == config.contextDepth)
+        val conflictChannels = driver.read_8(16)
+        assert(conflictChannels == config.conflictChannels)
+      }
 
-  // }
+  }
 
 }
 
