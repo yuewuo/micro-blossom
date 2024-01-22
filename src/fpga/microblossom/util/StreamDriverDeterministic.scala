@@ -28,7 +28,6 @@ object StreamDriverDeterministic {
 }
 
 class StreamDriverDeterministic[T <: Data](stream: Stream[T], clockDomain: ClockDomain, var driver: (T) => Boolean) {
-  implicit val _ = sm
 
   var state = 1
   val validProxy = stream.valid.simProxy()
