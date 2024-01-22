@@ -45,12 +45,12 @@ case class Axi4TypedDriver(axi: Axi4, clockDomain: ClockDomain) extends TypedDri
     else false
   }
 
-  // val awDriver = StreamDriverDeterministic(aw, clockDomain)(awCallback)
-  // val wDriver = StreamDriverDeterministic(w, clockDomain)(wCallback)
-  // val arDriver = StreamDriverDeterministic(ar, clockDomain)(arCallback)
-  val awDriver = StreamDriver(aw, clockDomain)(awCallback)
-  val wDriver = StreamDriver(w, clockDomain)(wCallback)
-  val arDriver = StreamDriver(ar, clockDomain)(arCallback)
+  val awDriver = StreamDriverDeterministic(aw, clockDomain)(awCallback)
+  val wDriver = StreamDriverDeterministic(w, clockDomain)(wCallback)
+  val arDriver = StreamDriverDeterministic(ar, clockDomain)(arCallback)
+  // val awDriver = StreamDriver(aw, clockDomain)(awCallback)
+  // val wDriver = StreamDriver(w, clockDomain)(wCallback)
+  // val arDriver = StreamDriver(ar, clockDomain)(arCallback)
 
   val writeRspMonitor = StreamMonitor(b, clockDomain) { _ =>
     if (bQueue.nonEmpty) { bQueue.dequeue()() }
