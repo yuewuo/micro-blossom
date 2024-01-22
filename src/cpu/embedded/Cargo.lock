@@ -93,6 +93,12 @@ dependencies = [
 
 [[package]]
 name = "cfg-if"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
+
+[[package]]
+name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
@@ -145,6 +151,7 @@ version = "0.1.0"
 dependencies = [
  "automod",
  "cbindgen",
+ "cfg-if 0.1.10",
  "cty",
  "heapless",
  "konst",
@@ -312,7 +319,7 @@ checksum = "f665ee40bc4a3c5590afb1e9677db74a508659dfd71e126420da8274909a0167"
 name = "micro-blossom-nostd"
 version = "0.0.0"
 dependencies = [
- "cfg-if",
+ "cfg-if 1.0.0",
  "num-derive",
  "num-traits",
  "panic-halt",
@@ -645,7 +652,7 @@ version = "3.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01ce4141aa927a6d1bd34a041795abd0db1cccba5d5f24b009f694bdf3a1f3fa"
 dependencies = [
- "cfg-if",
+ "cfg-if 1.0.0",
  "fastrand",
  "redox_syscall",
  "rustix",

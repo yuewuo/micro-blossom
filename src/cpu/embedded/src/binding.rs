@@ -97,8 +97,12 @@ impl Write for Printer {
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => ({
-        let mut printer = Printer;
-        write!(&mut printer, $($arg)*).unwrap();
+        cfg_if::cfg_if! {
+            if #[cfg(not(feature="disable_print"))] {
+                let mut printer = Printer;
+                write!(&mut printer, $($arg)*).unwrap();
+            }
+        }
     })
 }
 #[allow(unused_imports)]
@@ -108,8 +112,12 @@ pub use print;
 macro_rules! println {
     () => (print!("\n"));
     ($($arg:tt)*) => ({
-        let mut printer = Printer;
-        writeln!(&mut printer, $($arg)*).unwrap();
+        cfg_if::cfg_if! {
+            if #[cfg(not(feature="disable_print"))] {
+                let mut printer = Printer;
+                writeln!(&mut printer, $($arg)*).unwrap();
+            }
+        }
     })
 }
 #[allow(unused_imports)]

@@ -13,6 +13,7 @@ void print_char(char c)
 }
 
 const uintptr_t UB_BASE = 0x400000000;
+const uintptr_t UB_BASE_READOUT = UB_BASE + 4 * 1024 * 1024;
 const float TIMER_FREQUENCY = 200e6; // 200MHz
 
 uint64_t get_native_time()
@@ -60,7 +61,7 @@ void get_obstacle(struct ReadoutHead *head,
                   uint8_t conflict_channels,
                   uint16_t context_id)
 {
-    uintptr_t base = UB_BASE + 1024 * context_id;
+    uintptr_t base = UB_BASE_READOUT + 1024 * context_id;
     uint64_t raw_head = Xil_In64(base);
     head->growable = raw_head;
     head->accumulated_grown = raw_head >> 16;

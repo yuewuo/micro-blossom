@@ -79,6 +79,8 @@ connect_bd_net [get_bd_pins axis_ila_0/resetn] [get_bd_pins proc_sys_reset_0/per
 regenerate_bd_layout
 save_bd_design
 
+# get_nets -hier -filter { NAME =~ "vmk180_micro_blossom_i/MicroBlossom_0/inst/dual/broadcastRegInserted_valid" }
+
 # run synthesis, implementation and write bitstream
 launch_runs synth_1 -jobs 10
 wait_on_run synth_1

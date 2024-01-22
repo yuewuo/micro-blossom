@@ -82,7 +82,8 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
     ram.setTechnology(ramBlock)
     fetchState := ram.readSync(
       address = io.message.contextId,
-      enable = io.message.valid
+      enable = io.message.valid,
+      readUnderWrite = readFirst
     )
     message := RegNext(io.message)
   } else {

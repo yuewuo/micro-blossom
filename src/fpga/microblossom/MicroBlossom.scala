@@ -262,11 +262,12 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       }
       // regardless of whether it's blocked, put the address in ram first so that it's ready the next cycle
       previousAskRead := True
-      contextGrowable := context.growable.readSync(readContextId)
-      contextMaximumGrowth := U(0) // TODO: context.maximumGrowth.readSync(readContextId)
-      contextAccumulatedGrowth := U(0) // TODO: context.accumulatedGrowth.readSync(readContextId)
+      // use readFirst policy to avoid Vivado warnings about data corruption
+      contextGrowable := context.growable.readSync(readContextId, readUnderWrite = readFirst)
+      contextMaximumGrowth := U(0) // TODO: readSync(readContextId, readUnderWrite = readFirst)
+      contextAccumulatedGrowth := U(0) // TODO: readSync(readContextId, readUnderWrite = readFirst)
       for (index <- 0 until dualConfig.conflictChannels) {
-        contextConflicts(index) := context.conflicts(index).readSync(readContextId)
+        contextConflicts(index) := context.conflicts(index).readSync(readContextId, readUnderWrite = readFirst)
       }
       when(isBlocked || !previousAskRead) { // always halt for a clock cycle if previous cycle is not asking read
         factory.readHalt()
@@ -378,22 +379,6 @@ class MicroBlossomTest extends AnyFunSuite {
 
   }
 
-}
-
-// sbt "runMain microblossom.MicroBlossomVerilog <config> <folder>"
-// (e.g.) sbt "runMain microblossom.MicroBlossomVerilog ./resources/graphs/example_code_capacity_d3.json gen"
-object MicroBlossomVerilog extends App {
-  if (args.length != 2 && args.length != 3) {
-    Console.err.println("usage: <config> <folder> [busType=Axi4|AxiLite4|..]")
-    sys.exit(1)
-  }
-  val config = DualConfig(filename = args(0))
-  var busType = "Axi4"
-  if (args.length >= 3) {
-    busType = args(2)
-  }
-  val component = MicroBlossomBusType.generateByName(busType, config = config)
-  Config.argFolderPath(args(1)).generateVerilog(component)
 }
 
 class MicroBlossomGeneratorConf(arguments: Seq[String]) extends ScallopConf(arguments) {

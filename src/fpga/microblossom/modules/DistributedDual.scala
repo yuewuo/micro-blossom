@@ -34,7 +34,8 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
 
   // delay the signal so that the synthesizer can automatically balancing the registers
   val broadcastRegInserted = Delay(RegNext(broadcastMessage), config.broadcastDelay)
-  broadcastRegInserted.addAttribute("keep")
+  // broadcastRegInserted.addAttribute("keep")
+  broadcastRegInserted.addAttribute("mark_debug = \"true\"")
 
   // instantiate vertices, edges and offloaders
   val vertices = Seq
