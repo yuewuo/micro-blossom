@@ -142,7 +142,7 @@ object MicroBlossomHost extends App {
             val command = inStream.readLine()
             // println("[%d] %s".format(cycleCounter, command))
             if (command == "quit") {
-              println("requested quit, breaking...")
+              println("requested quit, aborting...")
               break
             } else if (command.startsWith("read(")) {
               // format: read(numBytes, address)

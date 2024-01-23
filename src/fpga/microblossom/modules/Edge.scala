@@ -61,7 +61,7 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   // fetch
   var ram: Mem[EdgeState] = null
   var register = Reg(EdgeState(config.weightBits))
-  register init EdgeState.resetValue(config, edgeIndex)
+  register.init(EdgeState.resetValue(config, edgeIndex))
   var fetchState = EdgeState(config.weightBits)
   var message = BroadcastMessage(config)
   if (config.contextBits > 0) {

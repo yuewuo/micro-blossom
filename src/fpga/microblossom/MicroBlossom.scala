@@ -216,13 +216,13 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
 
   // managing the context data from
   val context = new Area {
-    val growable = Mem(ConvergecastMaxGrowable(dualConfig.weightBits), dualConfig.contextDepth)
+    val growable = OneMem(ConvergecastMaxGrowable(dualConfig.weightBits), dualConfig.contextDepth)
     val maximumGrowth =
-      Mem(UInt(16 bits), dualConfig.contextDepth) init List.fill(dualConfig.contextDepth)(U(0, 16 bits))
+      OneMem(UInt(16 bits), dualConfig.contextDepth) init List.fill(dualConfig.contextDepth)(U(0, 16 bits))
     val accumulatedGrown =
-      Mem(UInt(16 bits), dualConfig.contextDepth) init List.fill(dualConfig.contextDepth)(U(0, 16 bits))
+      OneMem(UInt(16 bits), dualConfig.contextDepth) init List.fill(dualConfig.contextDepth)(U(0, 16 bits))
     val conflicts = List.tabulate(dualConfig.conflictChannels)(_ => {
-      Mem(ConvergecastConflict(dualConfig.vertexBits), dualConfig.contextDepth)
+      OneMem(ConvergecastConflict(dualConfig.vertexBits), dualConfig.contextDepth)
     })
 
     val currentEntry = HistoryEntry(dualConfig)
@@ -243,7 +243,7 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     currentAccumulatedGrown := accumulatedGrown.readSync(nextId)
     val currentId = if (dualConfig.contextBits > 0) {
       currentEntry.contextId
-    } else { UInt(0 bits) }
+    } else { U(0, 0 bits) }
     when(currentEntry.valid) {
       growable.write(currentId, dual.io.maxGrowable)
       for (i <- 0 until dualConfig.conflictChannels) {
@@ -307,21 +307,21 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     isWritingMaximumGrowth := False
     // use readFirst policy to avoid Vivado warnings about data corruption
     // regardless of whether it's blocked, put the address in ram first so that it's ready the next cycle
-    contextGrowable := context.growable.readSync(readContextId, readUnderWrite = readFirst)
-    contextAccumulatedGrown := context.accumulatedGrown.readWriteSyncImpl(
+    contextGrowable := context.growable.readSync(readContextId)
+    contextAccumulatedGrown := context.accumulatedGrown.readWriteSync(
       readContextId,
       U(0, 16 bits),
       enable = True,
       write = isWritingMaximumGrowth
     )
-    contextMaximumGrowth := context.maximumGrowth.readWriteSyncImpl(
+    contextMaximumGrowth := context.maximumGrowth.readWriteSync(
       readContextId,
       writeMaximumGrowth,
       enable = True,
       write = isWritingMaximumGrowth
     )
     for (index <- 0 until dualConfig.conflictChannels) {
-      contextConflicts(index) := context.conflicts(index).readSync(readContextId, readUnderWrite = readFirst)
+      contextConflicts(index) := context.conflicts(index).readSync(readContextId)
     }
     // calculate whether it's blocked
     val blockers = Vec.fill(readoutLatency)(Bool)

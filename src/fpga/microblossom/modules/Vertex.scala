@@ -73,7 +73,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
   // fetch
   var ram: Mem[VertexState] = null
   var register = Reg(VertexState(config.vertexBits, config.grownBitsOf(vertexIndex)))
-  register init (VertexState.resetValue(config, vertexIndex))
+  register.init(VertexState.resetValue(config, vertexIndex))
   var fetchState = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
   var message = BroadcastMessage(config)
   if (config.contextBits > 0) {

@@ -100,7 +100,7 @@ object DualHost extends App {
             command = inStream.readLine()
             // println("[%d] %s".format(cycleCounter, command))
             if (command == "quit") {
-              println("requested quit, breaking...")
+              println("requested quit, aborting...")
               break
             } else if (command == "reset()") {
               dut.simExecute(ioConfig.instructionSpec.generateReset())
