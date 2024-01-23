@@ -7,11 +7,11 @@ pub mod extern_c {
     #[derive(Debug, Clone)]
     #[repr(C)]
     pub struct ReadoutHead {
-        /// usually `growable` and `accumulated_grown` are read simultaneously
-        pub growable: uint16_t,
-        pub accumulated_grown: uint16_t,
         /// write to `maximum_growth` will automatically clear `accumulated_grown`
         pub maximum_growth: uint16_t,
+        pub accumulated_grown: uint16_t,
+        /// usually `growable` and `accumulated_grown` are read simultaneously
+        pub growable: uint16_t,
     }
 
     #[derive(Debug, Clone)]
@@ -52,6 +52,7 @@ pub mod extern_c {
             conflict_channels: uint8_t,
             context_id: uint16_t,
         );
+        pub fn set_maximum_growth(length: uint16_t, context_id: uint16_t);
     }
 
     impl ReadoutConflict {

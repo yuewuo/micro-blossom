@@ -207,9 +207,9 @@ impl DualModuleAxi4Driver {
     pub fn get_obstacle(&mut self, context_id: u16) -> std::io::Result<()> {
         let base = Self::READOUT_BASE + 1024 * context_id as usize;
         let raw_head = self.memory_read_64(base)?;
-        self.head.growable = raw_head as u16;
+        self.head.maximum_growth = raw_head as u16;
         self.head.accumulated_grown = (raw_head >> 16) as u16;
-        self.head.maximum_growth = (raw_head >> 32) as u16;
+        self.head.growable = (raw_head >> 32) as u16;
         for i in 0..self.conflicts.len() {
             let conflict_base = base + 32 + i * 16;
             let raw_1 = self.memory_read_64(conflict_base)?;
@@ -228,7 +228,7 @@ impl DualModuleAxi4Driver {
 
     pub fn set_maximum_growth(&mut self, length: CompactWeight, context_id: u16) -> std::io::Result<()> {
         let base = Self::READOUT_BASE + 1024 * context_id as usize;
-        self.memory_write_16(base + 4, length as u16)
+        self.memory_write_16(base, length as u16)
     }
 }
 

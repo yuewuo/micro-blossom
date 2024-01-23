@@ -30,12 +30,15 @@ pub fn main() {
     let test_count = 15;
     for _ in 0..test_count {
         unsafe { black_box(extern_c::execute_instruction(Instruction32::reset().into(), 0)) };
+        unsafe { extern_c::set_maximum_growth(0, 0) }; // disable automatic growth
     }
     let instruction_counter = unsafe { extern_c::get_instruction_counter() };
     println!("instruction_counter: {instruction_counter}, expected: {test_count}");
     assert_eq!(instruction_counter, test_count);
 
     println!("\n4. Test Max Growable Fetch");
+    let mut head = extern_c::ReadoutHead::new();
+    let mut conflicts: [extern_c::ReadoutConflict; 4] = core::array::from_fn(|_| extern_c::ReadoutConflict::invalid());
     for nop in [0, 30] {
         println!("  [nop = {nop}]");
         // nop to reduce the read halt of same context
@@ -48,11 +51,9 @@ pub fn main() {
                 nop_delay(10);
             }
         }
-        let mut head = extern_c::ReadoutHead::new();
-        let mut conflicts: [extern_c::ReadoutConflict; 4] = core::array::from_fn(|_| extern_c::ReadoutConflict::invalid());
         println!("    get obstacle");
         unsafe { extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 1, 0) };
-        println!("head.growable = {}", head.growable);
+        println!("head = {head:#?}");
         assert_eq!(head.growable, u16::MAX); // because there is no defect yet
         println!("    add defect");
         unsafe { extern_c::execute_instruction(Instruction32::add_defect_vertex(ni!(1), ni!(0)).into(), 0) };
@@ -68,4 +69,14 @@ pub fn main() {
         println!("conflicts: {conflicts:#?}");
         assert_eq!(head.growable, 2);
     }
+
+    println!("\n5. Test Setting Maximum Growth");
+    unsafe { extern_c::execute_instruction(Instruction32::reset().into(), 0) };
+    unsafe { extern_c::set_maximum_growth(100, 0) };
+    unsafe { extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 0, 0) };
+    println!("head = {head:#?}");
+    assert_eq!(head.maximum_growth, 100);
+    unsafe { extern_c::set_maximum_growth(200, 0) };
+    unsafe { extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 0, 0) };
+    assert_eq!(head.maximum_growth, 200);
 }

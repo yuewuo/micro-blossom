@@ -63,9 +63,9 @@ void get_obstacle(struct ReadoutHead *head,
 {
     uintptr_t base = UB_BASE_READOUT + 1024 * context_id;
     uint64_t raw_head = Xil_In64(base);
-    head->growable = raw_head;
+    head->maximum_growth = raw_head;
     head->accumulated_grown = raw_head >> 16;
-    head->maximum_growth = raw_head >> 32;
+    head->growable = raw_head >> 32;
     for (int i = 0; i < conflict_channels; ++i)
     {
         uintptr_t conflict_base = base + 32 + i * 16;
@@ -80,4 +80,10 @@ void get_obstacle(struct ReadoutHead *head,
         conflict->vertex_2 = raw_2 >> 16;
         conflict->valid = raw_2 >> 32;
     }
+}
+
+void set_maximum_growth(uint16_t length, uint16_t context_id)
+{
+    uintptr_t base = UB_BASE_READOUT + 1024 * context_id;
+    Xil_Out16(base, length);
 }

@@ -107,7 +107,7 @@ object MicroBlossomHost extends App {
         } else {
           throw new Exception(s"unrecognized busType $busType")
         }
-        require(component.isInstanceOf[MicroBlossom[IMasterSlave, BusSlaveFactoryDelayed]])
+        require(component.isInstanceOf[MicroBlossom[_, _]])
         val dut = component.asInstanceOf[MicroBlossom[IMasterSlave, BusSlaveFactoryDelayed]]
         if (withWaveform) {
           dut.dual.simMakePublicSnapshot()

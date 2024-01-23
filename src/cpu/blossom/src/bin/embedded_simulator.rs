@@ -27,6 +27,7 @@ use lazy_static::lazy_static;
 use micro_blossom::dual_module_axi4::*;
 use micro_blossom::resources::MicroBlossomSingle;
 use micro_blossom_nostd::instruction::Instruction32;
+use micro_blossom_nostd::util::CompactWeight;
 use parking_lot::Mutex;
 use std::env;
 use std::fs;
@@ -165,4 +166,14 @@ extern "C" fn clear_instruction_counter() {
 #[no_mangle]
 extern "C" fn get_instruction_counter() -> u32 {
     SIMULATOR_DRIVER.lock().as_mut().unwrap().memory_read_32(24).unwrap()
+}
+
+#[no_mangle]
+extern "C" fn set_maximum_growth(length: u16, context_id: u16) {
+    SIMULATOR_DRIVER
+        .lock()
+        .as_mut()
+        .unwrap()
+        .set_maximum_growth(length as CompactWeight, context_id)
+        .unwrap()
 }

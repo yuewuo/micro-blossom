@@ -63,10 +63,10 @@ case class VirtualMicroBlossom() extends Bundle {
 //    0x1FFFC: ... repeat for 65536: in total 64KB space
 // 2. 4MB context readouts at [0x40_0000, 0x80_0000), each context takes 1KB space, assuming no more than 4K contexts
 //    [context 0]
-//      0: (RO) 16 bits growable value (writing to this position has no effect)
-//      2: (RW) 16 bits accumulated grown value (for primal offloading)
-//      4: (RW) 16 bits maximum growth (offloaded primal), when 0, disable offloaded primal,
+//      0: (RW) 16 bits maximum growth (offloaded primal), when 0, disable offloaded primal,
 //                  write to this field will automatically clear accumulated grown value
+//      2: (RW) 16 bits accumulated grown value (for primal offloading)
+//      4: (RO) 16 bits growable value (writing to this position has no effect)
 //      (at most 62 concurrent obstacle report, already large enough)
 //      32: (RO) 128 bits obstacle value [0] (96 bits obstacle value, 8 bits is_valid)
 //      48: (RO) 128 bits obstacle value [1]
@@ -209,8 +209,10 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   // managing the context data from
   val context = new Area {
     val growable = Mem(ConvergecastMaxGrowable(dualConfig.weightBits), dualConfig.contextDepth)
-    val maximumGrowth = Mem(UInt(16 bits), dualConfig.contextDepth)
-    val accumulatedGrowth = Mem(UInt(16 bits), dualConfig.contextDepth)
+    val maximumGrowth =
+      Mem(UInt(16 bits), dualConfig.contextDepth) init List.fill(dualConfig.contextDepth)(U(0, 16 bits))
+    val accumulatedGrowth =
+      Mem(UInt(16 bits), dualConfig.contextDepth) init List.fill(dualConfig.contextDepth)(U(0, 16 bits))
     val conflicts = List.tabulate(dualConfig.conflictChannels)(_ => {
       Mem(ConvergecastConflict(dualConfig.vertexBits), dualConfig.contextDepth)
     })
@@ -238,37 +240,53 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     val readValue = if (is64bus) { Bits(64 bits).assignDontCare() }
     else { Bits(32 bits).assignDontCare() }
     // report(L"readContextId = $readContextId")
-    val contextGrowable = ConvergecastMaxGrowable(dualConfig.weightBits).assignDontCare()
-    val contextMaximumGrowth = UInt(16 bits).assignDontCare()
-    val contextAccumulatedGrowth = UInt(16 bits).assignDontCare()
+    val contextGrowable = ConvergecastMaxGrowable(dualConfig.weightBits)
+    val contextMaximumGrowth = UInt(16 bits)
+    val contextAccumulatedGrowth = UInt(16 bits)
     val contextConflicts = List.tabulate(dualConfig.conflictChannels)(_ => {
-      ConvergecastConflict(dualConfig.vertexBits).assignDontCare()
+      ConvergecastConflict(dualConfig.vertexBits)
     })
-    def onAskRead() = {
-      val blockers = Vec.fill(readoutLatency)(Bool)
-      for (i <- 0 until readoutLatency) {
-        if (dualConfig.contextBits > 0) {
-          blockers(i) := historyEntries(i).valid &&
-            historyEntries(i).contextId === readContextId
-        } else {
-          blockers(i) := historyEntries(i).valid
-        }
-      }
-      val isBlocked = Bool
-      if (readoutLatency > 0) {
-        isBlocked := blockers.reduceBalancedTree(_ | _)
+    val writeMaximumGrowth = UInt(16 bits)
+    val isWritingMaximumGrowth = Bool
+    isWritingMaximumGrowth := False
+    // use readFirst policy to avoid Vivado warnings about data corruption
+    // regardless of whether it's blocked, put the address in ram first so that it's ready the next cycle
+    contextGrowable := context.growable.readSync(readContextId, readUnderWrite = readFirst)
+    contextAccumulatedGrowth := context.accumulatedGrowth.readWriteSyncImpl(
+      readContextId,
+      U(0, 16 bits),
+      enable = True,
+      write = isWritingMaximumGrowth,
+      readUnderWrite = readFirst
+    )
+    contextMaximumGrowth := context.maximumGrowth.readWriteSyncImpl(
+      readContextId,
+      writeMaximumGrowth,
+      enable = True,
+      write = isWritingMaximumGrowth,
+      readUnderWrite = readFirst
+    )
+    for (index <- 0 until dualConfig.conflictChannels) {
+      contextConflicts(index) := context.conflicts(index).readSync(readContextId, readUnderWrite = readFirst)
+    }
+    // calculate whether it's blocked
+    val blockers = Vec.fill(readoutLatency)(Bool)
+    for (i <- 0 until readoutLatency) {
+      if (dualConfig.contextBits > 0) {
+        blockers(i) := historyEntries(i).valid &&
+          historyEntries(i).contextId === readContextId
       } else {
-        isBlocked := False
+        blockers(i) := historyEntries(i).valid
       }
-      // regardless of whether it's blocked, put the address in ram first so that it's ready the next cycle
+    }
+    val isBlocked = Bool
+    if (readoutLatency > 0) {
+      isBlocked := blockers.reduceBalancedTree(_ | _)
+    } else {
+      isBlocked := False
+    }
+    def onAskRead() = {
       previousAskRead := True
-      // use readFirst policy to avoid Vivado warnings about data corruption
-      contextGrowable := context.growable.readSync(readContextId, readUnderWrite = readFirst)
-      contextMaximumGrowth := U(0) // TODO: readSync(readContextId, readUnderWrite = readFirst)
-      contextAccumulatedGrowth := U(0) // TODO: readSync(readContextId, readUnderWrite = readFirst)
-      for (index <- 0 until dualConfig.conflictChannels) {
-        contextConflicts(index) := context.conflicts(index).readSync(readContextId, readUnderWrite = readFirst)
-      }
       when(isBlocked || !previousAskRead) { // always halt for a clock cycle if previous cycle is not asking read
         factory.readHalt()
       }
@@ -280,15 +298,15 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       resizedContextGrowable.resizedFrom(contextGrowable)
       if (is64bus) {
         when(contextAddress === 0) {
-          readValue := U(0, 16 bits) ## contextMaximumGrowth ## contextAccumulatedGrowth ##
-            resizedContextGrowable.length
+          readValue := U(0, 16 bits) ## resizedContextGrowable.length ## contextAccumulatedGrowth ##
+            contextMaximumGrowth
         }
       } else {
         when(contextAddress === 0) {
-          readValue := contextAccumulatedGrowth ## resizedContextGrowable.length
+          readValue := contextAccumulatedGrowth ## contextMaximumGrowth
         }
         when(contextAddress === 4) {
-          readValue := U(0, 16 bits) ## contextMaximumGrowth
+          readValue := U(0, 16 bits) ## resizedContextGrowable.length
         }
       }
       // conflicts
@@ -322,11 +340,24 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
         }
       }
     }
+    def onAskWrite() = {
+      when(isBlocked) {
+        factory.writeHalt()
+      }
+    }
+    def onDoWrite() = {
+      when(factory.writeAddress().resize(10) === 0) {
+        isWritingMaximumGrowth := True
+      }
+    }
     val mapping = SizeMapping(base = 4 MiB, size = 4 MiB)
     val documentation = "readout array (1 KB each, 4K of them at most)"
     factory.readPrimitive(readValue, mapping, 0, "readouts")
     factory.onReadPrimitive(mapping, haltSensitive = false, documentation)(onAskRead)
     factory.onReadPrimitive(mapping, haltSensitive = true, documentation)(onDoRead)
+    factory.nonStopWrite(writeMaximumGrowth, bitOffset = 0)
+    factory.onWritePrimitive(mapping, haltSensitive = false, documentation)(onAskWrite)
+    factory.onWritePrimitive(mapping, haltSensitive = true, documentation)(onDoWrite)
   }
 
   // rawFactory.printDataModel()
