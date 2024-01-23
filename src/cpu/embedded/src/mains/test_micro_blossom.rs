@@ -53,7 +53,7 @@ pub fn main() {
         }
         println!("    get obstacle");
         unsafe { extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 1, 0) };
-        println!("head = {head:#?}");
+        println!("head: {head:#?}");
         assert_eq!(head.growable, u16::MAX); // because there is no defect yet
         println!("    add defect");
         unsafe { extern_c::execute_instruction(Instruction32::add_defect_vertex(ni!(1), ni!(0)).into(), 0) };
@@ -74,9 +74,17 @@ pub fn main() {
     unsafe { extern_c::execute_instruction(Instruction32::reset().into(), 0) };
     unsafe { extern_c::set_maximum_growth(100, 0) };
     unsafe { extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 0, 0) };
-    println!("head = {head:#?}");
+    println!("head: {head:#?}");
     assert_eq!(head.maximum_growth, 100);
     unsafe { extern_c::set_maximum_growth(200, 0) };
     unsafe { extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 0, 0) };
     assert_eq!(head.maximum_growth, 200);
+
+    println!("\n6. Test Primal Offloading Growth");
+    unsafe { extern_c::execute_instruction(Instruction32::reset().into(), 0) };
+    unsafe { extern_c::set_maximum_growth(10, 0) };
+    unsafe { extern_c::execute_instruction(Instruction32::add_defect_vertex(ni!(1), ni!(0)).into(), 0) };
+    unsafe { extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 1, 0) };
+    println!("head: {head:#?}");
+    println!("conflicts: {conflicts:#?}");
 }
