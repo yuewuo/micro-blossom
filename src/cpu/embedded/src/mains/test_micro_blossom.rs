@@ -38,7 +38,7 @@ pub fn main() {
 
     println!("\n4. Test Max Growable Fetch");
     let mut head = extern_c::ReadoutHead::new();
-    let mut conflicts: [extern_c::ReadoutConflict; 4] = core::array::from_fn(|_| extern_c::ReadoutConflict::invalid());
+    let mut conflicts: [extern_c::ReadoutConflict; 1] = core::array::from_fn(|_| extern_c::ReadoutConflict::invalid());
     for nop in [0, 30] {
         println!("  [nop = {nop}]");
         // nop to reduce the read halt of same context
@@ -66,7 +66,8 @@ pub fn main() {
         }
         println!("    get obstacle");
         unsafe { extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 1, 0) };
-        println!("conflicts: {conflicts:#?}");
+        println!("head: {head:#?}");
+        // println!("conflicts: {conflicts:#?}");
         assert_eq!(head.growable, 2);
     }
 
@@ -87,4 +88,9 @@ pub fn main() {
     unsafe { extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 1, 0) };
     println!("head: {head:#?}");
     println!("conflicts: {conflicts:#?}");
+    assert_eq!(head.growable, u16::MAX);
+    assert_eq!(
+        head.accumulated_grown, 2,
+        "the primal offloading grow unit should have grown by 2"
+    );
 }

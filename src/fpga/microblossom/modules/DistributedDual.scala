@@ -33,7 +33,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
   broadcastMessage.isReset := io.message.instruction.isReset
 
   // delay the signal so that the synthesizer can automatically balancing the registers
-  val broadcastRegInserted = Delay(RegNext(broadcastMessage), config.broadcastDelay)
+  val broadcastRegInserted = Delay(broadcastMessage, config.broadcastDelay)
   // broadcastRegInserted.addAttribute("keep")
   broadcastRegInserted.addAttribute("mark_debug = \"true\"")
 
@@ -105,7 +105,8 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
     }
   }
 
-  val selectedMaxGrowable = maxGrowableConvergcastTree(config.graph.vertex_edge_binary_tree.nodes.length - 1)
+  val selectedMaxGrowable =
+    Delay(maxGrowableConvergcastTree(config.graph.vertex_edge_binary_tree.nodes.length - 1), config.convergecastDelay)
   io.maxGrowable.resizedFrom(selectedMaxGrowable)
 
   // build convergecast tree of conflict
@@ -126,7 +127,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
     }
   }
   val convergecastedConflict =
-    Delay(RegNext(conflictConvergecastTree(config.graph.edge_binary_tree.nodes.length - 1)), config.convergecastDelay)
+    Delay(conflictConvergecastTree(config.graph.edge_binary_tree.nodes.length - 1), config.convergecastDelay)
   io.conflict.resizedFrom(convergecastedConflict)
 
   def simExecute(instruction: Long): (DataMaxGrowable, DataConflict) = {

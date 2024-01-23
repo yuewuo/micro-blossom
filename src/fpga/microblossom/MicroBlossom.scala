@@ -137,11 +137,11 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   dual.io.message.assignDontCareToUnasigned()
 
   // keep track of some history to avoid data races
+  require(dualConfig.readLatency >= 2)
   val readoutLatency = dualConfig.readLatency + 1 // add 1 clock latency from the readout memory
   val initHistoryEntry = HistoryEntry(dualConfig)
   initHistoryEntry.valid := False
   initHistoryEntry.assignDontCareToUnasigned()
-  require(readoutLatency >= 2)
   val historyEntries = Vec.fill(readoutLatency)(Reg(HistoryEntry(dualConfig)) init initHistoryEntry)
   // shift register
   for (i <- 0 until readoutLatency - 1) {
@@ -230,7 +230,12 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     val currentMaximumGrowth = UInt(16 bits)
     val currentAccumulatedGrown = UInt(16 bits)
     val nextEntry = HistoryEntry(dualConfig)
-    nextEntry := historyEntries(dualConfig.readLatency - 2)
+    if (dualConfig.readLatency >= 2) {
+      nextEntry := historyEntries(dualConfig.readLatency - 2)
+    } else {
+      assert(dualConfig.readLatency == 2)
+      nextEntry := nextHistoryEntry
+    }
     val nextId = if (dualConfig.contextBits > 0) {
       nextEntry.contextId
     } else { UInt(0 bits) }
@@ -307,15 +312,13 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       readContextId,
       U(0, 16 bits),
       enable = True,
-      write = isWritingMaximumGrowth,
-      readUnderWrite = readFirst
+      write = isWritingMaximumGrowth
     )
     contextMaximumGrowth := context.maximumGrowth.readWriteSyncImpl(
       readContextId,
       writeMaximumGrowth,
       enable = True,
-      write = isWritingMaximumGrowth,
-      readUnderWrite = readFirst
+      write = isWritingMaximumGrowth
     )
     for (index <- 0 until dualConfig.conflictChannels) {
       contextConflicts(index) := context.conflicts(index).readSync(readContextId, readUnderWrite = readFirst)
@@ -331,11 +334,7 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       }
     }
     val isBlocked = Bool
-    if (readoutLatency > 0) {
-      isBlocked := blockers.reduceBalancedTree(_ | _)
-    } else {
-      isBlocked := False
-    }
+    isBlocked := blockers.reduceBalancedTree(_ | _)
     val isAskingRead = Bool
     isAskingRead := False
     def onAskRead() = {
