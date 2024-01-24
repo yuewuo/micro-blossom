@@ -49,7 +49,7 @@ pub mod extern_c {
         pub fn clear_instruction_counter();
         pub fn get_instruction_counter() -> uint32_t;
         pub fn execute_instruction(instruction: uint32_t, context_id: uint16_t);
-        pub fn get_obstacle(
+        pub fn get_conflicts(
             head: *mut ReadoutHead,
             conflicts: *mut ReadoutConflict,
             conflict_channels: uint8_t,

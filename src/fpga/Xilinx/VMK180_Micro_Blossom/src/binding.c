@@ -60,14 +60,15 @@ void execute_instruction(uint32_t instruction, uint16_t context_id)
 #endif
 }
 
-void get_obstacle(struct ReadoutHead *head,
-                  struct ReadoutConflict *conflicts,
-                  uint8_t conflict_channels,
-                  uint16_t maximum_growth,
-                  uint16_t context_id)
+const uint32_t INSTRUCTION_FIND_OBSTACLE = 0b0100;
+
+void get_conflicts(struct ReadoutHead *head,
+                   struct ReadoutConflict *conflicts,
+                   uint8_t conflict_channels,
+                   uint16_t context_id)
 {
+    execute_instruction(INSTRUCTION_FIND_OBSTACLE, context_id);
     uintptr_t base = UB_BASE_READOUT + 1024 * context_id;
-    Xil_Out16(base, );
     uint64_t raw_head = Xil_In64(base);
     head->maximum_growth = raw_head;
     head->accumulated_grown = raw_head >> 16;

@@ -59,7 +59,7 @@ pub fn main() {
 
     println!("\n5. Benchmark Read Obstacle");
     let mut readout_benchmarker = Benchmarker::new(|| {
-        unsafe { black_box(extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 1, 0)) };
+        unsafe { black_box(extern_c::get_conflicts(&mut head, conflicts.as_mut_ptr(), 1, 0)) };
     });
     readout_benchmarker.autotune();
     readout_benchmarker.run(3);
@@ -67,7 +67,7 @@ pub fn main() {
     println!("\n6. Benchmark Reset and then Read Obstacle");
     let mut readout_benchmarker = Benchmarker::new(|| {
         unsafe { black_box(extern_c::execute_instruction(Instruction32::reset().into(), 0)) };
-        unsafe { black_box(extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 1, 0)) };
+        unsafe { black_box(extern_c::get_conflicts(&mut head, conflicts.as_mut_ptr(), 1, 0)) };
     });
     readout_benchmarker.autotune();
     readout_benchmarker.run(3);
@@ -78,7 +78,7 @@ pub fn main() {
             unsafe { black_box(extern_c::execute_instruction(Instruction32::reset().into(), context_id)) };
         }
         for context_id in 0..context_count as u16 {
-            unsafe { black_box(extern_c::get_obstacle(&mut head, conflicts.as_mut_ptr(), 1, context_id)) };
+            unsafe { black_box(extern_c::get_conflicts(&mut head, conflicts.as_mut_ptr(), 1, context_id)) };
         }
     });
     readout_benchmarker.inner_loops = context_count as usize;

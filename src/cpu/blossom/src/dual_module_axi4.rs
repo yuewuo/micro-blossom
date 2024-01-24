@@ -211,7 +211,7 @@ impl DualModuleAxi4Driver {
 
     pub const READOUT_BASE: usize = 4 * 1024 * 1024;
 
-    pub fn get_obstacle(&mut self, context_id: u16) -> std::io::Result<()> {
+    pub fn get_conflicts(&mut self, context_id: u16) -> std::io::Result<()> {
         let base = Self::READOUT_BASE + 1024 * context_id as usize;
         self.execute_instruction(Instruction32::find_obstacle(), context_id)?;
         let raw_head = self.memory_read_64(base)?;
@@ -254,7 +254,7 @@ impl DualStacklessDriver for DualModuleAxi4Driver {
     }
     fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
         // after user writing
-        self.get_obstacle(self.context_id).unwrap();
+        self.get_conflicts(self.context_id).unwrap();
         let grown = self.head.accumulated_grown as CompactWeight;
         if self.head.growable == u16::MAX {
             (CompactObstacle::None, grown)

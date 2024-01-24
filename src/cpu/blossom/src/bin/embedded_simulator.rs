@@ -142,7 +142,12 @@ extern "C" fn execute_instruction(instruction: u32, context_id: u16) {
 }
 
 #[no_mangle]
-extern "C" fn get_obstacle(head: *mut ReadoutHead, conflicts: *mut ReadoutConflict, conflict_channels: u8, context_id: u16) {
+extern "C" fn get_conflicts(
+    head: *mut ReadoutHead,
+    conflicts: *mut ReadoutConflict,
+    conflict_channels: u8,
+    context_id: u16,
+) {
     let head = unsafe { &mut *head };
     let slice = unsafe { std::slice::from_raw_parts_mut(conflicts, conflict_channels as usize) };
     let mut locked = SIMULATOR_DRIVER.lock();
@@ -150,7 +155,7 @@ extern "C" fn get_obstacle(head: *mut ReadoutHead, conflicts: *mut ReadoutConfli
     if conflict_channels as usize != driver.conflicts.len() {
         driver.conflicts = (0..conflict_channels).map(|_| ReadoutConflict::invalid()).collect();
     }
-    driver.get_obstacle(context_id).unwrap();
+    driver.get_conflicts(context_id).unwrap();
     *head = driver.head.clone();
     for i in 0..conflict_channels as usize {
         slice[i] = driver.conflicts[i].clone();
