@@ -111,7 +111,7 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     factory.readMultiWord(
       U(dualConfig.conflictChannels, 8 bits),
       address = 16,
-      documentation = "the number of obtacle channels"
+      documentation = "the number of conflict channels"
     )
     val instructionCounter =
       factory.createWriteAndReadMultiWord(

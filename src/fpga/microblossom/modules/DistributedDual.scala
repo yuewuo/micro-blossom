@@ -135,7 +135,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
     io.message.instruction #= instruction
     clockDomain.waitSampling()
     io.message.valid #= false
-    for (idx <- 0 until config.readLatency) { clockDomain.waitSampling() }
+    for (idx <- 0 until config.readLatency - 1) { clockDomain.waitSampling() }
     sleep(1)
     (
       DataMaxGrowable(io.maxGrowable.length.toInt),

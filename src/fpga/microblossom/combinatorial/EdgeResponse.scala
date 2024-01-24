@@ -39,17 +39,16 @@ object EdgeResponse {
       when(isJointSpeedPositive) {
         when(remaining === 0) {
           conflict.valid := True
+        }
+        when(isBothGrow) {
+          // assert(
+          //   assertion = remaining(0) === False,
+          //   message = L"when both ends are growing, the remaining length $remaining must be a even number",
+          //   severity = ERROR
+          // )
+          maxGrowable.length := remaining |>> 1
         } otherwise {
-          when(isBothGrow) {
-            // assert(
-            //   assertion = remaining(0) === False,
-            //   message = L"when both ends are growing, the remaining length $remaining must be a even number",
-            //   severity = ERROR
-            // )
-            maxGrowable.length := remaining |>> 1
-          } otherwise {
-            maxGrowable.length := remaining
-          }
+          maxGrowable.length := remaining
         }
       }
     }

@@ -7,7 +7,7 @@ import collection.mutable.ArrayBuffer
 import org.scalatest.funsuite.AnyFunSuite
 
 object DualConfig {
-  def version = Integer.parseInt("24" + "01" + "14" + "c0", 16) // year - month - date - 'c'revision
+  def version = Integer.parseInt("24" + "01" + "23" + "c0", 16) // year - month - date - 'c'revision
 }
 
 case class DualConfig(
@@ -43,7 +43,7 @@ case class DualConfig(
 
   private val virtualVertices = collection.mutable.Set[Int]()
   private val incidentEdges = collection.mutable.Map[Int, ArrayBuffer[Int]]() // vertexIndex -> Seq[edgeIndex]
-  private val incidentOffloaders = collection.mutable.Map[Int, ArrayBuffer[Int]]() // vertexIndex -> Seq[offloaderIdnex]
+  private val incidentOffloaders = collection.mutable.Map[Int, ArrayBuffer[Int]]() // vertexIndex -> Seq[offloaderIndex]
 
   if (filename != null) {
     val source = scala.io.Source.fromFile(filename)
