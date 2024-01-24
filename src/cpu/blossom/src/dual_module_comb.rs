@@ -227,8 +227,9 @@ impl DualStacklessDriver for DualModuleCombDriver {
 }
 
 impl DualTrackedDriver for DualModuleCombDriver {
-    fn set_maximum_growth(&mut self, length: CompactWeight) {
-        self.maximum_growth = length;
+    fn find_conflict(&mut self, maximum_growth: CompactWeight) -> (CompactObstacle, CompactWeight) {
+        self.maximum_growth = maximum_growth;
+        self.find_obstacle()
     }
 }
 

@@ -151,6 +151,7 @@ enum TestCommands {
     EmbeddedComb(StandardTestParameters),
     EmbeddedCombPreMatching(StandardTestParameters),
     EmbeddedCombPreMatchingVirtual(StandardTestParameters),
+    DualAxi4(StandardTestParameters),
 }
 
 impl From<BenchmarkParameters> for fusion_blossom::cli::BenchmarkParameters {
@@ -344,6 +345,7 @@ impl Cli {
                 TestCommands::EmbeddedCombPreMatchingVirtual(parameters) => {
                     standard_test_command_body("embedded-comb-pre-matching-virtual", parameters)
                 }
+                TestCommands::DualAxi4(parameters) => standard_test_command_body("dual-axi4", parameters),
             },
             #[cfg(feature = "qecp_integrate")]
             Commands::Qecp(benchmark_parameters) => {

@@ -203,8 +203,9 @@ impl DualStacklessDriver for DualModuleScalaDriver {
 }
 
 impl DualTrackedDriver for DualModuleScalaDriver {
-    fn set_maximum_growth(&mut self, length: CompactWeight) {
-        write!(self.link.lock().unwrap().writer, "set_maximum_growth({length})\n").unwrap();
+    fn find_conflict(&mut self, maximum_growth: CompactWeight) -> (CompactObstacle, CompactWeight) {
+        write!(self.link.lock().unwrap().writer, "set_maximum_growth({maximum_growth})\n").unwrap();
+        self.find_obstacle()
     }
 }
 

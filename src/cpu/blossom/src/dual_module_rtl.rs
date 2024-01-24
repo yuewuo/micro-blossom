@@ -311,8 +311,9 @@ impl DualStacklessDriver for DualModuleRTLDriver {
 }
 
 impl DualTrackedDriver for DualModuleRTLDriver {
-    fn set_maximum_growth(&mut self, length: CompactWeight) {
-        self.maximum_growth = length as Weight;
+    fn find_conflict(&mut self, maximum_growth: CompactWeight) -> (CompactObstacle, CompactWeight) {
+        self.maximum_growth = maximum_growth as Weight;
+        self.find_obstacle()
     }
 }
 

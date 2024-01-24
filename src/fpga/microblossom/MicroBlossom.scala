@@ -138,7 +138,7 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
 
   // keep track of some history to avoid data races
   require(dualConfig.readLatency >= 2)
-  val readoutLatency = dualConfig.readLatency + 1 // add 1 clock latency from the readout memory
+  val readoutLatency = dualConfig.readLatency
   val initHistoryEntry = HistoryEntry(dualConfig)
   initHistoryEntry.valid := False
   initHistoryEntry.assignDontCareToUnasigned()
