@@ -53,8 +53,8 @@ object VertexPostExecuteStateCommon {
               message = "Cannot set a vertex to defect when it's already occupied",
               severity = ERROR
             )
-            after.node := instruction.extendedField2.resized
-            after.root := instruction.extendedField2.resized
+            after.node := instruction.field2.resized
+            after.root := instruction.field2.resized
           }
         }
       }

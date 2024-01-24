@@ -11,14 +11,14 @@ import spinal.core._
  * |                  Node[14:0]                |Speed|                                     0|2'b00| SetSpeed
  * |                  Node[14:0]                |                  Blossom[14:0]             |2'b01| SetBlossom
  * |               Vertex_1[14:0]               |                 Vertex_2[14:0]             |2'b11| Match
- * |                                        Length[29:0]                                     |2'b10| Grow
+ * |                Vertex[14:0]                |                    Node[14:0]              |2'b10| AddDefectVertex(debug)
  * |            RegionPreference[14:0]          |                                | 3'b000 | 3'b100 | FindObstacle
  * |                Address[14:0]               |                                | 3'b001 | 3'b100 | ClearAccumulator
  * |               EdgeIndex[14:0]              |                                | 3'b010 | 3'b100 | AccumulateEdge
  * |                                     Reserved                                | 3'b011 | 3'b100 | Reserved
  * |                                         0                                   | 3'b100 | 3'b100 | Reset
  * |                  Time[14:0]                |           Channel[10:0]        | 3'b101 | 3'b100 | LoadSyndromeExternal
- * |                 Vertex[14:0]               |             Node[10:0]         | 3'b110 | 3'b100 | AddDefectVertex(debug)
+ * |                                      Length[25:0]                           | 3'b110 | 3'b100 | Grow
  * |                 Vertex[14:0]               | v|e | t|e |                    | 3'b111 | 3'b100 | SetAttribute(debug)
  * -------------------------------------------------------------------------------------------------
  *
@@ -60,7 +60,7 @@ object OpCode {
   def SetSpeed = Integer.parseInt("00", 2)
   def SetBlossom = Integer.parseInt("01", 2)
   def Match = Integer.parseInt("11", 2)
-  def Grow = Integer.parseInt("10", 2)
+  def AddDefectVertex = Integer.parseInt("10", 2)
 }
 
 case class ExtendedOpCode() extends Bits {
@@ -74,7 +74,7 @@ object ExtendedOpCode {
   def Reserved = Integer.parseInt("011", 2)
   def Reset = Integer.parseInt("100", 2)
   def LoadSyndromeExternal = Integer.parseInt("101", 2)
-  def AddDefectVertex = Integer.parseInt("110", 2)
+  def Grow = Integer.parseInt("110", 2)
   def Reserved2 = Integer.parseInt("111", 2)
 }
 

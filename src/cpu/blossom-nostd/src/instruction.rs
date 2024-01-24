@@ -13,7 +13,7 @@ pub const OP_CODE_MASK: u32 = 0b11;
 pub const OP_CODE_SET_SPEED: u32 = 0b00;
 pub const OP_CODE_SET_BLOSSOM: u32 = 0b01;
 pub const OP_CODE_MATCH: u32 = 0b11;
-pub const OP_CODE_GROW: u32 = 0b10;
+pub const OP_CODE_ADD_DEFECT_VERTEX: u32 = 0b10;
 
 pub const EXTENDED_OP_CODE_ENABLE: u32 = 0b100;
 pub const EXTENDED_OP_CODE_MASK: u32 = 0b111 << 3;
@@ -23,7 +23,7 @@ pub const EXTENDED_OP_CODE_ACCUMULATE_EDGE: u32 = 0b010 << 3;
 pub const EXTENDED_OP_CODE_RESERVED: u32 = 0b011 << 3;
 pub const EXTENDED_OP_CODE_RESET: u32 = 0b100 << 3;
 pub const EXTENDED_OP_CODE_LOAD_SYNDROME_EXTERNAL: u32 = 0b101 << 3;
-pub const EXTENDED_OP_CODE_ADD_DEFECT_VERTEX: u32 = 0b110 << 3;
+pub const EXTENDED_OP_CODE_GROW: u32 = 0b110 << 3;
 
 impl Instruction32 {
     pub fn set_speed(node: CompactNodeIndex, speed: CompactGrowState) -> Self {
@@ -37,17 +37,16 @@ impl Instruction32 {
         Self(field_node | field_blossom | OP_CODE_SET_BLOSSOM)
     }
     pub fn grow(length: CompactWeight) -> Self {
-        let field_length = (length as u32) << 2;
-        Self(field_length | OP_CODE_GROW)
+        let field_length = (length as u32) << 6;
+        Self(field_length | EXTENDED_OP_CODE_ENABLE | EXTENDED_OP_CODE_GROW)
     }
     pub fn reset() -> Self {
         Self(EXTENDED_OP_CODE_ENABLE | EXTENDED_OP_CODE_RESET)
     }
     pub fn add_defect_vertex(vertex: CompactVertexIndex, node: CompactNodeIndex) -> Self {
         let field_vertex = (vertex.get() as u32) << 17;
-        assert!(node.get() < (1 << 11));
-        let field_node = (node.get() as u32) << 6;
-        Self(field_vertex | field_node | EXTENDED_OP_CODE_ENABLE | EXTENDED_OP_CODE_ADD_DEFECT_VERTEX)
+        let field_node = (node.get() as u32) << 2;
+        Self(field_vertex | field_node | OP_CODE_ADD_DEFECT_VERTEX)
     }
     pub fn reserved() -> Self {
         Self(EXTENDED_OP_CODE_ENABLE | EXTENDED_OP_CODE_RESERVED)
@@ -57,7 +56,7 @@ impl Instruction32 {
     }
 
     pub fn is_extended(self) -> bool {
-        (self.0 & EXTENDED_OP_CODE_ENABLE) != 0
+        self.op_code() == OP_CODE_SET_SPEED && (self.0 & EXTENDED_OP_CODE_ENABLE) != 0
     }
     pub fn op_code(self) -> u32 {
         self.0 & OP_CODE_MASK
@@ -67,7 +66,7 @@ impl Instruction32 {
     }
 
     pub fn is_set_speed(self) -> bool {
-        self.op_code() == OP_CODE_SET_SPEED && !self.is_extended()
+        self.op_code() == OP_CODE_SET_SPEED && (self.0 & EXTENDED_OP_CODE_ENABLE) == 0
     }
     pub fn is_set_blossom(self) -> bool {
         self.op_code() == OP_CODE_SET_BLOSSOM
@@ -76,7 +75,7 @@ impl Instruction32 {
         self.op_code() == OP_CODE_MATCH
     }
     pub fn is_grow(self) -> bool {
-        self.op_code() == OP_CODE_GROW
+        self.is_extended() && self.extended_op_code() == EXTENDED_OP_CODE_GROW
     }
 
     pub fn field1(self) -> u32 {

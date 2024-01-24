@@ -12,8 +12,8 @@ object DualConfig {
 
 case class DualConfig(
     var vertexBits: Int = 15,
-    var weightBits: Int = 30,
-    var grownBits: Int = 30,
+    var weightBits: Int = 26,
+    var grownBits: Int = 26,
     var broadcastDelay: Int = 1,
     var convergecastDelay: Int = 1,
     var contextDepth: Int = 1, // how many different contexts are supported
@@ -72,9 +72,9 @@ case class DualConfig(
       assert(max_weight > 0)
       // weightBits = log2Up(max_weight.toInt * graph.weighted_edges.length)
       weightBits = log2Up(max_weight.toInt + 1) // weightBits could be smaller than grownBits
-      assert(weightBits <= 30)
-      if (vertexBits * 2 < weightBits) {
-        vertexBits = (weightBits + 1) / 2 // expand vertexBits so that the instruction can hold the maximum length
+      assert(weightBits <= 26)
+      if (weightBits > vertexBits * 2 - 4) {
+        vertexBits = (weightBits + 4) / 2 // expand vertexBits so that the instruction can hold the maximum length
       }
       if (vertexBits < 5) {
         vertexBits = 5 // at least 5 bits to support all instructions

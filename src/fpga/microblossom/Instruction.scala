@@ -25,15 +25,19 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
           speed := source.speed
           setSpeedZero.clearAll()
         } otherwise {
-          field1 := source.field1.resized
-          extendedField2 := source.extendedField2.resized
           extendedOpCode := source.extendedOpCode
           extensionIndicator := source.extensionIndicator
+          when(source.extendedOpCode.asUInt === ExtendedOpCode.Grow) {
+            extendedPayload := source.extendedPayload.resized
+          } otherwise {
+            field1 := source.field1.resized
+            extendedField2 := source.extendedField2.resized
+          }
         }
       }
-      is(OpCode.Grow) {
-        sliceOf(spec.lengthRange) := source.length.asBits.resized // length
-        if (config.weightBits < 2 * config.vertexBits) { growZero.clearAll() }
+      is(OpCode.AddDefectVertex) {
+        field1 := source.field1.resized // vertex_1
+        field2 := source.field2.resized // vertex_2
       }
     }
   }
@@ -42,7 +46,6 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
   def extensionIndicator = sliceOf(spec.extensionIndicatorRange)
   def extendedOpCode = sliceOf(spec.extendedOpCodeRange)
   def length = sliceOf(spec.lengthRange).asUInt
-  def growZero = if (config.weightBits < 2 * config.vertexBits) sliceOf(spec.growZeroRange) else null
   def payload = sliceOf(spec.payloadRange)
   def field1 = sliceOf(spec.field1Range)
   def field2 = sliceOf(spec.field2Range)
@@ -58,8 +61,8 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
   def isSetSpeed(): Bool = (opCode === OpCode.SetSpeed) && (extensionIndicator.asBool === False)
   def isExtended(): Bool = (opCode === OpCode.SetSpeed) && (extensionIndicator.asBool === True)
   def isSetBlossom(): Bool = (opCode === OpCode.SetBlossom)
-  def isGrow(): Bool = (opCode === OpCode.Grow)
-  def isAddDefect(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.AddDefectVertex)
+  def isGrow(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.Grow)
+  def isAddDefect(): Bool = opCode === OpCode.AddDefectVertex
   def isFindObstacle(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.FindObstacle)
   def isReset(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.Reset)
 }
@@ -88,12 +91,11 @@ case class InstructionSpec(config: DualConfig) {
   def opCodeRange = BitRange(1, 0)
   def extensionIndicatorRange = BitRange(2, 2)
   def extendedOpCodeRange = BitRange(5, 3)
-  def lengthRange = BitRange(config.weightBits + 1, 2)
-  def growZeroRange = BitRange(numBits - 1, config.weightBits + 2)
   def payloadRange = BitRange(numBits - 1, 2)
   def field1Range = BitRange(numBits - 1, numBits - config.vertexBits)
   def field2Range = BitRange(numBits - config.vertexBits - 1, 2)
-  def extendedPayloadRange = BitRange(numBits, 6)
+  def lengthRange = BitRange(config.weightBits + 5, 6)
+  def extendedPayloadRange = BitRange(numBits - 1, 6)
   def extendedField2Range = BitRange(numBits - config.vertexBits - 1, 6)
   def speedRange =
     BitRange(numBits - config.vertexBits - 1, numBits - config.vertexBits - 2)
@@ -115,11 +117,10 @@ case class InstructionSpec(config: DualConfig) {
     generateExtendedSuffix(ExtendedOpCode.FindObstacle)
   }
   def generateAddDefect(vertex: Long, node: Long): Long = {
-    generateExtendedSuffix(ExtendedOpCode.AddDefectVertex) | field1Range.masked(vertex) |
-      extendedField2Range.masked(node)
+    opCodeRange.masked(OpCode.AddDefectVertex) | field1Range.masked(vertex) | field2Range.masked(node)
   }
   def generateGrow(length: Long): Long = {
-    opCodeRange.masked(OpCode.Grow) | lengthRange.masked(length)
+    generateExtendedSuffix(ExtendedOpCode.Grow) | extendedPayloadRange.masked(length)
   }
 
   def sanityCheck() = {

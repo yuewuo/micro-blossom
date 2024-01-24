@@ -276,7 +276,7 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
           accumulatedGrown.write(currentId, currentAccumulatedGrown + length)
           val spec = InstructionSpec(ioConfig)
           dual.io.message.valid := True
-          dual.io.message.instruction := (spec.opCodeRange.masked(OpCode.Grow) |
+          dual.io.message.instruction := (spec.generateExtendedSuffix(ExtendedOpCode.Grow) |
             spec.lengthRange.dynMasked(length.asBits)).resized
           if (dualConfig.contextBits > 0) {
             dual.io.message.contextId := currentId
