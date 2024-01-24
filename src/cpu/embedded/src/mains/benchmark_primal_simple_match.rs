@@ -15,10 +15,8 @@ make -C ../../fpga/Xilinx/VMK180_BRAM run_r5
 // given 256KB memory, maximum size is 256 * 1024 / 34 / 2 = 3855, but other sections may also use some memory
 // 3800 guarantees to support up to d=15, but given physical error rate below threshold, it supports d=31 without a problem
 pub const MAX_NODE_NUM: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("MAX_NODE_NUM"), "3600")));
-pub const DOUBLE_MAX_NODE_NUM: usize = MAX_NODE_NUM * 2;
 
-static mut TESTER: UnsafeCell<PrimalSimpleMatch<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>> =
-    UnsafeCell::new(PrimalSimpleMatch::new());
+static mut TESTER: UnsafeCell<PrimalSimpleMatch<MAX_NODE_NUM>> = UnsafeCell::new(PrimalSimpleMatch::new());
 
 pub fn main() {
     println!("[benchmark] PrimalSimpleMatch");

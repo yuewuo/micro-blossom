@@ -13,7 +13,6 @@ object DualConfig {
 case class DualConfig(
     var vertexBits: Int = 15,
     var weightBits: Int = 26,
-    var grownBits: Int = 26,
     var broadcastDelay: Int = 1,
     var convergecastDelay: Int = 1,
     var contextDepth: Int = 1, // how many different contexts are supported

@@ -7,10 +7,14 @@
 
 use crate::interface::*;
 use crate::util::*;
+use core::iter::Chain;
+use core::ops::Range;
 
-pub struct PrimalNodes<const N: usize, const DOUBLE_N: usize> {
-    /// defect nodes starting from 0, blossom nodes starting from DOUBLE_N/2
-    pub buffer: [Option<PrimalNode>; DOUBLE_N],
+pub struct PrimalNodes<const N: usize> {
+    /// defect nodes starting from 0, blossom nodes starting from `blossom_begin`
+    pub buffer: [Option<PrimalNode>; N],
+    /// the index which blossom begins, should not change once the program starts
+    pub blossom_begin: usize,
     /// the first child within a blossom
     pub first_blossom_child: [OptionCompactNodeIndex; N],
     /// the number of defect nodes reported by the dual module, not necessarily all the defect nodes
@@ -44,11 +48,11 @@ pub struct PrimalNode {
     pub link: TouchingLink,
 }
 
-impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
+impl<const N: usize> PrimalNodes<N> {
     pub const fn new() -> Self {
-        // assert_eq!(N * 2, DOUBLE_N);
         Self {
-            buffer: [None; DOUBLE_N],
+            buffer: [None; N],
+            blossom_begin: N / 2, // by default half defects half blossom
             first_blossom_child: [OptionCompactNodeIndex::NONE; N],
             count_defects: 0,
             count_blossoms: 0,
@@ -61,6 +65,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     }
 
     fn prepare_defects_up_to(&mut self, defect_index: CompactNodeIndex) {
+        debug_assert!((defect_index.get() as usize) < self.blossom_begin);
         if defect_index.get() as usize >= self.count_defects {
             for index in self.count_defects..=defect_index.get() as usize {
                 set!(self.buffer, index as usize, None);
@@ -76,7 +81,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     pub fn check_node_index(&mut self, node_index: CompactNodeIndex) {
         if self.is_blossom(node_index) {
             debug_assert!(
-                (node_index.get() as usize - N) < self.count_blossoms,
+                (node_index.get() as usize - self.blossom_begin) < self.count_blossoms,
                 "blossoms should always be created by the primal module"
             );
         } else {
@@ -97,22 +102,19 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     }
 
     pub fn is_blossom(&self, node_index: CompactNodeIndex) -> bool {
-        debug_assert!(
-            (node_index.get() as usize) < DOUBLE_N,
-            "node index too large, leading to overflow"
-        );
-        if node_index.get() < N as CompactNodeNum {
+        debug_assert!((node_index.get() as usize) < N, "node index too large, leading to overflow");
+        if node_index.get() < self.blossom_begin as CompactNodeNum {
             false
         } else {
             debug_assert!(
-                (node_index.get() as usize - N) < self.count_blossoms,
+                (node_index.get() as usize - self.blossom_begin) < self.count_blossoms,
                 "blossoms should always be created by the primal module"
             );
             true
         }
     }
 
-    pub fn maintains_node(&self, node_index: CompactNodeIndex) -> bool {
+    pub fn maintains_defect_node(&self, node_index: CompactNodeIndex) -> bool {
         (node_index.get() as usize) < self.count_defects && self.has_node(node_index)
     }
 
@@ -133,7 +135,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     #[allow(unused_unsafe)]
     pub fn get_first_blossom_child(&self, blossom_index: CompactNodeIndex) -> CompactNodeIndex {
         debug_assert!(self.is_blossom(blossom_index) && self.has_node(blossom_index));
-        usu!(get!(self.first_blossom_child, blossom_index.get() as usize - N))
+        usu!(get!(self.first_blossom_child, blossom_index.get() as usize))
     }
 
     #[inline]
@@ -156,7 +158,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
     #[inline]
     pub fn iterate_intermediate_matching(&self, mut func: impl FnMut(CompactNodeIndex, CompactMatchTarget, &TouchingLink)) {
         // report from small index to large index
-        for index in (0..self.count_defects).chain(N..N + self.count_blossoms) {
+        for index in self.index_iter() {
             let node_index = ni!(index);
             if !self.has_node(node_index) {
                 continue; // disposed blossom
@@ -370,12 +372,12 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
 
     /// allocate a blank blossom
     pub fn allocate_blossom(&mut self, first_blossom_child: CompactNodeIndex) -> CompactNodeIndex {
-        debug_assert!(self.count_blossoms < N, "blossom overflow");
-        set!(self.buffer, N + self.count_blossoms, Some(PrimalNode::new()));
-        set!(self.first_blossom_child, self.count_blossoms, first_blossom_child.option());
-        let blossom_index = ni!(N + self.count_blossoms);
+        debug_assert!(self.blossom_begin + self.count_blossoms < N, "blossom overflow");
+        let blossom_index = self.blossom_begin + self.count_blossoms;
+        set!(self.buffer, blossom_index, Some(PrimalNode::new()));
+        set!(self.first_blossom_child, blossom_index, first_blossom_child.option());
         self.count_blossoms += 1;
-        blossom_index
+        ni!(blossom_index)
     }
 
     /// dispose a blossom, after expanding it
@@ -383,7 +385,12 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalNodes<N, DOUBLE_N> {
         debug_assert!(self.is_blossom(blossom_index), "do not dispose a defect vertex");
         debug_assert!(self.has_node(blossom_index), "do not dispose twice");
         set!(self.buffer, blossom_index.get() as usize, None);
-        set!(self.first_blossom_child, blossom_index.get() as usize - N, None.into());
+        set!(self.first_blossom_child, blossom_index.get() as usize, None.into());
+    }
+
+    /// create an iterator containing all the existing node indices
+    pub fn index_iter(&self) -> Chain<Range<usize>, Range<usize>> {
+        (0..self.count_defects).chain(self.blossom_begin..self.blossom_begin + self.count_blossoms)
     }
 }
 
@@ -470,7 +477,7 @@ impl TouchingLink {
 }
 
 #[cfg(any(test, feature = "std"))]
-impl<const N: usize, const DOUBLE_N: usize> std::fmt::Debug for PrimalNodes<N, DOUBLE_N> {
+impl<const N: usize> std::fmt::Debug for PrimalNodes<N> {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         formatter
             .debug_struct("Nodes")
@@ -483,7 +490,12 @@ impl<const N: usize, const DOUBLE_N: usize> std::fmt::Debug for PrimalNodes<N, D
             .field(
                 "blossoms",
                 &(0..self.count_blossoms as usize)
-                    .map(|index| (N + index, (&self.buffer[N + index], self.first_blossom_child[index])))
+                    .map(|index| {
+                        (
+                            N + index,
+                            (&self.buffer[self.blossom_begin + index], self.first_blossom_child[index]),
+                        )
+                    })
                     .collect::<std::collections::BTreeMap<_, _>>(),
             )
             .finish()

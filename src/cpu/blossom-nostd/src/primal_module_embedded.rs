@@ -13,12 +13,12 @@ use crate::primal_nodes::*;
 use crate::util::*;
 
 #[cfg_attr(any(test, feature = "std"), derive(Debug))]
-pub struct PrimalModuleEmbedded<const N: usize, const DOUBLE_N: usize> {
+pub struct PrimalModuleEmbedded<const N: usize> {
     /// the alternating tree nodes
-    pub nodes: PrimalNodes<N, DOUBLE_N>,
+    pub nodes: PrimalNodes<N>,
 }
 
-impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
+impl<const N: usize> PrimalModuleEmbedded<N> {
     pub const fn new() -> Self {
         Self {
             nodes: PrimalNodes::new(),
@@ -26,7 +26,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
     }
 }
 
-impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbedded<N, DOUBLE_N> {
+impl<const N: usize> PrimalInterface for PrimalModuleEmbedded<N> {
     fn reset(&mut self) {
         self.nodes.clear();
     }
@@ -163,7 +163,7 @@ impl<const N: usize, const DOUBLE_N: usize> PrimalInterface for PrimalModuleEmbe
     }
 }
 
-impl<const N: usize, const DOUBLE_N: usize> PrimalModuleEmbedded<N, DOUBLE_N> {
+impl<const N: usize> PrimalModuleEmbedded<N> {
     /// return the perfect matching between nodes
     #[inline]
     pub fn iterate_intermediate_matching(
@@ -866,16 +866,15 @@ mod tests {
         // cargo test primal_module_embedded_size -- --nocapture
         // cargo test --features u16_index primal_module_embedded_size -- --nocapture
         const N: usize = 1000000;
-        const DOUBLE_N: usize = 2 * N;
-        let total_size = core::mem::size_of::<PrimalModuleEmbedded<N, DOUBLE_N>>();
-        println!("memory: {} bytes per node", total_size / DOUBLE_N);
-        println!("memory overhead: {} bytes", total_size - (total_size / DOUBLE_N) * DOUBLE_N);
+        let total_size = core::mem::size_of::<PrimalModuleEmbedded<N>>();
+        println!("memory: {} bytes per node", total_size / N);
+        println!("memory overhead: {} bytes", total_size - (total_size / N) * N);
         cfg_if::cfg_if! {
             if #[cfg(feature="u16_index")] {
-                assert_eq!(total_size / DOUBLE_N, 16 + 1);
+                assert_eq!(total_size / N, 16 + 2);
                 assert_eq!(core::mem::size_of::<Option<PrimalNode>>(), 16);
             } else {
-                assert_eq!(total_size / DOUBLE_N, 2 * (16 + 1));
+                assert_eq!(total_size / N, 2 * (16 + 2));
                 assert_eq!(core::mem::size_of::<Option<PrimalNode>>(), 2 * 16);
             }
         }
@@ -885,8 +884,7 @@ mod tests {
     fn primal_module_debug_print() {
         // cargo test primal_module_debug_print -- --nocapture
         const N: usize = 100;
-        const DOUBLE_N: usize = 2 * N;
-        let mut primal_module: PrimalModuleEmbedded<N, DOUBLE_N> = PrimalModuleEmbedded::new();
+        let mut primal_module: PrimalModuleEmbedded<N> = PrimalModuleEmbedded::new();
         println!("{primal_module:?}");
         primal_module.nodes.check_node_index(ni!(3));
         primal_module.nodes.check_node_index(ni!(1));

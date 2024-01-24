@@ -30,9 +30,13 @@ float diff_native_time(uint64_t start, uint64_t end)
 MicroBlossomHardwareInfo get_hardware_info()
 {
     MicroBlossomHardwareInfo hardware_info;
-    hardware_info.version = Xil_In32(UB_BASE + 8);
-    hardware_info.context_depth = Xil_In32(UB_BASE + 12);
-    hardware_info.conflict_channels = Xil_In8(UB_BASE + 16);
+    uint64_t raw_1 = Xil_In64(UB_BASE + 8);
+    uint32_t raw_2 = Xil_In32(UB_BASE + 16);
+    hardware_info.version = raw_1;
+    hardware_info.context_depth = raw_1 >> 32;
+    hardware_info.conflict_channels = raw_2;
+    hardware_info.vertex_bits = raw_2 >> 8;
+    hardware_info.weight_bits = raw_2 >> 16;
     return hardware_info;
 }
 

@@ -12,22 +12,22 @@ use std::collections::BTreeMap;
 
 #[derive(Derivative)]
 #[derivative(Debug = "transparent")]
-pub struct PrimalModuleEmbedded<const N: usize, const DN: usize>(PrimalModuleEmbeddedOriginal<N, DN>);
+pub struct PrimalModuleEmbedded<const N: usize>(PrimalModuleEmbeddedOriginal<N>);
 
-impl<const N: usize, const DN: usize> std::ops::Deref for PrimalModuleEmbedded<N, DN> {
-    type Target = PrimalModuleEmbeddedOriginal<N, DN>;
+impl<const N: usize> std::ops::Deref for PrimalModuleEmbedded<N> {
+    type Target = PrimalModuleEmbeddedOriginal<N>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<const N: usize, const DN: usize> std::ops::DerefMut for PrimalModuleEmbedded<N, DN> {
+impl<const N: usize> std::ops::DerefMut for PrimalModuleEmbedded<N> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl<const N: usize, const DN: usize> PrimalModuleEmbedded<N, DN> {
+impl<const N: usize> PrimalModuleEmbedded<N> {
     pub fn new() -> Self {
         Self(PrimalModuleEmbeddedOriginal::new())
     }
@@ -36,7 +36,7 @@ impl<const N: usize, const DN: usize> PrimalModuleEmbedded<N, DN> {
 #[derive(Debug)]
 pub struct PrimalModuleEmbeddedAdaptor {
     /// the embedded primal module
-    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
+    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM>,
     /// mapping between the integer index interface and the pointer interface
     pub index_to_ptr: BTreeMap<CompactNodeIndex, DualNodePtr>,
     pub ptr_to_index: BTreeMap<DualNodePtr, CompactNodeIndex>,
@@ -304,10 +304,10 @@ impl FusionVisualizer for PrimalModuleEmbeddedAdaptor {
     }
 }
 
-impl<const N: usize, const DN: usize> FusionVisualizer for PrimalModuleEmbedded<N, DN> {
+impl<const N: usize> FusionVisualizer for PrimalModuleEmbedded<N> {
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
         let mut primal_nodes = Vec::<serde_json::Value>::new();
-        for node_index in (0..self.nodes.count_defects).chain(N..N + self.nodes.count_blossoms) {
+        for node_index in self.nodes.index_iter() {
             primal_nodes.resize(node_index + 1, json!(null));
             if !self.nodes.has_node(ni!(node_index)) {
                 continue;
@@ -352,25 +352,25 @@ impl<const N: usize, const DN: usize> FusionVisualizer for PrimalModuleEmbedded<
     }
 }
 
-pub struct DualNodesOf<'a, const N: usize, const DN: usize>(&'a PrimalModuleEmbedded<N, DN>);
+pub struct DualNodesOf<'a, const N: usize>(&'a PrimalModuleEmbedded<N>);
 
-impl<'a, const N: usize, const DN: usize> std::ops::Deref for DualNodesOf<'a, N, DN> {
-    type Target = PrimalModuleEmbeddedOriginal<N, DN>;
+impl<'a, const N: usize> std::ops::Deref for DualNodesOf<'a, N> {
+    type Target = PrimalModuleEmbeddedOriginal<N>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl<'a, const N: usize, const DN: usize> DualNodesOf<'a, N, DN> {
-    pub fn new(primal_module: &'a PrimalModuleEmbedded<N, DN>) -> Self {
+impl<'a, const N: usize> DualNodesOf<'a, N> {
+    pub fn new(primal_module: &'a PrimalModuleEmbedded<N>) -> Self {
         Self(primal_module)
     }
 }
 
-impl<'a, const N: usize, const DN: usize> FusionVisualizer for DualNodesOf<'a, N, DN> {
+impl<'a, const N: usize> FusionVisualizer for DualNodesOf<'a, N> {
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
         let mut dual_nodes = Vec::<serde_json::Value>::new();
-        for node_index in (0..self.nodes.count_defects).chain(N..N + self.nodes.count_blossoms) {
+        for node_index in self.nodes.index_iter() {
             dual_nodes.resize(node_index + 1, json!(null));
             if !self.nodes.has_node(ni!(node_index)) {
                 continue;

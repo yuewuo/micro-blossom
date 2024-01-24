@@ -9,12 +9,12 @@ use crate::interface::*;
 use crate::primal_module_embedded::*;
 use crate::util::*;
 
-pub struct PrimalSimpleMatch<const MAX_NODE_NUM: usize, const DOUBLE_MAX_NODE_NUM: usize> {
-    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
+pub struct PrimalSimpleMatch<const MAX_NODE_NUM: usize> {
+    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM>,
     pub dual_module: DualModuleStackless<DualModuleCounterDriver>,
 }
 
-impl<const MAX_NODE_NUM: usize, const DOUBLE_MAX_NODE_NUM: usize> PrimalSimpleMatch<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM> {
+impl<const MAX_NODE_NUM: usize> PrimalSimpleMatch<MAX_NODE_NUM> {
     pub const fn new() -> Self {
         Self {
             primal_module: PrimalModuleEmbedded::new(),
@@ -55,8 +55,7 @@ mod tests {
     fn benchmark_primal_simple_match_basic() {
         // cargo test benchmark_primal_simple_match_basic -- --nocapture
         const N: usize = 128;
-        const DOUBLE_N: usize = 2 * N;
-        let mut tester: PrimalSimpleMatch<N, DOUBLE_N> = PrimalSimpleMatch::new();
+        let mut tester: PrimalSimpleMatch<N> = PrimalSimpleMatch::new();
         for _ in 0..3 {
             tester.run(N / 2);
             println!("count_set_speed: {}", tester.dual_module.driver.count_set_speed);

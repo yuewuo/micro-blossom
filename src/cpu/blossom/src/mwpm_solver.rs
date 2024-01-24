@@ -235,7 +235,7 @@ impl PrimalDualSolver for SolverPrimalEmbedded {
 
 pub struct SolverEmbeddedRTL {
     pub dual_module: DualModuleRTL,
-    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
+    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM>,
     subgraph_builder: SubGraphBuilder,
     defect_nodes: Vec<VertexIndex>,
     offloaded: usize,
@@ -381,7 +381,7 @@ impl PrimalDualSolver for SolverEmbeddedRTL {
 
 pub struct SolverDualScala {
     pub dual_module: DualModuleScala,
-    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
+    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM>,
     subgraph_builder: SubGraphBuilder,
     defect_nodes: Vec<VertexIndex>,
     pub max_iterations: usize, // to debug the infinite loop cases: save a waveform in the middle
@@ -507,7 +507,7 @@ impl PrimalDualSolver for SolverDualScala {
 
 pub struct SolverDualComb {
     pub dual_module: DualModuleComb,
-    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
+    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM>,
     subgraph_builder: SubGraphBuilder,
     defect_nodes: Vec<VertexIndex>,
     pub offloaded: usize,
@@ -573,7 +573,7 @@ impl PrimalDualSolver for SolverDualComb {
         // check how many defect vertices are offloaded (not maintained by the primal module at all)
         self.offloaded = 0;
         for node_index in 0..self.defect_nodes.len() {
-            if !self.primal_module.nodes.maintains_node(ni!(node_index)) {
+            if !self.primal_module.nodes.maintains_defect_node(ni!(node_index)) {
                 self.offloaded += 1;
             }
         }
@@ -679,7 +679,7 @@ impl PrimalDualSolver for SolverDualComb {
 
 pub struct SolverDualAxi4 {
     pub dual_module: DualModuleAxi4,
-    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM, DOUBLE_MAX_NODE_NUM>,
+    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM>,
     subgraph_builder: SubGraphBuilder,
     defect_nodes: Vec<VertexIndex>,
     pub max_iterations: usize, // to debug the infinite loop cases: save a waveform in the middle
@@ -703,6 +703,7 @@ impl SolverDualAxi4 {
             defect_nodes: vec![],
             max_iterations: usize::MAX,
         }
+        .adapt()
     }
 
     pub fn new_with_name(initializer: &SolverInitializer, host_name: String) -> Self {
@@ -715,6 +716,14 @@ impl SolverDualAxi4 {
             defect_nodes: vec![],
             max_iterations: usize::MAX,
         }
+        .adapt()
+    }
+
+    /// adapt bit width of primal module so that node index will not overflow
+    pub fn adapt(mut self) -> Self {
+        let hardware_info = self.dual_module.driver.driver.get_hardware_info().unwrap();
+        self.primal_module.nodes.blossom_begin = (1 << hardware_info.vertex_bits) / 2;
+        self
     }
 
     pub fn with_max_iterations(mut self, max_iterations: usize) -> Self {
@@ -803,8 +812,8 @@ impl PrimalDualSolver for SolverDualAxi4 {
     }
 }
 
-fn perfect_matching_from_embedded_primal<const N: usize, const DN: usize>(
-    primal_module: &mut PrimalModuleEmbedded<N, DN>,
+fn perfect_matching_from_embedded_primal<const N: usize>(
+    primal_module: &mut PrimalModuleEmbedded<N>,
     defect_nodes: &[VertexIndex],
 ) -> (PerfectMatching, DualModuleInterfaceWeak) {
     let mut perfect_matching = PerfectMatching::new();

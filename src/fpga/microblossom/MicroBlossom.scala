@@ -51,6 +51,8 @@ case class VirtualMicroBlossom() extends Bundle {
 //    8: (RO) 32 bits version register
 //    12: (RO) 32 bits context depth
 //    16: (RO) 8 bits number of conflict channels (we're not using 100+ conflict channels...)
+//    17: (RO) 8 bits dualConfig.vertexBits
+//    18: (RO) 8 bits dualConfig.weightBits
 //    24: (RW) 32 bits instruction counter
 //    32: (RW) 32 bits readout counter
 //  - (64 bits only) the following 4KB section is designed to allow burst writes (e.g. use xsdb "mwr -bin -file" command)
@@ -109,7 +111,7 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       documentation = "micro-blossom version and context depth"
     )
     factory.readMultiWord(
-      U(dualConfig.conflictChannels, 8 bits),
+      U(dualConfig.weightBits, 8 bits) ## U(dualConfig.vertexBits, 8 bits) ## U(dualConfig.conflictChannels, 8 bits),
       address = 16,
       documentation = "the number of conflict channels"
     )

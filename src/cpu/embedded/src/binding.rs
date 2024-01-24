@@ -32,6 +32,9 @@ pub mod extern_c {
         pub version: uint32_t,
         pub context_depth: uint32_t,
         pub conflict_channels: uint8_t,
+        pub vertex_bits: uint8_t,
+        pub weight_bits: uint8_t,
+        pub grown_bits: uint8_t,
     }
 
     extern "C" {
