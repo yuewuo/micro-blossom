@@ -163,6 +163,8 @@ object MicroBlossomHost extends App {
               val data = BigInt(parameters(2))
               driver.writeBytes(address, data, numBytes)
             } else if (command.startsWith("snapshot(")) {
+              dut.clockDomain.waitSampling()
+              sleep(1)
               val parameters = command.substring("snapshot(".length, command.length - 1).split(", ")
               assert(parameters.length == 1)
               val abbrev = parameters(0).toBoolean

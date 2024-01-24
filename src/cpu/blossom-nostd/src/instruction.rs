@@ -52,6 +52,9 @@ impl Instruction32 {
     pub fn reserved() -> Self {
         Self(EXTENDED_OP_CODE_ENABLE | EXTENDED_OP_CODE_RESERVED)
     }
+    pub fn find_obstacle() -> Self {
+        Self(EXTENDED_OP_CODE_ENABLE | EXTENDED_OP_CODE_FIND_OBSTACLE)
+    }
 
     pub fn is_extended(self) -> bool {
         (self.0 & EXTENDED_OP_CODE_ENABLE) != 0

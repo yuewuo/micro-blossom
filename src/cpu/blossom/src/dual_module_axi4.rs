@@ -235,6 +235,7 @@ impl DualModuleAxi4Driver {
 impl DualStacklessDriver for DualModuleAxi4Driver {
     fn reset(&mut self) {
         self.execute_instruction(Instruction32::reset(), self.context_id).unwrap();
+        self.set_maximum_growth(0, self.context_id).unwrap();
     }
     fn set_speed(&mut self, _is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState) {
         self.execute_instruction(Instruction32::set_speed(node, speed), self.context_id)
@@ -245,8 +246,19 @@ impl DualStacklessDriver for DualModuleAxi4Driver {
             .unwrap();
     }
     fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
+        // after user writing
+        self.execute_instruction(Instruction32::find_obstacle(), self.context_id)
+            .unwrap();
         self.get_obstacle(self.context_id).unwrap();
         let grown = self.head.accumulated_grown as CompactWeight;
+        // clear grown value in hardware to avoid repeated read
+        if grown != 0 {
+            self.set_maximum_growth(
+                (self.head.maximum_growth - self.head.accumulated_grown) as CompactWeight,
+                self.context_id,
+            )
+            .unwrap();
+        }
         if self.head.growable == u16::MAX {
             (CompactObstacle::None, grown)
         } else if self.head.growable != 0 {
