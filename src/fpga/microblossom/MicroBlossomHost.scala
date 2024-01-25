@@ -93,21 +93,12 @@ object MicroBlossomHost extends App {
 
     simConfig
       .compile({
-        val component: Component = if (busType == "Axi4") {
-          require(use64bus, "only 64 bits supported for Axi4 interface")
-          MicroBlossomAxi4(config)
-        } else if (busType == "AxiLite4") {
-          if (use64bus) {
-            MicroBlossomAxiLite4(config)
-          } else {
-            MicroBlossomAxiLite4Bus32(config)
-          }
-        } else if (busType == "Wishbone") {
-          require(!use64bus, "only 32 bits supported for Wishbone interface")
-          MicroBlossomWishboneBus32(config)
+        val busTypeFull = if (use64bus) {
+          busType
         } else {
-          throw new Exception(s"unrecognized busType $busType")
+          s"${busType}Bus32"
         }
+        val component: Component = MicroBlossomBusType.generateByName(busTypeFull, config, clockDivideBy)
         require(component.isInstanceOf[MicroBlossom[_, _]])
         val dut = component.asInstanceOf[MicroBlossom[IMasterSlave, BusSlaveFactoryDelayed]]
         if (withWaveform) {

@@ -48,7 +48,7 @@ pub struct DualConfig {
     pub support_add_defect_vertex: bool,
     #[derivative(Default(value = "dual_config_default::INJECT_REGISTERS.clone()"))]
     pub inject_registers: Vec<String>,
-    #[derivative(Default(value = "dual_config_default::env_usize(\"CLOCK_DIVIDED_BY\", 1)"))]
+    #[derivative(Default(value = "dual_config_default::env_usize(\"CLOCK_DIVIDE_BY\", 1)"))]
     pub clock_divide_by: usize,
 }
 

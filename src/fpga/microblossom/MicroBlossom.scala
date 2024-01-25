@@ -161,16 +161,23 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       val conflict = ConvergecastConflict(ioConfig.vertexBits) addTag (crossClockDomain)
     }
   }
+  val dualDomainCounter = CounterFreeRun(clockDivideBy)
+  val isDualSampling = Bool
+  isDualSampling := dualDomainCounter.willOverflow
   val dividedDomain = new ClockingArea(dualClockDomain) {
     val distributedDual = DistributedDual(dualConfig, ioConfig)
     distributedDual.io.message := dual.io.message
-    dual.io.maxGrowable := distributedDual.io.maxGrowable
-    dual.io.conflict := distributedDual.io.conflict
+    // dual.io.maxGrowable := distributedDual.io.maxGrowable
+    // dual.io.conflict := distributedDual.io.conflict
   }
+  dual.io.maxGrowable := dividedDomain.distributedDual.io.maxGrowable
+  dual.io.conflict := dividedDomain.distributedDual.io.conflict
   def simDual = dividedDomain.distributedDual
 
-  dual.io.message.valid := False
-  dual.io.message.assignDontCareToUnasigned()
+  when(isDualSampling) {
+    dual.io.message.valid := False
+    dual.io.message.assignDontCareToUnasigned()
+  }
 
   // keep track of some history to avoid data races
   require(dualConfig.readLatency >= 1)
@@ -180,12 +187,15 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   initHistoryEntry.assignDontCareToUnasigned()
   val historyEntries = Vec.fill(readoutLatency + 1)(Reg(HistoryEntry(dualConfig)) init initHistoryEntry)
   // shift register
-  for (i <- 0 until readoutLatency) {
-    historyEntries(i + 1) := historyEntries(i)
-  }
   val nextHistoryEntry = HistoryEntry(dualConfig)
   nextHistoryEntry.valid := False
   nextHistoryEntry.assignDontCareToUnasigned()
+  when(isDualSampling) {
+    for (i <- 0 until readoutLatency) {
+      historyEntries(i + 1) := historyEntries(i)
+    }
+    historyEntries(0) := nextHistoryEntry
+  }
 
   val primalOffloadIssuing = Bool
   primalOffloadIssuing := False
@@ -213,7 +223,7 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       } else {
         isBlocked := False
       }
-      when(isBlocked || primalOffloadIssuing) {
+      when(isBlocked || primalOffloadIssuing || !isDualSampling) {
         factory.writeHalt()
       }
     }
@@ -248,8 +258,6 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     factory.onWritePrimitive(mapping, haltSensitive = true, documentation)(onDoWrite)
   }
 
-  historyEntries(0) := nextHistoryEntry
-
   // managing the context data from
   val context = new Area {
     val growable = OneMem(ConvergecastMaxGrowable(dualConfig.weightBits), dualConfig.contextDepth)
@@ -280,7 +288,7 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     val currentId = if (dualConfig.contextBits > 0) {
       currentEntry.contextId
     } else { U(0, 0 bits) }
-    when(currentEntry.valid) {
+    when(currentEntry.valid && isDualSampling) {
       growable.write(currentId, dual.io.maxGrowable)
       for (i <- 0 until dualConfig.conflictChannels) {
         conflicts(i).write(currentId, dual.io.conflict) // TODO: implement real multi-channel conflict reporting
