@@ -427,6 +427,7 @@ impl DualConfig {
 mod tests {
     use super::*;
     use crate::dual_module_rtl::tests::*;
+    use crate::dual_module_scala::tests::*;
     use crate::mwpm_solver::*;
 
     // to use visualization, we need the folder of fusion-blossom repo
@@ -473,6 +474,25 @@ mod tests {
         let visualize_filename = "dual_module_axi4_debug_compare_1.json".to_string();
         let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
         dual_module_rtl_embedded_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    }
+
+    /// debug timing error
+    /// the primal offloaded grow unit will issue a grow command automatically and retrieve the conflict information
+    /// however, this is different from
+    #[test]
+    fn dual_module_axi4_debug_2() {
+        // cargo test dual_module_axi4_debug_2 -- --nocapture
+        let visualize_filename = "dual_module_axi4_debug_2.json".to_string();
+        let defect_vertices = vec![12, 13, 17, 25, 28, 48, 49];
+        dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    }
+
+    #[test]
+    fn dual_module_axi4_debug_compare_2() {
+        // cargo test dual_module_axi4_debug_compare_2 -- --nocapture
+        let visualize_filename = "dual_module_axi4_debug_compare_2.json".to_string();
+        let defect_vertices = vec![12, 13, 17, 25, 28, 48, 49];
+        dual_module_scala_basic_standard_syndrome(7, visualize_filename, defect_vertices);
     }
 
     pub fn dual_module_axi4_basic_standard_syndrome(

@@ -221,7 +221,7 @@ impl FusionVisualizer for DualModuleScalaDriver {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use crate::dual_module_rtl::tests::*;
     use crate::mwpm_solver::*;

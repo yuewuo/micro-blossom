@@ -212,7 +212,7 @@ impl Vertex {
 
     pub fn get_shadow_node(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, ShadowNode> {
         referenced_signal!(self.signals.shadow_node, || {
-            let state = self.get_post_execute_state(dual_module);
+            let state = self.get_post_update_state(dual_module);
             let propagating_peer = self.get_propagating_peer(dual_module);
             let mut shadow_node = ShadowNode {
                 node_index: state.node_index,
@@ -236,9 +236,6 @@ impl Vertex {
     /// check for shrinking obstacles
     pub fn get_response(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, CompactObstacle> {
         referenced_signal!(self.signals.response, || {
-            if !matches!(dual_module.instruction, Instruction::FindObstacle { .. }) {
-                return CompactObstacle::None;
-            }
             let post_update_state = self.get_post_update_state(dual_module);
             if post_update_state.speed == CompactGrowState::Shrink {
                 return CompactObstacle::GrowLength {

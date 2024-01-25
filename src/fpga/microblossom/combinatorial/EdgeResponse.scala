@@ -15,6 +15,8 @@ object EdgeResponse {
       conflict: ConvergecastConflict, // output
       leftShadow: VertexShadowResult,
       rightShadow: VertexShadowResult,
+      leftIsVirtual: Bool,
+      rightIsVirtual: Bool,
       leftVertex: Bits,
       rightVertex: Bits,
       remaining: UInt
@@ -35,9 +37,12 @@ object EdgeResponse {
     conflict.touch2 := rightShadow.root
     conflict.vertex1 := leftVertex
     conflict.vertex2 := rightVertex
+    // when one node is available, we should not report the obstacle
+    val isLeftAvailable = (leftShadow.node === leftShadow.node.getAllTrue) && !leftIsVirtual
+    val isRightAvailable = (rightShadow.node === rightShadow.node.getAllTrue) && !rightIsVirtual
     when(leftShadow.node =/= rightShadow.node) {
       when(isJointSpeedPositive) {
-        when(remaining === 0) {
+        when(remaining === 0 && !isLeftAvailable && !isRightAvailable) {
           conflict.valid := True
         }
         when(isBothGrow) {
@@ -61,6 +66,8 @@ case class EdgeResponse(vertexBits: Int, weightBits: Int) extends Component {
   val io = new Bundle {
     val leftShadow = in(VertexShadowResult(vertexBits))
     val rightShadow = in(VertexShadowResult(vertexBits))
+    val leftIsVirtual = in(Bool)
+    val rightIsVirtual = in(Bool)
     val leftVertex = in(Bits(vertexBits bits))
     val rightVertex = in(Bits(vertexBits bits))
     val remaining = in(UInt(weightBits bits))
@@ -74,6 +81,8 @@ case class EdgeResponse(vertexBits: Int, weightBits: Int) extends Component {
     io.conflict,
     io.leftShadow,
     io.rightShadow,
+    io.leftIsVirtual,
+    io.rightIsVirtual,
     io.leftVertex,
     io.rightVertex,
     io.remaining

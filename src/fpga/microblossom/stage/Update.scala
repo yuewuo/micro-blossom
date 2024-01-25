@@ -25,11 +25,14 @@ case class StageUpdateVertex(config: DualConfig, vertexIndex: Int) extends Bundl
 
 case class StageUpdateVertex2(config: DualConfig, vertexIndex: Int) extends Bundle {
   val state = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
-  val shadow = VertexShadowResult(config.vertexBits)
+  val isStalled = Bool
   val compact = BroadcastCompact(config)
+  val propagatingPeer = VertexPropagatingPeerResult(config.vertexBits)
 
   def connect(last: StageUpdateVertex) = {
     compact := last.compact
+    isStalled := last.isStalled
+    propagatingPeer := last.propagatingPeer
   }
 }
 
@@ -40,7 +43,6 @@ case class StageUpdateVertex3(config: DualConfig, vertexIndex: Int) extends Bund
 
   def connect(last: StageUpdateVertex2) = {
     state := last.state
-    shadow := last.shadow
     compact := last.compact
   }
 }

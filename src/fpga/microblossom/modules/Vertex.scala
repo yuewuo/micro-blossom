@@ -160,20 +160,22 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
     vertexPostUpdateState.io.propagator := stages.updateGet.propagatingPeer
     stages.updateSet2.state := vertexPostUpdateState.io.after
 
+  }
+
+  stages.updateSet3.connect(stages.updateGet2)
+  var update3Area = new Area {
     var vertexShadow = VertexShadow(
       config = config,
       vertexIndex = vertexIndex
     )
-    vertexShadow.io.node := stages.updateGet.state.node
-    vertexShadow.io.root := stages.updateGet.state.root
-    vertexShadow.io.speed := stages.updateGet.state.speed
-    vertexShadow.io.grown := stages.updateGet.state.grown
-    vertexShadow.io.isStalled := stages.updateGet.isStalled
-    vertexShadow.io.propagator := stages.updateGet.propagatingPeer
-    stages.updateSet2.shadow := vertexShadow.io.shadow
+    vertexShadow.io.node := stages.updateGet2.state.node
+    vertexShadow.io.root := stages.updateGet2.state.root
+    vertexShadow.io.speed := stages.updateGet2.state.speed
+    vertexShadow.io.grown := stages.updateGet2.state.grown
+    vertexShadow.io.isStalled := stages.updateGet2.isStalled
+    vertexShadow.io.propagator := stages.updateGet2.propagatingPeer
+    stages.updateSet3.shadow := vertexShadow.io.shadow
   }
-
-  stages.updateSet3.connect(stages.updateGet2)
 
   val vertexResponse = VertexResponse(config, vertexIndex)
   vertexResponse.io.state := stages.updateGet3.state

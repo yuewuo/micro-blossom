@@ -125,7 +125,9 @@ object MicroBlossomHost extends App {
         driver.reset()
 
         dut.clockDomain.forkStimulus(period = 10)
-        dut.dualClockDomain.forkStimulus(period = 10 * clockDivideBy)
+        if (clockDivideBy > 1) {
+          dut.dualClockDomain.forkStimulus(period = 10 * clockDivideBy)
+        }
 
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 

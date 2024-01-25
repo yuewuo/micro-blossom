@@ -241,7 +241,7 @@ impl From<BenchmarkParameters> for RunnableBenchmarkParameters {
 lazy_static! {
     static ref RANDOMIZED_TEST_PARAMETERS: Vec<Vec<String>> = {
         let mut parameters = vec![];
-        for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
+        for p in [0.01, 0.03, 0.1, 0.3, 0.499] {
             for d in [3, 7, 11, 15, 19] {
                 parameters.push(vec![
                     format!("{d}"),
@@ -254,7 +254,7 @@ lazy_static! {
             }
         }
         for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
-            for d in [3, 7, 11, 15, 19] {
+            for d in [3, 5, 7, 11, 15] {
                 parameters.push(vec![
                     format!("{d}"),
                     format!("{p}"),

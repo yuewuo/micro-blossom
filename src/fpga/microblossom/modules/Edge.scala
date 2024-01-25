@@ -136,6 +136,8 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   val edgeResponse = EdgeResponse(config.vertexBits, config.weightBits)
   edgeResponse.io.leftShadow := io.leftVertexInput.updateGet3.shadow
   edgeResponse.io.rightShadow := io.rightVertexInput.updateGet3.shadow
+  edgeResponse.io.leftIsVirtual := io.leftVertexInput.updateGet3.state.isVirtual
+  edgeResponse.io.rightIsVirtual := io.rightVertexInput.updateGet3.state.isVirtual
   edgeResponse.io.leftVertex := leftVertex
   edgeResponse.io.rightVertex := rightVertex
   edgeResponse.io.remaining := stages.updateGet3.remaining

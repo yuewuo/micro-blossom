@@ -93,7 +93,7 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
 ) extends Component {
   val io = new Bundle {
     val s0 = slave(interfaceBuilder())
-    val dividedClock = in Bool ()
+    val dividedClock = (clockDivideBy > 1) generate in(Bool())
   }
 
   val rawFactory = slaveFactory(io.s0)
@@ -142,23 +142,17 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   ioConfig.contextDepth = dualConfig.contextDepth
   ioConfig.weightBits = dualConfig.weightBits
   ioConfig.vertexBits = dualConfig.vertexBits
-  val dualClockDomain = ClockDomain(
-    clock = io.dividedClock,
-    reset = ClockDomain.current.readResetWire,
-    config = ClockDomainConfig(
-      clockEdge = RISING,
-      resetKind = ASYNC,
-      resetActiveLevel = HIGH
-    )
-  )
 
   val dual = new Area {
     val io = new Bundle {
       // only inputs need to be registered
-      val message = Reg(BroadcastMessage(ioConfig, explicitReset = false)) addTag (crossClockDomain)
+      val message = Reg(BroadcastMessage(ioConfig, explicitReset = false))
+      if (clockDivideBy > 1) message.addTag(crossClockDomain)
       // outputs are slow anyway
-      val maxGrowable = ConvergecastMaxGrowable(ioConfig.weightBits) addTag (crossClockDomain)
-      val conflict = ConvergecastConflict(ioConfig.vertexBits) addTag (crossClockDomain)
+      val maxGrowable = ConvergecastMaxGrowable(ioConfig.weightBits)
+      if (clockDivideBy > 1) maxGrowable.addTag(crossClockDomain)
+      val conflict = ConvergecastConflict(ioConfig.vertexBits)
+      if (clockDivideBy > 1) conflict.addTag(crossClockDomain)
     }
   }
 
@@ -177,9 +171,27 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     }
     isDualSampling := dualDomainCounter.willOverflow // at the end of the slow clock cycle
   }
-  val dividedDomain = new ClockingArea(dualClockDomain) {
-    val distributedDual = DistributedDual(dualConfig, ioConfig)
-    distributedDual.io.message := dual.io.message
+
+  var dualClockDomain: ClockDomain = null
+  val dividedDomain = if (clockDivideBy > 1) {
+    dualClockDomain = ClockDomain(
+      clock = io.dividedClock,
+      reset = ClockDomain.current.readResetWire,
+      config = ClockDomainConfig(
+        clockEdge = RISING,
+        resetKind = ASYNC,
+        resetActiveLevel = HIGH
+      )
+    )
+    new ClockingArea(dualClockDomain) {
+      val distributedDual = DistributedDual(dualConfig, ioConfig)
+      distributedDual.io.message := dual.io.message
+    }
+  } else {
+    new Area {
+      val distributedDual = DistributedDual(dualConfig, ioConfig)
+      distributedDual.io.message := dual.io.message
+    }
   }
   dual.io.maxGrowable := dividedDomain.distributedDual.io.maxGrowable
   dual.io.conflict := dividedDomain.distributedDual.io.conflict
@@ -193,7 +205,7 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   // keep track of some history to avoid data races
   require(dualConfig.readLatency >= 1)
   // extra latency coming from CDC register
-  val readoutLatency = (dualConfig.readLatency + 1).max(dualConfig.executeLatency)
+  val readoutLatency = dualConfig.readLatency + 1
   println(s"readoutLatency = $readoutLatency")
   val initHistoryEntry = HistoryEntry(dualConfig)
   initHistoryEntry.valid := False
