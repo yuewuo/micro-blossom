@@ -206,7 +206,6 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   require(dualConfig.readLatency >= 1)
   // extra latency coming from CDC register
   val readoutLatency = dualConfig.readLatency + 1
-  println(s"readoutLatency = $readoutLatency")
   val initHistoryEntry = HistoryEntry(dualConfig)
   initHistoryEntry.valid := False
   initHistoryEntry.assignDontCareToUnasigned()
@@ -321,11 +320,15 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     }
     when(currentEntry.valid && isDualSampling) {
       growable.write(currentId, dual.io.maxGrowable)
+      val conflictValid = Vec.fill(dualConfig.conflictChannels)(Bool)
       for (i <- 0 until dualConfig.conflictChannels) {
         conflicts(i).write(currentId, dual.io.conflict) // TODO: implement real multi-channel conflict reporting
+        conflictValid(i) := dual.io.conflict.valid
       }
       val maxGrowable = dual.io.maxGrowable.length
-      when(maxGrowable =/= 0 && maxGrowable =/= maxGrowable.maxValue) {
+      val conflictNotFound = Bool
+      conflictNotFound := !(conflictValid.reduce(_ || _))
+      when(maxGrowable =/= maxGrowable.maxValue && conflictNotFound) {
         when(currentMaximumGrowth > currentAccumulatedGrown) {
           primalOffloadIssuing := True // half the bus if writing instruction
           // write a Grow instruction

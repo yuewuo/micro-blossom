@@ -76,7 +76,6 @@ object MicroBlossomAxiLite4 extends MicroBlossomBusType {
       baseAddress,
       () => renamedAxiLite4(axiLite4Config),
       (x: AxiLite4) => {
-        println(x)
         AxiLite4SlaveFactory(x)
       }
     )
