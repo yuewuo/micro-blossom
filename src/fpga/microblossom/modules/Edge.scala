@@ -139,8 +139,11 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   edgeResponse.io.leftVertex := leftVertex
   edgeResponse.io.rightVertex := rightVertex
   edgeResponse.io.remaining := stages.updateGet3.remaining
-  io.maxGrowable := edgeResponse.io.maxGrowable
-  io.conflict := edgeResponse.io.conflict
+
+  // 1 cycle delay when context is used (to ensure read latency >= execute latency)
+  val outDelay = (config.contextDepth != 1).toInt
+  io.maxGrowable := Delay(edgeResponse.io.maxGrowable, outDelay)
+  io.conflict := Delay(edgeResponse.io.conflict, outDelay)
 
   // write back
   val writeState = stages.updateGet3.state

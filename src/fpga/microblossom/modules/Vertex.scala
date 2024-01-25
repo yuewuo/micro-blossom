@@ -177,7 +177,10 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
 
   val vertexResponse = VertexResponse(config, vertexIndex)
   vertexResponse.io.state := stages.updateGet3.state
-  io.maxGrowable := vertexResponse.io.maxGrowable
+
+  // 1 cycle delay when context is used (to ensure read latency >= execute latency)
+  val outDelay = (config.contextDepth != 1).toInt
+  io.maxGrowable := Delay(vertexResponse.io.maxGrowable, outDelay)
 
   // write back
   val writeState = stages.updateGet3.state

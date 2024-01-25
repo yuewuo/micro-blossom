@@ -86,7 +86,7 @@ case class VirtualMicroBlossom() extends Bundle {
 //
 case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     dualConfig: DualConfig,
-    clockDivideBy: Int = 1, // divided clock at io.dividedClock; note the clock must be synchronous!
+    clockDivideBy: Int = 1, // divided clock at io.dividedClock; note the clock must be synchronous and 0 phase aligned
     baseAddress: BigInt = 0,
     interfaceBuilder: () => T,
     slaveFactory: (T) => F
@@ -161,14 +161,25 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       val conflict = ConvergecastConflict(ioConfig.vertexBits) addTag (crossClockDomain)
     }
   }
-  val dualDomainCounter = CounterFreeRun(clockDivideBy)
+
   val isDualSampling = Bool
-  isDualSampling := dualDomainCounter.willOverflow
+  if (clockDivideBy == 1) {
+    isDualSampling := True
+  } else {
+    val dualDomainCounter = Counter(clockDivideBy)
+    val counterStarted = Reg(Bool) init False // detect a rising edge of the clock and then start, to align the phase
+    val previous = RegNext(io.dividedClock, True)
+    when(previous === False && io.dividedClock === True) {
+      counterStarted := True
+    }
+    when(counterStarted) {
+      dualDomainCounter.increment()
+    }
+    isDualSampling := dualDomainCounter.willOverflow // at the end of the slow clock cycle
+  }
   val dividedDomain = new ClockingArea(dualClockDomain) {
     val distributedDual = DistributedDual(dualConfig, ioConfig)
     distributedDual.io.message := dual.io.message
-    // dual.io.maxGrowable := distributedDual.io.maxGrowable
-    // dual.io.conflict := distributedDual.io.conflict
   }
   dual.io.maxGrowable := dividedDomain.distributedDual.io.maxGrowable
   dual.io.conflict := dividedDomain.distributedDual.io.conflict
@@ -181,7 +192,9 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
 
   // keep track of some history to avoid data races
   require(dualConfig.readLatency >= 1)
-  val readoutLatency = dualConfig.readLatency + 1 // extra latency coming from CDC register
+  // extra latency coming from CDC register
+  val readoutLatency = (dualConfig.readLatency + 1).max(dualConfig.executeLatency)
+  println(s"readoutLatency = $readoutLatency")
   val initHistoryEntry = HistoryEntry(dualConfig)
   initHistoryEntry.valid := False
   initHistoryEntry.assignDontCareToUnasigned()
@@ -270,24 +283,30 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     })
 
     val currentEntry = HistoryEntry(dualConfig)
-    currentEntry := historyEntries(readoutLatency - 1)
-    val currentMaximumGrowth = UInt(16 bits)
-    val currentAccumulatedGrown = UInt(16 bits)
-    val nextEntry = HistoryEntry(dualConfig)
-    if (readoutLatency >= 2) {
-      nextEntry := historyEntries(readoutLatency - 2)
-    } else {
-      assert(readoutLatency == 2)
-      nextEntry := nextHistoryEntry
-    }
-    val nextId = if (dualConfig.contextBits > 0) {
-      nextEntry.contextId
-    } else { UInt(0 bits) }
-    currentMaximumGrowth := maximumGrowth.readSync(nextId)
-    currentAccumulatedGrown := accumulatedGrown.readSync(nextId)
+    currentEntry := historyEntries(dualConfig.readLatency)
     val currentId = if (dualConfig.contextBits > 0) {
       currentEntry.contextId
     } else { U(0, 0 bits) }
+    val currentMaximumGrowth = if (clockDivideBy != 1) { Reg(UInt(16 bits)) }
+    else { UInt(16 bits) }
+    val currentAccumulatedGrown = if (clockDivideBy != 1) { Reg(UInt(16 bits)) }
+    else { UInt(16 bits) }
+    val nextEntry = HistoryEntry(dualConfig)
+    nextEntry := historyEntries(dualConfig.readLatency - 1)
+    val nextId = if (dualConfig.contextBits > 0) {
+      nextEntry.contextId
+    } else { UInt(0 bits) }
+    val currentMaximumGrowthSignal = maximumGrowth.readSync(nextId)
+    val currentAccumulatedGrownSignal = accumulatedGrown.readSync(nextId)
+    if (clockDivideBy != 1) {
+      when(isDualSampling) {
+        currentMaximumGrowth := currentMaximumGrowthSignal
+        currentAccumulatedGrown := currentAccumulatedGrownSignal
+      }
+    } else {
+      currentMaximumGrowth := currentMaximumGrowthSignal
+      currentAccumulatedGrown := currentAccumulatedGrownSignal
+    }
     when(currentEntry.valid && isDualSampling) {
       growable.write(currentId, dual.io.maxGrowable)
       for (i <- 0 until dualConfig.conflictChannels) {

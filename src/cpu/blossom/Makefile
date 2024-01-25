@@ -36,3 +36,20 @@ check: clean-env
 coverage:
 	cargo llvm-cov --release --html
 	# open target/llvm-cov/html/index.html
+
+
+TEST_AXI4_COMMON = KEEP_RTL_FOLDER=1 EMBEDDED_BLOSSOM_MAIN=test_micro_blossom CONSIDER_CPU_TIME=false WITH_WAVEFORM=1 cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_d3.json
+test-axi4:
+# context depth
+	CONTEXT_DEPTH=1 $(TEST_AXI4_COMMON)
+	CONTEXT_DEPTH=2 $(TEST_AXI4_COMMON)
+# clock divide by
+	CLOCK_DIVIDE_BY=2 CONTEXT_DEPTH=1 $(TEST_AXI4_COMMON)
+	CLOCK_DIVIDE_BY=3 CONTEXT_DEPTH=16 $(TEST_AXI4_COMMON)
+# pipeline stages
+	INJECT_REGISTERS=offload,execute,update $(TEST_AXI4_COMMON)
+	INJECT_REGISTERS=offload,execute,update CONTEXT_DEPTH=2 $(TEST_AXI4_COMMON)
+	INJECT_REGISTERS=offload,execute,update CLOCK_DIVIDE_BY=2 CONTEXT_DEPTH=2 $(TEST_AXI4_COMMON)
+# broadcast and convergecast delay
+	BROADCAST_DELAY=2 CONVERGECAST_DELAY=2 CONTEXT_DEPTH=1 $(TEST_AXI4_COMMON)
+	BROADCAST_DELAY=3 CONVERGECAST_DELAY=4 CONTEXT_DEPTH=2 $(TEST_AXI4_COMMON)

@@ -33,7 +33,8 @@ case class DualConfig(
   def IndexNone = (1 << vertexBits) - 1
   def LengthNone = (1 << weightBits) - 1
   def executeLatency = { // from sending the command to the time it's safe to write to the same context again
-    val contextDelay = (contextDepth != 1).toInt // when there is context switching, delay 1 clock due to memory fetch
+    // when context switching, 2 cycles delay due to memory fetch and write
+    val contextDelay = 2 * (contextDepth != 1).toInt
     injectRegisters.length + contextDelay
   }
   def readLatency = { // from sending the command to receiving the obstacle
