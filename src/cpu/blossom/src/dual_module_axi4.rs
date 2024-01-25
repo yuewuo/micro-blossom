@@ -245,6 +245,7 @@ impl DualModuleAxi4Driver {
 impl DualStacklessDriver for DualModuleAxi4Driver {
     fn reset(&mut self) {
         self.execute_instruction(Instruction32::reset(), self.context_id).unwrap();
+        self.set_maximum_growth(0, self.context_id).unwrap();
     }
     fn set_speed(&mut self, _is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState) {
         self.execute_instruction(Instruction32::set_speed(node, speed), self.context_id)

@@ -99,13 +99,14 @@ pub fn main() {
     unsafe { extern_c::set_maximum_growth(200, 0) };
     unsafe { extern_c::get_conflicts(&mut head, conflicts.as_mut_ptr(), 0, 0) };
     assert_eq!(head.maximum_growth, 200);
+    unsafe { extern_c::set_maximum_growth(0, 0) }; // set it back to 0 before doing other operations, to avoid data race
 
     println!("\n6. Test Primal Offloading Growth");
     unsafe { extern_c::execute_instruction(Instruction32::reset().into(), 0) };
-    unsafe { extern_c::set_maximum_growth(10, 0) };
     unsafe { extern_c::execute_instruction(Instruction32::add_defect_vertex(ni!(1), ni!(0)).into(), 0) };
+    unsafe { extern_c::set_maximum_growth(10, 0) };
     unsafe { extern_c::get_conflicts(&mut head, conflicts.as_mut_ptr(), 1, 0) };
-    // println!("head: {head:#?}, conflicts: {conflicts:#?}");
+    println!("head: {head:#?}, conflicts: {conflicts:#?}");
     assert_eq!(head.growable, 0);
     assert_eq!(
         head.accumulated_grown, 2,
@@ -114,6 +115,7 @@ pub fn main() {
     unsafe { extern_c::set_maximum_growth(10, 0) };
     unsafe { extern_c::get_conflicts(&mut head, conflicts.as_mut_ptr(), 1, 0) };
     assert_eq!(head.accumulated_grown, 0, "automatic clear");
+    unsafe { extern_c::set_maximum_growth(0, 0) };
 
     println!("\n7. Test Set Speed");
     unsafe { extern_c::execute_instruction(Instruction32::set_speed(ni!(0), CompactGrowState::Stay).into(), 0) };

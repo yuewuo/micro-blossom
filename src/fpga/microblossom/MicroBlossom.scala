@@ -6,6 +6,12 @@ package microblossom
  * This module provides unified access to the Distributed Dual module with AXI4 interface.
  *
  *
+ * Note:
+ *     1. Always set maximumGrowth to 0 before executing the commands, otherwise there might be data races
+ *       (It happens because writing command only checks for executeLatency cycles of data race, however, the primal
+ *        offloaded grow unit may issue command when the data comes back)
+ *        When designing drivers, set maximumGrowth only when you are trying to read obstacles and set it to 0 once done
+ *
  */
 
 import spinal.core._
@@ -148,9 +154,11 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
 
   val dual = new Area {
     val io = new Bundle {
-      val message = (BroadcastMessage(ioConfig, explicitReset = false)) addTag (crossClockDomain)
-      val maxGrowable = (ConvergecastMaxGrowable(ioConfig.weightBits)) addTag (crossClockDomain)
-      val conflict = (ConvergecastConflict(ioConfig.vertexBits)) addTag (crossClockDomain)
+      // only inputs need to be registered
+      val message = Reg(BroadcastMessage(ioConfig, explicitReset = false)) addTag (crossClockDomain)
+      // outputs are slow anyway
+      val maxGrowable = ConvergecastMaxGrowable(ioConfig.weightBits) addTag (crossClockDomain)
+      val conflict = ConvergecastConflict(ioConfig.vertexBits) addTag (crossClockDomain)
     }
   }
   val dividedDomain = new ClockingArea(dualClockDomain) {
@@ -165,14 +173,14 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   dual.io.message.assignDontCareToUnasigned()
 
   // keep track of some history to avoid data races
-  require(dualConfig.readLatency >= 2)
-  val readoutLatency = dualConfig.readLatency
+  require(dualConfig.readLatency >= 1)
+  val readoutLatency = dualConfig.readLatency + 1 // extra latency coming from CDC register
   val initHistoryEntry = HistoryEntry(dualConfig)
   initHistoryEntry.valid := False
   initHistoryEntry.assignDontCareToUnasigned()
-  val historyEntries = Vec.fill(readoutLatency)(Reg(HistoryEntry(dualConfig)) init initHistoryEntry)
+  val historyEntries = Vec.fill(readoutLatency + 1)(Reg(HistoryEntry(dualConfig)) init initHistoryEntry)
   // shift register
-  for (i <- 0 until readoutLatency - 1) {
+  for (i <- 0 until readoutLatency) {
     historyEntries(i + 1) := historyEntries(i)
   }
   val nextHistoryEntry = HistoryEntry(dualConfig)
@@ -254,14 +262,14 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     })
 
     val currentEntry = HistoryEntry(dualConfig)
-    currentEntry := historyEntries(dualConfig.readLatency - 1)
+    currentEntry := historyEntries(readoutLatency - 1)
     val currentMaximumGrowth = UInt(16 bits)
     val currentAccumulatedGrown = UInt(16 bits)
     val nextEntry = HistoryEntry(dualConfig)
-    if (dualConfig.readLatency >= 2) {
-      nextEntry := historyEntries(dualConfig.readLatency - 2)
+    if (readoutLatency >= 2) {
+      nextEntry := historyEntries(readoutLatency - 2)
     } else {
-      assert(dualConfig.readLatency == 2)
+      assert(readoutLatency == 2)
       nextEntry := nextHistoryEntry
     }
     val nextId = if (dualConfig.contextBits > 0) {
@@ -352,8 +360,8 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       contextConflicts(index) := context.conflicts(index).readSync(readContextId)
     }
     // calculate whether it's blocked
-    val blockers = Vec.fill(readoutLatency)(Bool)
-    for (i <- 0 until readoutLatency) {
+    val blockers = Vec.fill(readoutLatency + 1)(Bool)
+    for (i <- 0 until readoutLatency + 1) {
       if (dualConfig.contextBits > 0) {
         blockers(i) := historyEntries(i).valid &&
           historyEntries(i).contextId === readContextId
