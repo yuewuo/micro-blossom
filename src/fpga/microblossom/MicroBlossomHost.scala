@@ -68,6 +68,7 @@ object MicroBlossomHost extends App {
       case Right(value) => value
       case Left(ex)     => throw ex
     }
+    val clockDivideBy = readNamedValue("clock_divide_by").toInt
 
     // construct and compile a MicroBlossom module for simulation
     val config = DualConfig(
@@ -110,7 +111,7 @@ object MicroBlossomHost extends App {
         require(component.isInstanceOf[MicroBlossom[_, _]])
         val dut = component.asInstanceOf[MicroBlossom[IMasterSlave, BusSlaveFactoryDelayed]]
         if (withWaveform) {
-          dut.dual.simMakePublicSnapshot()
+          dut.simDual.simMakePublicSnapshot()
         }
         component
       })
@@ -133,6 +134,8 @@ object MicroBlossomHost extends App {
         driver.reset()
 
         dut.clockDomain.forkStimulus(period = 10)
+        dut.dualClockDomain.forkStimulus(period = 10 * clockDivideBy)
+
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
         // start hosting the commands
@@ -168,7 +171,7 @@ object MicroBlossomHost extends App {
               val parameters = command.substring("snapshot(".length, command.length - 1).split(", ")
               assert(parameters.length == 1)
               val abbrev = parameters(0).toBoolean
-              outStream.println(dut.dual.simSnapshot(abbrev).noSpacesSortKeys)
+              outStream.println(dut.simDual.simSnapshot(abbrev).noSpacesSortKeys)
             } else {
               throw new Exception(s"[error] unknown command: $command")
             }

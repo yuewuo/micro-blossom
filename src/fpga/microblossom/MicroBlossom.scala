@@ -80,12 +80,14 @@ case class VirtualMicroBlossom() extends Bundle {
 //
 case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     dualConfig: DualConfig,
+    clockDivideBy: Int = 1, // divided clock at io.dividedClock; note the clock must be synchronous!
     baseAddress: BigInt = 0,
     interfaceBuilder: () => T,
     slaveFactory: (T) => F
 ) extends Component {
   val io = new Bundle {
     val s0 = slave(interfaceBuilder())
+    val dividedClock = in Bool ()
   }
 
   val rawFactory = slaveFactory(io.s0)
@@ -134,7 +136,31 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   ioConfig.contextDepth = dualConfig.contextDepth
   ioConfig.weightBits = dualConfig.weightBits
   ioConfig.vertexBits = dualConfig.vertexBits
-  val dual = DistributedDual(dualConfig, ioConfig)
+  val dualClockDomain = ClockDomain(
+    clock = io.dividedClock,
+    reset = ClockDomain.current.readResetWire,
+    config = ClockDomainConfig(
+      clockEdge = RISING,
+      resetKind = ASYNC,
+      resetActiveLevel = HIGH
+    )
+  )
+
+  val dual = new Area {
+    val io = new Bundle {
+      val message = (BroadcastMessage(ioConfig, explicitReset = false)) addTag (crossClockDomain)
+      val maxGrowable = (ConvergecastMaxGrowable(ioConfig.weightBits)) addTag (crossClockDomain)
+      val conflict = (ConvergecastConflict(ioConfig.vertexBits)) addTag (crossClockDomain)
+    }
+  }
+  val dividedDomain = new ClockingArea(dualClockDomain) {
+    val distributedDual = DistributedDual(dualConfig, ioConfig)
+    distributedDual.io.message := dual.io.message
+    dual.io.maxGrowable := distributedDual.io.maxGrowable
+    dual.io.conflict := distributedDual.io.conflict
+  }
+  def simDual = dividedDomain.distributedDual
+
   dual.io.message.valid := False
   dual.io.message.assignDontCareToUnasigned()
 
@@ -493,6 +519,7 @@ class MicroBlossomGeneratorConf(arguments: Seq[String]) extends ScallopConf(argu
       default = Some(List()),
       descr = s"insert register at select stages: ${Stages().stageNames.mkString(", ")}"
     )
+  val clockDivideBy = opt[Int](default = Some(1))
   verify()
 }
 
@@ -511,13 +538,15 @@ object MicroBlossomGenerator extends App {
   )
   val genConfig = Config.argFolderPath(conf.outputDir())
   // note: deliberately not creating `component` here, otherwise it encounters null pointer error of GlobalData.get()....
-  conf.languageHdl() match {
-    case "verilog" | "Verilog" =>
-      genConfig.generateVerilog(MicroBlossomBusType.generateByName(conf.busType(), config, conf.baseAddress()))
-    case "VHDL" | "vhdl" | "Vhdl" =>
-      genConfig.generateVhdl(MicroBlossomBusType.generateByName(conf.busType(), config, conf.baseAddress()))
-    case "SystemVerilog" | "systemverilog" =>
-      genConfig.generateSystemVerilog(MicroBlossomBusType.generateByName(conf.busType(), config, conf.baseAddress()))
+  val mode: SpinalMode = conf.languageHdl() match {
+    case "verilog" | "Verilog"             => Verilog
+    case "VHDL" | "vhdl" | "Vhdl"          => VHDL
+    case "SystemVerilog" | "systemverilog" => SystemVerilog
     case _ => throw new Exception(s"HDL language ${conf.languageHdl()} is not recognized")
   }
+  genConfig
+    .copy(mode = mode)
+    .generateVerilog(
+      MicroBlossomBusType.generateByName(conf.busType(), config, conf.clockDivideBy(), conf.baseAddress())
+    )
 }
