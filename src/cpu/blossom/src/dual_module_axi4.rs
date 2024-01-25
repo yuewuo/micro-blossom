@@ -272,25 +272,47 @@ impl DualStacklessDriver for DualModuleAxi4Driver {
             // find a single obstacle from the list of obstacles
             for conflict in self.conflicts.iter() {
                 if conflict.valid != 0 {
-                    return (
-                        CompactObstacle::Conflict {
-                            node_1: ni!(conflict.node_1).option(),
-                            node_2: if conflict.node_2 == u16::MAX {
-                                None.into()
-                            } else {
-                                ni!(conflict.node_2).option()
+                    if conflict.node_1 != u16::MAX {
+                        return (
+                            CompactObstacle::Conflict {
+                                node_1: ni!(conflict.node_1).option(),
+                                node_2: if conflict.node_2 == u16::MAX {
+                                    None.into()
+                                } else {
+                                    ni!(conflict.node_2).option()
+                                },
+                                touch_1: ni!(conflict.touch_1).option(),
+                                touch_2: if conflict.touch_2 == u16::MAX {
+                                    None.into()
+                                } else {
+                                    ni!(conflict.touch_2).option()
+                                },
+                                vertex_1: ni!(conflict.vertex_1),
+                                vertex_2: ni!(conflict.vertex_2),
                             },
-                            touch_1: ni!(conflict.touch_1).option(),
-                            touch_2: if conflict.touch_2 == u16::MAX {
-                                None.into()
-                            } else {
-                                ni!(conflict.touch_2).option()
+                            grown,
+                        );
+                    } else {
+                        return (
+                            CompactObstacle::Conflict {
+                                node_1: ni!(conflict.node_2).option(),
+                                node_2: if conflict.node_1 == u16::MAX {
+                                    None.into()
+                                } else {
+                                    ni!(conflict.node_1).option()
+                                },
+                                touch_1: ni!(conflict.touch_2).option(),
+                                touch_2: if conflict.touch_1 == u16::MAX {
+                                    None.into()
+                                } else {
+                                    ni!(conflict.touch_1).option()
+                                },
+                                vertex_1: ni!(conflict.vertex_2),
+                                vertex_2: ni!(conflict.vertex_1),
                             },
-                            vertex_1: ni!(conflict.vertex_1),
-                            vertex_2: ni!(conflict.vertex_2),
-                        },
-                        grown,
-                    );
+                            grown,
+                        );
+                    }
                 }
             }
             unreachable!()
