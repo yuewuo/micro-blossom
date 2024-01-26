@@ -315,7 +315,9 @@ impl DualStacklessDriver for DualModuleAxi4Driver {
                     }
                 }
             }
-            unreachable!()
+            // when this happens, the DualDriverTracked should check for BlossomNeedExpand event
+            // this is usually triggered by reaching maximum growth set by the DualDriverTracked
+            (CompactObstacle::GrowLength { length: 0 }, grown)
         }
     }
     fn add_defect(&mut self, vertex: CompactVertexIndex, node: CompactNodeIndex) {
