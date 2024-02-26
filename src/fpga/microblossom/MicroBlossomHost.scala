@@ -147,8 +147,20 @@ object MicroBlossomHost extends App {
               case _: AxiLite4 => {
                 Json.obj(
                   "interface" -> "AxiLite4",
-                  "drive" -> Json.arr("awvalid", "awaddr", "awprot", "wvalid", "wdata", "wstrb", "bready"),
-                  "read" -> Json.arr("awready", "wready", "bvalid", "bresp")
+                  "drive" -> Json.arr(
+                    "awvalid",
+                    "awaddr",
+                    "awprot",
+                    "wvalid",
+                    "wdata",
+                    "wstrb",
+                    "bready",
+                    "arvalid",
+                    "araddr",
+                    "arprot",
+                    "rready"
+                  ),
+                  "read" -> Json.arr("awready", "wready", "bvalid", "bresp", "arready", "rvalid", "rdata", "rresp")
                 )
               }
             }
@@ -166,17 +178,29 @@ object MicroBlossomHost extends App {
                       writer.println(
                         Json.stringify(
                           Json.obj(
-                            "awvalid" -> s0.aw.valid.toBoolean,
-                            "awready" -> s0.aw.ready.toBoolean,
-                            "awaddr" -> s0.aw.payload.addr.toBigInt,
-                            "awprot" -> s0.aw.payload.prot.toBigInt,
-                            "wvalid" -> s0.w.valid.toBoolean,
-                            "wready" -> s0.w.ready.toBoolean,
-                            "wdata" -> s0.w.payload.data.toBigInt,
-                            "wstrb" -> s0.w.payload.strb.toBigInt,
-                            "bvalid" -> s0.b.valid.toBoolean,
-                            "bready" -> s0.b.ready.toBoolean,
-                            "bresp" -> s0.b.payload.resp.toBigInt
+                            "drive" -> Json.arr(
+                              s0.aw.valid.toBigInt, // awvalid
+                              s0.aw.payload.addr.toBigInt, // awaddr
+                              s0.aw.payload.prot.toBigInt, // awprot
+                              s0.w.valid.toBigInt, // wvalid
+                              s0.w.payload.data.toBigInt, // wdata
+                              s0.w.payload.strb.toBigInt, // wstrb
+                              s0.b.ready.toBigInt, // bready
+                              s0.ar.valid.toBigInt, // arvalid
+                              s0.ar.payload.addr.toBigInt, // araddr
+                              s0.ar.payload.prot.toBigInt, // arprot
+                              s0.r.ready.toBigInt // rready
+                            ),
+                            "read" -> Json.arr(
+                              s0.aw.ready.toBigInt, // awready
+                              s0.w.ready.toBigInt, // wready
+                              s0.b.valid.toBigInt, // bvalid
+                              s0.b.payload.resp.toBigInt, // bresp
+                              s0.ar.ready.toBigInt, // arready
+                              s0.r.valid.toBigInt, // rvalid
+                              s0.r.payload.data.toBigInt, // rdata
+                              s0.r.payload.resp.toBigInt // rresp
+                            )
                           )
                         )
                       )
