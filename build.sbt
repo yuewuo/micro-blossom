@@ -27,7 +27,8 @@ lazy val microblossom = (project in file("."))
       "io.circe" %% "circe-generic" % "0.14.3",
       "io.circe" %% "circe-parser" % "0.14.3",
       "io.circe" %% "circe-generic-extras" % "0.14.3",
-      "org.rogach" %% "scallop" % "5.0.1"
+      "org.rogach" %% "scallop" % "5.0.1",
+      "org.playframework" %% "play-json" % "3.0.1"
     )
   )
 

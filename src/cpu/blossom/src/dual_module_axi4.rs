@@ -32,6 +32,8 @@ use wait_timeout::ChildExt;
 pub struct DualConfig {
     #[derivative(Default(value = "*dual_config_default::WITH_WAVEFORM"))]
     pub with_waveform: bool,
+    #[derivative(Default(value = "*dual_config_default::DUMP_DEBUGGER_FILES"))]
+    pub dump_debugger_files: bool,
     #[derivative(Default(value = "(*dual_config_default::BUS_TYPE).clone()"))]
     pub bus_type: String,
     #[derivative(Default(value = "*dual_config_default::USE_64_BUS"))]
@@ -405,6 +407,8 @@ pub mod dual_config_default {
     }
     lazy_static! {
         pub static ref WITH_WAVEFORM: bool = (cfg!(test) || is_set("WITH_WAVEFORM")) && !is_set("NO_WAVEFORM");
+        pub static ref DUMP_DEBUGGER_FILES: bool =
+            (cfg!(test) || is_set("DUMP_DEBUGGER_FILES")) && !is_set("NO_DEBUGGER_FILES");
         pub static ref BUS_TYPE: String = env::var("BUS_TYPE").unwrap_or("AxiLite4".to_string());
         pub static ref USE_64_BUS: bool = !is_set("USE_32_BUS");
         pub static ref SUPPORT_ADD_DEFECT_VERTEX: bool = !is_set("NO_ADD_DEFECT_VERTEX");

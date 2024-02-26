@@ -30,7 +30,6 @@ import microblossom.types._
 import microblossom.modules._
 import microblossom.stage._
 import org.scalatest.funsuite.AnyFunSuite
-import scala.collection.mutable.ArrayBuffer
 import org.rogach.scallop._
 
 /*

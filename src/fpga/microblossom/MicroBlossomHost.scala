@@ -10,6 +10,8 @@ package microblossom
 
 import java.io._
 import java.net._
+import java.util.concurrent.atomic._
+import play.api.libs.json._
 import io.circe.parser.decode
 import scala.reflect.io.Directory
 import scala.util.control.Breaks._
@@ -18,8 +20,12 @@ import microblossom.modules._
 import microblossom.driver._
 import spinal.core._
 import spinal.lib._
+import spinal.lib.bus.amba4.axi._
+import spinal.lib.bus.amba4.axilite._
+import spinal.sim._
 import spinal.core.sim._
 import spinal.lib.bus.misc._
+import scala.collection.mutable.ArrayBuffer
 
 // sbt "runMain microblossom.MicroBlossomHost localhost 4123 test"
 object MicroBlossomHost extends App {
@@ -53,6 +59,7 @@ object MicroBlossomHost extends App {
     }
 
     val withWaveform = readNamedValue("with_waveform").toBoolean
+    val dumpDebuggerFiles = readNamedValue("dump_debugger_files").toBoolean
     val busType = decode[String](readNamedValue("bus_type")) match {
       case Right(value) => value
       case Left(ex)     => throw ex
@@ -129,6 +136,62 @@ object MicroBlossomHost extends App {
           dut.dualClockDomain.forkStimulus(period = 10 * clockDivideBy)
         }
 
+        val dumpJobs = ArrayBuffer[SimThread]()
+        val endOfProgram = new AtomicBoolean(false)
+        if (dumpDebuggerFiles) {
+          println("dumping debugger files...")
+
+          // dump the s0 interface
+          {
+            val interfaceSpec = dut.io.s0 match {
+              case _: AxiLite4 => {
+                Json.obj(
+                  "interface" -> "AxiLite4",
+                  "drive" -> Json.arr("awvalid", "awaddr", "awprot", "wvalid", "wdata", "wstrb", "bready"),
+                  "read" -> Json.arr("awready", "wready", "bvalid", "bresp")
+                )
+              }
+            }
+            val axi4Dumper = fork {
+              val filePath = "%s/%s/s0.debugger".format(workspacePath, host_name)
+              val writer = new PrintWriter(new File(filePath))
+              writer.println(Json.stringify(interfaceSpec))
+              writer.flush()
+              try {
+                while (!endOfProgram.get()) {
+                  dut.clockDomain.waitSampling()
+                  sleep(1)
+                  dut.io.s0 match {
+                    case s0: AxiLite4 => {
+                      writer.println(
+                        Json.stringify(
+                          Json.obj(
+                            "awvalid" -> s0.aw.valid.toBoolean,
+                            "awready" -> s0.aw.ready.toBoolean,
+                            "awaddr" -> s0.aw.payload.addr.toBigInt,
+                            "awprot" -> s0.aw.payload.prot.toBigInt,
+                            "wvalid" -> s0.w.valid.toBoolean,
+                            "wready" -> s0.w.ready.toBoolean,
+                            "wdata" -> s0.w.payload.data.toBigInt,
+                            "wstrb" -> s0.w.payload.strb.toBigInt,
+                            "bvalid" -> s0.b.valid.toBoolean,
+                            "bready" -> s0.b.ready.toBoolean,
+                            "bresp" -> s0.b.payload.resp.toBigInt
+                          )
+                        )
+                      )
+                    }
+                    case _ => throw new Exception(s"[error] axi4 dumper not supported for this interface")
+                  }
+                }
+              } finally {
+                writer.close()
+              }
+            }
+            dumpJobs.append(axi4Dumper)
+          }
+        }
+
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
         // start hosting the commands
@@ -172,6 +235,8 @@ object MicroBlossomHost extends App {
         }
 
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
+        endOfProgram.set(true)
+        for (job <- dumpJobs) { job.join() }
       }
 
   } catch {
