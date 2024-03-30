@@ -13,7 +13,9 @@
 //! EMBEDDED_BLOSSOM_MAIN=benchmark_reset_speed WITH_WAVEFORM=1 cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
 //! gtkwave ../../../simWorkspace/MicroBlossomHost/benchmark_reset_speed/hosted.fst
 //!
-//! EMBEDDED_BLOSSOM_MAIN=benchmark_primal_simple_match cargo --release run --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
+//! EMBEDDED_BLOSSOM_MAIN=benchmark_primal_simple_match cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
+//!
+//! EMBEDDED_BLOSSOM_MAIN=test_micro_blossom cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_d3.json
 //! ```
 //!
 //! For more use cases and details, see https://docs.google.com/document/d/1HA6VL_ywSoCpS7PODIA8HeTbg_VIbbpyqtazdunSRvc/edit?usp=sharing
