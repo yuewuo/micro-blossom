@@ -70,6 +70,7 @@ object MicroBlossomHost extends App {
     val convergecastDelay = readNamedValue("convergecast_delay").toInt
     val conflictChannels = readNamedValue("conflict_channels").toInt
     val supportAddDefectVertex = readNamedValue("support_add_defect_vertex").toBoolean
+    val supportOffloading = readNamedValue("support_offloading").toBoolean
     val injectRegistersJson = readNamedValue("inject_registers")
     val injectRegisters = decode[Seq[String]](injectRegistersJson) match {
       case Right(value) => value
@@ -85,6 +86,7 @@ object MicroBlossomHost extends App {
       convergecastDelay = convergecastDelay,
       conflictChannels = conflictChannels,
       supportAddDefectVertex = supportAddDefectVertex,
+      supportOffloading = supportOffloading,
       injectRegisters = injectRegisters
     )
     config.sanityCheck()
@@ -240,7 +242,6 @@ object MicroBlossomHost extends App {
         for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
         // start hosting the commands
-        var maxGrowth = Long.MaxValue
         breakable {
           while (true) {
             val command = inStream.readLine()

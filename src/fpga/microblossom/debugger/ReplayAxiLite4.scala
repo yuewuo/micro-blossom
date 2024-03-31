@@ -169,7 +169,7 @@ case class ReplayAxiLite4(
   // read: "awready", "wready", "bvalid", "bresp", "arready", "rvalid", "rdata", "rresp"
   io.readActual.value("awready") := microBlossom.io.s0.aw.ready.asUInt
   io.readActual.value("wready") := microBlossom.io.s0.w.ready.asUInt
-  io.readActual.value("bvalid") := microBlossom.io.s0.b.ready.asUInt
+  io.readActual.value("bvalid") := microBlossom.io.s0.b.valid.asUInt
   io.readActual.value("bresp") := microBlossom.io.s0.b.resp.asUInt
   io.readActual.value("arready") := microBlossom.io.s0.ar.ready.asUInt
   io.readActual.value("rvalid") := microBlossom.io.s0.r.valid.asUInt
@@ -195,15 +195,7 @@ object ReplayAxiLite4Generator extends App {
     val debuggerPath = args(0)
     val debuggerFile = DebuggerFileAxiLite4(debuggerPath)
     val conf = new MicroBlossomGeneratorConf(args.tail)
-    val config = DualConfig(
-      filename = conf.graph(),
-      broadcastDelay = conf.broadcastDelay(),
-      convergecastDelay = conf.convergecastDelay(),
-      contextDepth = conf.contextDepth(),
-      conflictChannels = conf.conflictChannels(),
-      supportAddDefectVertex = conf.supportAddDefectVertex(),
-      injectRegisters = conf.injectRegisters()
-    )
+    val config = conf.dualConfig
     val genConfig = Config.argFolderPath(conf.outputDir())
     // note: deliberately not creating `component` here, otherwise it encounters null pointer error of GlobalData.get()....
     val mode: SpinalMode = conf.languageHdl() match {

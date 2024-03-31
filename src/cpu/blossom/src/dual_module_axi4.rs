@@ -48,6 +48,8 @@ pub struct DualConfig {
     pub conflict_channels: usize,
     #[derivative(Default(value = "*dual_config_default::SUPPORT_ADD_DEFECT_VERTEX"))]
     pub support_add_defect_vertex: bool,
+    #[derivative(Default(value = "*dual_config_default::SUPPORT_OFFLOADING"))]
+    pub support_offloading: bool,
     #[derivative(Default(value = "dual_config_default::INJECT_REGISTERS.clone()"))]
     pub inject_registers: Vec<String>,
     #[derivative(Default(value = "dual_config_default::env_usize(\"CLOCK_DIVIDE_BY\", 1)"))]
@@ -84,12 +86,13 @@ impl DualInterfaceWithInitializer for DualModuleAxi4 {
 
 impl DualModuleAxi4Driver {
     pub fn new_with_name_raw(
-        mut micro_blossom: MicroBlossomSingle,
+        micro_blossom: MicroBlossomSingle,
         host_name: String,
         dual_config: DualConfig,
     ) -> std::io::Result<Self> {
-        // TODO: later on support offloading
-        micro_blossom.offloading.0.clear();
+        if dual_config.support_offloading {
+            unimplemented!("TODO: support primal offloading")
+        }
         let hostname = "127.0.0.1";
         let listener = TcpListener::bind(format!("{hostname}:0"))?;
         let port = listener.local_addr()?.port();
@@ -412,6 +415,7 @@ pub mod dual_config_default {
         pub static ref BUS_TYPE: String = env::var("BUS_TYPE").unwrap_or("AxiLite4".to_string());
         pub static ref USE_64_BUS: bool = !is_set("USE_32_BUS");
         pub static ref SUPPORT_ADD_DEFECT_VERTEX: bool = !is_set("NO_ADD_DEFECT_VERTEX");
+        pub static ref SUPPORT_OFFLOADING: bool = is_set("SUPPORT_OFFLOADING");
         pub static ref INJECT_REGISTERS: Vec<String> = match env::var("INJECT_REGISTERS") {
             Ok(value) => value.split(',').map(|a| a.to_string()).collect(),
             Err(_) => vec![],

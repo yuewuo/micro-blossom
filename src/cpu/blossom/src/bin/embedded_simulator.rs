@@ -71,7 +71,7 @@ impl EmbeddedSimulator {
                     .unwrap(),
             );
         }
-        get_native_time();
+        // get_native_time();
         rust_main_raw();
         SIMULATOR_DRIVER.lock().take(); // drop the connection
     }

@@ -17,6 +17,9 @@ make -C ../../fpga/Xilinx/VMK180_Micro_Blossom run_a72
 pub fn main() {
     println!("Test MicroBlossom");
 
+    let mut head = extern_c::ReadoutHead::new();
+    let mut conflicts: [extern_c::ReadoutConflict; 1] = core::array::from_fn(|_| extern_c::ReadoutConflict::invalid());
+
     println!("\n1. Timer Sanity Check");
     sanity_check_get_time();
 
@@ -37,8 +40,6 @@ pub fn main() {
     assert_eq!(instruction_counter, test_count);
 
     println!("\n4. Test Max Growable Fetch");
-    let mut head = extern_c::ReadoutHead::new();
-    let mut conflicts: [extern_c::ReadoutConflict; 1] = core::array::from_fn(|_| extern_c::ReadoutConflict::invalid());
     for nop in [0, 30] {
         println!("  [nop = {nop}]");
         // nop to reduce the read halt of same context

@@ -563,6 +563,7 @@ class MicroBlossomGeneratorConf(arguments: Seq[String]) extends ScallopConf(argu
   val contextDepth = opt[Int](default = Some(1), descr = "how many contexts supported")
   val conflictChannels = opt[Int](default = Some(1), descr = "how many conflicts are reported at once")
   val supportAddDefectVertex = opt[Boolean](default = Some(true), descr = "support AddDefectVertex instruction")
+  val supportOffloading = opt[Boolean](default = Some(false), descr = "support offloading optimization")
   val injectRegisters =
     opt[List[String]](
       default = Some(List()),
@@ -570,21 +571,23 @@ class MicroBlossomGeneratorConf(arguments: Seq[String]) extends ScallopConf(argu
     )
   val clockDivideBy = opt[Int](default = Some(1))
   verify()
+  def dualConfig = DualConfig(
+    filename = graph(),
+    broadcastDelay = broadcastDelay(),
+    convergecastDelay = convergecastDelay(),
+    contextDepth = contextDepth(),
+    conflictChannels = conflictChannels(),
+    supportAddDefectVertex = supportAddDefectVertex(),
+    supportOffloading = supportOffloading(),
+    injectRegisters = injectRegisters()
+  )
 }
 
 // sbt "runMain microblossom.MicroBlossomGenerator --help"
 // (e.g.) sbt "runMain microblossom.MicroBlossomGenerator --graph ./resources/graphs/example_code_capacity_d3.json"
 object MicroBlossomGenerator extends App {
   val conf = new MicroBlossomGeneratorConf(args)
-  val config = DualConfig(
-    filename = conf.graph(),
-    broadcastDelay = conf.broadcastDelay(),
-    convergecastDelay = conf.convergecastDelay(),
-    contextDepth = conf.contextDepth(),
-    conflictChannels = conf.conflictChannels(),
-    supportAddDefectVertex = conf.supportAddDefectVertex(),
-    injectRegisters = conf.injectRegisters()
-  )
+  val config = conf.dualConfig
   val genConfig = Config.argFolderPath(conf.outputDir())
   // note: deliberately not creating `component` here, otherwise it encounters null pointer error of GlobalData.get()....
   val mode: SpinalMode = conf.languageHdl() match {

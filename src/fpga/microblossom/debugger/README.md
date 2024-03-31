@@ -39,3 +39,19 @@ Fixing this eliminates most of the inconsistencies, shown as the signal `io_test
 
 However, there are still some inconsistency left. I suppose this is also something related to the configuration
 but I haven't found it now.
+
+#### Bug Fix 2 (2024.3.31)
+
+Another configuration bug... The Rust program doesn't support offloading, so it just remove the offloading completely using
+
+```rust
+// TODO: later on support offloading
+micro_blossom.offloading.0.clear();
+```
+
+However, the generated hardware already supports offloading, and thus fails the `test_micro_blossom.rs` test case which
+assumes no offloading exists.
+
+Solution: offloading should be controlled by a flag in `DualConfig` and defaults to off.
+This allows the graph json to stay as is while we can choose to use the offloading feature or not.
+As an optimization feature (which also consume more hardware resources), turning it off is a good choice.

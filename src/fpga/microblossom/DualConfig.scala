@@ -19,6 +19,7 @@ case class DualConfig(
     var conflictChannels: Int = 1, // how many conflicts are collected at once in parallel
     // optional features
     var supportAddDefectVertex: Boolean = true,
+    var supportOffloading: Boolean = false,
     // load graph either from parameter or from file
     var graph: SingleGraph = null,
     val filename: String = null,
@@ -27,7 +28,11 @@ case class DualConfig(
 ) {
   def vertexNum = graph.vertex_num.toInt
   def edgeNum = graph.weighted_edges.length.toInt
-  def offloaderNum = graph.offloading.length.toInt
+  def offloaderNum = if (supportOffloading) {
+    graph.offloading.length.toInt
+  } else {
+    0
+  }
   def instructionSpec = InstructionSpec(this)
   def contextBits = log2Up(contextDepth)
   def IndexNone = (1 << vertexBits) - 1
@@ -82,7 +87,9 @@ case class DualConfig(
     }
     // build vertex to neighbor edge mapping
     updateIncidentEdges()
-    updateIncidentOffloaders()
+    if (supportOffloading) {
+      updateIncidentOffloaders()
+    }
     // update virtual vertices
     virtualVertices.clear()
     for (vertexIndex <- graph.virtual_vertices) {
