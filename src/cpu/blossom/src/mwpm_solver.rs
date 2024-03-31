@@ -17,6 +17,7 @@ use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
+use nonzero::nonzero as nz;
 use serde_json::json;
 
 pub struct SolverDualRTL {
@@ -323,6 +324,7 @@ impl PrimalDualSolver for SolverEmbeddedRTL {
                     defect_index: self.defect_nodes[left_vertex.node_index.unwrap() as usize],
                 },
                 grow_state: DualNodeGrowState::Stay,
+                defect_size: nz!(1usize),
                 parent_blossom: None,
                 dual_variable_cache: (0, 0),
                 belonging: belonging.clone(),
@@ -333,6 +335,7 @@ impl PrimalDualSolver for SolverEmbeddedRTL {
                     defect_index: self.defect_nodes[right_vertex.node_index.unwrap() as usize],
                 },
                 grow_state: DualNodeGrowState::Stay,
+                defect_size: nz!(1usize),
                 parent_blossom: None,
                 dual_variable_cache: (0, 0),
                 belonging: belonging.clone(),
@@ -597,6 +600,7 @@ impl PrimalDualSolver for SolverDualComb {
                         defect_index: self.defect_nodes[left_vertex.registers.node_index.unwrap() as usize],
                     },
                     grow_state: DualNodeGrowState::Stay,
+                    defect_size: nz!(1usize),
                     parent_blossom: None,
                     dual_variable_cache: (0, 0),
                     belonging: belonging.clone(),
@@ -607,6 +611,7 @@ impl PrimalDualSolver for SolverDualComb {
                         defect_index: self.defect_nodes[right_vertex.registers.node_index.unwrap() as usize],
                     },
                     grow_state: DualNodeGrowState::Stay,
+                    defect_size: nz!(1usize),
                     parent_blossom: None,
                     dual_variable_cache: (0, 0),
                     belonging: belonging.clone(),
@@ -628,6 +633,7 @@ impl PrimalDualSolver for SolverDualComb {
                         defect_index: self.defect_nodes[regular_vertex.registers.node_index.unwrap() as usize],
                     },
                     grow_state: DualNodeGrowState::Stay,
+                    defect_size: nz!(1usize),
                     parent_blossom: None,
                     dual_variable_cache: (0, 0),
                     belonging: belonging.clone(),
@@ -825,6 +831,7 @@ fn perfect_matching_from_embedded_primal<const N: usize>(
             class: DualNodeClass::DefectVertex {
                 defect_index: defect_nodes[node_index.get() as usize],
             },
+            defect_size: nz!(1usize),
             grow_state: DualNodeGrowState::Stay,
             parent_blossom: None,
             dual_variable_cache: (0, 0),
@@ -837,6 +844,7 @@ fn perfect_matching_from_embedded_primal<const N: usize>(
                     class: DualNodeClass::DefectVertex {
                         defect_index: defect_nodes[peer_index.get() as usize],
                     },
+                    defect_size: nz!(1usize),
                     grow_state: DualNodeGrowState::Stay,
                     parent_blossom: None,
                     dual_variable_cache: (0, 0),

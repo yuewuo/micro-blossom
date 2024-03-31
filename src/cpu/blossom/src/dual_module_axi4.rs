@@ -369,8 +369,8 @@ impl Drop for DualModuleAxi4Driver {
         } else {
             println!("Scala process quit normally");
         }
-        if self.dual_config.with_waveform {
-            // only delete binary but keep original waveforms
+        if self.dual_config.with_waveform || self.dual_config.dump_debugger_files {
+            // only delete binary but keep original waveforms and debugger files
             if !dual_config_default::is_set("KEEP_RTL_FOLDER") {
                 match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/rtl", self.host_name)) {
                     Err(e) => println!("Could not remove rtl folder: {}", e),

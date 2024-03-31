@@ -144,7 +144,7 @@ object MicroBlossomHost extends App {
           // dump the s0 interface
           {
             val interfaceSpec = dut.io.s0 match {
-              case _: AxiLite4 => {
+              case s0: AxiLite4 => {
                 Json.obj(
                   "interface" -> "AxiLite4",
                   "drive" -> Json.arr(
@@ -160,7 +160,30 @@ object MicroBlossomHost extends App {
                     "arprot",
                     "rready"
                   ),
-                  "read" -> Json.arr("awready", "wready", "bvalid", "bresp", "arready", "rvalid", "rdata", "rresp")
+                  "drive_width" -> Json.arr(
+                    1,
+                    s0.aw.addr.getBitsWidth,
+                    s0.aw.prot.getBitsWidth,
+                    1,
+                    s0.w.data.getBitsWidth,
+                    s0.w.strb.getBitsWidth,
+                    1,
+                    1,
+                    s0.ar.addr.getBitsWidth,
+                    s0.ar.prot.getBitsWidth,
+                    1
+                  ),
+                  "read" -> Json.arr("awready", "wready", "bvalid", "bresp", "arready", "rvalid", "rdata", "rresp"),
+                  "read_width" -> Json.arr(
+                    1,
+                    1,
+                    1,
+                    s0.b.resp.getBitsWidth,
+                    1,
+                    1,
+                    s0.r.data.getBitsWidth,
+                    s0.r.resp.getBitsWidth
+                  )
                 )
               }
             }

@@ -896,6 +896,7 @@ dependencies = [
  "derivative",
  "lazy_static",
  "libc",
+ "nonzero",
  "parking_lot",
  "pbr",
  "petgraph",
@@ -1286,6 +1287,7 @@ dependencies = [
  "libc",
  "micro-blossom-nostd",
  "mwmatching",
+ "nonzero",
  "num_cpus",
  "parking_lot",
  "pbr",
@@ -1358,6 +1360,18 @@ dependencies = [
  "num-integer",
  "num-traits",
  "rawpointer",
+]
+
+[[package]]
+name = "nonzero"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d9b9acd66930a3f7754cac98e17dbb17eb8018ad2c0b2e9ccccfbf23330127e"
+dependencies = [
+ "num-traits",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.48",
 ]
 
 [[package]]
