@@ -107,6 +107,11 @@ case class DebuggerFileAxiLite4(filePath: String) {
   }
 }
 
+case class TestSignals() extends Bundle {
+  val rvalid = Bool()
+  val rdata = Bool()
+}
+
 case class ReplayAxiLite4(
     debuggerFile: DebuggerFileAxiLite4,
     dualConfig: DualConfig,
@@ -122,27 +127,62 @@ case class ReplayAxiLite4(
     drive.setName("s0") // avoid adding the `io_drive_` prefix in the signal generated
     val readExpected = out(ReadBundle(interfaceConfig))
     readExpected.setName("s0")
-    // val error = out(Bool())
-    // val finished = out(Bool())
+    val readActual = out(ReadBundle(interfaceConfig))
+    readActual.setName("ra")
+    val tests = out(TestSignals())
+    val error = out(Bool())
+    val finished = out(Bool())
   }
 
   val driveMem = Mem(DriveBundle(interfaceConfig), debuggerFile.length) init (debuggerFile.driveIterator.toSeq)
   val readMem = Mem(ReadBundle(interfaceConfig), debuggerFile.length) init (debuggerFile.readIterator.toSeq)
 
   val counter = Counter(indexBits bits)
-  io.index := counter.value
+  io.index := counter.value - 1
 
   when(counter.value =/= debuggerFile.length - 1) {
+    io.finished := False
     counter.increment()
+  } otherwise {
+    io.finished := True
   }
 
-  val driveValue = driveMem.readSync(counter.valueNext)
+  val driveValue = driveMem.readSync(counter.value)
   io.drive := driveValue
 
-  val readValue = readMem.readSync(counter.valueNext)
+  val readValue = readMem.readSync(counter.value)
   io.readExpected := readValue
 
-  // val microBlossom = MicroBlossomAxiLite4.generate(config, conf.clockDivideBy(), conf.baseAddress())
+  val microBlossom = MicroBlossomAxiLite4(dualConfig, clockDivideBy, baseAddress)
+  // drive: "awvalid", "awaddr", "awprot", "wvalid", "wdata", "wstrb", "bready", "arvalid", "araddr", "arprot", "rready"
+  microBlossom.io.s0.aw.valid := driveValue.value("awvalid").asBool
+  microBlossom.io.s0.aw.addr := driveValue.value("awaddr")
+  microBlossom.io.s0.aw.prot := driveValue.value("awprot").asBits
+  microBlossom.io.s0.w.valid := driveValue.value("wvalid").asBool
+  microBlossom.io.s0.w.data := driveValue.value("wdata").asBits
+  microBlossom.io.s0.w.strb := driveValue.value("wstrb").asBits
+  microBlossom.io.s0.b.ready := driveValue.value("bready").asBool
+  microBlossom.io.s0.ar.valid := driveValue.value("arvalid").asBool
+  microBlossom.io.s0.ar.addr := driveValue.value("araddr")
+  microBlossom.io.s0.ar.prot := driveValue.value("arprot").asBits
+  microBlossom.io.s0.r.ready := driveValue.value("rready").asBool
+  // read: "awready", "wready", "bvalid", "bresp", "arready", "rvalid", "rdata", "rresp"
+  io.readActual.value("awready") := microBlossom.io.s0.aw.ready.asUInt
+  io.readActual.value("wready") := microBlossom.io.s0.w.ready.asUInt
+  io.readActual.value("bvalid") := microBlossom.io.s0.b.ready.asUInt
+  io.readActual.value("bresp") := microBlossom.io.s0.b.resp.asUInt
+  io.readActual.value("arready") := microBlossom.io.s0.ar.ready.asUInt
+  io.readActual.value("rvalid") := microBlossom.io.s0.r.valid.asUInt
+  io.readActual.value("rdata") := microBlossom.io.s0.r.data.asUInt
+  io.readActual.value("rresp") := microBlossom.io.s0.r.resp.asUInt
+
+  io.tests.rvalid := io.readExpected.value("rvalid") === io.readActual.value("rvalid")
+  io.tests.rdata := !io.readActual.value("rvalid").asBool || (
+    io.readExpected.value("rdata") === io.readActual.value("rdata")
+  )
+
+  io.error := !io.tests.rvalid || !io.tests.rdata
+
 }
 
 // (e.g.) sbt "runMain microblossom.debugger.ReplayAxiLite4Generator ./simWorkspace/MicroBlossomHost/test_micro_blossom/s0.debugger --graph ./resources/graphs/example_code_capacity_d3.json"
@@ -188,11 +228,11 @@ object ReplayAxiLite4Test extends App {
   val (genConfig, mode, config, conf, debuggerFile) = ReplayAxiLite4Generator.getParameters(args)
   Config.sim
     .compile(ReplayAxiLite4(debuggerFile, config, conf.clockDivideBy(), conf.baseAddress()))
-    .doSim("logic validity") { dut =>
+    .doSim("replay") { dut =>
       dut.clockDomain.forkStimulus(period = 10)
 
       for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
-
+      for (idx <- 0 to debuggerFile.length) { dut.clockDomain.waitSampling() }
       for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
     }
 
