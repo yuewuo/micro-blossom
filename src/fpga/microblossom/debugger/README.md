@@ -24,3 +24,18 @@ sbt "runMain microblossom.debugger.ReplayAxiLite4Generator ./simWorkspace/MicroB
 # run the test case
 sbt "runMain microblossom.debugger.ReplayAxiLite4Test ./simWorkspace/MicroBlossomHost/test_micro_blossom/s0.debugger --graph ./resources/graphs/example_code_capacity_d3.json"
 ```
+
+#### Bug Fix 1 (2024.3.31)
+
+`val supportAddDefectVertex = opt[Boolean](default = Some(true), descr = "support AddDefectVertex instruction")`
+
+I forgot to default support this instruction, meaning the generated verilog is not the same as the simulated one.
+
+![](./fix1_before.png)
+
+Fixing this eliminates most of the inconsistencies, shown as the signal `io_tests_rdata`.
+
+![](./fix1_after.png)
+
+However, there are still some inconsistency left. I suppose this is also something related to the configuration
+but I haven't found it now.

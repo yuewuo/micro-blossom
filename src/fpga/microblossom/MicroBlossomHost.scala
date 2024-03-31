@@ -111,11 +111,9 @@ object MicroBlossomHost extends App {
         if (withWaveform) {
           dut.simDual.simMakePublicSnapshot()
         }
-        component
+        dut
       })
-      .doSim("hosted") { component =>
-        val dut = component.asInstanceOf[MicroBlossom[IMasterSlave, BusSlaveFactoryDelayed]]
-
+      .doSim("hosted") { dut =>
         outStream.println("simulation started")
         if (withWaveform) {
           println("view waveform: `gtkwave %s/%s/hosted.fst`".format(workspacePath, host_name))
