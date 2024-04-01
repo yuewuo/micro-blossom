@@ -19,9 +19,6 @@ instantiate_example_design -template xilinx.com:design:Versal_APU_RPU_perf:1.0 -
 
 
 # create IP
-exec rm -rf ${name}_verilog
-puts "$dual_config_filepath"
-exec python3 ./create_verilog.py "$dual_config_filepath"
 if { [file exists "${name}_verilog/$ip_name.v"] == 0} {               
     puts "Error: verilog file not generated, expecting ${name}_verilog/$ip_name.v"
     exit 1

@@ -1,6 +1,8 @@
 NAME = vmk180_micro_blossom
 
 VIVADO_DIR = $(NAME)_vivado
+VERILOG_DIR = $(NAME)_verilog
+MODULE_NAME = MicroBlossom
 XSA_FILE = $(NAME).xsa
 VITIS_DIR = $(NAME)_vitis
 
@@ -9,9 +11,11 @@ CLOCK_FREQUENCY ?= 200
 
 all: vitis
 
-$(XSA_FILE):
-	@echo generating hardware platform description \($(XSA_FILE)\) using Vivado
-
+$(VERILOG_DIR)/$(MODULE_NAME).v:
+	@if ! [ -f "./create_verilog.py" ]; then \
+		echo "don't know how to create the verilog"
+		exit 1;\
+	fi
 	@if [ "$(DUAL_CONFIG_FILEPATH)" = "" ]; then \
 		echo "DUAL_CONFIG_FILEPATH is not set, required for building vivado project"; \
 		exit 1; \
@@ -20,6 +24,11 @@ $(XSA_FILE):
 		echo "$(DUAL_CONFIG_FILEPATH) does not exist"; \
 		exit 1; \
 	fi
+	rm -rf $(VERILOG_DIR)
+	python3 ./create_verilog.py "$(DUAL_CONFIG_FILEPATH)"
+
+$(XSA_FILE): $(VERILOG_DIR)/$(MODULE_NAME).v
+	@echo generating hardware platform description \($(XSA_FILE)\) using Vivado
 
 	@if [ -d "$(VIVADO_DIR)" ]; then \
 		read -p "$(VIVADO_DIR) exists. Do you want to delete it? [y/N]: " answer; \

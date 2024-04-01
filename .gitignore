@@ -65,3 +65,10 @@ vitis_journal.py
 vivado.*
 .Xil
 *.dump
+
+*_verilog
+*_vivado
+*_vitis
+*.xsa
+
+binding.h
