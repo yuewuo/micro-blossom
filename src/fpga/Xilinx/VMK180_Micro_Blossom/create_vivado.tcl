@@ -1,13 +1,12 @@
 set name vmk180_micro_blossom
 set ip_name MicroBlossom
 
-if { $argc != 2 } {
-    puts "Usage: <dual_config_filepath> <clock frequency in MHz>"
+if { $argc != 1 } {
+    puts "Usage: <clock frequency in MHz>"
     puts "Please try again."
     exit 1
 } else {
-    set dual_config_filepath [lindex $argv 0]
-    scan [lindex $argv 1] %f clock_frequency
+    scan [lindex $argv 0] %f clock_frequency
 }
 
 create_project ${name} ./${name}_vivado -part xcvm1802-vsva2197-2MP-e-S
@@ -63,15 +62,15 @@ set_property range 4M [get_bd_addr_segs versal_cips_0/M_AXI_FPD/SEG_${ip_name}_0
 set_property offset 0x400000000 [get_bd_addr_segs versal_cips_0/M_AXI_FPD/SEG_${ip_name}_0_reg0]
 
 # create an ILA to monitor the transactions
-create_bd_cell -type ip -vlnv xilinx.com:ip:axis_ila:1.2 axis_ila_0
-set_property -dict [list \
-  CONFIG.C_MON_TYPE {Interface_Monitor} \
-  CONFIG.C_NUM_MONITOR_SLOTS {1} \
-  CONFIG.C_NUM_OF_PROBES {1} \
-] [get_bd_cells axis_ila_0]
-connect_bd_intf_net [get_bd_intf_pins axis_ila_0/SLOT_0_AXI] [get_bd_intf_pins versal_cips_0/M_AXI_FPD]
-connect_bd_net [get_bd_pins axis_ila_0/clk] [get_bd_pins versal_cips_0/pl0_ref_clk]
-connect_bd_net [get_bd_pins axis_ila_0/resetn] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
+# create_bd_cell -type ip -vlnv xilinx.com:ip:axis_ila:1.2 axis_ila_0
+# set_property -dict [list \
+#   CONFIG.C_MON_TYPE {Interface_Monitor} \
+#   CONFIG.C_NUM_MONITOR_SLOTS {1} \
+#   CONFIG.C_NUM_OF_PROBES {1} \
+# ] [get_bd_cells axis_ila_0]
+# connect_bd_intf_net [get_bd_intf_pins axis_ila_0/SLOT_0_AXI] [get_bd_intf_pins versal_cips_0/M_AXI_FPD]
+# connect_bd_net [get_bd_pins axis_ila_0/clk] [get_bd_pins versal_cips_0/pl0_ref_clk]
+# connect_bd_net [get_bd_pins axis_ila_0/resetn] [get_bd_pins proc_sys_reset_0/peripheral_aresetn]
 
 # regenerate_bd_layout
 # save_bd_design

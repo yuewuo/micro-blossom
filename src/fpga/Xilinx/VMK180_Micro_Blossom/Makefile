@@ -1,8 +1,8 @@
 NAME = vmk180_micro_blossom
 
+MODULE_NAME = MicroBlossom
 VIVADO_DIR = $(NAME)_vivado
 VERILOG_DIR = $(NAME)_verilog
-MODULE_NAME = MicroBlossom
 XSA_FILE = $(NAME).xsa
 VITIS_DIR = $(NAME)_vitis
 
@@ -13,8 +13,8 @@ all: vitis
 
 $(VERILOG_DIR)/$(MODULE_NAME).v:
 	@if ! [ -f "./create_verilog.py" ]; then \
-		echo "don't know how to create the verilog"
-		exit 1;\
+		echo "don't know how to create the verilog"; \
+		exit 1; \
 	fi
 	@if [ "$(DUAL_CONFIG_FILEPATH)" = "" ]; then \
 		echo "DUAL_CONFIG_FILEPATH is not set, required for building vivado project"; \
@@ -40,7 +40,7 @@ $(XSA_FILE): $(VERILOG_DIR)/$(MODULE_NAME).v
 			exit 1; \
 		fi \
 	fi
-	vivado -mode batch -s create_vivado.tcl -tclargs $(DUAL_CONFIG_FILEPATH) $(CLOCK_FREQUENCY)
+	vivado -mode batch -s create_vivado.tcl -tclargs $(CLOCK_FREQUENCY)
 
 vitis: $(XSA_FILE)
 	@echo creating vitis workspace at $(VITIS_DIR)
@@ -60,10 +60,15 @@ clean:
 	@read -p "Building the project from scratch takes a long time. Do you want to delete it? [y/N]: " answer; \
 	if [ "$$answer" = "y" ]; then \
 		echo "cleaning..."; \
-		rm -rf $(NAME)_verilog; \
-		rm -rf $(NAME)_vitis; \
-		rm -rf $(NAME)_vivado; \
-		rm -f *.xsa; \
 	else \
 		echo "Do nothing"; \
+		exit 0; \
 	fi
+	@if [ -f "./create_verilog.py" ]; then \
+		rm -rf $(NAME)_verilog; \
+	else \
+		echo "not deleting verilog folder because there is no create_verilog.py file"; \
+	fi
+	rm -rf $(NAME)_vitis
+	rm -rf $(NAME)_vivado
+	rm -f *.xsa
