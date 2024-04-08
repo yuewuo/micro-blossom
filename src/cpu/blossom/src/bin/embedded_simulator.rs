@@ -4,7 +4,7 @@
 //!
 //! ## Examples
 //!
-//! First generate the resources using `cargo run --bin micro-blossom`.
+//! First generate the resources using `cargo run --bin generate_example_graphs`.
 //!
 //! ```sh
 //! cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json

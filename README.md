@@ -209,7 +209,7 @@ git checkout v1.9.3
 ### How to estimate LUT usage of a design
 
 ```sh
-cd src/cpu/blossom && cargo run --bin micro-blossom && cd -  # generate the graph json files in resources/
+cd src/cpu/blossom && cargo run --bin generate_example_graphs && cd -  # generate the graph json files in resources/
 sbt "runMain microblossom.DualAcceleratorExamples"  # generate verilog files in gen/example_*/
 yosys -s src/fpga/yosys/synthesize.ys  # generate the report in gen/DualAccelerator.json
 ```
