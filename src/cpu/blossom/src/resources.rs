@@ -119,7 +119,7 @@ impl MicroBlossomSingle {
         }
     }
 
-    pub fn new_code(code: impl ExampleCode) -> Self {
+    pub fn new_code(code: &dyn ExampleCode) -> Self {
         let initializer = code.get_initializer();
         let positions = code.get_positions();
         assert_eq!(positions.len(), initializer.vertex_num as usize);

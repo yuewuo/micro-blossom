@@ -94,6 +94,9 @@ pub struct BenchmarkParameters {
     /// skip some iterations, useful when debugging
     #[clap(long, default_value_t = 0)]
     starting_iteration: usize,
+    /// generate micro blossom graph configuration
+    #[clap(long)]
+    micro_blossom_graph_output: Option<String>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Debug)]
@@ -162,8 +165,8 @@ impl From<BenchmarkParameters> for fusion_blossom::cli::BenchmarkParameters {
             format!("{}", parameters.p),
         ]);
         let BenchmarkParameters {
-            d: _,
-            p: _,
+            d,
+            p,
             pe,
             noisy_measurements,
             max_half_weight,
@@ -179,7 +182,16 @@ impl From<BenchmarkParameters> for fusion_blossom::cli::BenchmarkParameters {
             use_deterministic_seed,
             benchmark_profiler_output,
             starting_iteration,
+            micro_blossom_graph_output,
         } = parameters;
+        // generate the micro blossom graph if requested
+        if let Some(micro_blossom_graph_output) = micro_blossom_graph_output {
+            let code_config: serde_json::Value = serde_json::from_str(&code_config).unwrap();
+            let code = code_type.build(d, p, noisy_measurements, max_half_weight, code_config);
+            let micro_blossom = MicroBlossomSingle::new_code(&*code);
+            let json_str = serde_json::to_string(&micro_blossom).unwrap();
+            std::fs::write(micro_blossom_graph_output, json_str).unwrap();
+        }
         legacy_parameters.pe = pe;
         legacy_parameters.noisy_measurements = noisy_measurements;
         legacy_parameters.max_half_weight = max_half_weight;
@@ -355,10 +367,15 @@ impl Cli {
     }
 }
 
-pub fn execute_in_cli<'a>(iter: impl Iterator<Item = &'a String> + Clone, print_command: bool) {
+pub fn execute_in_cli<I, T>(iter: I, print_command: bool)
+where
+    I: IntoIterator<Item = T> + Clone,
+    T: Into<std::ffi::OsString> + Clone,
+{
     if print_command {
         print!("[command]");
         for word in iter.clone() {
+            let word = word.clone().into().into_string().unwrap();
             if word.contains(char::is_whitespace) {
                 print!("'{word}' ")
             } else {
