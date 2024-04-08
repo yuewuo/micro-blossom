@@ -60,4 +60,10 @@ fn main() {
 
         println!("cargo:rerun-if-changed=riscv-memory.x");
     }
+
+    // create empty embedded.defects if it doesn't exist
+    let defects_file = Path::new("./embedded.defects");
+    if !defects_file.exists() {
+        std::fs::write(defects_file, [u8::MAX; 4]).unwrap();
+    }
 }
