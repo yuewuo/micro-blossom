@@ -135,7 +135,6 @@ impl<const CC: usize> ConflictsStore<CC> {
     }
 
     pub fn pop(&mut self) -> Option<&ReadoutConflict> {
-        println!("self.channels: {}", self.channels);
         while self.cursor < self.channels {
             let cursor = self.cursor as usize;
             self.cursor += 1; // always increment
