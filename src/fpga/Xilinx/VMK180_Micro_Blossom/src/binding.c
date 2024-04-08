@@ -73,19 +73,21 @@ void get_conflicts(struct ReadoutHead *head,
     head->maximum_growth = raw_head;
     head->accumulated_grown = raw_head >> 16;
     head->growable = raw_head >> 32;
-    for (int i = 0; i < conflict_channels; ++i)
-    {
-        uintptr_t conflict_base = base + 32 + i * 16;
-        uint64_t raw_1 = Xil_In64(conflict_base);
-        uint64_t raw_2 = Xil_In64(conflict_base + 8);
-        struct ReadoutConflict *conflict = conflicts + i;
-        conflict->node_1 = raw_1;
-        conflict->node_2 = raw_1 >> 16;
-        conflict->touch_1 = raw_1 >> 32;
-        conflict->touch_2 = raw_1 >> 48;
-        conflict->vertex_1 = raw_2;
-        conflict->vertex_2 = raw_2 >> 16;
-        conflict->valid = raw_2 >> 32;
+    if (head->growable == 0) {  // read conflicts only when growable is zero
+        for (int i = 0; i < conflict_channels; ++i)
+        {
+            uintptr_t conflict_base = base + 32 + i * 16;
+            uint64_t raw_1 = Xil_In64(conflict_base);
+            uint64_t raw_2 = Xil_In64(conflict_base + 8);
+            struct ReadoutConflict *conflict = conflicts + i;
+            conflict->node_1 = raw_1;
+            conflict->node_2 = raw_1 >> 16;
+            conflict->touch_1 = raw_1 >> 32;
+            conflict->touch_2 = raw_1 >> 48;
+            conflict->vertex_1 = raw_2;
+            conflict->vertex_2 = raw_2 >> 16;
+            conflict->valid = raw_2 >> 32;
+        }
     }
 }
 

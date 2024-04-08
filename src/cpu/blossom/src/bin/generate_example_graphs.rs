@@ -29,7 +29,7 @@ fn generate_example(name: String, code: impl ExampleCode + FusionVisualizer) {
     }
 
     println!("generating {name}...");
-    let micro_blossom = MicroBlossomSingle::new_code(code);
+    let micro_blossom = MicroBlossomSingle::new_code(&code);
 
     let json_str = serde_json::to_string(&micro_blossom).unwrap();
     fs::write(filename, json_str).unwrap();

@@ -761,6 +761,7 @@ dependencies = [
  "cfg-if 0.1.10",
  "cty",
  "heapless 0.7.17",
+ "include-bytes-plus",
  "konst",
  "micro-blossom-nostd",
  "num",
@@ -1118,6 +1119,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "include-bytes-plus"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "122887eb9acb1544bb0308837039dcfab0ec269f88b46fd2c9a84f3ab124d199"
+
+[[package]]
 name = "indexmap"
 version = "1.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1274,6 +1281,7 @@ dependencies = [
 name = "micro-blossom"
 version = "0.0.0"
 dependencies = [
+ "byteorder",
  "cfg-if 1.0.0",
  "chrono",
  "clap 4.4.6",

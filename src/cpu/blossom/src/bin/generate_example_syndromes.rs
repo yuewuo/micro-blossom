@@ -19,13 +19,12 @@ const COMMAND_HEAD: &'static [&'static str] = &[
 pub fn generate_syndromes(name: String, parameters: &[String]) {
     let folder = "../../../resources/syndromes";
     let primal_dual_config = format!(r#"{{"filename":"{folder}/{name}.syndromes"}}"#);
-    let micro_blossom_graph_output = format!("{folder}/{name}.json");
     execute_in_cli(
         COMMAND_HEAD
             .iter()
             .cloned()
             .chain(["--primal-dual-config", primal_dual_config.as_str()])
-            .chain(["--micro-blossom-graph-output", micro_blossom_graph_output.as_str()])
+            .chain(["--parse-micro-blossom-files"])
             .chain(parameters.iter().map(|x| x.as_str())),
         true,
     );

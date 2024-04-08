@@ -154,6 +154,7 @@ dependencies = [
  "cfg-if 0.1.10",
  "cty",
  "heapless",
+ "include-bytes-plus",
  "konst",
  "micro-blossom-nostd",
  "num",
@@ -231,6 +232,12 @@ checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
 dependencies = [
  "libc",
 ]
+
+[[package]]
+name = "include-bytes-plus"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "122887eb9acb1544bb0308837039dcfab0ec269f88b46fd2c9a84f3ab124d199"
 
 [[package]]
 name = "indexmap"

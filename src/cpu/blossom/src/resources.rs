@@ -396,7 +396,7 @@ mod tests {
     fn resources_micro_blossom_test_1() {
         // cargo test resources_micro_blossom_test_1 -- --nocapture
         let code = CodeCapacityRepetitionCode::new(3, 0.1, 500);
-        let micro_blossom = MicroBlossomSingle::new_code(code);
+        let micro_blossom = MicroBlossomSingle::new_code(&code);
         println!("micro_blossom: {micro_blossom:?}");
     }
 
@@ -405,7 +405,7 @@ mod tests {
     fn resources_micro_blossom_test_2() {
         // cargo test resources_micro_blossom_test_2 -- --nocapture
         let code = PhenomenologicalRotatedCode::new(5, 5, 0.1, 500);
-        let micro_blossom = MicroBlossomSingle::new_code(code);
+        let micro_blossom = MicroBlossomSingle::new_code(&code);
         println!("micro_blossom: {micro_blossom:?}");
     }
 

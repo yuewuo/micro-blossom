@@ -5,6 +5,8 @@ pub mod util;
 pub mod mains {
     automod::dir!(pub "src/mains");
 }
+pub mod defects_reader;
+pub mod dual_driver;
 #[cfg(feature = "riscv")]
 pub mod riscv_driver;
 

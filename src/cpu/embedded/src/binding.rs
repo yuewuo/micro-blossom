@@ -3,6 +3,8 @@ pub use core::fmt::Write;
 
 pub mod extern_c {
     use cty::*;
+    use micro_blossom_nostd::interface::*;
+    use micro_blossom_nostd::util::*;
 
     #[derive(Debug, Clone)]
     #[repr(C)]
@@ -58,6 +60,12 @@ pub mod extern_c {
         pub fn set_maximum_growth(length: uint16_t, context_id: uint16_t);
     }
 
+    impl Default for ReadoutConflict {
+        fn default() -> Self {
+            Self::invalid()
+        }
+    }
+
     impl ReadoutConflict {
         pub fn invalid() -> Self {
             Self {
@@ -70,10 +78,50 @@ pub mod extern_c {
                 valid: 0,
             }
         }
+        pub fn is_valid(&self) -> bool {
+            self.valid != 0
+        }
+        pub fn get_obstacle(&self) -> CompactObstacle {
+            if self.node_1 != u16::MAX {
+                return CompactObstacle::Conflict {
+                    node_1: ni!(self.node_1).option(),
+                    node_2: if self.node_2 == u16::MAX {
+                        None.into()
+                    } else {
+                        ni!(self.node_2).option()
+                    },
+                    touch_1: ni!(self.touch_1).option(),
+                    touch_2: if self.touch_2 == u16::MAX {
+                        None.into()
+                    } else {
+                        ni!(self.touch_2).option()
+                    },
+                    vertex_1: ni!(self.vertex_1),
+                    vertex_2: ni!(self.vertex_2),
+                };
+            } else {
+                return CompactObstacle::Conflict {
+                    node_1: ni!(self.node_2).option(),
+                    node_2: if self.node_1 == u16::MAX {
+                        None.into()
+                    } else {
+                        ni!(self.node_1).option()
+                    },
+                    touch_1: ni!(self.touch_2).option(),
+                    touch_2: if self.touch_1 == u16::MAX {
+                        None.into()
+                    } else {
+                        ni!(self.touch_1).option()
+                    },
+                    vertex_1: ni!(self.vertex_2),
+                    vertex_2: ni!(self.vertex_1),
+                };
+            }
+        }
     }
 
     impl ReadoutHead {
-        pub fn new() -> Self {
+        pub const fn new() -> Self {
             Self {
                 maximum_growth: 0,
                 accumulated_grown: 0,

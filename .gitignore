@@ -50,6 +50,7 @@ bin/*
 *.cf
 *.json
 *.syndromes
+*.defects
 *.vcd
 !tester/src/test/resources/*.vhd
 

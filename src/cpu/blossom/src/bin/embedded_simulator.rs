@@ -154,13 +154,11 @@ extern "C" fn get_conflicts(
     let slice = unsafe { std::slice::from_raw_parts_mut(conflicts, conflict_channels as usize) };
     let mut locked = SIMULATOR_DRIVER.lock();
     let driver = locked.as_mut().unwrap();
-    if conflict_channels as usize != driver.conflicts.len() {
-        driver.conflicts = (0..conflict_channels).map(|_| ReadoutConflict::invalid()).collect();
-    }
+    assert_eq!(conflict_channels, driver.conflicts_store.channels);
     driver.get_conflicts(context_id).unwrap();
-    *head = driver.head.clone();
+    *head = driver.conflicts_store.head.clone();
     for i in 0..conflict_channels as usize {
-        slice[i] = driver.conflicts[i].clone();
+        slice[i] = driver.conflicts_store.maybe_uninit_conflict(i).clone();
     }
 }
 

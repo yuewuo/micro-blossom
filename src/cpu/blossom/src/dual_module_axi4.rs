@@ -9,6 +9,7 @@ use crate::resources::*;
 use crate::util::*;
 use derivative::Derivative;
 use embedded_blossom::extern_c::*;
+use embedded_blossom::util::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::dual_driver_tracked::*;
@@ -65,8 +66,7 @@ pub struct DualModuleAxi4Driver {
     pub maximum_growth: Vec<u16>,
     pub simulation_duration: Duration,
     pub dual_config: DualConfig,
-    pub head: ReadoutHead,
-    pub conflicts: Vec<ReadoutConflict>,
+    pub conflicts_store: ConflictsStore<MAX_CONFLICT_CHANNELS>,
 }
 
 pub struct Link {
@@ -127,8 +127,7 @@ impl DualModuleAxi4Driver {
                 reader,
                 writer,
             }),
-            head: ReadoutHead::new(),
-            conflicts: (0..conflict_channels).map(|_| ReadoutConflict::invalid()).collect(),
+            conflicts_store: ConflictsStore::new(conflict_channels as u8),
         };
         value.reset();
         Ok(value)
@@ -222,21 +221,23 @@ impl DualModuleAxi4Driver {
         let base = Self::READOUT_BASE + 1024 * context_id as usize;
         self.execute_instruction(Instruction32::find_obstacle(), context_id)?;
         let raw_head = self.memory_read_64(base)?;
-        self.head.maximum_growth = raw_head as u16;
-        self.head.accumulated_grown = (raw_head >> 16) as u16;
-        self.head.growable = (raw_head >> 32) as u16;
-        for i in 0..self.conflicts.len() {
-            let conflict_base = base + 32 + i * 16;
-            let raw_1 = self.memory_read_64(conflict_base)?;
-            let raw_2 = self.memory_read_64(conflict_base + 8)?;
-            let conflict = &mut self.conflicts[i];
-            conflict.node_1 = raw_1 as u16;
-            conflict.node_2 = (raw_1 >> 16) as u16;
-            conflict.touch_1 = (raw_1 >> 32) as u16;
-            conflict.touch_2 = (raw_1 >> 48) as u16;
-            conflict.vertex_1 = raw_2 as u16;
-            conflict.vertex_2 = (raw_2 >> 16) as u16;
-            conflict.valid = (raw_2 >> 32) as u8;
+        self.conflicts_store.head.maximum_growth = raw_head as u16;
+        self.conflicts_store.head.accumulated_grown = (raw_head >> 16) as u16;
+        self.conflicts_store.head.growable = (raw_head >> 32) as u16;
+        if self.conflicts_store.head.growable == 0 {
+            for i in 0..self.conflicts_store.channels as usize {
+                let conflict_base = base + 32 + i * 16;
+                let raw_1 = self.memory_read_64(conflict_base)?;
+                let raw_2 = self.memory_read_64(conflict_base + 8)?;
+                let conflict = self.conflicts_store.maybe_uninit_conflict(i);
+                conflict.node_1 = raw_1 as u16;
+                conflict.node_2 = (raw_1 >> 16) as u16;
+                conflict.touch_1 = (raw_1 >> 32) as u16;
+                conflict.touch_2 = (raw_1 >> 48) as u16;
+                conflict.vertex_1 = raw_2 as u16;
+                conflict.vertex_2 = (raw_2 >> 16) as u16;
+                conflict.valid = (raw_2 >> 32) as u8;
+            }
         }
         Ok(())
     }
@@ -261,64 +262,28 @@ impl DualStacklessDriver for DualModuleAxi4Driver {
             .unwrap();
     }
     fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
-        // after user writing
+        // first check whether there are some unhandled conflicts in the store
+        if let Some(conflict) = self.conflicts_store.pop() {
+            return (conflict.get_obstacle(), 0);
+        }
+        // then query the hardware
         self.get_conflicts(self.context_id).unwrap();
-        let grown = self.head.accumulated_grown as CompactWeight;
-        if self.head.growable == u16::MAX {
+        // check again
+        let grown = self.conflicts_store.head.accumulated_grown as CompactWeight;
+        let growable = self.conflicts_store.head.growable;
+        if growable == u16::MAX {
             (CompactObstacle::None, grown)
-        } else if self.head.growable != 0 {
+        } else if growable != 0 {
             (
                 CompactObstacle::GrowLength {
-                    length: self.head.growable as CompactWeight,
+                    length: growable as CompactWeight,
                 },
                 grown,
             )
         } else {
             // find a single obstacle from the list of obstacles
-            for conflict in self.conflicts.iter() {
-                if conflict.valid != 0 {
-                    if conflict.node_1 != u16::MAX {
-                        return (
-                            CompactObstacle::Conflict {
-                                node_1: ni!(conflict.node_1).option(),
-                                node_2: if conflict.node_2 == u16::MAX {
-                                    None.into()
-                                } else {
-                                    ni!(conflict.node_2).option()
-                                },
-                                touch_1: ni!(conflict.touch_1).option(),
-                                touch_2: if conflict.touch_2 == u16::MAX {
-                                    None.into()
-                                } else {
-                                    ni!(conflict.touch_2).option()
-                                },
-                                vertex_1: ni!(conflict.vertex_1),
-                                vertex_2: ni!(conflict.vertex_2),
-                            },
-                            grown,
-                        );
-                    } else {
-                        return (
-                            CompactObstacle::Conflict {
-                                node_1: ni!(conflict.node_2).option(),
-                                node_2: if conflict.node_1 == u16::MAX {
-                                    None.into()
-                                } else {
-                                    ni!(conflict.node_1).option()
-                                },
-                                touch_1: ni!(conflict.touch_2).option(),
-                                touch_2: if conflict.touch_1 == u16::MAX {
-                                    None.into()
-                                } else {
-                                    ni!(conflict.touch_1).option()
-                                },
-                                vertex_1: ni!(conflict.vertex_2),
-                                vertex_2: ni!(conflict.vertex_1),
-                            },
-                            grown,
-                        );
-                    }
-                }
+            if let Some(conflict) = self.conflicts_store.pop() {
+                return (conflict.get_obstacle(), grown);
             }
             // when this happens, the DualDriverTracked should check for BlossomNeedExpand event
             // this is usually triggered by reaching maximum growth set by the DualDriverTracked
