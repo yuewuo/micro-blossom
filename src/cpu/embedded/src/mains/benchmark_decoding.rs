@@ -17,7 +17,7 @@ EMBEDDED_BLOSSOM_MAIN=benchmark_decoding  make aarch64
 EMBEDDED_BLOSSOM_MAIN=benchmark_decoding WITH_WAVEFORM=1 cargo run --release --bin embedded_simulator -- ../../../resources/syndromes/code_capacity_d3_p0.1.syndromes.json
 * experiment (in this folder)
 make -C ../../fpga/Xilinx/VMK180_Micro_Blossom clean
-make -C ../../fpga/Xilinx/VMK180_Micro_Blossom CLOCK_FREQUENCY=50 DUAL_CONFIG_FILEPATH=$(pwd)/../../../resources/graphs/example_code_capacity_d3.json
+make -C ../../fpga/Xilinx/VMK180_Micro_Blossom DUAL_CONFIG_FILEPATH=$(pwd)/../../../resources/graphs/example_code_capacity_d3.json
 make -C ../../fpga/Xilinx/VMK180_Micro_Blossom
 make -C ../../fpga/Xilinx/VMK180_Micro_Blossom run_a72
 */
@@ -30,6 +30,8 @@ pub const MAX_CONFLICT_CHANNELS: usize = 8;
 pub const MAX_ITERATION: usize = 65536;
 
 static mut PRIMAL_MODULE: UnsafeCell<PrimalModuleEmbedded<MAX_NODE_NUM>> = UnsafeCell::new(PrimalModuleEmbedded::new());
+static mut DUAL_MODULE: UnsafeCell<DualModuleStackless<DualDriverTracked<DualDriver<MAX_CONFLICT_CHANNELS>, MAX_NODE_NUM>>> =
+    UnsafeCell::new(DualModuleStackless::new(DualDriverTracked::new(DualDriver::new())));
 
 pub fn main() {
     // obtain hardware information
@@ -40,11 +42,11 @@ pub fn main() {
     // create primal and dual modules
     let context_id = 0;
     let primal_module = unsafe { PRIMAL_MODULE.get().as_mut().unwrap() };
-    let mut dual_module: DualModuleStackless<DualDriverTracked<DualDriver<MAX_CONFLICT_CHANNELS>, MAX_NODE_NUM>> =
-        DualModuleStackless::new(DualDriverTracked::new(DualDriver::new(
-            hardware_info.conflict_channels,
-            context_id,
-        )));
+    let dual_module = unsafe { DUAL_MODULE.get().as_mut().unwrap() };
+    dual_module
+        .driver
+        .driver
+        .reconfigure(hardware_info.conflict_channels, context_id);
     let mut defects_reader = DefectsReader::new(DEFECTS);
 
     while let Some(defects) = defects_reader.next() {
@@ -60,12 +62,12 @@ pub fn main() {
         let mut iteration = 0;
         while !obstacle.is_none() && iteration < MAX_ITERATION {
             iteration += 1;
-            println!("obstacle: {obstacle:?}");
+            // println!("obstacle: {obstacle:?}");
             debug_assert!(
                 obstacle.is_obstacle(),
                 "dual module should spontaneously process all finite growth"
             );
-            primal_module.resolve(&mut dual_module, obstacle);
+            primal_module.resolve(dual_module, obstacle);
             (obstacle, _) = dual_module.find_obstacle();
         }
         if iteration == MAX_ITERATION {

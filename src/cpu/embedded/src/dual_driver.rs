@@ -13,11 +13,15 @@ pub struct DualDriver<const MAX_CONFLICT_CHANNELS: usize = 8> {
 }
 
 impl<const MAX_CC: usize> DualDriver<MAX_CC> {
-    pub const fn new(conflict_channels: u8, context_id: uint16_t) -> Self {
+    pub const fn new() -> Self {
         Self {
-            context_id,
-            conflicts_store: ConflictsStore::new(conflict_channels),
+            context_id: 0,
+            conflicts_store: ConflictsStore::new(),
         }
+    }
+    pub fn reconfigure(&mut self, conflict_channels: u8, context_id: uint16_t) {
+        self.conflicts_store.reconfigure(conflict_channels);
+        self.context_id = context_id;
     }
 }
 

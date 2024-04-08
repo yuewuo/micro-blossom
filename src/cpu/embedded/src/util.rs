@@ -3,6 +3,7 @@ use crate::binding::*;
 use core::hint::black_box;
 use core::sync::atomic::{compiler_fence, Ordering};
 use cty::*;
+use micro_blossom_nostd::heapless::Vec;
 
 /// note that it might not be safe to sleep for a long time depending on the C implementation
 pub fn sleep(duration: f32) {
@@ -108,18 +109,24 @@ pub struct ConflictsStore<const MAX_CONFLICT_CHANNELS: usize = 8> {
     pub channels: uint8_t,
     pub cursor: uint8_t,
     pub head: ReadoutHead,
-    conflicts: [ReadoutConflict; MAX_CONFLICT_CHANNELS],
+    conflicts: Vec<ReadoutConflict, MAX_CONFLICT_CHANNELS>,
 }
 
-impl<const CC: usize> ConflictsStore<CC> {
-    pub const fn new(channels: uint8_t) -> Self {
-        assert!(channels as usize <= CC, "overflow");
+impl<const MAX_CC: usize> ConflictsStore<MAX_CC> {
+    pub const fn new() -> Self {
         Self {
-            channels,
-            cursor: channels,
+            channels: 0,
+            cursor: 0,
             head: ReadoutHead::new(),
-            conflicts: unsafe { core::mem::MaybeUninit::uninit().assume_init() },
+            conflicts: Vec::new(),
         }
+    }
+
+    pub fn reconfigure(&mut self, channels: uint8_t) {
+        assert!(channels as usize <= MAX_CC);
+        self.channels = channels;
+        self.cursor = channels;
+        self.conflicts.resize_default(channels.into()).unwrap();
     }
 
     #[inline]

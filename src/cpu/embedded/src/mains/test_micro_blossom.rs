@@ -21,7 +21,8 @@ EMBEDDED_BLOSSOM_MAIN=test_micro_blossom cargo run --release --bin embedded_simu
 pub fn main() {
     println!("Test MicroBlossom");
 
-    let mut conflicts_store = ConflictsStore::<1>::new(1);
+    let mut conflicts_store = ConflictsStore::<1>::new();
+    conflicts_store.reconfigure(1);
 
     println!("\n1. Timer Sanity Check");
     sanity_check_get_time();

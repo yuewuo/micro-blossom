@@ -25,6 +25,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=EMBEDDED_BLOSSOM_MAIN");
     println!("cargo:rerun-if-env-changed=MAX_NODE_NUM");
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=embedded.defects");
     println!("cargo:rerun-if-changed=src/binding.rs");
 
     let out_dir = env::var("OUT_DIR").expect("No out dir");
