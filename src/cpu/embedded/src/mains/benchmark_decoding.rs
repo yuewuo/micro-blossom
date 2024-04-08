@@ -6,7 +6,6 @@ use include_bytes_plus::include_bytes;
 use konst::{option, primitive::parse_usize, result::unwrap_ctx};
 use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
-use micro_blossom_nostd::instruction::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::primal_module_embedded::*;
 use micro_blossom_nostd::util::*;
@@ -26,14 +25,7 @@ make -C ../../fpga/Xilinx/VMK180_Micro_Blossom run_a72
 // guarantees decoding up to d=39
 pub const MAX_NODE_NUM: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("MAX_NODE_NUM"), "65536")));
 
-cfg_if::cfg_if! {
-    if #[cfg(test)] {
-        pub const DEFECTS: &'static [u32] = &include_bytes!("./embedded.defects" as u32le);
-    } else {
-        pub const DEFECTS: &'static [u32] = &[u32::MAX];
-    }
-}
-
+pub const DEFECTS: &'static [u32] = &include_bytes!("./embedded.defects" as u32le);
 pub const MAX_CONFLICT_CHANNELS: usize = 8;
 pub const MAX_ITERATION: usize = 65536;
 
