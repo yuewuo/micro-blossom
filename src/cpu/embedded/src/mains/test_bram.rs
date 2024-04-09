@@ -157,6 +157,18 @@ A72:
 [2/3] per_op: 126.72 ns, freq: 7.89147 MHz
 [3/3] per_op: 126.63 ns, freq: 7.89712 MHz
 
+8. Batch Write 64 Test
+[benchmarker] autotune ... batch size = 9459339
+[1/3] per_op: 26.43 ns, freq: 37.83745 MHz
+[2/3] per_op: 26.43 ns, freq: 37.83745 MHz
+[3/3] per_op: 26.43 ns, freq: 37.83745 MHz
+
+9. Batch Read 64 Test
+[benchmarker] autotune ... batch size = 1973914
+[1/3] per_op: 126.65 ns, freq: 7.89563 MHz
+[2/3] per_op: 126.65 ns, freq: 7.89555 MHz
+[3/3] per_op: 126.65 ns, freq: 7.89555 MHz
+[exit]
 
 
 

@@ -85,3 +85,68 @@ pub fn main() {
     readout_benchmarker.autotune();
     readout_benchmarker.run(3);
 }
+
+/*
+
+1. Timer Sanity Check
+start: 269264472
+end: 272121637
+diff: 0.014285825s after performing 10^7 nops
+    roughly 1.4285824ns per nop or 699.99457 MHz
+
+2. Read Hardware Information
+version: 0x240123c0
+MicroBlossomHardwareInfo {
+    version: 604054464,
+    context_depth: 1,
+    conflict_channels: 1,
+    vertex_bits: 5,
+    weight_bits: 2,
+    grown_bits: 0,
+}
+
+3. Benchmark Single Context Reset
+[benchmarker] autotune ... batch size = 45161248
+[1/3] per_op: 22.14 ns, freq: 45.16128 MHz
+[2/3] per_op: 22.14 ns, freq: 45.16128 MHz
+[3/3] per_op: 22.14 ns, freq: 45.16128 MHz
+
+4. Benchmark Multi Context Reset
+
+
+
+
+*******************************
+[Warning] the benchmark may not work as expected
+  the actual context depth is 1, smaller than 32
+  some benchmark may not observe speed up in batch mode
+*******************************
+
+
+
+
+[benchmarker] autotune ... batch size = 1411289
+[1/3] per_op: 22.14 ns, freq: 45.16128 MHz
+[2/3] per_op: 22.14 ns, freq: 45.16128 MHz
+[3/3] per_op: 22.14 ns, freq: 45.16128 MHz
+
+5. Benchmark Read Obstacle
+[benchmarker] autotune ... batch size = 4252380
+[1/3] per_op: 235.16 ns, freq: 4.25239 MHz
+[2/3] per_op: 235.16 ns, freq: 4.25238 MHz
+[3/3] per_op: 235.00 ns, freq: 4.25532 MHz
+
+6. Benchmark Reset and then Read Obstacle
+[benchmarker] autotune ... batch size = 3904606
+[1/3] per_op: 256.11 ns, freq: 3.90463 MHz
+[2/3] per_op: 256.10 ns, freq: 3.90466 MHz
+[3/3] per_op: 256.11 ns, freq: 3.90463 MHz
+
+7. Benchmark 32 Batch Reset and then Read Obstacle
+[benchmarker] autotune ... batch size = 121359
+[1/3] per_op: 257.50 ns, freq: 3.88349 MHz
+[2/3] per_op: 257.50 ns, freq: 3.88349 MHz
+[3/3] per_op: 257.50 ns, freq: 3.88349 MHz
+[exit]
+
+*/

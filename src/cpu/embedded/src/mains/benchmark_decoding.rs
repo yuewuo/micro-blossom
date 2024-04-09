@@ -6,14 +6,13 @@ use include_bytes_plus::include_bytes;
 use konst::{option, primitive::parse_usize, result::unwrap_ctx};
 use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
-use micro_blossom_nostd::instruction::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::primal_module_embedded::*;
 use micro_blossom_nostd::util::*;
 
 /*
 cp ../../../resources/syndromes/code_capacity_d3_p0.1.syndromes.defects ./embedded.defects
-EMBEDDED_BLOSSOM_MAIN=benchmark_decoding  make aarch64
+EMBEDDED_BLOSSOM_MAIN=benchmark_decoding make aarch64
 * simulation (in src/cpu/blossom)
 EMBEDDED_BLOSSOM_MAIN=benchmark_decoding WITH_WAVEFORM=1 cargo run --release --bin embedded_simulator -- ../../../resources/syndromes/code_capacity_d3_p0.1.syndromes.json
 * experiment (in this folder)
@@ -63,13 +62,7 @@ pub fn main() {
         let (mut obstacle, _) = dual_module.find_obstacle();
         while !obstacle.is_none() {
             // println!("obstacle: {obstacle:?}");
-            if let CompactObstacle::GrowLength { length } = &obstacle {
-                // should not be here if primal offloading growth is enabled
-                unsafe { extern_c::execute_instruction(Instruction32::grow(*length).0, context_id) };
-                dual_module.driver.blossom_tracker.advance_time(*length as CompactTimestamp);
-            } else {
-                primal_module.resolve(dual_module, obstacle);
-            }
+            primal_module.resolve(dual_module, obstacle);
             (obstacle, _) = dual_module.find_obstacle();
         }
         let end = unsafe { extern_c::get_native_time() };
