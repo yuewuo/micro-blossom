@@ -37,6 +37,18 @@ void test_write32(uint32_t bias, uint32_t value)
     Xil_Out32(BRAM_BASE + bias, value);
 }
 
+uint64_t test_read64(uint32_t bias)
+{
+    // assert(bias < 8192);
+    return Xil_In64(BRAM_BASE + bias);
+}
+
+void test_write64(uint32_t bias, uint64_t value)
+{
+    // assert(bias < 8192);
+    Xil_Out64(BRAM_BASE + bias, value);
+}
+
 void set_leds(uint32_t)
 {
 }

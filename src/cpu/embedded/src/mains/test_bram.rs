@@ -78,6 +78,28 @@ pub fn main() {
     write_benchmarker.inner_loops = 4;
     write_benchmarker.autotune();
     write_benchmarker.run(3);
+
+    println!("\n8. Batch Write 64 Test");
+    let mut write_benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::test_write64(0, 0)) };
+        unsafe { black_box(extern_c::test_write64(8, 1)) };
+        unsafe { black_box(extern_c::test_write64(16, 2)) };
+        unsafe { black_box(extern_c::test_write64(24, 3)) };
+    });
+    write_benchmarker.inner_loops = 4;
+    write_benchmarker.autotune();
+    write_benchmarker.run(3);
+
+    println!("\n9. Batch Read 64 Test");
+    let mut write_benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::test_read64(0)) };
+        unsafe { black_box(extern_c::test_read64(8)) };
+        unsafe { black_box(extern_c::test_read64(16)) };
+        unsafe { black_box(extern_c::test_read64(24)) };
+    });
+    write_benchmarker.inner_loops = 4;
+    write_benchmarker.autotune();
+    write_benchmarker.run(3);
 }
 
 /*

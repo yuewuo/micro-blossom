@@ -6,6 +6,7 @@ use include_bytes_plus::include_bytes;
 use konst::{option, primitive::parse_usize, result::unwrap_ctx};
 use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
+use micro_blossom_nostd::instruction::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::primal_module_embedded::*;
 use micro_blossom_nostd::util::*;
@@ -27,7 +28,6 @@ pub const MAX_NODE_NUM: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(optio
 
 pub const DEFECTS: &'static [u32] = &include_bytes!("./embedded.defects" as u32le);
 pub const MAX_CONFLICT_CHANNELS: usize = 8;
-pub const MAX_ITERATION: usize = 65536;
 
 static mut PRIMAL_MODULE: UnsafeCell<PrimalModuleEmbedded<MAX_NODE_NUM>> = UnsafeCell::new(PrimalModuleEmbedded::new());
 static mut DUAL_MODULE: UnsafeCell<DualModuleStackless<DualDriverTracked<DualDriver<MAX_CONFLICT_CHANNELS>, MAX_NODE_NUM>>> =
@@ -50,32 +50,60 @@ pub fn main() {
     let mut defects_reader = DefectsReader::new(DEFECTS);
 
     while let Some(defects) = defects_reader.next() {
+        unsafe { extern_c::clear_instruction_counter() };
+        // start timer
+        let start = unsafe { extern_c::get_native_time() };
         // reset and load defects
         primal_module.reset();
         dual_module.reset();
         for (node_index, &vertex_index) in defects.iter().enumerate() {
             dual_module.add_defect(ni!(vertex_index), ni!(node_index));
         }
-        // start timer
-        let start = unsafe { extern_c::get_native_time() };
+        // solve it
         let (mut obstacle, _) = dual_module.find_obstacle();
-        let mut iteration = 0;
-        while !obstacle.is_none() && iteration < MAX_ITERATION {
-            iteration += 1;
+        while !obstacle.is_none() {
             // println!("obstacle: {obstacle:?}");
-            debug_assert!(
-                obstacle.is_obstacle(),
-                "dual module should spontaneously process all finite growth"
-            );
-            primal_module.resolve(dual_module, obstacle);
+            if let CompactObstacle::GrowLength { length } = &obstacle {
+                // should not be here if primal offloading growth is enabled
+                unsafe { extern_c::execute_instruction(Instruction32::grow(*length).0, context_id) };
+                dual_module.driver.blossom_tracker.advance_time(*length as CompactTimestamp);
+            } else {
+                primal_module.resolve(dual_module, obstacle);
+            }
             (obstacle, _) = dual_module.find_obstacle();
         }
-        if iteration == MAX_ITERATION {
-            println!("[error] max iteration reached, check for infinite loop");
-            panic!()
-        }
         let end = unsafe { extern_c::get_native_time() };
+        let counter = unsafe { extern_c::get_instruction_counter() };
         let diff = unsafe { extern_c::diff_native_time(start, end) } as f64;
-        println!("[{}] time: {diff}", defects_reader.count);
+        println!("[{}] time: {diff}, counter: {counter}", defects_reader.count);
     }
 }
+
+/*
+
+Result: handling a conflict takes about 670ns, including computation and the initial transaction.
+It seems like the computation is extremely fast (670ns - 590ns = 80ns) per pair of defects.
+The most time-consuming operation is reading the bus... about 127ns * 3 = 381ns (according to `test_bram.rs`)
+This could potentially be reduced if read operation could happen in a burst? Is this possible in Xilinx library?
+This roughly agrees with the results in `benchmark_primal_simple_match.rs`.
+The computation time corresponds to only 16 clock cycle at the hardware, and the hardware, if fully pipelined, only requires 5 clock cycles.
+It seems like about 3 CPUs could make the FPGA busy.
+
+[974] time: 0.0000005900000132896821, counter: 2
+[975] time: 0.000001249999968422344, counter: 5
+[976] time: 0.000001249999968422344, counter: 5
+[977] time: 0.0000012550000292321783, counter: 5
+[978] time: 0.0000005900000132896821, counter: 2
+[979] time: 0.0000005900000132896821, counter: 2
+[980] time: 0.0000012550000292321783, counter: 5
+[981] time: 0.000001249999968422344, counter: 5
+[982] time: 0.0000005900000132896821, counter: 2
+[983] time: 0.000001259999976355175, counter: 5
+[984] time: 0.0000005850000093232666, counter: 2
+[985] time: 0.0000005900000132896821, counter: 2
+[986] time: 0.0000013899999657951412, counter: 7
+[987] time: 0.0000005900000132896821, counter: 2
+[988] time: 0.0000005900000132896821, counter: 2
+[989] time: 0.0000005900000132896821, counter: 2
+
+*/

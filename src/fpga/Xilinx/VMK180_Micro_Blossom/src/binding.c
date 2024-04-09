@@ -73,7 +73,8 @@ void get_conflicts(struct ReadoutHead *head,
     head->maximum_growth = raw_head;
     head->accumulated_grown = raw_head >> 16;
     head->growable = raw_head >> 32;
-    if (head->growable == 0) {  // read conflicts only when growable is zero
+    if (head->growable == 0)
+    { // read conflicts only when growable is zero
         for (int i = 0; i < conflict_channels; ++i)
         {
             uintptr_t conflict_base = base + 32 + i * 16;

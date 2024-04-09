@@ -43,6 +43,8 @@ pub mod extern_c {
         pub fn print_char(c: c_char);
         pub fn test_write32(bias: uint32_t, value: uint32_t);
         pub fn test_read32(bias: uint32_t) -> uint32_t;
+        pub fn test_write64(bias: uint32_t, value: uint64_t);
+        pub fn test_read64(bias: uint32_t) -> uint64_t;
         pub fn set_leds(mask: uint32_t);
         pub fn get_native_time() -> uint64_t;
         pub fn diff_native_time(start: uint64_t, end: uint64_t) -> c_float;
