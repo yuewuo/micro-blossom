@@ -28,78 +28,89 @@ pub fn main() {
     }
 
     println!("\n2. Write Speed Test");
-    let mut write_benchmarker = Benchmarker::new(|| {
+    let mut benchmarker = Benchmarker::new(|| {
         unsafe { black_box(extern_c::test_write32(0, 1234)) };
     });
-    write_benchmarker.autotune();
-    write_benchmarker.run(3);
+    benchmarker.autotune();
+    benchmarker.run(3);
 
     println!("\n3. Read Speed Test");
-    let mut write_benchmarker = Benchmarker::new(|| {
+    let mut benchmarker = Benchmarker::new(|| {
         unsafe { black_box(extern_c::test_read32(0)) };
     });
-    write_benchmarker.autotune();
-    write_benchmarker.run(3);
+    benchmarker.autotune();
+    benchmarker.run(3);
 
     println!("\n4. Write-then-Read Speed Test");
-    let mut write_benchmarker = Benchmarker::new(|| {
+    let mut benchmarker = Benchmarker::new(|| {
         unsafe { black_box(extern_c::test_write32(0, 1234)) };
         unsafe { black_box(extern_c::test_read32(0)) };
     });
-    write_benchmarker.autotune();
-    write_benchmarker.run(3);
+    benchmarker.autotune();
+    benchmarker.run(3);
 
     println!("\n5. Read-then-Write Speed Test");
-    let mut write_benchmarker = Benchmarker::new(|| {
+    let mut benchmarker = Benchmarker::new(|| {
         unsafe { black_box(extern_c::test_read32(0)) };
         unsafe { black_box(extern_c::test_write32(0, 1234)) };
     });
-    write_benchmarker.autotune();
-    write_benchmarker.run(3);
+    benchmarker.autotune();
+    benchmarker.run(3);
 
     println!("\n6. Batch Write Test");
-    let mut write_benchmarker = Benchmarker::new(|| {
+    let mut benchmarker = Benchmarker::new(|| {
         unsafe { black_box(extern_c::test_write32(0, 0)) };
         unsafe { black_box(extern_c::test_write32(4, 1)) };
         unsafe { black_box(extern_c::test_write32(8, 2)) };
         unsafe { black_box(extern_c::test_write32(12, 3)) };
     });
-    write_benchmarker.inner_loops = 4;
-    write_benchmarker.autotune();
-    write_benchmarker.run(3);
+    benchmarker.inner_loops = 4;
+    benchmarker.autotune();
+    benchmarker.run(3);
 
     println!("\n7. Batch Read Test");
-    let mut write_benchmarker = Benchmarker::new(|| {
+    let mut benchmarker = Benchmarker::new(|| {
         unsafe { black_box(extern_c::test_read32(0)) };
         unsafe { black_box(extern_c::test_read32(4)) };
         unsafe { black_box(extern_c::test_read32(8)) };
         unsafe { black_box(extern_c::test_read32(12)) };
     });
-    write_benchmarker.inner_loops = 4;
-    write_benchmarker.autotune();
-    write_benchmarker.run(3);
+    benchmarker.inner_loops = 4;
+    benchmarker.autotune();
+    benchmarker.run(3);
+
+    println!("\n7(2). Random Read Test");
+    let mut benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::test_read32(0)) };
+        unsafe { black_box(extern_c::test_read32(24)) };
+        unsafe { black_box(extern_c::test_read32(12)) };
+        unsafe { black_box(extern_c::test_read32(36)) };
+    });
+    benchmarker.inner_loops = 4;
+    benchmarker.autotune();
+    benchmarker.run(3);
 
     println!("\n8. Batch Write 64 Test");
-    let mut write_benchmarker = Benchmarker::new(|| {
+    let mut benchmarker = Benchmarker::new(|| {
         unsafe { black_box(extern_c::test_write64(0, 0)) };
         unsafe { black_box(extern_c::test_write64(8, 1)) };
         unsafe { black_box(extern_c::test_write64(16, 2)) };
         unsafe { black_box(extern_c::test_write64(24, 3)) };
     });
-    write_benchmarker.inner_loops = 4;
-    write_benchmarker.autotune();
-    write_benchmarker.run(3);
+    benchmarker.inner_loops = 4;
+    benchmarker.autotune();
+    benchmarker.run(3);
 
     println!("\n9. Batch Read 64 Test");
-    let mut write_benchmarker = Benchmarker::new(|| {
+    let mut benchmarker = Benchmarker::new(|| {
         unsafe { black_box(extern_c::test_read64(0)) };
         unsafe { black_box(extern_c::test_read64(8)) };
         unsafe { black_box(extern_c::test_read64(16)) };
         unsafe { black_box(extern_c::test_read64(24)) };
     });
-    write_benchmarker.inner_loops = 4;
-    write_benchmarker.autotune();
-    write_benchmarker.run(3);
+    benchmarker.inner_loops = 4;
+    benchmarker.autotune();
+    benchmarker.run(3);
 }
 
 /*
@@ -156,6 +167,12 @@ A72:
 [1/3] per_op: 126.71 ns, freq: 7.89208 MHz
 [2/3] per_op: 126.72 ns, freq: 7.89147 MHz
 [3/3] per_op: 126.63 ns, freq: 7.89712 MHz
+
+7(2). Random Read Test
+[benchmarker] autotune ... batch size = 1972621
+[1/3] per_op: 126.64 ns, freq: 7.89651 MHz
+[2/3] per_op: 126.65 ns, freq: 7.89571 MHz
+[3/3] per_op: 126.60 ns, freq: 7.89869 MHz
 
 8. Batch Write 64 Test
 [benchmarker] autotune ... batch size = 9459339

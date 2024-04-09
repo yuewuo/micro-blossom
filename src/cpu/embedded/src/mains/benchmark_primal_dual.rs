@@ -126,4 +126,22 @@ pub fn main() {
 [3/3] per_op: 795.03 ns, freq: 1.25781 MHz
 [exit]
 
+
+I found `binding.c.obj` under src/fpga/Xilinx/VMK180_Micro_Blossom/vmk180_micro_blossom_vitis/benchmark_a72/build/CMakeFiles/benchmark_a72.elf.dir/
+
+Run `/tools/Xilinx/Vitis/2023.2/gnu/aarch64/lin/aarch64-none/bin/aarch64-none-elf-objdump -D binding.c.obj > binding.asm`
+
+The assembly ssems to be too complex.
+Moreover, it doesn't seem to be the problem of the assembly code.
+Even the BRAM access takes 127ns per read.
+Each obstacle involves 127 * 3 = 381ns on pure reading,
+adding at least 3 other write instructions of 66ns and some
+dependencies between the write and read (about 575-381-66=128ns).
+This does make sense somehow.
+The only unreasonable thing is why it takes 381ns instead of 127ns + 44ns?
+each write operation takes 22ns because the writes are in order and do not wait for complete.
+Can't the CPU just issue 3 read transactions and let the hardware to process and then get back the results?
+If the CPU can be extended with registers connected to the Micro Blossom module, can we eliminate this latency or reduce it to just tens of nanoseconds? (a few clock cycles at 200MHz)
+These are open questions and doesn't seem to be solvable in the near term.
+
 */
