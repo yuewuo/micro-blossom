@@ -5,6 +5,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use fusion_blossom::cli::{ExampleCodeType, RunnableBenchmarkParameters, Verifier};
 use fusion_blossom::mwpm_solver::*;
 use fusion_blossom::util::*;
+use fusion_blossom::visualize::VisualizePosition;
 use lazy_static::lazy_static;
 use serde::Serialize;
 use serde_json::json;
@@ -250,7 +251,8 @@ impl From<BenchmarkParameters> for RunnableBenchmarkParameters {
                 let primal_dual_config: serde_json::Value = serde_json::from_str(&primal_dual_config).unwrap();
                 let code = code_type.build(d, p, noisy_measurements, max_half_weight, code_config);
                 let initializer = code.get_initializer();
-                runnable.primal_dual_solver = primal_dual_type.build(&initializer, primal_dual_config);
+                let positions = code.get_positions();
+                runnable.primal_dual_solver = primal_dual_type.build(&initializer, &positions, primal_dual_config);
             }
         }
         runnable
@@ -443,6 +445,7 @@ impl PrimalDualType {
     pub fn build(
         &self,
         initializer: &SolverInitializer,
+        positions: &Vec<VisualizePosition>,
         primal_dual_config: serde_json::Value,
     ) -> Box<dyn PrimalDualSolver> {
         match self {
@@ -472,33 +475,19 @@ impl PrimalDualType {
                 solver.dual_module.driver.driver.use_pre_matching = true;
                 Box::new(solver)
             }
-            Self::EmbeddedComb => {
-                assert_eq!(primal_dual_config, json!({}));
-                Box::new(SolverDualComb::new(initializer))
-            }
-            Self::EmbeddedCombPreMatching => {
-                assert_eq!(primal_dual_config, json!({}));
-                let mut solver = SolverDualComb::new(initializer);
-                let mut offloading = OffloadingFinder::new();
-                offloading.find_defect_match(&initializer);
-                solver
-                    .dual_module
-                    .driver
-                    .driver
-                    .set_offloading_units(&initializer, offloading.0);
-                Box::new(solver)
-            }
-            Self::EmbeddedCombPreMatchingVirtual => {
-                assert_eq!(primal_dual_config, json!({}));
-                let mut solver = SolverDualComb::new(initializer);
-                let mut offloading = OffloadingFinder::new();
-                offloading.find_defect_match(&initializer);
-                offloading.find_virtual_match(&initializer);
-                solver
-                    .dual_module
-                    .driver
-                    .driver
-                    .set_offloading_units(&initializer, offloading.0);
+            Self::EmbeddedComb | Self::EmbeddedCombPreMatching | Self::EmbeddedCombPreMatchingVirtual => {
+                let mut micro_config = MicroBlossomSingle::new(initializer, positions);
+                // customize offloading
+                micro_config.offloading.0.clear();
+                if matches!(self, Self::EmbeddedCombPreMatching) {
+                    micro_config.offloading.find_defect_match(&initializer);
+                }
+                if matches!(self, Self::EmbeddedCombPreMatchingVirtual) {
+                    micro_config.offloading.find_defect_match(&initializer);
+                    micro_config.offloading.find_virtual_match(&initializer);
+                }
+                // build solver
+                let solver = SolverDualComb::new_native(micro_config, primal_dual_config);
                 Box::new(solver)
             }
             Self::Serial | Self::ErrorPatternLogger => {

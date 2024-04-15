@@ -14,12 +14,15 @@ benchmark_dir = os.path.join(git_root_dir, "benchmark")
 
 # please put the fusion-blossom folder next to this project folder
 fusion_dir = os.path.join(git_root_dir, "..", "fusion-blossom")
+if not os.path.exists(fusion_dir):
+    print("please put the fusion-blossom folder next to this project folder")
+    exit(1)
 fusion_benchmark_dir = os.path.join(fusion_dir, "benchmark")
 if True:
     sys.path.insert(0, fusion_benchmark_dir)
     from util import compile_code_if_necessary as fusion_compile_code_if_necessary
     from util import fusion_blossom_qecp_generate_command
-    from util import run_command_get_stdout as fusion_run_command_get_stdout
+    from util import run_command_get_stdout as fusio_run_command_get_stdout
 
 MICRO_BLOSSOM_COMPILATION_DONE = False
 if 'MANUALLY_COMPILE_QEC' in os.environ and os.environ["MANUALLY_COMPILE_QEC"] == "TRUE":

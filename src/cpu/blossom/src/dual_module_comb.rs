@@ -1,4 +1,4 @@
-//! A dual module implemented with combinatorial logic, for easy modeling of the real hardware
+//! A dual module implemented with combinatorial logic, modeling the real hardware
 //!
 //! This is a software implementation of the Micro Blossom algorithm.
 //! We assume all the vertices and edges have a single clock source.
@@ -19,6 +19,7 @@ use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
+use serde::*;
 use serde_json::json;
 use std::collections::BTreeSet;
 
@@ -28,8 +29,31 @@ pub struct DualModuleCombDriver {
     pub edges: Vec<Edge>,
     pub offloading_units: Vec<Offloading>,
     pub maximum_growth: CompactWeight,
-    // the current instruction for computing the combinatorial logic
+    /// the current instruction for computing the combinatorial logic
     pub(crate) instruction: Instruction,
+    pub config: DualCombConfig,
+    /// only enabled when `config.log_instructions` is true
+    pub profiler_instruction_history: Vec<Instruction>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DualCombConfig {
+    /// record instructions into the profile
+    #[serde(default = "dual_comb_config_default::log_instructions")]
+    pub log_instructions: bool,
+}
+
+impl Default for DualCombConfig {
+    fn default() -> Self {
+        serde_json::from_value(json!({})).unwrap()
+    }
+}
+
+pub mod dual_comb_config_default {
+    pub fn log_instructions() -> bool {
+        false
+    }
 }
 
 pub type DualModuleComb = DualModuleStackless<DualDriverTracked<DualModuleCombDriver, MAX_NODE_NUM>>;
@@ -41,7 +65,7 @@ impl DualInterfaceWithInitializer for DualModuleComb {
 }
 
 impl DualModuleCombDriver {
-    pub fn new(config: MicroBlossomSingle) -> Self {
+    pub fn new(config: MicroBlossomSingle, comb_config: DualCombConfig) -> Self {
         let virtual_vertices: BTreeSet<VertexIndex> = config.virtual_vertices.iter().cloned().collect();
         let mut all_incident_edges: Vec<Vec<EdgeIndex>> = vec![vec![]; config.vertex_num];
         for (edge_index, &WeightedEdges { l, r, .. }) in config.weighted_edges.iter().enumerate() {
@@ -69,10 +93,10 @@ impl DualModuleCombDriver {
             maximum_growth: CompactWeight::MAX,
             offloading_units: vec![],
             instruction: Instruction::FindObstacle,
+            config: comb_config,
+            profiler_instruction_history: vec![],
         };
-        let mut offloading = OffloadingFinder::new();
-        offloading.find_all(&initializer);
-        comb_driver.set_offloading_units(&initializer, offloading.0);
+        comb_driver.set_offloading_units(&initializer, config.offloading.0);
         comb_driver.clear();
         comb_driver
     }
@@ -102,7 +126,7 @@ impl DualModuleCombDriver {
     pub fn new_empty(initializer: &SolverInitializer) -> Self {
         let fake_positions = vec![VisualizePosition::new(0., 0., 0.); initializer.vertex_num];
         let config = MicroBlossomSingle::new(initializer, &fake_positions);
-        let mut comb_driver = Self::new(config);
+        let mut comb_driver = Self::new(config, serde_json::from_value(json!({})).unwrap());
         comb_driver.set_offloading_units(initializer, vec![]); // by default do not use any offloading
         comb_driver
     }
@@ -117,6 +141,10 @@ impl DualModuleCombDriver {
         for offloading_unit in self.offloading_units.iter_mut() {
             offloading_unit.clear();
         }
+    }
+
+    pub fn reset_profiler(&mut self) {
+        self.profiler_instruction_history.clear();
     }
 
     pub fn register_updated(&mut self) {
@@ -148,6 +176,9 @@ impl DualModuleCombDriver {
     }
 
     fn execute_instruction(&mut self, instruction: Instruction) -> CompactObstacle {
+        if self.config.log_instructions {
+            self.profiler_instruction_history.push(instruction.clone());
+        }
         self.propagate_signals(instruction);
         let response = self
             .vertices
@@ -170,7 +201,9 @@ impl DualModuleCombDriver {
     }
 
     pub fn generate_profiler_report(&self) -> serde_json::Value {
-        json!({})
+        json!({
+            "history": self.profiler_instruction_history,
+        })
     }
 }
 
@@ -313,7 +346,7 @@ impl FusionVisualizer for DualModuleCombDriver {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Instruction {
     SetSpeed { node: NodeIndex, speed: CompactGrowState },
     SetBlossom { node: NodeIndex, blossom: NodeIndex },

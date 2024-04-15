@@ -4,6 +4,7 @@ use crate::dual_module_comb::*;
 use crate::dual_module_rtl::*;
 use crate::dual_module_scala::*;
 use crate::primal_module_embedded_adaptor::*;
+use crate::resources::*;
 use crate::util::*;
 use fusion_blossom::dual_module::*;
 use fusion_blossom::dual_module_serial::*;
@@ -535,6 +536,27 @@ impl SolverDualComb {
             offloaded: 0,
         }
     }
+    pub fn new_native(config: MicroBlossomSingle, mut primal_dual_config: serde_json::Value) -> Self {
+        let primal_dual_config = primal_dual_config.as_object_mut().expect("config must be JSON object");
+        let mut dual_config = DualCombConfig::default();
+        if let Some(value) = primal_dual_config.remove("dual") {
+            dual_config = serde_json::from_value(value).unwrap();
+        }
+        if !primal_dual_config.is_empty() {
+            panic!(
+                "unknown primal_dual_config keys: {:?}",
+                primal_dual_config.keys().collect::<Vec<&String>>()
+            );
+        }
+        let initializer = config.get_initializer();
+        Self {
+            dual_module: DualModuleStackless::new(DualDriverTracked::new(DualModuleCombDriver::new(config, dual_config))),
+            primal_module: PrimalModuleEmbedded::new(),
+            subgraph_builder: SubGraphBuilder::new(&initializer),
+            defect_nodes: vec![],
+            offloaded: 0,
+        }
+    }
 }
 
 impl PrimalDualSolver for SolverDualComb {
@@ -543,6 +565,9 @@ impl PrimalDualSolver for SolverDualComb {
         self.dual_module.reset();
         self.subgraph_builder.clear();
         self.defect_nodes.clear();
+    }
+    fn reset_profiler(&mut self) {
+        self.dual_module.driver.driver.reset_profiler();
     }
     fn solve_visualizer(&mut self, syndrome_pattern: &SyndromePattern, mut visualizer: Option<&mut Visualizer>) {
         assert!(syndrome_pattern.erasures.is_empty());

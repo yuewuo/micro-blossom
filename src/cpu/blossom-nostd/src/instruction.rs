@@ -3,9 +3,12 @@
 
 use crate::util::*;
 use num_traits::FromPrimitive;
+#[cfg(feature = "serde")]
+use serde::*;
 
 /// instruction is always 32 bits
 #[repr(transparent)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub struct Instruction32(pub u32);
 

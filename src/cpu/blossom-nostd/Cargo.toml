@@ -30,7 +30,7 @@ crate-type = ["lib"]
 default = ["std"]
 u16_index = []
 i16_weight = []
-std = ["derivative"]
+std = ["derivative", "serde"]
 obstacle_potentially_outdated = []
 unsafe_unwrap = [] # still keeps the normal boundary check and possibly panic
 dangerous_unwrap = [
@@ -42,6 +42,7 @@ hls = [
 
 [dependencies]
 derivative = { version = "2.2.0", optional = true }
+serde = { version = "1.0.117", optional = true, features = ["derive", "rc"] }
 panic-halt = "0.2.0"
 cfg-if = "1.0.0"
 num-derive = "0.4.1"

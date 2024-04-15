@@ -115,6 +115,8 @@ impl DualModuleAxi4Driver {
         assert_eq!(line, "simulation started\n");
         assert!(dual_config.conflict_channels <= MAX_CONFLICT_CHANNELS);
         let conflict_channels = dual_config.conflict_channels;
+        let mut conflicts_store = ConflictsStore::new();
+        conflicts_store.reconfigure(conflict_channels as u8);
         let mut value = Self {
             host_name,
             context_id: 0,
@@ -127,7 +129,7 @@ impl DualModuleAxi4Driver {
                 reader,
                 writer,
             }),
-            conflicts_store: ConflictsStore::new(conflict_channels as u8),
+            conflicts_store,
         };
         value.reset();
         Ok(value)

@@ -1,5 +1,7 @@
 pub use crate::nonmax;
 use num_derive::FromPrimitive;
+#[cfg(feature = "serde")]
+use serde::*;
 
 cfg_if::cfg_if! {
     if #[cfg(feature="u16_index")] {
@@ -36,6 +38,7 @@ pub type TreeDepth = usize;
 
 #[repr(u8)]
 #[derive(PartialEq, Eq, Clone, Copy, Debug, FromPrimitive)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum CompactGrowState {
     Stay = 0,
     Grow = 1,
