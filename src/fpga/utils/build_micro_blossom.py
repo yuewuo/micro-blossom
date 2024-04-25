@@ -10,6 +10,7 @@ import shutil
 git_root_dir = subprocess.run("git rev-parse --show-toplevel", cwd=os.path.dirname(os.path.abspath(
     __file__)), shell=True, check=True, capture_output=True).stdout.decode(sys.stdout.encoding).strip(" \r\n")
 template_dir = os.path.join(git_root_dir, "src", "fpga", "Xilinx", "VMK180_Micro_Blossom")
+embedded_dir = os.path.join(git_root_dir, "src", "cpu", "embedded")
 
 SCALA_MICRO_BLOSSOM_COMPILATION_DONE = False
 
@@ -84,6 +85,7 @@ def main(args=None):
     with open(os.path.join(template_dir, "common.py"), "r", encoding='utf8') as f:
         common_py = f.read()
         common_py = checked_replace(common_py, 'name = "vmk180_micro_blossom"', f'name = "{name}"')
+        common_py = checked_replace(common_py, 'rust_project = "../../../cpu/embedded"', f'rust_project = "{embedded_dir}"')
     with open(os.path.join(project_dir, "common.py"), "w", encoding='utf8') as f:
         f.write(common_py)
     # Makefile

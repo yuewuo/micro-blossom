@@ -124,7 +124,7 @@ case class DualConfig(
     return incidentEdgesOf(vertexIndex).length
   }
   def incidentEdgesOf(vertexIndex: Int): Seq[Int] = {
-    return incidentEdges(vertexIndex)
+    return incidentEdges.getOrElse(vertexIndex, Seq())
   }
   def incidentOffloaderOf(vertexIndex: Int): Seq[Int] = {
     return incidentOffloaders.getOrElse(vertexIndex, Seq())
@@ -154,7 +154,7 @@ case class DualConfig(
     }
   }
   def localIndexOfEdge(vertexIndex: Int, edgeIndex: Int): Int = {
-    for ((localEdgeIndex, localIndex) <- incidentEdges(vertexIndex).zipWithIndex) {
+    for ((localEdgeIndex, localIndex) <- incidentEdgesOf(vertexIndex).zipWithIndex) {
       if (localEdgeIndex == edgeIndex) {
         return localIndex
       }
