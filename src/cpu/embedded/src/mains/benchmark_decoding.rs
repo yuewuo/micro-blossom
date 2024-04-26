@@ -41,6 +41,8 @@ pub fn main() {
     // create primal and dual modules
     let context_id = 0;
     let primal_module = unsafe { PRIMAL_MODULE.get().as_mut().unwrap() };
+    // adapt bit width of primal module so that node index will not overflow
+    primal_module.nodes.blossom_begin = (1 << hardware_info.vertex_bits) / 2;
     let dual_module = unsafe { DUAL_MODULE.get().as_mut().unwrap() };
     dual_module
         .driver
