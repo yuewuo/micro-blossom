@@ -5,6 +5,7 @@ from datetime import datetime
 from run import *
 from build_micro_blossom import main as build_micro_blossom_main
 from get_ttyoutput import get_ttyoutput
+from vivado_project import VivadoProject
 
 
 def main():
@@ -89,6 +90,27 @@ def main():
                 )
                 process.wait()
                 assert process.returncode == 0, "synthesis error"
+
+    # check timing reports to make sure there are no negative slacks
+    sanity_check_failed = False
+    for d in d_vec:
+        vivado = VivadoProject(hardware_proj_dir(d))
+        wns = vivado.routed_timing_summery().clk_pl_0_wns
+        frequency = vivado.frequency()
+        period = 1e-6 / frequency
+        new_period = period - wns * 1e-9
+        new_frequency = 1 / new_period / 1e6
+        if wns < 0:
+            # negative slack exists, need to lower the clock frequency
+            print(f"d={d} clock frequency too high!!!")
+            print(
+                f"frequency: {frequency}MHz, wns: {wns}ns, should lower the frequency to {new_frequency}MHz"
+            )
+            sanity_check_failed = True
+        else:
+            print(f"d={d} wns: {wns}ns, potential new frequency is {new_frequency}MHz")
+    if sanity_check_failed:
+        exit(1)
 
     # run the hello world application and run on hardware for sanity check
     for d in d_vec:

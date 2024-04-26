@@ -6,6 +6,7 @@ from run import *
 from build_micro_blossom import main as build_micro_blossom_main
 from get_ttyoutput import get_ttyoutput
 from slurm_distribute import slurm_threads_or as STO
+from vivado_project import VivadoProject
 
 
 def main():
@@ -15,7 +16,8 @@ def main():
         os.mkdir(hardware_dir)
 
     p = min(p_vec)  # use the minimum p to build the hardware
-    for d in d_vec:
+    for idx, d in enumerate(d_vec):
+        frequency = f_vec[idx]
         # first generate the graph config file
         syndrome_file_path = os.path.join(hardware_dir, f"d_{d}.syndromes")
         if not os.path.exists(syndrome_file_path):
@@ -57,7 +59,7 @@ def main():
         if not os.path.exists(hardware_proj_dir(d)):
             parameters = ["--name", hardware_proj_name(d)]
             parameters += ["--path", hardware_dir]
-            parameters += ["--clock-frequency", "100"]
+            parameters += ["--clock-frequency", f"{frequency}"]
             parameters += ["--graph", graph_file_path]
             build_micro_blossom_main(parameters)
 
@@ -92,6 +94,27 @@ def main():
                 )
                 process.wait()
                 assert process.returncode == 0, "synthesis error"
+
+    # check timing reports to make sure there are no negative slacks
+    sanity_check_failed = False
+    for d in d_vec:
+        vivado = VivadoProject(hardware_proj_dir(d))
+        wns = vivado.routed_timing_summery().clk_pl_0_wns
+        frequency = vivado.frequency()
+        period = 1e-6 / frequency
+        new_period = period - wns * 1e-9
+        new_frequency = 1 / new_period / 1e6
+        if wns < 0:
+            # negative slack exists, need to lower the clock frequency
+            print(f"d={d} clock frequency too high!!!")
+            print(
+                f"frequency: {frequency}MHz, wns: {wns}ns, should lower the frequency to {new_frequency}MHz"
+            )
+            sanity_check_failed = True
+        else:
+            print(f"d={d} wns: {wns}ns, potential new frequency is {new_frequency}MHz")
+    if sanity_check_failed:
+        exit(1)
 
     # run the hello world application and run on hardware for sanity check
     for d in d_vec:
