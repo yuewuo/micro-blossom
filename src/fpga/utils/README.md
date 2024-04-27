@@ -8,7 +8,7 @@ In the rest of the programs we assume the data is streamed to a file at `./ttymi
 Here is how to create it.
 
 ```sh
-tmux new serial
+tmux new -s serial
 touch ttymicroblossom
 # this will keep showing the latest tty output while writing to the `./ttymicroblossom` file
 sudo cat /dev/ttyUSB1 | tee ./ttymicroblossom

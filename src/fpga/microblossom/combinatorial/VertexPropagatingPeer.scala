@@ -30,18 +30,24 @@ object VertexPropagatingPeer {
     require(peerNode.length == numNeighbors)
     require(peerRoot.length == numNeighbors)
 
-    val propagators = Vec.fill(numNeighbors)(VertexPropagatingPeerResult(config.vertexBits))
-    for (neighborIndex <- 0 until numNeighbors) {
-      propagators(neighborIndex).node := peerNode(neighborIndex)
-      propagators(neighborIndex).root := peerRoot(neighborIndex)
-      propagators(neighborIndex).valid := edgeIsTight(neighborIndex) && (peerSpeed(neighborIndex) === Speed.Grow)
-    }
-    val selectedPropagator = propagators.reduceBalancedTree((l, r) => Mux(l.valid, l, r))
+    if (numNeighbors > 0) {
+      val propagators = Vec.fill(numNeighbors)(VertexPropagatingPeerResult(config.vertexBits))
+      for (neighborIndex <- 0 until numNeighbors) {
+        propagators(neighborIndex).node := peerNode(neighborIndex)
+        propagators(neighborIndex).root := peerRoot(neighborIndex)
+        propagators(neighborIndex).valid := edgeIsTight(neighborIndex) && (peerSpeed(neighborIndex) === Speed.Grow)
+      }
+      val selectedPropagator = propagators.reduceBalancedTree((l, r) => Mux(l.valid, l, r))
 
-    // only propagate when the grown value is 0
-    peer.valid := (grown === 0) && selectedPropagator.valid
-    peer.node := selectedPropagator.node
-    peer.root := selectedPropagator.root
+      // only propagate when the grown value is 0
+      peer.valid := (grown === 0) && selectedPropagator.valid
+      peer.node := selectedPropagator.node
+      peer.root := selectedPropagator.root
+    } else {
+      peer.valid := False
+      peer.assignDontCareToUnasigned()
+    }
+
   }
 }
 

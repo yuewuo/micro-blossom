@@ -12,8 +12,11 @@ object VertexIsUniqueTight {
   def build(
       isUnique: Bool, // output
       tights: Seq[Bool]
-  ) = {
-    require(tights.length > 0)
+  ): Unit = {
+    if (tights.length == 0) {
+      isUnique := False
+      return
+    }
 
     val num = tights.length
 
@@ -48,8 +51,6 @@ object VertexIsUniqueTight {
 }
 
 case class VertexIsUniqueTight(numEdges: Int) extends Component {
-  require(numEdges > 0)
-
   val io = new Bundle {
     val tights = in(Vec.fill(numEdges)(Bool))
     val isUnique = out(Bool)

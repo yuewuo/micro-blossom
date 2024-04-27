@@ -49,7 +49,7 @@ fn main() {
             CodeCapacityPlanarCode::new(d, 0.1, max_half_weight),
         );
     }
-    for d in [3, 5, 7] {
+    for d in [3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27] {
         generate_example(
             format!("code_capacity_rotated_d{d}"),
             CodeCapacityRotatedCode::new(d, 0.1, max_half_weight),
