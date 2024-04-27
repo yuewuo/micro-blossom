@@ -31,7 +31,7 @@ run_dir = os.path.join(this_dir, "run")
 # d_vec = [3, 5, 7, 9]
 d_vec = [3, 5, 7]
 max_injections = 4
-f_vec = [100, 95, 76, 66]
+f_vec = [100, 95, 72, 65]
 p = 0.001
 
 

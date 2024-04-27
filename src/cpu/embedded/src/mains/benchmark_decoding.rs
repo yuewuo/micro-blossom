@@ -51,12 +51,13 @@ pub fn main() {
     let mut defects_reader = DefectsReader::new(DEFECTS);
 
     while let Some(defects) = defects_reader.next() {
+        if defects.is_empty() {
+            continue;
+        }
         unsafe { extern_c::clear_instruction_counter() };
         // start timer
         let start = unsafe { extern_c::get_native_time() };
         // reset and load defects
-        primal_module.reset();
-        dual_module.reset();
         for (node_index, &vertex_index) in defects.iter().enumerate() {
             dual_module.add_defect(ni!(vertex_index), ni!(node_index));
         }
@@ -70,7 +71,9 @@ pub fn main() {
         let end = unsafe { extern_c::get_native_time() };
         let counter = unsafe { extern_c::get_instruction_counter() };
         let diff = unsafe { extern_c::diff_native_time(start, end) } as f64;
-        println!("[{}] time: {diff}, counter: {counter}", defects_reader.count);
+        println!("[{}] time: {:.3}us, counter: {counter}", defects_reader.count, diff * 1e6);
+        primal_module.reset();
+        dual_module.reset();
     }
 }
 
