@@ -314,7 +314,6 @@ impl FusionVisualizer for DualModuleAxi4Driver {
         write!(self.link.lock().unwrap().writer, "snapshot({abbrev})\n").unwrap();
         let mut line = String::new();
         self.link.lock().unwrap().reader.read_line(&mut line).unwrap();
-        std::thread::sleep(std::time::Duration::from_millis(1000));
         serde_json::from_str(&line).unwrap()
     }
 }
