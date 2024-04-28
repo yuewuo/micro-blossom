@@ -90,9 +90,6 @@ impl DualModuleAxi4Driver {
         host_name: String,
         dual_config: DualConfig,
     ) -> std::io::Result<Self> {
-        if dual_config.support_offloading {
-            unimplemented!("TODO: support primal offloading")
-        }
         let hostname = "127.0.0.1";
         let listener = TcpListener::bind(format!("{hostname}:0"))?;
         let port = listener.local_addr()?.port();
