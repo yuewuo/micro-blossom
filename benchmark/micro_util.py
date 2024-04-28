@@ -7,6 +7,7 @@ import math
 import scipy
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
+from typing import Optional
 
 
 git_root_dir = (
@@ -304,7 +305,7 @@ class SolverInitializer:
 class SyndromePattern:
     defect_vertices: list[int]
     erasures: list[int]
-    dynamic_weights: list[list[int]]
+    dynamic_weights: Optional[list[list[int]]] = None
 
 
 @dataclass_json

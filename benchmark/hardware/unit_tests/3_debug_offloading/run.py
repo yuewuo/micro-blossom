@@ -76,7 +76,6 @@ def main():
         # add manual syndromes that corresponds to the single edge errors
         syndromes = SyndromesV1(syndrome_file_path)
         assert syndromes.initializer.vertex_num == d * (d + 1) * (d + 1) // 2
-        print(syndromes)
         with open(syndrome_file_path, "a", encoding="utf8") as f:
             for edge_index, weighted_edge in enumerate(
                 syndromes.initializer.weighted_edges

@@ -11,7 +11,7 @@ use micro_blossom_nostd::primal_module_embedded::*;
 use micro_blossom_nostd::util::*;
 
 /*
-cp ../../../resources/syndromes/code_capacity_d3_p0.1.syndromes.defects ./embedded.defects
+cp ../../../resources/syndromes/code_capacity_d3_p0.1.syndromes.defects ../embedded/embedded.defects
 EMBEDDED_BLOSSOM_MAIN=benchmark_decoding make aarch64
 * simulation (in src/cpu/blossom)
 EMBEDDED_BLOSSOM_MAIN=benchmark_decoding WITH_WAVEFORM=1 cargo run --release --bin embedded_simulator -- ../../../resources/syndromes/code_capacity_d3_p0.1.syndromes.json
