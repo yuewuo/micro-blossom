@@ -5,6 +5,8 @@ import sys
 import tempfile
 import math
 import scipy
+from dataclasses import dataclass
+from dataclasses_json import dataclass_json
 
 
 git_root_dir = (
@@ -287,3 +289,53 @@ class GnuplotData:
         Y = [y_func(line[y_column]) for line in self.data[starting_row:ending_row]]
         slope, intercept, r, _, _ = scipy.stats.linregress(X, Y)
         return slope, intercept, r
+
+
+@dataclass_json
+@dataclass
+class SolverInitializer:
+    vertex_num: int
+    weighted_edges: list[list[int]]
+    virtual_vertices: list[int]
+
+
+@dataclass_json
+@dataclass
+class SyndromePattern:
+    defect_vertices: list[int]
+    erasures: list[int]
+    dynamic_weights: list[list[int]]
+
+
+@dataclass_json
+@dataclass
+class VertexPosition:
+    i: float
+    j: float
+    t: float
+
+
+@dataclass
+class SyndromesV1:
+    initializer: SolverInitializer
+    positions: list[VertexPosition]
+    syndromes: list[SyndromePattern]
+
+    def __init__(self, filename):
+        assert isinstance(filename, str)
+        with open(filename, "r", encoding="utf8") as f:
+            head = f.readline()
+            assert head.startswith("Syndrome Pattern v1.0 ")
+            # Syndrome Pattern v1.0   <initializer> <positions> <syndrome_pattern>*
+            initializer_str = f.readline()
+            self.initializer = SolverInitializer.schema().loads(initializer_str)
+            positions = f.readline()
+            self.positions = VertexPosition.schema().loads(positions, many=True)
+            line = f.readline()
+            line.strip("\r\n ")
+            self.syndromes = []
+            while line != "":
+                syndrome_pattern = SyndromePattern.schema().loads(line)
+                self.syndromes.append(syndrome_pattern)
+                line = f.readline()
+                line.strip("\r\n ")

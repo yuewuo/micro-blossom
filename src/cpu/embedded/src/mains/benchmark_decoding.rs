@@ -64,7 +64,7 @@ pub fn main() {
         // solve it
         let (mut obstacle, _) = dual_module.find_obstacle();
         while !obstacle.is_none() {
-            // println!("obstacle: {obstacle:?}");
+            println!("obstacle: {obstacle:?}");
             primal_module.resolve(dual_module, obstacle);
             (obstacle, _) = dual_module.find_obstacle();
         }
