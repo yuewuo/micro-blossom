@@ -322,21 +322,94 @@ class SyndromesV1:
     positions: list[VertexPosition]
     syndromes: list[SyndromePattern]
 
-    def __init__(self, filename):
+    @staticmethod
+    def from_file(filename):
         assert isinstance(filename, str)
         with open(filename, "r", encoding="utf8") as f:
             head = f.readline()
             assert head.startswith("Syndrome Pattern v1.0 ")
             # Syndrome Pattern v1.0   <initializer> <positions> <syndrome_pattern>*
             initializer_str = f.readline()
-            self.initializer = SolverInitializer.schema().loads(initializer_str)
+            initializer = SolverInitializer.schema().loads(initializer_str)
             positions = f.readline()
-            self.positions = VertexPosition.schema().loads(positions, many=True)
+            positions = VertexPosition.schema().loads(positions, many=True)
             line = f.readline()
             line.strip("\r\n ")
-            self.syndromes = []
+            syndromes = []
             while line != "":
                 syndrome_pattern = SyndromePattern.schema().loads(line)
-                self.syndromes.append(syndrome_pattern)
+                syndromes.append(syndrome_pattern)
                 line = f.readline()
                 line.strip("\r\n ")
+        return SyndromesV1(initializer, positions, syndromes)
+
+
+@dataclass_json
+@dataclass
+class Position:
+    i: float
+    j: float
+    t: float
+
+
+@dataclass_json
+@dataclass
+class WeightedEdge:
+    l: int
+    r: int
+    w: int
+
+
+@dataclass_json
+@dataclass
+class BinaryTreeNode:
+    p: Optional[int] = None
+    l: Optional[int] = None
+    r: Optional[int] = None
+
+
+@dataclass_json
+@dataclass
+class BinaryTree:
+    nodes: list[BinaryTreeNode]
+
+
+@dataclass_json
+@dataclass
+class DefectMatch:
+    e: int
+
+
+@dataclass_json
+@dataclass
+class VirtualMatch:
+    e: int
+    v: int
+
+
+@dataclass_json
+@dataclass
+class Offloading:
+    dm: Optional[DefectMatch] = None
+    vm: Optional[VirtualMatch] = None
+
+
+@dataclass_json
+@dataclass
+class SingleGraph:
+    positions: list[Position]
+    vertex_num: int
+    weighted_edges: list[WeightedEdge]
+    virtual_vertices: list[int]
+    vertex_binary_tree: BinaryTree
+    edge_binary_tree: BinaryTree
+    vertex_edge_binary_tree: BinaryTree
+    vertex_max_growth: list[int]
+    offloading: list[Offloading]
+
+    @staticmethod
+    def from_file(filename):
+        assert isinstance(filename, str)
+        with open(filename, "r", encoding="utf8") as f:
+            value = f.read()
+        return SingleGraph.schema().loads(value)

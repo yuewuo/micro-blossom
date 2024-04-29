@@ -68,7 +68,7 @@ impl DualModuleCombDriver {
     pub fn new(config: MicroBlossomSingle, comb_config: DualCombConfig) -> Self {
         let virtual_vertices: BTreeSet<VertexIndex> = config.virtual_vertices.iter().cloned().collect();
         let mut all_incident_edges: Vec<Vec<EdgeIndex>> = vec![vec![]; config.vertex_num];
-        for (edge_index, &WeightedEdges { l, r, .. }) in config.weighted_edges.iter().enumerate() {
+        for (edge_index, &WeightedEdge { l, r, .. }) in config.weighted_edges.iter().enumerate() {
             for vertex_index in [l, r] {
                 all_incident_edges[vertex_index].push(edge_index);
             }

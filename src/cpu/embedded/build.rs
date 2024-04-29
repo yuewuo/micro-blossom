@@ -67,4 +67,9 @@ fn main() {
     if !defects_file.exists() {
         std::fs::write(defects_file, [u8::MAX; 4]).unwrap();
     }
+
+    // from test_micro_blossom
+    println!("cargo:rerun-if-env-changed=EDGE_0_LEFT");
+    println!("cargo:rerun-if-env-changed=EDGE_0_VIRTUAL");
+    println!("cargo:rerun-if-env-changed=EDGE_0_WEIGHT");
 }

@@ -10,7 +10,7 @@ import io.circe.generic.semiauto._
 case class SingleGraph(
     var positions: Seq[Position],
     var vertex_num: Long,
-    var weighted_edges: Seq[WeightedEdges],
+    var weighted_edges: Seq[WeightedEdge],
     var virtual_vertices: Seq[Long],
     var vertex_binary_tree: BinaryTree,
     var edge_binary_tree: BinaryTree,
@@ -27,7 +27,7 @@ case class Position(
 )
 
 @ConfiguredJsonCodec
-case class WeightedEdges(
+case class WeightedEdge(
     var l: Long,
     var r: Long,
     var w: Long
@@ -68,7 +68,7 @@ object SingleGraph {
 object Position {
   implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
 }
-object WeightedEdges {
+object WeightedEdge {
   implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
 }
 object BinaryTree {

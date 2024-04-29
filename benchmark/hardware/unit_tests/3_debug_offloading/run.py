@@ -74,7 +74,7 @@ def main():
         assert returncode == 0, "command fails..."
 
         # add manual syndromes that corresponds to the single edge errors
-        syndromes = SyndromesV1(syndrome_file_path)
+        syndromes = SyndromesV1.from_file(syndrome_file_path)
         assert syndromes.initializer.vertex_num == d * (d + 1) * (d + 1) // 2
         with open(syndrome_file_path, "a", encoding="utf8") as f:
             for edge_index, weighted_edge in enumerate(

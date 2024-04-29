@@ -38,7 +38,7 @@ variants = [
     # 4x code type
     {"graph": os.path.join(graph_dir, "example_code_capacity_rotated_d3.json")},
     {"graph": os.path.join(graph_dir, "example_code_capacity_planar_d3.json")},
-    {"graph": os.path.join(graph_dir, "example_phenomenological_d3.json")},
+    {"graph": os.path.join(graph_dir, "example_phenomenological_rotated_d3.json")},
     {"graph": os.path.join(graph_dir, "example_circuit_level_d3.json")},
     # 2x broadcast delay
     {"broadcast_delay": 2},
@@ -134,6 +134,11 @@ def main():
         filename = f"{name}.log"
         # print(f"generating {filename}")
 
+        left, virtual, weight = find_edge_0(config["graph"])
+        config["EDGE_0_LEFT"] = left
+        config["EDGE_0_VIRTUAL"] = virtual
+        config["EDGE_0_WEIGHT"] = weight
+
         config["EMBEDDED_BLOSSOM_MAIN"] = test_main
         with open(os.path.join(run_dir, filename), "w") as log:
             run_env = os.environ.copy()
@@ -160,6 +165,16 @@ def main():
             process.wait()
             succeeded = process.returncode == 0
             print(f"- [{'x' if succeeded else ' '}] {var_idx}. {variant}")
+
+
+# find the edge 0 for testing in the graph file, see `src/cpu/embedded/src/mains/test_micro_blossom.rs`
+def find_edge_0(graph_filepath):
+    graph = SingleGraph.from_file(graph_filepath)
+    for edge_index in range(len(graph.weighted_edges)):
+        edge = graph.weighted_edges[edge_index]
+        for left, right in [(edge.l, edge.r), (edge.r, edge.l)]:
+            if right in graph.virtual_vertices and left not in graph.virtual_vertices:
+                return left, right, edge.w
 
 
 if __name__ == "__main__":

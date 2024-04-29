@@ -12,7 +12,7 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct MicroBlossomSingle {
     pub positions: Vec<Position>,
     pub vertex_num: usize,
-    pub weighted_edges: Vec<WeightedEdges>,
+    pub weighted_edges: Vec<WeightedEdge>,
     pub virtual_vertices: Vec<usize>,
     /// a binary tree from every vertex/edge to a single root
     pub vertex_binary_tree: BinaryTree,
@@ -31,7 +31,7 @@ pub struct Position {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct WeightedEdges {
+pub struct WeightedEdge {
     pub l: usize,
     pub r: usize,
     pub w: isize,
@@ -82,7 +82,7 @@ impl MicroBlossomSingle {
         let weighted_edges: Vec<_> = initializer
             .weighted_edges
             .iter()
-            .map(|e| WeightedEdges {
+            .map(|e| WeightedEdge {
                 l: e.0.try_into().unwrap(),
                 r: e.1.try_into().unwrap(),
                 w: e.2,
