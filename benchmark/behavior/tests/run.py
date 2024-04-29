@@ -30,7 +30,7 @@ graph_dir = os.path.join(git_root_dir, "resources", "graphs")
 
 default_graph = os.path.join(graph_dir, "example_code_capacity_d3.json")
 
-test_main = "test_micro_blossom"  # TODO: change to more sophisticated and generic test
+test_main = "test_micro_blossom"
 
 variants = [
     # default
