@@ -61,4 +61,15 @@ I'll develop more sophisticated and generic tests later on.
 - [x] 13. {'context_depth': 4}
 - [x] 14. {'context_depth': 8}
 - [x] 15. {'context_depth': 16}
+...
+- [x] 48. {'use_32_bus': True, 'clock_divide_by': 2}
+- [x] 49. {'use_32_bus': True, 'clock_divide_by': 3}
+- [ ] 50. {'support_offloading': True}
+- [ ] 51. {'support_offloading': True, 'clock_divide_by': 2}
+- [ ] 52. {'support_offloading': True, 'clock_divide_by': 3}
+- [ ] 53. {'support_offloading': True, 'broadcast_delay': 2, 'clock_divide_by': 2}
+- [ ] 54. {'support_offloading': True, 'broadcast_delay': 2, 'clock_divide_by': 3}
 
+This test takes less than 8min on a Ubuntu machine, fast enough for feedback-based debugging!
+The same tests should be run later on real hardware, which will take about 15 min * 54 = 14 hours.
+A new test needs to be developed to 1. take into consideration of different graph structures and weights and 2. take into consideration of offloading, especially testing the efficiency of offloading (every single edge defect should be offloaded).
