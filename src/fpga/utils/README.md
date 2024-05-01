@@ -11,7 +11,7 @@ Here is how to create it.
 tmux new -s serial
 touch ttymicroblossom
 # this will keep showing the latest tty output while writing to the `./ttymicroblossom` file
-sudo cat /dev/ttyUSB1 | tee ./ttymicroblossom
+sudo picocom /dev/ttyUSB1 -b 115200 --imap lfcrlf | tee ./ttymicroblossom
 # in case you need to observe only the recent changes, run
 tail -f -n0 ./ttymicroblossom
 ```
