@@ -67,6 +67,7 @@ fn main() {
             "qubit_type": fusion_blossom::qecp::types::QubitType::StabZ,
             "max_half_weight": max_half_weight,
             "parallel_init": num_cpus::get() - 1,  // speed up construction
+            "nm": d-1,  // d-1 noisy measurement rounds and 1 perfect measurement rounds
         });
         println!("qecp constructing circuit_level_d{d}...");
         generate_example(format!("circuit_level_d{d}"), QECPlaygroundCode::new(d, 0.001, config));
