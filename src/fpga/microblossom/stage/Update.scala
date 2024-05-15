@@ -53,6 +53,7 @@ case class StageUpdateVertex3(config: DualConfig, vertexIndex: Int) extends Bund
 
 case class StageUpdateEdge(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
+  val remaining = UInt(config.weightBits bits)
   val compact = BroadcastCompact(config)
 
   def connect(last: StageExecuteEdge3) = {
@@ -63,10 +64,12 @@ case class StageUpdateEdge(config: DualConfig) extends Bundle {
 
 case class StageUpdateEdge2(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
+  val remaining = UInt(config.weightBits bits)
   val compact = BroadcastCompact(config)
 
   def connect(last: StageUpdateEdge) = {
     state := last.state
+    remaining := last.remaining
     compact := last.compact
   }
 }
@@ -78,6 +81,7 @@ case class StageUpdateEdge3(config: DualConfig) extends Bundle {
 
   def connect(last: StageUpdateEdge2) = {
     state := last.state
+    remaining := last.remaining
     compact := last.compact
   }
 }
