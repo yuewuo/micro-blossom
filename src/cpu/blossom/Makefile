@@ -20,6 +20,7 @@ test: test-comb
 	cargo run --release -- test embedded-rtl
 # this command runs way too slow, so it's important to enable syndrome printing to help locate problem
 	cargo run --release -- test dual-scala --print-syndrome-pattern --print-command
+	cargo run --release -- test dual-axi4 --print-syndrome-pattern --print-command
 
 test-comb:
 	cargo run --release -- test embedded-comb
