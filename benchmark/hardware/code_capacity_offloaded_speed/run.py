@@ -1,7 +1,6 @@
 import os
 import sys
 import subprocess
-import sys
 
 git_root_dir = (
     subprocess.run(
