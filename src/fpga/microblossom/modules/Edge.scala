@@ -60,8 +60,10 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
 
   // fetch
   var ram: Mem[EdgeState] = null
-  var register = Reg(EdgeState(config.weightBits))
-  register.init(EdgeState.resetValue(config, edgeIndex))
+  var register = (!config.hardCodeWeights) generate Reg(EdgeState(config.weightBits, config.hardCodeWeights))
+  if (!config.hardCodeWeights) {
+    register.init(EdgeState.resetValue(config, edgeIndex))
+  }
   var fetchState = EdgeState(config.weightBits)
   var message = BroadcastMessage(config)
   if (config.contextBits > 0) {
@@ -75,7 +77,11 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
     )
     message := RegNext(io.message)
   } else {
-    fetchState := register
+    if (config.hardCodeWeights) {
+      fetchState := EdgeState.resetValue(config, edgeIndex)
+    } else {
+      fetchState := register
+    }
     message := io.message
   }
 
@@ -157,7 +163,9 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
     )
   } else {
     when(stages.updateGet3.compact.valid) {
-      register := writeState
+      if (!config.hardCodeWeights) {
+        register := writeState
+      }
     }
   }
 

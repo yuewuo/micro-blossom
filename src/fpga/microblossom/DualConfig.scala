@@ -17,6 +17,7 @@ case class DualConfig(
     var convergecastDelay: Int = 1,
     var contextDepth: Int = 1, // how many different contexts are supported
     var conflictChannels: Int = 1, // how many conflicts are collected at once in parallel
+    var hardCodeWeights: Boolean = true,  // hard-code the edge weights to simplify logic
     // optional features
     var supportAddDefectVertex: Boolean = true,
     var supportOffloading: Boolean = false,
