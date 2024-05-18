@@ -21,6 +21,7 @@ case class DualConfig(
     // optional features
     var supportAddDefectVertex: Boolean = true,
     var supportOffloading: Boolean = false,
+    var supportLayerFusion: Boolean = false,
     // load graph either from parameter or from file
     var graph: SingleGraph = null,
     val filename: String = null,

@@ -28,16 +28,16 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use wait_timeout::ChildExt;
 
-#[derive(Serialize, Derivative)]
+#[derive(Serialize, Derivative, Clone)]
 #[derivative(Default)]
 pub struct DualConfig {
-    #[derivative(Default(value = "*dual_config_default::WITH_WAVEFORM"))]
+    #[derivative(Default(value = "dual_config_default::with_waveform()"))]
     pub with_waveform: bool,
-    #[derivative(Default(value = "*dual_config_default::DUMP_DEBUGGER_FILES"))]
+    #[derivative(Default(value = "dual_config_default::dump_debugger_files()"))]
     pub dump_debugger_files: bool,
-    #[derivative(Default(value = "(*dual_config_default::BUS_TYPE).clone()"))]
+    #[derivative(Default(value = "dual_config_default::bus_type()"))]
     pub bus_type: String,
-    #[derivative(Default(value = "*dual_config_default::USE_64_BUS"))]
+    #[derivative(Default(value = "dual_config_default::use_64_bus()"))]
     pub use_64_bus: bool,
     #[derivative(Default(value = "dual_config_default::env_usize(\"CONTEXT_DEPTH\", 1)"))]
     pub context_depth: usize,
@@ -47,13 +47,15 @@ pub struct DualConfig {
     pub convergecast_delay: usize,
     #[derivative(Default(value = "dual_config_default::env_usize(\"CONFLICT_CHANNELS\", 1)"))]
     pub conflict_channels: usize,
-    #[derivative(Default(value = "*dual_config_default::HARD_CODE_WEIGHTS"))]
+    #[derivative(Default(value = "dual_config_default::hard_code_weights()"))]
     pub hard_code_weights: bool,
-    #[derivative(Default(value = "*dual_config_default::SUPPORT_ADD_DEFECT_VERTEX"))]
+    #[derivative(Default(value = "dual_config_default::support_add_defect_vertex()"))]
     pub support_add_defect_vertex: bool,
-    #[derivative(Default(value = "*dual_config_default::SUPPORT_OFFLOADING"))]
+    #[derivative(Default(value = "dual_config_default::support_offloading()"))]
     pub support_offloading: bool,
-    #[derivative(Default(value = "dual_config_default::INJECT_REGISTERS.clone()"))]
+    #[derivative(Default(value = "dual_config_default::support_layer_fusion()"))]
+    pub support_layer_fusion: bool,
+    #[derivative(Default(value = "dual_config_default::inject_registers()"))]
     pub inject_registers: Vec<String>,
     #[derivative(Default(value = "dual_config_default::env_usize(\"CLOCK_DIVIDE_BY\", 1)"))]
     pub clock_divide_by: usize,
@@ -359,12 +361,21 @@ impl Drop for DualModuleAxi4Driver {
 }
 
 pub mod dual_config_default {
-    use lazy_static::lazy_static;
     use std::env;
     pub fn is_set(name: &str) -> bool {
         match env::var(name) {
             Ok(value) => value != "",
             Err(_) => false,
+        }
+    }
+    pub fn env_bool(name: &str, false_name: &str, default_value: bool) -> bool {
+        if is_set(name) {
+            assert!(!is_set(false_name), "bool environment variable conflicts");
+            true
+        } else if is_set(false_name) {
+            false
+        } else {
+            default_value
         }
     }
     pub fn env_usize(name: &str, default: usize) -> usize {
@@ -373,19 +384,35 @@ pub mod dual_config_default {
             Err(_) => default,
         }
     }
-    lazy_static! {
-        pub static ref WITH_WAVEFORM: bool = (cfg!(test) || is_set("WITH_WAVEFORM")) && !is_set("NO_WAVEFORM");
-        pub static ref DUMP_DEBUGGER_FILES: bool =
-            (cfg!(test) || is_set("DUMP_DEBUGGER_FILES")) && !is_set("NO_DEBUGGER_FILES");
-        pub static ref BUS_TYPE: String = env::var("BUS_TYPE").unwrap_or("AxiLite4".to_string());
-        pub static ref USE_64_BUS: bool = !is_set("USE_32_BUS");
-        pub static ref HARD_CODE_WEIGHTS: bool = !is_set("NO_HARD_CODE_WEIGHTS");
-        pub static ref SUPPORT_ADD_DEFECT_VERTEX: bool = !is_set("NO_ADD_DEFECT_VERTEX");
-        pub static ref SUPPORT_OFFLOADING: bool = is_set("SUPPORT_OFFLOADING");
-        pub static ref INJECT_REGISTERS: Vec<String> = match env::var("INJECT_REGISTERS") {
+    pub fn with_waveform() -> bool {
+        (cfg!(test) || is_set("WITH_WAVEFORM")) && !is_set("NO_WAVEFORM")
+    }
+    pub fn dump_debugger_files() -> bool {
+        (cfg!(test) || is_set("DUMP_DEBUGGER_FILES")) && !is_set("NO_DEBUGGER_FILES")
+    }
+    pub fn bus_type() -> String {
+        env::var("BUS_TYPE").unwrap_or("AxiLite4".to_string())
+    }
+    pub fn use_64_bus() -> bool {
+        env_bool("USE_64_BUS", "USE_32_BUS", true)
+    }
+    pub fn hard_code_weights() -> bool {
+        env_bool("HARD_CODE_WEIGHTS", "DYNAMIC_WEIGHTS", true)
+    }
+    pub fn support_add_defect_vertex() -> bool {
+        env_bool("SUPPORT_ADD_DEFECT_VERTEX", "NO_ADD_DEFECT_VERTEX", true)
+    }
+    pub fn support_offloading() -> bool {
+        env_bool("SUPPORT_OFFLOADING", "NO_OFFLOADING", false)
+    }
+    pub fn support_layer_fusion() -> bool {
+        env_bool("SUPPORT_LAYER_FUSION", "NO_LAYER_FUSION", true)
+    }
+    pub fn inject_registers() -> Vec<String> {
+        match env::var("INJECT_REGISTERS") {
             Ok(value) => value.split(',').map(|a| a.to_string()).collect(),
             Err(_) => vec![],
-        };
+        }
     }
 }
 impl DualConfig {

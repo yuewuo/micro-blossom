@@ -72,6 +72,7 @@ object MicroBlossomHost extends App {
     val hardCodeWeights = readNamedValue("hard_code_weights").toBoolean
     val supportAddDefectVertex = readNamedValue("support_add_defect_vertex").toBoolean
     val supportOffloading = readNamedValue("support_offloading").toBoolean
+    val supportLayerFusion = readNamedValue("support_layer_fusion").toBoolean
     val injectRegistersJson = readNamedValue("inject_registers")
     val injectRegisters = decode[Seq[String]](injectRegistersJson) match {
       case Right(value) => value
