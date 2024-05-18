@@ -297,6 +297,13 @@ impl DualTrackedDriver for DualModuleCombDriver {
 impl FusionVisualizer for DualModuleCombDriver {
     #[allow(clippy::unnecessary_cast)]
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+        let optional_node_index = |node_index: NodeIndex| {
+            if node_index == VIRTUAL_NODE_INDEX {
+                None
+            } else {
+                Some(node_index)
+            }
+        };
         let vertices: Vec<serde_json::Value> = self
             .vertices
             .iter()
@@ -308,13 +315,13 @@ impl FusionVisualizer for DualModuleCombDriver {
                 if let Some(node_index) = vertex.registers.node_index.as_ref() {
                     value.as_object_mut().unwrap().insert(
                         (if abbrev { "p" } else { "propagated_dual_node" }).to_string(),
-                        json!(node_index),
+                        json!(optional_node_index(*node_index)),
                     );
                 }
                 if let Some(root_index) = vertex.registers.root_index.as_ref() {
                     value.as_object_mut().unwrap().insert(
                         (if abbrev { "pg" } else { "propagated_grandson_dual_node" }).to_string(),
-                        json!(root_index),
+                        json!(optional_node_index(*root_index)),
                     );
                 }
                 value
@@ -336,27 +343,27 @@ impl FusionVisualizer for DualModuleCombDriver {
                 let left_vertex = &self.vertices[edge.left_index];
                 let right_vertex = &self.vertices[edge.right_index];
                 if let Some(node_index) = left_vertex.registers.node_index.as_ref() {
-                    value
-                        .as_object_mut()
-                        .unwrap()
-                        .insert((if abbrev { "ld" } else { "left_dual_node" }).to_string(), json!(node_index));
+                    value.as_object_mut().unwrap().insert(
+                        (if abbrev { "ld" } else { "left_dual_node" }).to_string(),
+                        json!(optional_node_index(*node_index)),
+                    );
                 }
                 if let Some(root_index) = left_vertex.registers.root_index.as_ref() {
                     value.as_object_mut().unwrap().insert(
                         (if abbrev { "lgd" } else { "left_grandson_dual_node" }).to_string(),
-                        json!(root_index),
+                        json!(optional_node_index(*root_index)),
                     );
                 }
                 if let Some(node_index) = right_vertex.registers.node_index.as_ref() {
-                    value
-                        .as_object_mut()
-                        .unwrap()
-                        .insert((if abbrev { "rd" } else { "right_dual_node" }).to_string(), json!(node_index));
+                    value.as_object_mut().unwrap().insert(
+                        (if abbrev { "rd" } else { "right_dual_node" }).to_string(),
+                        json!(optional_node_index(*node_index)),
+                    );
                 }
                 if let Some(root_index) = right_vertex.registers.root_index.as_ref() {
                     value.as_object_mut().unwrap().insert(
                         (if abbrev { "rgd" } else { "right_grandson_dual_node" }).to_string(),
-                        json!(root_index),
+                        json!(optional_node_index(*root_index)),
                     );
                 }
                 value
