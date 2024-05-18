@@ -477,6 +477,11 @@ impl PrimalDualType {
             }
             Self::EmbeddedComb | Self::EmbeddedCombPreMatching | Self::EmbeddedCombPreMatchingVirtual => {
                 let mut micro_config = MicroBlossomSingle::new(initializer, positions);
+                match self {
+                    Self::EmbeddedComb => {}
+                    Self::EmbeddedCombPreMatching => {}
+                    Self::EmbeddedCombPreMatchingVirtual => {}
+                }
                 // customize offloading
                 micro_config.offloading.0.clear();
                 if matches!(self, Self::EmbeddedCombPreMatching) {
