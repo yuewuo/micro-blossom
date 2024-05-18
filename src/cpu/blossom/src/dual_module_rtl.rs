@@ -790,7 +790,7 @@ pub mod tests {
         d: VertexNum,
         visualize_filename: Option<String>,
         defect_vertices: Vec<VertexIndex>,
-        constructor: impl FnOnce(&SolverInitializer) -> Solver,
+        constructor: impl FnOnce(&SolverInitializer, &Vec<VisualizePosition>) -> Solver,
     ) -> Solver {
         println!("{defect_vertices:?}");
         let half_weight = 500;
@@ -812,7 +812,7 @@ pub mod tests {
         let initializer = code.get_initializer();
         code.set_defect_vertices(&defect_vertices);
         let syndrome = code.get_syndrome();
-        let mut solver = constructor(&initializer);
+        let mut solver = constructor(&initializer, &code.get_positions());
         solver.solve_visualizer(&syndrome, visualizer.as_mut());
         let subgraph = solver.subgraph_visualizer(visualizer.as_mut());
         let mut standard_solver = SolverSerial::new(&initializer);
@@ -836,7 +836,7 @@ pub mod tests {
             d,
             Some(visualize_filename),
             defect_vertices,
-            |initializer| SolverEmbeddedRTL::new(initializer),
+            |initializer, _| SolverEmbeddedRTL::new(initializer),
         )
     }
 
@@ -849,7 +849,7 @@ pub mod tests {
             d,
             Some(visualize_filename),
             defect_vertices,
-            |initializer| {
+            |initializer, _| {
                 let mut solver = SolverEmbeddedRTL::new(initializer);
                 solver.dual_module.driver.driver.use_pre_matching = true;
                 solver
@@ -866,7 +866,7 @@ pub mod tests {
             d,
             Some(visualize_filename),
             defect_vertices,
-            |initializer| SolverDualRTL::new(initializer),
+            |initializer, _| SolverDualRTL::new(initializer),
         )
     }
 }

@@ -23,7 +23,7 @@ pub struct MicroBlossomSingle {
     /// primal offloading
     pub offloading: OffloadingFinder,
     /// microscopic fusion
-    pub fusion_plan: Option<FusionPlan>,
+    pub layer_fusion: Option<LayerFusion>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -77,6 +77,14 @@ pub enum OffloadingType {
         #[serde(rename = "v")]
         virtual_vertex: usize,
     },
+    /// temporary match with fusion boundary that is guaranteed to be removed in the end
+    #[serde(rename = "fm")]
+    FusionMatch {
+        #[serde(rename = "e")]
+        edge_index: usize,
+        #[serde(rename = "c")]
+        conditioned_vertex: usize,
+    },
 }
 
 impl MicroBlossomSingle {
@@ -108,7 +116,7 @@ impl MicroBlossomSingle {
         let vertex_edge_binary_tree = BinaryTree::inferred_from_positions(&vertex_edge_positions);
         let vertex_max_growth = infer_vertex_max_growth(initializer);
         let mut offloading = OffloadingFinder::new();
-        offloading.find_all(initializer);
+        offloading.find_first_order(initializer);
         let mut result = Self {
             vertex_num: initializer.vertex_num.try_into().unwrap(),
             positions,
@@ -119,9 +127,9 @@ impl MicroBlossomSingle {
             vertex_edge_binary_tree,
             vertex_max_growth,
             offloading,
-            fusion_plan: None,
+            layer_fusion: None,
         };
-        result.fusion_plan = Some(FusionPlan::new(&result));
+        result.layer_fusion = Some(LayerFusion::new(&result));
         result
     }
 
@@ -158,7 +166,7 @@ impl OffloadingFinder {
         Self(vec![])
     }
 
-    pub fn find_all(&mut self, initializer: &SolverInitializer) {
+    pub fn find_first_order(&mut self, initializer: &SolverInitializer) {
         self.find_defect_match(initializer);
         self.find_virtual_match(initializer);
     }
@@ -342,21 +350,34 @@ impl BinaryTree {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct FusionPlan {
-    num_layers: usize,
+pub struct LayerFusion {
+    pub num_layers: usize,
     /// `layers[layer_id] = Vec<vertices>`
-    layers: Vec<Vec<usize>>,
+    pub layers: Vec<Vec<usize>>,
     /// mapping from vertex index to layer id
-    vertex_layer_id: BTreeMap<usize, usize>,
+    pub vertex_layer_id: BTreeMap<usize, usize>,
     /// mapping from edge index to the conditioned vertex index
-    fusion_edges: BTreeMap<usize, usize>,
+    pub fusion_edges: BTreeMap<usize, usize>,
     /// mapping from vertex index to the conditioned edge indices
-    unique_tight_conditions: BTreeMap<usize, Vec<usize>>,
+    pub unique_tight_conditions: BTreeMap<usize, Vec<usize>>,
 }
 
-impl FusionPlan {
+impl LayerFusion {
     /// automatically infer fusion plan according to the position
     pub fn new(graph: &MicroBlossomSingle) -> Self {
+        // useful for observing fusion when the graph is 2D
+        let mut demo_2d_fusion = false;
+        {
+            let t_values: BTreeSet<OrderedFloat<f64>> = graph.positions.iter().map(|pos| pos.t.into()).collect();
+            if t_values.len() == 1 {
+                demo_2d_fusion = true;
+            }
+        }
+        let get_t = if !demo_2d_fusion {
+            |position: &Position| position.t
+        } else {
+            |position: &Position| -position.i
+        };
         // first find all t position values
         let mut layers = BTreeMap::<OrderedFloat<f64>, Vec<usize>>::new();
         let virtual_vertices: BTreeSet<usize> = graph.virtual_vertices.iter().cloned().collect();
@@ -364,7 +385,7 @@ impl FusionPlan {
             if virtual_vertices.contains(&vertex_index) {
                 continue; // do not count virtual vertices
             }
-            let t = position.t.into();
+            let t = get_t(position).into();
             if let Some(layer) = layers.get_mut(&t) {
                 layer.push(vertex_index);
             } else {
@@ -500,7 +521,7 @@ mod tests {
         let visualize_filename = "resources_micro_blossom_fusion_plan_1.json".to_string();
         let mut code = PhenomenologicalRotatedCode::new(3, 3, 0.1, 500);
         let micro_blossom = MicroBlossomSingle::new_code(&code);
-        println!("{:?}", micro_blossom.fusion_plan);
+        println!("{:?}", micro_blossom.layer_fusion);
         visualize_code(&mut code, visualize_filename);
     }
 
@@ -516,7 +537,7 @@ mod tests {
         });
         let mut code = QECPlaygroundCode::new(d, 0.001, config);
         let micro_blossom = MicroBlossomSingle::new_code(&code);
-        println!("{:?}", micro_blossom.fusion_plan);
+        println!("{:?}", micro_blossom.layer_fusion);
         visualize_code(&mut code, visualize_filename);
     }
 }

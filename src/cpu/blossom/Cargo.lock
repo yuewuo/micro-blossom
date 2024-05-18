@@ -1310,6 +1310,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_variant",
+ "tmp_env",
  "urlencoding",
  "wait-timeout",
  "weak-table",
@@ -2104,6 +2105,15 @@ name = "tinyvec_macros"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
+
+[[package]]
+name = "tmp_env"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a56eb9e5a28c3c4f0a6aa8ea70a8ad2d6c53e4bf364571ce78f57945b6766843"
+dependencies = [
+ "rand",
+]
 
 [[package]]
 name = "tokio"

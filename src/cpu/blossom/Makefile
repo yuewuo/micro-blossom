@@ -13,7 +13,8 @@ clean:
 clean-env: clean
 
 test: test-comb
-	cargo test
+# using single thread testing to run sbt safely and also setting environment variables without races
+	cargo test -- --test-threads=1
 
 	cargo run --release -- test primal-embedded
 	cargo run --release -- test dual-rtl

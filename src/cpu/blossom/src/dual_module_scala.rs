@@ -284,7 +284,7 @@ pub mod tests {
             d,
             Some(visualize_filename.clone()),
             defect_vertices,
-            |initializer| {
+            |initializer, _| {
                 SolverDualScala::new_with_name(
                     initializer,
                     visualize_filename.as_str().trim_end_matches(".json").to_string(),

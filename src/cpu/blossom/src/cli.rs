@@ -1,4 +1,3 @@
-use crate::dual_module_axi4::DualConfig;
 use crate::mwpm_solver::*;
 use crate::resources::*;
 use byteorder::{LittleEndian, WriteBytesExt};
@@ -471,15 +470,10 @@ impl PrimalDualType {
                 Box::new(solver)
             }
             Self::EmbeddedComb | Self::EmbeddedCombPreMatching => {
-                let mut micro_config = MicroBlossomSingle::new(initializer, positions);
-                match self {
-                    Self::EmbeddedComb => {}
-                    Self::EmbeddedCombPreMatching => {
-                        env::set_var("SUPPORT_OFFLOADING", "1");
-                    }
-                    _ => unreachable!(),
+                let micro_config = MicroBlossomSingle::new(initializer, positions);
+                if self == &Self::EmbeddedCombPreMatching {
+                    env::set_var("SUPPORT_OFFLOADING", "1");
                 }
-                let dual_config: DualConfig = Default::default();
                 // build solver
                 let solver = SolverDualComb::new_native(micro_config, primal_dual_config);
                 Box::new(solver)

@@ -406,7 +406,7 @@ pub mod dual_config_default {
         env_bool("SUPPORT_OFFLOADING", "NO_OFFLOADING", false)
     }
     pub fn support_layer_fusion() -> bool {
-        env_bool("SUPPORT_LAYER_FUSION", "NO_LAYER_FUSION", true)
+        env_bool("SUPPORT_LAYER_FUSION", "NO_LAYER_FUSION", false)
     }
     pub fn inject_registers() -> Vec<String> {
         match env::var("INJECT_REGISTERS") {
@@ -507,7 +507,7 @@ mod tests {
             d,
             Some(visualize_filename.clone()),
             defect_vertices,
-            |initializer| {
+            |initializer, _| {
                 SolverDualAxi4::new_with_name(initializer, visualize_filename.as_str().trim_end_matches(".json").to_string())
                 //.with_max_iterations(30)  // this is helpful when debugging infinite loops
             },
