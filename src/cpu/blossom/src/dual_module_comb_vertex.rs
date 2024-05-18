@@ -54,6 +54,7 @@ pub struct ShadowNode {
     pub speed: CompactGrowState,
     pub node_index: Option<NodeIndex>,
     pub root_index: Option<NodeIndex>,
+    pub is_virtual: bool,
 }
 
 impl VertexRegisters {
@@ -218,6 +219,7 @@ impl Vertex {
                 node_index: state.node_index,
                 root_index: state.root_index,
                 speed: state.speed,
+                is_virtual: state.is_virtual,
             };
             if state.speed == CompactGrowState::Shrink && state.grown == 0 {
                 if let Some(peer) = propagating_peer.clone() {

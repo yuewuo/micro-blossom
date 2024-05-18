@@ -60,8 +60,10 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
 
   // fetch
   var ram: Mem[EdgeState] = null
-  var register = Reg(EdgeState(config.weightBits))
-  register.init(EdgeState.resetValue(config, edgeIndex))
+  var register = (!config.hardCodeWeights) generate Reg(EdgeState(config.weightBits, config.hardCodeWeights))
+  if (!config.hardCodeWeights) {
+    register.init(EdgeState.resetValue(config, edgeIndex))
+  }
   var fetchState = EdgeState(config.weightBits)
   var message = BroadcastMessage(config)
   if (config.contextBits > 0) {
@@ -75,7 +77,11 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
     )
     message := RegNext(io.message)
   } else {
-    fetchState := register
+    if (config.hardCodeWeights) {
+      fetchState := EdgeState.resetValue(config, edgeIndex)
+    } else {
+      fetchState := register
+    }
     message := io.message
   }
 
@@ -117,21 +123,21 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   }
 
   stages.updateSet.connect(stages.executeGet3)
-
-  stages.updateSet2.connect(stages.updateGet)
-
-  stages.updateSet3.connect(stages.updateGet2)
-  val update3Area = new Area {
+  val updateArea = new Area {
     val edgeRemaining = EdgeRemaining(
       leftGrownBits = leftGrownBits,
       rightGrownBits = rightGrownBits,
       weightBits = config.weightBits
     )
-    edgeRemaining.io.leftGrown := io.leftVertexInput.updateGet2.state.grown
-    edgeRemaining.io.rightGrown := io.rightVertexInput.updateGet2.state.grown
-    edgeRemaining.io.weight := stages.updateGet2.state.weight
-    stages.updateSet3.remaining := edgeRemaining.io.remaining
+    edgeRemaining.io.leftGrown := io.leftVertexInput.executeGet3.state.grown
+    edgeRemaining.io.rightGrown := io.rightVertexInput.executeGet3.state.grown
+    edgeRemaining.io.weight := stages.executeGet3.state.weight
+    stages.updateSet.remaining := edgeRemaining.io.remaining
   }
+
+  stages.updateSet2.connect(stages.updateGet)
+
+  stages.updateSet3.connect(stages.updateGet2)
 
   val edgeResponse = EdgeResponse(config.vertexBits, config.weightBits)
   edgeResponse.io.leftShadow := io.leftVertexInput.updateGet3.shadow
@@ -157,7 +163,9 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
     )
   } else {
     when(stages.updateGet3.compact.valid) {
-      register := writeState
+      if (!config.hardCodeWeights) {
+        register := writeState
+      }
     }
   }
 

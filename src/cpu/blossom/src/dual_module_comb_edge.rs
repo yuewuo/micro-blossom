@@ -130,8 +130,8 @@ impl Edge {
     }
 
     fn get_remaining(&self, dual_module: &DualModuleCombDriver) -> Weight {
-        let left_vertex = dual_module.vertices[self.left_index].get_post_update_state(dual_module);
-        let right_vertex = dual_module.vertices[self.right_index].get_post_update_state(dual_module);
+        let left_vertex = dual_module.vertices[self.left_index].get_post_execute_state(dual_module);
+        let right_vertex = dual_module.vertices[self.right_index].get_post_execute_state(dual_module);
         self.get_post_execute_state(dual_module).weight - left_vertex.grown - right_vertex.grown
     }
 
@@ -139,12 +139,6 @@ impl Edge {
         referenced_signal!(self.signals.response, || {
             let left_shadow = dual_module.vertices[self.left_index].get_shadow_node(dual_module);
             let right_shadow = dual_module.vertices[self.right_index].get_shadow_node(dual_module);
-            let left_is_virtual = dual_module.vertices[self.left_index]
-                .get_post_update_state(dual_module)
-                .is_virtual;
-            let right_is_virtual = dual_module.vertices[self.right_index]
-                .get_post_update_state(dual_module)
-                .is_virtual;
             if left_shadow.node_index == right_shadow.node_index {
                 return CompactObstacle::GrowLength {
                     length: CompactWeight::MAX,
@@ -160,8 +154,8 @@ impl Edge {
                         None
                     }
                 };
-                let is_left_available = left_shadow.node_index.is_none() && !left_is_virtual;
-                let is_right_available = right_shadow.node_index.is_none() && !right_is_virtual;
+                let is_left_available = left_shadow.node_index.is_none() && !left_shadow.is_virtual;
+                let is_right_available = right_shadow.node_index.is_none() && !right_shadow.is_virtual;
                 if remaining == 0 && !is_left_available && !is_right_available {
                     return CompactObstacle::Conflict {
                         node_1: left_shadow.node_index.and_then(node_mapper).into(),

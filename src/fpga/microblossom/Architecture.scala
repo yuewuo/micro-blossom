@@ -15,9 +15,9 @@ import spinal.core._
  * |            RegionPreference[14:0]          |                                | 3'b000 | 3'b100 | FindObstacle
  * |                Address[14:0]               |                                | 3'b001 | 3'b100 | ClearAccumulator
  * |               EdgeIndex[14:0]              |                                | 3'b010 | 3'b100 | AccumulateEdge
- * |                                     Reserved                                | 3'b011 | 3'b100 | Reserved
+ * |                                     Reserved                                | 3'b011 | 3'b100 | LoadWeightsExternal
  * |                                         0                                   | 3'b100 | 3'b100 | Reset
- * |                  Time[14:0]                |           Channel[10:0]        | 3'b101 | 3'b100 | LoadSyndromeExternal
+ * |                  Time[14:0]                |           Channel[10:0]        | 3'b101 | 3'b100 | LoadDefectsExternal
  * |                                      Length[25:0]                           | 3'b110 | 3'b100 | Grow
  * |                 Vertex[14:0]               | v|e | t|e |                    | 3'b111 | 3'b100 | SetAttribute(debug)
  * -------------------------------------------------------------------------------------------------
@@ -71,9 +71,9 @@ object ExtendedOpCode {
   def FindObstacle = Integer.parseInt("000", 2)
   def ClearAccumulator = Integer.parseInt("001", 2)
   def AccumulateEdge = Integer.parseInt("010", 2)
-  def Reserved = Integer.parseInt("011", 2)
+  def LoadWeightsExternal = Integer.parseInt("011", 2)
   def Reset = Integer.parseInt("100", 2)
-  def LoadSyndromeExternal = Integer.parseInt("101", 2)
+  def LoadDefectsExternal = Integer.parseInt("101", 2)
   def Grow = Integer.parseInt("110", 2)
   def Reserved2 = Integer.parseInt("111", 2)
 }

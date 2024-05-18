@@ -47,6 +47,8 @@ pub struct DualConfig {
     pub convergecast_delay: usize,
     #[derivative(Default(value = "dual_config_default::env_usize(\"CONFLICT_CHANNELS\", 1)"))]
     pub conflict_channels: usize,
+    #[derivative(Default(value = "*dual_config_default::HARD_CODE_WEIGHTS"))]
+    pub hard_code_weights: bool,
     #[derivative(Default(value = "*dual_config_default::SUPPORT_ADD_DEFECT_VERTEX"))]
     pub support_add_defect_vertex: bool,
     #[derivative(Default(value = "*dual_config_default::SUPPORT_OFFLOADING"))]
@@ -377,6 +379,7 @@ pub mod dual_config_default {
             (cfg!(test) || is_set("DUMP_DEBUGGER_FILES")) && !is_set("NO_DEBUGGER_FILES");
         pub static ref BUS_TYPE: String = env::var("BUS_TYPE").unwrap_or("AxiLite4".to_string());
         pub static ref USE_64_BUS: bool = !is_set("USE_32_BUS");
+        pub static ref HARD_CODE_WEIGHTS: bool = !is_set("NO_HARD_CODE_WEIGHTS");
         pub static ref SUPPORT_ADD_DEFECT_VERTEX: bool = !is_set("NO_ADD_DEFECT_VERTEX");
         pub static ref SUPPORT_OFFLOADING: bool = is_set("SUPPORT_OFFLOADING");
         pub static ref INJECT_REGISTERS: Vec<String> = match env::var("INJECT_REGISTERS") {
