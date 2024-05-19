@@ -77,6 +77,8 @@ def main(config: Configuration, peek_smallest_graph: bool = False):
             parameters += ["--path", hardware_dir]
             parameters += ["--clock-frequency", f"{frequency}"]
             parameters += ["--graph", graph_file_path]
+            if config.scala_parameters is not None:
+                parameters += config.scala_parameters
             build_micro_blossom_main(parameters)
 
     # then build hello world application
