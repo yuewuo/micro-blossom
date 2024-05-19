@@ -160,7 +160,9 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
       vertex.io.simPublic()
     })
     edges.foreach(edge => {
-      edge.register.simPublic()
+      if (!config.hardCodeWeights) {
+        edge.register.simPublic()
+      }
       edge.io.simPublic()
     })
     offloaders.foreach(offloader => {
@@ -227,12 +229,14 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
     var jsonEdges = ArrayBuffer[Json]()
     edges.foreach(edge => {
       val register = edge.register
+      val weight = if (config.hardCodeWeights) { config.graph.weighted_edges(edge.edgeIndex).w.toLong }
+      else { register.weight.toLong }
       val (leftIndex, rightIndex) = config.incidentVerticesOf(edge.edgeIndex)
       val leftReg = vertices(leftIndex).register
       val rightReg = vertices(rightIndex).register
       val edgeMap = Map(
         (if (abbrev) { "w" }
-         else { "weight" }) -> Json.fromLong(register.weight.toLong),
+         else { "weight" }) -> Json.fromLong(weight),
         (if (abbrev) { "l" }
          else { "left" }) -> Json.fromLong(leftIndex),
         (if (abbrev) { "r" }
