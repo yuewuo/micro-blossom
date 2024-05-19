@@ -484,6 +484,27 @@ pub mod tests {
         assert!(solver.offloaded == 1);
     }
 
+    /// verify that all single error can be decoded totally offline
+    #[test]
+    fn dual_module_comb_pre_matching_all_single_error() {
+        // cargo test dual_module_comb_pre_matching_all_single_error -- --nocapture
+        let visualize_filename = "dual_module_comb_pre_matching_all_single_error.json".to_string();
+        let d = 5;
+        let code = CodeCapacityPlanarCode::new(d, 0.1, 500);
+        let initializer = code.get_initializer();
+        let virtual_vertices: BTreeSet<_> = initializer.virtual_vertices.iter().cloned().collect();
+        for (left, right, _) in initializer.weighted_edges.iter() {
+            let defect_vertices: Vec<_> = [left, right]
+                .into_iter()
+                .filter(|vertex_index| !virtual_vertices.contains(&vertex_index))
+                .cloned()
+                .collect();
+            let solver =
+                dual_module_comb_pre_matching_standard_syndrome(d, visualize_filename.clone(), defect_vertices.clone());
+            assert_eq!(solver.offloaded, defect_vertices.len(), "all defects should be offloaded");
+        }
+    }
+
     /// test layer fusion without any offloading
     #[test]
     fn dual_module_comb_layer_fusion_1() {
@@ -502,11 +523,11 @@ pub mod tests {
         dual_module_comb_pre_matching_layer_fusion_standard_syndrome(7, visualize_filename, defect_vertices);
     }
 
-    /// verify that all single error can be decoded totally offline
+    /// verify that all single error can be decoded totally offline with layer fusion
     #[test]
-    fn dual_module_comb_pre_matching_all_single_error() {
-        // cargo test dual_module_comb_pre_matching_all_single_error -- --nocapture
-        let visualize_filename = "dual_module_comb_pre_matching_all_single_error.json".to_string();
+    fn dual_module_comb_pre_matching_layer_fusion_all_single_error() {
+        // cargo test dual_module_comb_pre_matching_layer_fusion_all_single_error -- --nocapture
+        let visualize_filename = "dual_module_comb_pre_matching_layer_fusion_all_single_error.json".to_string();
         let d = 5;
         let code = CodeCapacityPlanarCode::new(d, 0.1, 500);
         let initializer = code.get_initializer();
@@ -517,8 +538,11 @@ pub mod tests {
                 .filter(|vertex_index| !virtual_vertices.contains(&vertex_index))
                 .cloned()
                 .collect();
-            let solver =
-                dual_module_comb_pre_matching_standard_syndrome(d, visualize_filename.clone(), defect_vertices.clone());
+            let solver = dual_module_comb_pre_matching_layer_fusion_standard_syndrome(
+                d,
+                visualize_filename.clone(),
+                defect_vertices.clone(),
+            );
             assert_eq!(solver.offloaded, defect_vertices.len(), "all defects should be offloaded");
         }
     }

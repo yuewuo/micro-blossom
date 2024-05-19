@@ -169,14 +169,6 @@ mod tests {
         ) {
             unimplemented!()
         }
-        fn break_with_virtual_vertex(
-            &mut self,
-            _dual_module: &mut impl DualInterface,
-            _virtual_vertex: CompactVertexIndex,
-            _hint_node_index: CompactNodeIndex,
-        ) -> bool {
-            unimplemented!()
-        }
     }
 
     impl MockPrimal {

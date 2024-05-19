@@ -31,10 +31,10 @@ impl<const VN: usize> LayerFusionData<VN> {
     }
 
     /// iterate the pending breaks and remove the breaks that returns true
-    pub fn iterate_pending_breaks(&mut self, mut func: impl FnMut(CompactNodeIndex) -> bool) {
+    pub fn iterate_pending_breaks(&mut self, mut func: impl FnMut(&Self, CompactNodeIndex) -> bool) {
         let mut new_length = 0;
         for index in 0..self.count_pending_breaks {
-            let remove = func(self.pending_breaks[index]);
+            let remove = func(self, self.pending_breaks[index]);
             if !remove {
                 self.pending_breaks[new_length] = self.pending_breaks[index];
                 new_length += 1;
@@ -44,4 +44,62 @@ impl<const VN: usize> LayerFusionData<VN> {
     }
 }
 
-// TODO: test `iterate_pending_breaks`
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn layer_fusion_size() {
+        // cargo test layer_fusion_size -- --nocapture
+        // cargo test --features u8_layer_id layer_fusion_size -- --nocapture
+        const N: usize = 100000;
+        let total_size = core::mem::size_of::<LayerFusionData<N>>();
+        println!("memory: {} bytes per node", total_size / N);
+        println!("memory overhead: {} bytes", total_size - (total_size / N) * N);
+        cfg_if::cfg_if! {
+            if #[cfg(feature="u8_layer_id")] {
+                assert_eq!(total_size / N, 4 + 1);
+            } else {
+                assert_eq!(total_size / N, 4 + 4);
+            }
+        }
+    }
+
+    #[test]
+    fn layer_fusion_iterate_pending_breaks() {
+        // cargo test layer_fusion_iterate_pending_breaks -- --nocapture
+        const N: usize = 100;
+        let mut layer_fusion: LayerFusionData<N> = LayerFusionData::new();
+        layer_fusion.append_break(ni!(100));
+        layer_fusion.append_break(ni!(200));
+        layer_fusion.append_break(ni!(300));
+        layer_fusion.append_break(ni!(400));
+        // verify state
+        let check_state = |layer_fusion: &mut LayerFusionData<N>, expected: Vec<usize>| {
+            assert_eq!(layer_fusion.count_pending_breaks, expected.len());
+            for (index, value) in expected.iter().enumerate() {
+                assert_eq!(layer_fusion.pending_breaks[index].get() as usize, *value);
+            }
+            // also check using iterate function
+            let mut index = 0;
+            layer_fusion.iterate_pending_breaks(|_, node_index| -> bool {
+                assert_eq!(node_index.get() as usize, expected[index]);
+                index += 1;
+                false
+            })
+        };
+        check_state(&mut layer_fusion, vec![100, 200, 300, 400]);
+        // first remove 300
+        layer_fusion.iterate_pending_breaks(|_, node_index| -> bool { node_index == ni!(300) });
+        check_state(&mut layer_fusion, vec![100, 200, 400]);
+        // then remove 400 and 100
+        layer_fusion.iterate_pending_breaks(|_, node_index| -> bool { node_index == ni!(400) || node_index == ni!(100) });
+        check_state(&mut layer_fusion, vec![200]);
+        // remove nothing
+        layer_fusion.iterate_pending_breaks(|_, _node_index| -> bool { false });
+        check_state(&mut layer_fusion, vec![200]);
+        // remove 200
+        layer_fusion.iterate_pending_breaks(|_, node_index| -> bool { node_index == ni!(200) });
+        check_state(&mut layer_fusion, vec![]);
+    }
+}

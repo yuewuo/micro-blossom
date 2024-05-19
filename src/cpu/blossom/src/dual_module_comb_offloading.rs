@@ -121,7 +121,6 @@ impl Offloading {
                         && virtual_vertex.registers.is_virtual
                         && regular_vertex.registers.is_defect
                         && regular_vertex.registers.speed == CompactGrowState::Grow;
-                    // && regular_vertex.get_is_unique_tight(dual_module);
                     for &neighbor_edge_index in regular_vertex.edge_indices.iter() {
                         if neighbor_edge_index == edge_index {
                             continue;
@@ -129,7 +128,7 @@ impl Offloading {
                         let neighbor_edge = &dual_module.edges[neighbor_edge_index];
                         let neighbor_vertex_index = neighbor_edge.get_peer(regular_index);
                         let neighbor_vertex = &dual_module.vertices[neighbor_vertex_index];
-                        condition &= !neighbor_edge.get_post_fetch_count_tight(dual_module)
+                        condition &= !neighbor_edge.get_post_fetch_is_tight(dual_module)
                             || (neighbor_vertex.get_is_unique_tight(dual_module) && !neighbor_vertex.registers.is_defect);
                     }
                     if condition {
@@ -141,7 +140,7 @@ impl Offloading {
                             }
                             let neighbor_edge = &dual_module.edges[neighbor_edge_index];
                             let neighbor_vertex_index = neighbor_edge.get_peer(regular_index);
-                            if neighbor_edge.get_post_fetch_count_tight(dual_module) {
+                            if neighbor_edge.get_post_fetch_is_tight(dual_module) {
                                 vertex_stalls.insert(neighbor_vertex_index);
                             }
                         }

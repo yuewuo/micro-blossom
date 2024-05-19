@@ -176,12 +176,4 @@ impl<'a> PrimalInterface for MockPrimalInterface<'a> {
     fn iterate_perfect_matching(&mut self, _func: impl FnMut(&Self, CompactNodeIndex, CompactMatchTarget, &TouchingLink)) {
         unreachable!("should not be called")
     }
-    fn break_with_virtual_vertex(
-        &mut self,
-        _dual_module: &mut impl DualInterface,
-        _virtual_vertex: CompactVertexIndex,
-        _hint_node_index: CompactNodeIndex,
-    ) -> bool {
-        unreachable!("should not be called")
-    }
 }

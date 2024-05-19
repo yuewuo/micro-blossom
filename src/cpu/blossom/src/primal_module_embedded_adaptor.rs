@@ -12,10 +12,10 @@ use std::collections::BTreeMap;
 
 #[derive(Derivative)]
 #[derivative(Debug = "transparent")]
-pub struct PrimalModuleEmbedded<const N: usize>(PrimalModuleEmbeddedOriginal<N>);
+pub struct PrimalModuleEmbedded<const N: usize>(PrimalModuleEmbeddedOriginal<N, N>);
 
 impl<const N: usize> std::ops::Deref for PrimalModuleEmbedded<N> {
-    type Target = PrimalModuleEmbeddedOriginal<N>;
+    type Target = PrimalModuleEmbeddedOriginal<N, N>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -355,7 +355,7 @@ impl<const N: usize> FusionVisualizer for PrimalModuleEmbedded<N> {
 pub struct DualNodesOf<'a, const N: usize>(&'a PrimalModuleEmbedded<N>);
 
 impl<'a, const N: usize> std::ops::Deref for DualNodesOf<'a, N> {
-    type Target = PrimalModuleEmbeddedOriginal<N>;
+    type Target = PrimalModuleEmbeddedOriginal<N, N>;
     fn deref(&self) -> &Self::Target {
         &self.0
     }

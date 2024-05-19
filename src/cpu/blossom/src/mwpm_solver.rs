@@ -551,9 +551,23 @@ impl SolverDualComb {
             );
         }
         let initializer = config.get_initializer();
+        let dual_module = DualModuleStackless::new(DualDriverTracked::new(DualModuleCombDriver::new(config, dual_config)));
+        let mut primal_module = PrimalModuleEmbedded::new();
+        // load the layer id to the primal
+        if let Some(layer_fusion) = dual_module.driver.driver.graph.layer_fusion.as_ref() {
+            for vertex_index in 0..dual_module.driver.driver.graph.vertex_num {
+                if let Some(layer_id) = layer_fusion.vertex_layer_id.get(&vertex_index) {
+                    assert!(*layer_id < CompactLayerNum::MAX as usize);
+                    primal_module.layer_fusion.vertex_layer_id[vertex_index] =
+                        CompactLayerId::new(*layer_id as CompactLayerNum);
+                } else {
+                    primal_module.layer_fusion.vertex_layer_id[vertex_index] = OptionCompactLayerId::NONE;
+                }
+            }
+        }
         Self {
-            dual_module: DualModuleStackless::new(DualDriverTracked::new(DualModuleCombDriver::new(config, dual_config))),
-            primal_module: PrimalModuleEmbedded::new(),
+            dual_module,
+            primal_module,
             subgraph_builder: SubGraphBuilder::new(&initializer),
             defect_nodes: vec![],
             offloaded: 0,
@@ -603,8 +617,10 @@ impl PrimalDualSolver for SolverDualComb {
                 let num_layers = self.dual_module.driver.driver.graph.layer_fusion.as_ref().unwrap().num_layers;
                 if self.layer_id < num_layers {
                     self.dual_module.driver.driver.fuse_layer(self.layer_id);
-                    self.primal_module
-                        .fuse_layer(CompactLayerId::new(self.layer_id as CompactLayerNum).unwrap());
+                    self.primal_module.fuse_layer(
+                        &mut self.dual_module,
+                        CompactLayerId::new(self.layer_id as CompactLayerNum).unwrap(),
+                    );
                     if let Some(visualizer) = visualizer.as_mut() {
                         visualizer
                             .snapshot_combined(format!("fusion {}", self.layer_id), vec![self])

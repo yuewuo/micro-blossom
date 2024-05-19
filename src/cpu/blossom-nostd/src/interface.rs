@@ -104,15 +104,6 @@ pub trait PrimalInterface {
 
     /// iterate the perfect matching between defect nodes
     fn iterate_perfect_matching(&mut self, func: impl FnMut(&Self, CompactNodeIndex, CompactMatchTarget, &TouchingLink));
-
-    /// if the node is matched with a specific virtual index; note that the node index might be outdated
-    /// , so it is necessary to check for the latest node index. return true if it's broken otherwise false
-    fn break_with_virtual_vertex(
-        &mut self,
-        dual_module: &mut impl DualInterface,
-        virtual_vertex: CompactVertexIndex,
-        hint_node_index: CompactNodeIndex,
-    ) -> bool;
 }
 
 pub trait DualInterface {

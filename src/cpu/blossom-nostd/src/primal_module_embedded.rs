@@ -142,29 +142,6 @@ impl<const N: usize, const VN: usize> PrimalInterface for PrimalModuleEmbedded<N
         self.nodes
             .iterate_perfect_matching(|node_index, match_target, link| func(self, node_index, match_target, link));
     }
-
-    fn break_with_virtual_vertex(
-        &mut self,
-        dual_module: &mut impl DualInterface,
-        virtual_vertex: CompactVertexIndex,
-        hint_node_index: CompactNodeIndex,
-    ) -> bool {
-        self.nodes.check_node_index(hint_node_index);
-        if self.nodes.is_blossom(hint_node_index) && !self.nodes.has_node(hint_node_index) {
-            return false; // outdated event, no need to break with virtual vertex anymore
-        }
-        let node_index = self.nodes.get_outer_blossom(hint_node_index);
-        let node = self.nodes.get_node_mut(node_index);
-        if !node.is_matched() {
-            return false;
-        }
-        if node.get_matched() == CompactMatchTarget::VirtualVertex(virtual_vertex) {
-            return false;
-        }
-        node.remove_from_matching();
-        self.nodes.set_speed(node_index, CompactGrowState::Grow, dual_module);
-        true
-    }
 }
 
 impl<const N: usize, const VN: usize> PrimalModuleEmbedded<N, VN> {
@@ -867,7 +844,29 @@ impl<const N: usize, const VN: usize> PrimalModuleEmbedded<N, VN> {
     }
 
     /// fusing a layer will remove all existing virtual matchings with the layer
-    pub fn fuse_layer(&mut self, layer_id: CompactLayerId) {}
+    pub fn fuse_layer(&mut self, dual_module: &mut impl DualInterface, layer_id: CompactLayerId) {
+        let (layer_fusion, nodes) = (&mut self.layer_fusion, &mut self.nodes);
+        layer_fusion.iterate_pending_breaks(|layer_fusion, node| {
+            let primal_node = nodes.get_node_mut(node);
+            if !primal_node.is_outer_blossom() {
+                return true; // no longer an active node
+            }
+            if !primal_node.is_matched() {
+                return true; // no longer pending
+            }
+            if let CompactMatchTarget::VirtualVertex(virtual_vertex) = primal_node.get_matched() {
+                if layer_fusion.get_layer_id(virtual_vertex).unwrap() == layer_id {
+                    // break the matching
+                    primal_node.remove_from_matching();
+                    nodes.set_speed(node, CompactGrowState::Grow, dual_module);
+                    return true;
+                }
+                false // keep it pending
+            } else {
+                true // no longer pending
+            }
+        });
+    }
 }
 
 #[cfg(test)]
