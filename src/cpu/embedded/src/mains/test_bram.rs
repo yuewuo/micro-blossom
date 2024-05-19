@@ -27,95 +27,111 @@ pub fn main() {
         }
     }
 
-    // println!("\n2. Write Speed Test");
-    // let mut benchmarker = Benchmarker::new(|| {
-    //     unsafe { black_box(extern_c::test_write32(0, 1234)) };
-    // });
-    // benchmarker.autotune();
-    // benchmarker.run(3);
+    println!("\n2. Write Speed Test");
+    let mut benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::test_write32(0, 1234)) };
+    });
+    benchmarker.autotune();
+    benchmarker.run(3);
 
-    // println!("\n3. Read Speed Test");
-    // let mut benchmarker = Benchmarker::new(|| {
-    //     unsafe { black_box(extern_c::test_read32(0)) };
-    // });
-    // benchmarker.autotune();
-    // benchmarker.run(3);
+    println!("\n3. Read Speed Test");
+    let mut benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::test_read32(0)) };
+    });
+    benchmarker.autotune();
+    benchmarker.run(3);
 
-    // println!("\n4. Write-then-Read Speed Test");
-    // let mut benchmarker = Benchmarker::new(|| {
-    //     unsafe { black_box(extern_c::test_write32(0, 1234)) };
-    //     unsafe { black_box(extern_c::test_read32(0)) };
-    // });
-    // benchmarker.autotune();
-    // benchmarker.run(3);
+    println!("\n4. Write-then-Read Speed Test");
+    let mut benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::test_write32(0, 1234)) };
+        unsafe { black_box(extern_c::test_read32(0)) };
+    });
+    benchmarker.autotune();
+    benchmarker.run(3);
 
-    // println!("\n5. Read-then-Write Speed Test");
-    // let mut benchmarker = Benchmarker::new(|| {
-    //     unsafe { black_box(extern_c::test_read32(0)) };
-    //     unsafe { black_box(extern_c::test_write32(0, 1234)) };
-    // });
-    // benchmarker.autotune();
-    // benchmarker.run(3);
+    println!("\n5. Read-then-Write Speed Test");
+    let mut benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::test_read32(0)) };
+        unsafe { black_box(extern_c::test_write32(0, 1234)) };
+    });
+    benchmarker.autotune();
+    benchmarker.run(3);
 
-    // println!("\n6. Batch Write Test");
-    // let mut benchmarker = Benchmarker::new(|| {
-    //     unsafe { black_box(extern_c::test_write32(0, 0)) };
-    //     unsafe { black_box(extern_c::test_write32(4, 1)) };
-    //     unsafe { black_box(extern_c::test_write32(8, 2)) };
-    //     unsafe { black_box(extern_c::test_write32(12, 3)) };
-    // });
-    // benchmarker.inner_loops = 4;
-    // benchmarker.autotune();
-    // benchmarker.run(3);
+    println!("\n6. Batch Write Test");
+    let mut benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::test_write32(0, 0)) };
+        unsafe { black_box(extern_c::test_write32(4, 1)) };
+        unsafe { black_box(extern_c::test_write32(8, 2)) };
+        unsafe { black_box(extern_c::test_write32(12, 3)) };
+    });
+    benchmarker.inner_loops = 4;
+    benchmarker.autotune();
+    benchmarker.run(3);
 
-    // println!("\n7. Batch Read Test");
-    // let mut benchmarker = Benchmarker::new(|| {
-    //     unsafe { black_box(extern_c::test_read32(0)) };
-    //     unsafe { black_box(extern_c::test_read32(4)) };
-    //     unsafe { black_box(extern_c::test_read32(8)) };
-    //     unsafe { black_box(extern_c::test_read32(12)) };
-    // });
-    // benchmarker.inner_loops = 4;
-    // benchmarker.autotune();
-    // benchmarker.run(3);
+    println!("\n7. Batch Read Test");
+    let mut benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::test_read32(0)) };
+        unsafe { black_box(extern_c::test_read32(4)) };
+        unsafe { black_box(extern_c::test_read32(8)) };
+        unsafe { black_box(extern_c::test_read32(12)) };
+    });
+    benchmarker.inner_loops = 4;
+    benchmarker.autotune();
+    benchmarker.run(3);
 
-    // println!("\n7(2). Random Read Test");
-    // let mut benchmarker = Benchmarker::new(|| {
-    //     unsafe { black_box(extern_c::test_read32(0)) };
-    //     unsafe { black_box(extern_c::test_read32(24)) };
-    //     unsafe { black_box(extern_c::test_read32(12)) };
-    //     unsafe { black_box(extern_c::test_read32(36)) };
-    // });
-    // benchmarker.inner_loops = 4;
-    // benchmarker.autotune();
-    // benchmarker.run(3);
+    println!("\n7(2). Random Read Test");
+    let mut benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::test_read32(0)) };
+        unsafe { black_box(extern_c::test_read32(24)) };
+        unsafe { black_box(extern_c::test_read32(12)) };
+        unsafe { black_box(extern_c::test_read32(36)) };
+    });
+    benchmarker.inner_loops = 4;
+    benchmarker.autotune();
+    benchmarker.run(3);
 
-    // println!("\n8. Batch Write 64 Test");
-    // let mut benchmarker = Benchmarker::new(|| {
-    //     unsafe { black_box(extern_c::test_write64(0, 0)) };
-    //     unsafe { black_box(extern_c::test_write64(8, 1)) };
-    //     unsafe { black_box(extern_c::test_write64(16, 2)) };
-    //     unsafe { black_box(extern_c::test_write64(24, 3)) };
-    // });
-    // benchmarker.inner_loops = 4;
-    // benchmarker.autotune();
-    // benchmarker.run(3);
+    println!("\n8. Batch Write 64 Test");
+    let mut benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::test_write64(0, 0)) };
+        unsafe { black_box(extern_c::test_write64(8, 1)) };
+        unsafe { black_box(extern_c::test_write64(16, 2)) };
+        unsafe { black_box(extern_c::test_write64(24, 3)) };
+    });
+    benchmarker.inner_loops = 4;
+    benchmarker.autotune();
+    benchmarker.run(3);
 
-    // println!("\n9. Batch Read 64 Test");
-    // let mut benchmarker = Benchmarker::new(|| {
-    //     unsafe { black_box(extern_c::test_read64(0)) };
-    //     unsafe { black_box(extern_c::test_read64(8)) };
-    //     unsafe { black_box(extern_c::test_read64(16)) };
-    //     unsafe { black_box(extern_c::test_read64(24)) };
-    // });
-    // benchmarker.inner_loops = 4;
-    // benchmarker.autotune();
-    // benchmarker.run(3);
+    println!("\n9. Batch Read 64 Test");
+    let mut benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::test_read64(0)) };
+        unsafe { black_box(extern_c::test_read64(8)) };
+        unsafe { black_box(extern_c::test_read64(16)) };
+        unsafe { black_box(extern_c::test_read64(24)) };
+    });
+    benchmarker.inner_loops = 4;
+    benchmarker.autotune();
+    benchmarker.run(3);
 
     println!("\n10. Batch Read Test using memcpy 128 bits");
     let mut batch_read_128 = [0; 2];
+    unsafe { black_box(extern_c::test_write64(0, 200)) };
+    unsafe { black_box(extern_c::test_write64(8, 300)) };
     let mut benchmarker = Benchmarker::new(|| {
         unsafe { black_box(extern_c::test_read128(0, &mut batch_read_128)) };
+        // println!("batch_read_128: {batch_read_128:?}");
+    });
+    benchmarker.autotune();
+    benchmarker.run(3);
+
+    println!("\n11. Batch Read Test using memcpy 256 bits");
+    let mut batch_read_256 = [0; 4];
+    unsafe { black_box(extern_c::test_write64(0, 100)) };
+    unsafe { black_box(extern_c::test_write64(8, 200)) };
+    unsafe { black_box(extern_c::test_write64(16, 300)) };
+    unsafe { black_box(extern_c::test_write64(24, 400)) };
+    let mut benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::test_read256(0, &mut batch_read_256)) };
+        // println!("batch_read_256: {batch_read_256:?}");
     });
     benchmarker.autotune();
     benchmarker.run(3);
@@ -193,6 +209,18 @@ A72:
 [1/3] per_op: 126.65 ns, freq: 7.89563 MHz
 [2/3] per_op: 126.65 ns, freq: 7.89555 MHz
 [3/3] per_op: 126.65 ns, freq: 7.89555 MHz
+
+10. Batch Read Test using memcpy 128 bits
+[benchmarker] autotune ... batch size = 7692213
+[1/3] per_op: 130.00 ns, freq: 7.69223 MHz
+[2/3] per_op: 130.00 ns, freq: 7.69223 MHz
+[3/3] per_op: 130.00 ns, freq: 7.69223 MHz
+
+11. Batch Read Test using memcpy 256 bits
+[benchmarker] autotune ... batch size = 3808298
+[1/3] per_op: 262.27 ns, freq: 3.81289 MHz
+[2/3] per_op: 262.58 ns, freq: 3.80836 MHz
+[3/3] per_op: 262.26 ns, freq: 3.81307 MHz
 [exit]
 
 

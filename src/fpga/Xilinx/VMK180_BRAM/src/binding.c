@@ -49,6 +49,17 @@ void test_write64(uint32_t bias, uint64_t value)
     Xil_Out64(BRAM_BASE + bias, value);
 }
 
+void test_read128(uint32_t bias, uint64_t (*values)[2])
+{
+    memcpy(values, (const void *)(BRAM_BASE + bias), 16);
+}
+
+void test_read256(uint32_t bias, uint64_t (*values)[4])
+{
+    test_read128(bias, (uint64_t(*)[2])(values));
+    test_read128(bias + 16, (uint64_t(*)[2])(((uint64_t *)values) + 2));
+}
+
 void set_leds(uint32_t)
 {
 }
