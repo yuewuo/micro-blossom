@@ -413,6 +413,7 @@ pub mod tests {
     use super::*;
     use crate::dual_module_rtl::tests::*;
     use crate::mwpm_solver::*;
+    use crate::ENV_PARAMETER_LOCK;
     use fusion_blossom::example_codes::*;
 
     // to use visualization, we need the folder of fusion-blossom repo
@@ -423,7 +424,7 @@ pub mod tests {
         // cargo test dual_module_comb_basic_1 -- --nocapture
         let visualize_filename = "dual_module_comb_basic_1.json".to_string();
         let defect_vertices = vec![18, 26, 34];
-        dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+        dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices, false, false);
     }
 
     /// test a free node conflict with a virtual boundary
@@ -432,7 +433,7 @@ pub mod tests {
         // cargo test dual_module_comb_basic_2 -- --nocapture
         let visualize_filename = "dual_module_comb_basic_2.json".to_string();
         let defect_vertices = vec![16];
-        dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+        dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices, false, false);
     }
 
     /// test a free node conflict with a matched node (with virtual boundary)
@@ -441,7 +442,7 @@ pub mod tests {
         // cargo test dual_module_comb_basic_3 -- --nocapture
         let visualize_filename = "dual_module_comb_basic_3.json".to_string();
         let defect_vertices = vec![16, 26];
-        dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+        dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices, false, false);
     }
 
     /// evaluate a new feature of pre matching without compromises global optimal result
@@ -450,7 +451,7 @@ pub mod tests {
         // PRINT_DUAL_CALLS=1 cargo test dual_module_comb_pre_matching_basic_1 -- --nocapture
         let visualize_filename = "dual_module_comb_pre_matching_basic_1.json".to_string();
         let defect_vertices = vec![13, 14];
-        dual_module_comb_pre_matching_standard_syndrome(5, visualize_filename, defect_vertices);
+        dual_module_comb_basic_standard_syndrome(5, visualize_filename, defect_vertices, true, false);
     }
 
     /// bug: the growth of a pre-matched vertex should be stopped, but it's not
@@ -459,7 +460,7 @@ pub mod tests {
         // PRINT_DUAL_CALLS=1 cargo test dual_module_comb_pre_matching_debug_1 -- --nocapture
         let visualize_filename = "dual_module_comb_pre_matching_debug_1.json".to_string();
         let defect_vertices = vec![0, 4, 9];
-        dual_module_comb_pre_matching_standard_syndrome(3, visualize_filename, defect_vertices);
+        dual_module_comb_basic_standard_syndrome(3, visualize_filename, defect_vertices, true, false);
         // dual_module_rtl_adaptor_basic_standard_syndrome(3, visualize_filename, defect_vertices);
     }
 
@@ -469,22 +470,20 @@ pub mod tests {
         // PRINT_DUAL_CALLS=1 cargo test dual_module_comb_pre_matching_debug_2 -- --nocapture
         let visualize_filename = "dual_module_comb_pre_matching_debug_2.json".to_string();
         let defect_vertices = vec![20, 27, 28, 36, 43, 44, 45, 53];
-        dual_module_comb_pre_matching_standard_syndrome(7, visualize_filename, defect_vertices);
+        dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices, true, false);
     }
 
-    /// evaluate pre-matching with virtual vertex
+    // /// evaluate pre-matching with virtual vertex
     #[test]
     fn dual_module_comb_pre_matching_basic_2() {
         // cargo test dual_module_comb_pre_matching_basic_2 -- --nocapture
         let visualize_filename = "dual_module_comb_pre_matching_basic_2.json".to_string();
         let defect_vertices = vec![4];
-        // let solver = dual_module_comb_pre_matching_standard_syndrome(3, visualize_filename.clone(), defect_vertices.clone());
-        // assert!(solver.offloaded == 0);
-        let solver = dual_module_comb_pre_matching_standard_syndrome(3, visualize_filename, defect_vertices);
+        let solver = dual_module_comb_basic_standard_syndrome(3, visualize_filename, defect_vertices, true, false);
         assert!(solver.offloaded == 1);
     }
 
-    /// verify that all single error can be decoded totally offline
+    // /// verify that all single error can be decoded totally offline
     #[test]
     fn dual_module_comb_pre_matching_all_single_error() {
         // cargo test dual_module_comb_pre_matching_all_single_error -- --nocapture
@@ -499,8 +498,13 @@ pub mod tests {
                 .filter(|vertex_index| !virtual_vertices.contains(&vertex_index))
                 .cloned()
                 .collect();
-            let solver =
-                dual_module_comb_pre_matching_standard_syndrome(d, visualize_filename.clone(), defect_vertices.clone());
+            let solver = dual_module_comb_basic_standard_syndrome(
+                d,
+                visualize_filename.clone(),
+                defect_vertices.clone(),
+                true,
+                false,
+            );
             assert_eq!(solver.offloaded, defect_vertices.len(), "all defects should be offloaded");
         }
     }
@@ -511,7 +515,7 @@ pub mod tests {
         // cargo test dual_module_comb_layer_fusion_1 -- --nocapture
         let visualize_filename = "dual_module_comb_layer_fusion_1.json".to_string();
         let defect_vertices = vec![16, 26];
-        dual_module_comb_layer_fusion_standard_syndrome(7, visualize_filename, defect_vertices);
+        dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices, false, true);
     }
 
     /// test layer fusion and enable pre matching
@@ -520,10 +524,10 @@ pub mod tests {
         // cargo test dual_module_comb_pre_matching_layer_fusion_1 -- --nocapture
         let visualize_filename = "dual_module_comb_pre_matching_layer_fusion_1.json".to_string();
         let defect_vertices = vec![16, 26];
-        dual_module_comb_pre_matching_layer_fusion_standard_syndrome(7, visualize_filename, defect_vertices);
+        dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices, true, true);
     }
 
-    /// verify that all single error can be decoded totally offline with layer fusion
+    // /// verify that all single error can be decoded totally offline with layer fusion
     #[test]
     fn dual_module_comb_pre_matching_layer_fusion_all_single_error() {
         // cargo test dual_module_comb_pre_matching_layer_fusion_all_single_error -- --nocapture
@@ -538,11 +542,8 @@ pub mod tests {
                 .filter(|vertex_index| !virtual_vertices.contains(&vertex_index))
                 .cloned()
                 .collect();
-            let solver = dual_module_comb_pre_matching_layer_fusion_standard_syndrome(
-                d,
-                visualize_filename.clone(),
-                defect_vertices.clone(),
-            );
+            let solver =
+                dual_module_comb_basic_standard_syndrome(d, visualize_filename.clone(), defect_vertices.clone(), true, true);
             assert_eq!(solver.offloaded, defect_vertices.len(), "all defects should be offloaded");
         }
     }
@@ -551,49 +552,33 @@ pub mod tests {
         d: VertexNum,
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
+        support_offloading: bool,
+        support_layer_fusion: bool,
     ) -> SolverDualComb {
         dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
             d,
             Some(visualize_filename.clone()),
             defect_vertices,
             |initializer, positions| {
+                // lock to avoid environment variable races when testing in parallel
+                let lock = ENV_PARAMETER_LOCK.lock();
+                let tmp_env_offloading = if support_offloading {
+                    Some(tmp_env::set_var("SUPPORT_OFFLOADING", "1"))
+                } else {
+                    None
+                };
+                let tmp_env_layer_fusion = if support_layer_fusion {
+                    Some(tmp_env::set_var("SUPPORT_LAYER_FUSION", "1"))
+                } else {
+                    None
+                };
                 let micro_config = MicroBlossomSingle::new(initializer, positions);
-                SolverDualComb::new_native(micro_config, json!({}))
+                let result = SolverDualComb::new_native(micro_config, json!({}));
+                drop(tmp_env_offloading);
+                drop(tmp_env_layer_fusion);
+                drop(lock);
+                result
             },
         )
-    }
-
-    pub fn dual_module_comb_pre_matching_standard_syndrome(
-        d: VertexNum,
-        visualize_filename: String,
-        defect_vertices: Vec<VertexIndex>,
-    ) -> SolverDualComb {
-        {
-            let _tmp_env = tmp_env::set_var("SUPPORT_OFFLOADING", "1");
-            dual_module_comb_basic_standard_syndrome(d, visualize_filename, defect_vertices)
-        }
-    }
-
-    pub fn dual_module_comb_layer_fusion_standard_syndrome(
-        d: VertexNum,
-        visualize_filename: String,
-        defect_vertices: Vec<VertexIndex>,
-    ) -> SolverDualComb {
-        {
-            let _tmp_env = tmp_env::set_var("SUPPORT_LAYER_FUSION", "1");
-            dual_module_comb_basic_standard_syndrome(d, visualize_filename, defect_vertices)
-        }
-    }
-
-    pub fn dual_module_comb_pre_matching_layer_fusion_standard_syndrome(
-        d: VertexNum,
-        visualize_filename: String,
-        defect_vertices: Vec<VertexIndex>,
-    ) -> SolverDualComb {
-        {
-            let _tmp_env = tmp_env::set_var("SUPPORT_LAYER_FUSION", "1");
-            let _tmp_env_2 = tmp_env::set_var("SUPPORT_OFFLOADING", "1");
-            dual_module_comb_basic_standard_syndrome(d, visualize_filename, defect_vertices)
-        }
     }
 }

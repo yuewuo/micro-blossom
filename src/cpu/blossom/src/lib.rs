@@ -11,3 +11,12 @@ pub mod mwpm_solver;
 pub mod primal_module_embedded_adaptor;
 pub mod resources;
 pub mod util;
+
+use lazy_static::lazy_static;
+use std::sync::Mutex;
+
+lazy_static! {
+    /// any method that uses environment variable to pass a parameter should lock this;
+    /// see dual_module_comb.test for example
+    static ref ENV_PARAMETER_LOCK: Mutex<()> = Mutex::new(());
+}
