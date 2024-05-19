@@ -133,8 +133,6 @@ pub enum PrimalDualType {
     EmbeddedComb,
     /// embedded primal + Combinatorial-behavior dual with pre-matching
     EmbeddedCombPreMatching,
-    /// embedded primal + Combinatorial-behavior dual with pre-matching including virtual vertex
-    EmbeddedCombPreMatchingVirtual,
     /// serial primal and dual, standard solution
     Serial,
     /// log error into a file for later fetch
@@ -171,7 +169,6 @@ enum TestCommands {
     EmbeddedRTLPreMatching(StandardTestParameters),
     EmbeddedComb(StandardTestParameters),
     EmbeddedCombPreMatching(StandardTestParameters),
-    EmbeddedCombPreMatchingVirtual(StandardTestParameters),
     DualAxi4(StandardTestParameters),
 }
 
@@ -388,9 +385,6 @@ impl Cli {
                 TestCommands::EmbeddedCombPreMatching(parameters) => {
                     standard_test_command_body("embedded-comb-pre-matching", parameters)
                 }
-                TestCommands::EmbeddedCombPreMatchingVirtual(parameters) => {
-                    standard_test_command_body("embedded-comb-pre-matching-virtual", parameters)
-                }
                 TestCommands::DualAxi4(parameters) => standard_test_command_body("dual-axi4", parameters),
             },
             Commands::Parser(parameters) => {
@@ -475,16 +469,10 @@ impl PrimalDualType {
                 solver.dual_module.driver.driver.use_pre_matching = true;
                 Box::new(solver)
             }
-            Self::EmbeddedComb | Self::EmbeddedCombPreMatching | Self::EmbeddedCombPreMatchingVirtual => {
-                let mut micro_config = MicroBlossomSingle::new(initializer, positions);
-                // customize offloading
-                micro_config.offloading.0.clear();
-                if matches!(self, Self::EmbeddedCombPreMatching) {
-                    micro_config.offloading.find_defect_match(&initializer);
-                }
-                if matches!(self, Self::EmbeddedCombPreMatchingVirtual) {
-                    micro_config.offloading.find_defect_match(&initializer);
-                    micro_config.offloading.find_virtual_match(&initializer);
+            Self::EmbeddedComb | Self::EmbeddedCombPreMatching => {
+                let micro_config = MicroBlossomSingle::new(initializer, positions);
+                if self == &Self::EmbeddedCombPreMatching {
+                    env::set_var("SUPPORT_OFFLOADING", "1");
                 }
                 // build solver
                 let solver = SolverDualComb::new_native(micro_config, primal_dual_config);

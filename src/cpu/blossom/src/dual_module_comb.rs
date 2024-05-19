@@ -8,6 +8,7 @@
 //!
 
 use crate::dual_module_adaptor::*;
+use crate::dual_module_axi4::DualConfig;
 use crate::dual_module_comb_edge::*;
 use crate::dual_module_comb_offloading::*;
 use crate::dual_module_comb_vertex::*;
@@ -32,6 +33,8 @@ pub struct DualModuleCombDriver {
     /// the current instruction for computing the combinatorial logic
     pub(crate) instruction: Instruction,
     pub config: DualCombConfig,
+    pub dual_config: DualConfig,
+    pub graph: MicroBlossomSingle,
     /// only enabled when `config.log_instructions` is true
     pub profiler_instruction_history: Vec<Instruction>,
 }
@@ -65,15 +68,16 @@ impl DualInterfaceWithInitializer for DualModuleComb {
 }
 
 impl DualModuleCombDriver {
-    pub fn new(config: MicroBlossomSingle, comb_config: DualCombConfig) -> Self {
-        let virtual_vertices: BTreeSet<VertexIndex> = config.virtual_vertices.iter().cloned().collect();
-        let mut all_incident_edges: Vec<Vec<EdgeIndex>> = vec![vec![]; config.vertex_num];
-        for (edge_index, &WeightedEdge { l, r, .. }) in config.weighted_edges.iter().enumerate() {
+    pub fn new(graph: MicroBlossomSingle, comb_config: DualCombConfig) -> Self {
+        let virtual_vertices: BTreeSet<VertexIndex> = graph.virtual_vertices.iter().cloned().collect();
+        let mut all_incident_edges: Vec<Vec<EdgeIndex>> = vec![vec![]; graph.vertex_num];
+        for (edge_index, &WeightedEdge { l, r, .. }) in graph.weighted_edges.iter().enumerate() {
             for vertex_index in [l, r] {
                 all_incident_edges[vertex_index].push(edge_index);
             }
         }
-        let initializer = config.get_initializer();
+        let initializer = graph.get_initializer();
+        let dual_config: DualConfig = Default::default();
         let mut comb_driver = Self {
             initializer: initializer.clone(),
             vertices: all_incident_edges
@@ -93,10 +97,28 @@ impl DualModuleCombDriver {
             maximum_growth: CompactWeight::MAX,
             offloading_units: vec![],
             instruction: Instruction::FindObstacle,
+            graph: graph.clone(),
             config: comb_config,
+            dual_config: dual_config.clone(),
             profiler_instruction_history: vec![],
         };
-        comb_driver.set_offloading_units(&initializer, config.offloading.0);
+        let mut offloading_vec = graph.offloading.0.clone();
+        if dual_config.support_layer_fusion {
+            let layer_fusion = graph.layer_fusion.as_ref().unwrap();
+            for (edge_index, conditioned_vertex) in layer_fusion.fusion_edges.iter() {
+                offloading_vec.push(OffloadingType::FusionMatch {
+                    edge_index: *edge_index,
+                    conditioned_vertex: *conditioned_vertex,
+                });
+                comb_driver.edges[*edge_index].conditioned_vertex = Some(*conditioned_vertex);
+            }
+            for (vertex_index, layer_id) in layer_fusion.vertex_layer_id.iter() {
+                comb_driver.vertices[*vertex_index].layer_id = Some(*layer_id);
+            }
+        }
+        if dual_config.support_offloading {
+            comb_driver.set_offloading_units(&initializer, offloading_vec);
+        }
         comb_driver.clear();
         comb_driver
     }
@@ -126,9 +148,7 @@ impl DualModuleCombDriver {
     pub fn new_empty(initializer: &SolverInitializer) -> Self {
         let fake_positions = vec![VisualizePosition::new(0., 0., 0.); initializer.vertex_num];
         let config = MicroBlossomSingle::new(initializer, &fake_positions);
-        let mut comb_driver = Self::new(config, serde_json::from_value(json!({})).unwrap());
-        comb_driver.set_offloading_units(initializer, vec![]); // by default do not use any offloading
-        comb_driver
+        Self::new(config, serde_json::from_value(json!({})).unwrap())
     }
 
     pub fn clear(&mut self) {
@@ -205,6 +225,15 @@ impl DualModuleCombDriver {
             "history": self.profiler_instruction_history,
         })
     }
+
+    /// fuse one layer of defects (in this simulation, the defects are still loaded using `AddDefectVertex`,
+    /// but real hardware should be able to load from some channel)
+    pub fn fuse_layer(&mut self, layer_id: usize) {
+        self.execute_instruction(Instruction::LoadDefectsExternal {
+            time: layer_id,
+            channel: 0,
+        });
+    }
 }
 
 impl DualStacklessDriver for DualModuleCombDriver {
@@ -269,6 +298,13 @@ impl DualTrackedDriver for DualModuleCombDriver {
 impl FusionVisualizer for DualModuleCombDriver {
     #[allow(clippy::unnecessary_cast)]
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+        let optional_node_index = |node_index: NodeIndex| {
+            if node_index == VIRTUAL_NODE_INDEX {
+                None
+            } else {
+                Some(node_index)
+            }
+        };
         let vertices: Vec<serde_json::Value> = self
             .vertices
             .iter()
@@ -280,13 +316,13 @@ impl FusionVisualizer for DualModuleCombDriver {
                 if let Some(node_index) = vertex.registers.node_index.as_ref() {
                     value.as_object_mut().unwrap().insert(
                         (if abbrev { "p" } else { "propagated_dual_node" }).to_string(),
-                        json!(node_index),
+                        json!(optional_node_index(*node_index)),
                     );
                 }
                 if let Some(root_index) = vertex.registers.root_index.as_ref() {
                     value.as_object_mut().unwrap().insert(
                         (if abbrev { "pg" } else { "propagated_grandson_dual_node" }).to_string(),
-                        json!(root_index),
+                        json!(optional_node_index(*root_index)),
                     );
                 }
                 value
@@ -308,27 +344,27 @@ impl FusionVisualizer for DualModuleCombDriver {
                 let left_vertex = &self.vertices[edge.left_index];
                 let right_vertex = &self.vertices[edge.right_index];
                 if let Some(node_index) = left_vertex.registers.node_index.as_ref() {
-                    value
-                        .as_object_mut()
-                        .unwrap()
-                        .insert((if abbrev { "ld" } else { "left_dual_node" }).to_string(), json!(node_index));
+                    value.as_object_mut().unwrap().insert(
+                        (if abbrev { "ld" } else { "left_dual_node" }).to_string(),
+                        json!(optional_node_index(*node_index)),
+                    );
                 }
                 if let Some(root_index) = left_vertex.registers.root_index.as_ref() {
                     value.as_object_mut().unwrap().insert(
                         (if abbrev { "lgd" } else { "left_grandson_dual_node" }).to_string(),
-                        json!(root_index),
+                        json!(optional_node_index(*root_index)),
                     );
                 }
                 if let Some(node_index) = right_vertex.registers.node_index.as_ref() {
-                    value
-                        .as_object_mut()
-                        .unwrap()
-                        .insert((if abbrev { "rd" } else { "right_dual_node" }).to_string(), json!(node_index));
+                    value.as_object_mut().unwrap().insert(
+                        (if abbrev { "rd" } else { "right_dual_node" }).to_string(),
+                        json!(optional_node_index(*node_index)),
+                    );
                 }
                 if let Some(root_index) = right_vertex.registers.root_index.as_ref() {
                     value.as_object_mut().unwrap().insert(
                         (if abbrev { "rgd" } else { "right_grandson_dual_node" }).to_string(),
-                        json!(root_index),
+                        json!(optional_node_index(*root_index)),
                     );
                 }
                 value
@@ -353,6 +389,7 @@ pub enum Instruction {
     AddDefectVertex { vertex: VertexIndex, node: NodeIndex },
     FindObstacle,
     Grow { length: Weight },
+    LoadDefectsExternal { time: usize, channel: usize },
 }
 
 pub const VIRTUAL_NODE_INDEX: NodeIndex = NodeIndex::MAX;
@@ -437,21 +474,39 @@ pub mod tests {
 
     /// evaluate pre-matching with virtual vertex
     #[test]
-    fn dual_module_comb_pre_matching_virtual_basic_1() {
-        // cargo test dual_module_comb_pre_matching_virtual_basic_1 -- --nocapture
-        let visualize_filename = "dual_module_comb_pre_matching_virtual_basic_1.json".to_string();
+    fn dual_module_comb_pre_matching_basic_2() {
+        // cargo test dual_module_comb_pre_matching_basic_2 -- --nocapture
+        let visualize_filename = "dual_module_comb_pre_matching_basic_2.json".to_string();
         let defect_vertices = vec![4];
         // let solver = dual_module_comb_pre_matching_standard_syndrome(3, visualize_filename.clone(), defect_vertices.clone());
         // assert!(solver.offloaded == 0);
-        let solver = dual_module_comb_pre_matching_virtual_standard_syndrome(3, visualize_filename, defect_vertices);
+        let solver = dual_module_comb_pre_matching_standard_syndrome(3, visualize_filename, defect_vertices);
         assert!(solver.offloaded == 1);
+    }
+
+    /// test layer fusion without any offloading
+    #[test]
+    fn dual_module_comb_layer_fusion_1() {
+        // cargo test dual_module_comb_layer_fusion_1 -- --nocapture
+        let visualize_filename = "dual_module_comb_layer_fusion_1.json".to_string();
+        let defect_vertices = vec![16, 26];
+        dual_module_comb_layer_fusion_standard_syndrome(7, visualize_filename, defect_vertices);
+    }
+
+    /// test layer fusion and enable pre matching
+    #[test]
+    fn dual_module_comb_pre_matching_layer_fusion_1() {
+        // cargo test dual_module_comb_pre_matching_layer_fusion_1 -- --nocapture
+        let visualize_filename = "dual_module_comb_pre_matching_layer_fusion_1.json".to_string();
+        let defect_vertices = vec![16, 26];
+        dual_module_comb_pre_matching_layer_fusion_standard_syndrome(7, visualize_filename, defect_vertices);
     }
 
     /// verify that all single error can be decoded totally offline
     #[test]
-    fn dual_module_comb_pre_matching_virtual_all_single_error() {
-        // cargo test dual_module_comb_pre_matching_virtual_all_single_error -- --nocapture
-        let visualize_filename = "dual_module_comb_pre_matching_virtual_all_single_error.json".to_string();
+    fn dual_module_comb_pre_matching_all_single_error() {
+        // cargo test dual_module_comb_pre_matching_all_single_error -- --nocapture
+        let visualize_filename = "dual_module_comb_pre_matching_all_single_error.json".to_string();
         let d = 5;
         let code = CodeCapacityPlanarCode::new(d, 0.1, 500);
         let initializer = code.get_initializer();
@@ -462,11 +517,8 @@ pub mod tests {
                 .filter(|vertex_index| !virtual_vertices.contains(&vertex_index))
                 .cloned()
                 .collect();
-            let solver = dual_module_comb_pre_matching_virtual_standard_syndrome(
-                d,
-                visualize_filename.clone(),
-                defect_vertices.clone(),
-            );
+            let solver =
+                dual_module_comb_pre_matching_standard_syndrome(d, visualize_filename.clone(), defect_vertices.clone());
             assert_eq!(solver.offloaded, defect_vertices.len(), "all defects should be offloaded");
         }
     }
@@ -480,7 +532,10 @@ pub mod tests {
             d,
             Some(visualize_filename.clone()),
             defect_vertices,
-            |initializer| SolverDualComb::new(initializer),
+            |initializer, positions| {
+                let micro_config = MicroBlossomSingle::new(initializer, positions);
+                SolverDualComb::new_native(micro_config, json!({}))
+            },
         )
     }
 
@@ -489,45 +544,32 @@ pub mod tests {
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
     ) -> SolverDualComb {
-        dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
-            d,
-            Some(visualize_filename.clone()),
-            defect_vertices,
-            |initializer| {
-                let mut solver = SolverDualComb::new(initializer);
-                let mut offloading = OffloadingFinder::new();
-                offloading.find_defect_match(&initializer);
-                solver
-                    .dual_module
-                    .driver
-                    .driver
-                    .set_offloading_units(&initializer, offloading.0);
-                solver
-            },
-        )
+        {
+            let _tmp_env = tmp_env::set_var("SUPPORT_OFFLOADING", "1");
+            dual_module_comb_basic_standard_syndrome(d, visualize_filename, defect_vertices)
+        }
     }
 
-    pub fn dual_module_comb_pre_matching_virtual_standard_syndrome(
+    pub fn dual_module_comb_layer_fusion_standard_syndrome(
         d: VertexNum,
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
     ) -> SolverDualComb {
-        dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
-            d,
-            Some(visualize_filename.clone()),
-            defect_vertices,
-            |initializer| {
-                let mut solver = SolverDualComb::new(initializer);
-                let mut offloading = OffloadingFinder::new();
-                offloading.find_defect_match(&initializer);
-                offloading.find_virtual_match(&initializer);
-                solver
-                    .dual_module
-                    .driver
-                    .driver
-                    .set_offloading_units(&initializer, offloading.0);
-                solver
-            },
-        )
+        {
+            let _tmp_env = tmp_env::set_var("SUPPORT_LAYER_FUSION", "1");
+            dual_module_comb_basic_standard_syndrome(d, visualize_filename, defect_vertices)
+        }
+    }
+
+    pub fn dual_module_comb_pre_matching_layer_fusion_standard_syndrome(
+        d: VertexNum,
+        visualize_filename: String,
+        defect_vertices: Vec<VertexIndex>,
+    ) -> SolverDualComb {
+        {
+            let _tmp_env = tmp_env::set_var("SUPPORT_LAYER_FUSION", "1");
+            let _tmp_env_2 = tmp_env::set_var("SUPPORT_OFFLOADING", "1");
+            dual_module_comb_basic_standard_syndrome(d, visualize_filename, defect_vertices)
+        }
     }
 }

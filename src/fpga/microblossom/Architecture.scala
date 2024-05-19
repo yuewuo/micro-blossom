@@ -17,7 +17,7 @@ import spinal.core._
  * |               EdgeIndex[14:0]              |                                | 3'b010 | 3'b100 | AccumulateEdge
  * |                                     Reserved                                | 3'b011 | 3'b100 | LoadWeightsExternal
  * |                                         0                                   | 3'b100 | 3'b100 | Reset
- * |                  Time[14:0]                |           Channel[10:0]        | 3'b101 | 3'b100 | LoadDefectsExternal
+ * |                  Time[14:0]                |           Channel[10:0]        | 3'b101 | 3'b100 | LoadDefectsExternal/LayerFusion
  * |                                      Length[25:0]                           | 3'b110 | 3'b100 | Grow
  * |                 Vertex[14:0]               | v|e | t|e |                    | 3'b111 | 3'b100 | SetAttribute(debug)
  * -------------------------------------------------------------------------------------------------

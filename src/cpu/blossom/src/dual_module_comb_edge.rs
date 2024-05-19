@@ -11,10 +11,10 @@ pub struct Edge {
     pub left_index: VertexIndex,
     pub right_index: VertexIndex,
     pub offloading_indices: Vec<usize>,
-    // each edge can only have one potential virtual matching
-    pub potential_virtual_matching: Option<VirtualMatchingEdgeProfile>,
     pub registers: EdgeRegisters,
     pub signals: EdgeCombSignals,
+    /// if this vertex is virtual, then the post-fetch weight is halved
+    pub conditioned_vertex: Option<VertexIndex>,
 }
 
 pub struct VirtualMatchingEdgeProfile {
@@ -31,6 +31,7 @@ pub struct EdgeRegisters {
 }
 
 pub struct EdgeCombSignals {
+    post_fetch_weight: RefCell<Option<Weight>>,
     post_fetch_is_tight: RefCell<Option<bool>>,
     offloading_stalled: RefCell<Option<bool>>,
     post_execute_state: RefCell<Option<EdgeRegisters>>,
@@ -47,6 +48,7 @@ impl EdgeRegisters {
 impl EdgeCombSignals {
     pub fn new() -> Self {
         Self {
+            post_fetch_weight: RefCell::new(None),
             post_fetch_is_tight: RefCell::new(None),
             offloading_stalled: RefCell::new(None),
             post_execute_state: RefCell::new(None),
@@ -64,9 +66,9 @@ impl Edge {
             left_index,
             right_index,
             offloading_indices: vec![],
-            potential_virtual_matching: None,
             registers: EdgeRegisters::new(weight),
             signals: EdgeCombSignals::new(),
+            conditioned_vertex: None,
         }
     }
     pub fn clear(&mut self) {
@@ -87,12 +89,41 @@ impl Edge {
         }
     }
 
+    pub fn get_post_fetch_weight(&self, dual_module: &DualModuleCombDriver) -> Weight {
+        referenced_signal!(self.signals.post_fetch_weight, || {
+            if let Some(conditioned_vertex) = self.conditioned_vertex {
+                if dual_module.vertices[conditioned_vertex].registers.is_virtual {
+                    // assert!(
+                    //     self.registers.weight % 4 == 0,
+                    //     "this feature requires the edge weight to be a multiply of 4"
+                    // );
+                    self.registers.weight / 2
+                } else {
+                    self.registers.weight
+                }
+            } else {
+                self.registers.weight
+            }
+        })
+        .clone()
+    }
+
     pub fn get_post_fetch_is_tight(&self, dual_module: &DualModuleCombDriver) -> bool {
         referenced_signal!(self.signals.post_fetch_is_tight, || {
             dual_module.vertices[self.left_index].registers.grown + dual_module.vertices[self.right_index].registers.grown
-                >= self.registers.weight
+                >= self.get_post_fetch_weight(dual_module)
         })
         .clone()
+    }
+
+    /// when counting tight edge for offloading, we should not count those tight edges touching the fusion boundary
+    pub fn get_post_fetch_count_tight(&self, dual_module: &DualModuleCombDriver) -> bool {
+        if let Some(conditioned_vertex) = self.conditioned_vertex {
+            if dual_module.vertices[conditioned_vertex].registers.is_virtual {
+                return false;
+            }
+        }
+        self.get_post_fetch_is_tight(dual_module)
     }
 
     pub fn get_offloading_stalled(&self, dual_module: &DualModuleCombDriver) -> bool {
@@ -124,7 +155,7 @@ impl Edge {
             let left_vertex = &dual_module.vertices[self.left_index];
             let right_vertex = &dual_module.vertices[self.right_index];
             left_vertex.get_post_execute_state(dual_module).grown + right_vertex.get_post_execute_state(dual_module).grown
-                >= self.get_post_execute_state(dual_module).weight
+                >= self.get_post_fetch_weight(dual_module)
         })
         .clone()
     }
@@ -132,7 +163,7 @@ impl Edge {
     fn get_remaining(&self, dual_module: &DualModuleCombDriver) -> Weight {
         let left_vertex = dual_module.vertices[self.left_index].get_post_execute_state(dual_module);
         let right_vertex = dual_module.vertices[self.right_index].get_post_execute_state(dual_module);
-        self.get_post_execute_state(dual_module).weight - left_vertex.grown - right_vertex.grown
+        self.get_post_fetch_weight(dual_module) - left_vertex.grown - right_vertex.grown
     }
 
     pub fn get_response(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, CompactObstacle> {

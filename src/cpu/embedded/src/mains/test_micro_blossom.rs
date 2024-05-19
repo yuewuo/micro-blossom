@@ -101,7 +101,7 @@ pub fn main() {
     // println!("head: {head:#?}, conflicts: {conflicts:#?}");
     assert_eq!(conflicts_store.head.growable, weight);
     assert!(conflicts_store.pop().is_none());
-    unsafe { extern_c::execute_instruction(Instruction32::grow(weight.into()).into(), cid) };
+    unsafe { extern_c::execute_instruction(Instruction32::grow(weight as CompactWeight).into(), cid) };
     unsafe { conflicts_store.get_conflicts(cid) };
     // println!("head: {head:#?}, conflicts: {conflicts:#?}");
     if SUPPORT_OFFLOADING {

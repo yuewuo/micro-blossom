@@ -10,10 +10,10 @@ pub struct Vertex {
     pub edge_indices: Vec<EdgeIndex>,
     pub default_is_virtual: bool,
     pub offloading_indices: Vec<usize>,
-    // each vertex may correspond to multiple virtual pre-matching
-    pub potential_virtual_matching: Option<VirtualMatchingVertexProfile>,
     pub registers: VertexRegisters,
     pub signals: VertexCombSignals,
+    /// loading a layer of defects
+    pub layer_id: Option<usize>,
 }
 
 pub struct VirtualMatchingVertexProfile {
@@ -33,8 +33,7 @@ pub struct VertexRegisters {
 
 /// combinatorial signals of the vertex, should be invalidated whenever the registers are updated
 pub struct VertexCombSignals {
-    /// only one surrounding edge is tight
-    is_unique_tight: RefCell<Option<bool>>,
+    tight_count: RefCell<Option<usize>>,
     offloading_stalled: RefCell<Option<bool>>,
     post_execute_state: RefCell<Option<VertexRegisters>>,
     propagating_peer: RefCell<Option<Option<PropagatingPeer>>>,
@@ -73,7 +72,7 @@ impl VertexRegisters {
 impl VertexCombSignals {
     pub fn new() -> Self {
         Self {
-            is_unique_tight: RefCell::new(None),
+            tight_count: RefCell::new(None),
             offloading_stalled: RefCell::new(None),
             post_execute_state: RefCell::new(None),
             propagating_peer: RefCell::new(None),
@@ -91,27 +90,39 @@ impl Vertex {
             edge_indices,
             offloading_indices: vec![],
             default_is_virtual: is_virtual,
-            potential_virtual_matching: None,
             registers: VertexRegisters::new(is_virtual),
             signals: VertexCombSignals::new(),
+            layer_id: None,
         }
     }
     pub fn clear(&mut self) {
-        self.registers = VertexRegisters::new(self.default_is_virtual);
+        let is_virtual = if self.layer_id.is_some() {
+            true // always start with virtual if waiting for loading syndrome to this layer
+        } else {
+            self.default_is_virtual
+        };
+        self.registers = VertexRegisters::new(is_virtual);
         self.register_updated();
     }
     pub fn register_updated(&mut self) {
         self.signals = VertexCombSignals::new();
     }
 
-    pub fn get_is_unique_tight(&self, dual_module: &DualModuleCombDriver) -> bool {
-        *referenced_signal!(self.signals.is_unique_tight, || {
+    pub fn get_tight_count(&self, dual_module: &DualModuleCombDriver) -> usize {
+        *referenced_signal!(self.signals.tight_count, || {
             self.edge_indices
                 .iter()
-                .filter(|&&edge_index| dual_module.edges[edge_index].get_post_fetch_is_tight(dual_module))
+                .filter(|&&edge_index| dual_module.edges[edge_index].get_post_fetch_count_tight(dual_module))
                 .count()
-                == 1
         })
+    }
+
+    pub fn get_is_unique_tight(&self, dual_module: &DualModuleCombDriver) -> bool {
+        self.get_tight_count(dual_module) == 1
+    }
+
+    pub fn get_is_isolated(&self, dual_module: &DualModuleCombDriver) -> bool {
+        self.get_tight_count(dual_module) == 0
     }
 
     pub fn get_offloading_stalled(&self, dual_module: &DualModuleCombDriver) -> bool {
@@ -146,7 +157,12 @@ impl Vertex {
                     }
                 }
                 Instruction::Grow { length } => {
-                    if !self.get_offloading_stalled(dual_module) {
+                    // growth may be disabled if it's pre-matched or it's virtual
+                    let mut disable_growth = self.get_offloading_stalled(dual_module);
+                    if self.layer_id.is_some() {
+                        disable_growth = state.is_virtual;
+                    }
+                    if !disable_growth {
                         state.grown = self.registers.grown + Weight::from(self.registers.speed) * length;
                         assert!(
                             state.grown >= 0,
@@ -162,6 +178,14 @@ impl Vertex {
                         state.speed = CompactGrowState::Grow;
                         state.root_index = Some(*node);
                         state.node_index = Some(*node);
+                    }
+                }
+                Instruction::LoadDefectsExternal { time, channel: _ } => {
+                    if let Some(layer_id) = self.layer_id {
+                        if &layer_id == time {
+                            // when loading the layer of syndrome, they are removed from the virtual boundary
+                            state.is_virtual = false;
+                        }
                     }
                 }
                 _ => {}
@@ -226,6 +250,12 @@ impl Vertex {
                     shadow_node.node_index = peer.node_index;
                     shadow_node.root_index = peer.root_index;
                     shadow_node.speed = CompactGrowState::Grow;
+                }
+            }
+            // compile-time condition
+            if self.layer_id.is_some() {
+                if state.is_virtual {
+                    shadow_node.speed = CompactGrowState::Stay;
                 }
             }
             if self.get_offloading_stalled(dual_module) {

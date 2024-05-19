@@ -61,6 +61,15 @@ impl Offloading {
                     }
                 }
             }
+            OffloadingType::FusionMatch {
+                edge_index,
+                conditioned_vertex: _,
+            } => {
+                affecting_edges.insert(edge_index);
+                let (left_index, right_index, _) = initializer.weighted_edges[edge_index];
+                affecting_vertices.insert(left_index);
+                affecting_vertices.insert(right_index);
+            }
         }
         Self {
             offloading_type,
@@ -120,7 +129,7 @@ impl Offloading {
                         let neighbor_edge = &dual_module.edges[neighbor_edge_index];
                         let neighbor_vertex_index = neighbor_edge.get_peer(regular_index);
                         let neighbor_vertex = &dual_module.vertices[neighbor_vertex_index];
-                        condition &= !neighbor_edge.get_post_fetch_is_tight(dual_module)
+                        condition &= !neighbor_edge.get_post_fetch_count_tight(dual_module)
                             || (neighbor_vertex.get_is_unique_tight(dual_module) && !neighbor_vertex.registers.is_defect);
                     }
                     if condition {
@@ -132,10 +141,29 @@ impl Offloading {
                             }
                             let neighbor_edge = &dual_module.edges[neighbor_edge_index];
                             let neighbor_vertex_index = neighbor_edge.get_peer(regular_index);
-                            if neighbor_edge.get_post_fetch_is_tight(dual_module) {
+                            if neighbor_edge.get_post_fetch_count_tight(dual_module) {
                                 vertex_stalls.insert(neighbor_vertex_index);
                             }
                         }
+                    }
+                    condition
+                }
+                OffloadingType::FusionMatch {
+                    edge_index,
+                    conditioned_vertex: conditioned_index,
+                } => {
+                    let edge = &dual_module.edges[edge_index];
+                    let conditioned_vertex = &dual_module.vertices[conditioned_index];
+                    let regular_index = edge.get_peer(conditioned_index);
+                    let regular_vertex = &dual_module.vertices[regular_index];
+                    let condition = edge.get_post_fetch_is_tight(dual_module)
+                        && conditioned_vertex.registers.is_virtual
+                        && regular_vertex.registers.is_defect
+                        && regular_vertex.registers.speed == CompactGrowState::Grow
+                        && regular_vertex.get_is_isolated(dual_module);
+                    if condition {
+                        vertex_stalls.insert(regular_index);
+                        edge_stalls.insert(edge_index);
                     }
                     condition
                 }

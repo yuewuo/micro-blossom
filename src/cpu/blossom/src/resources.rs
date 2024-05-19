@@ -4,6 +4,7 @@ use fusion_blossom::example_codes::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use mwmatching::Matching;
+use ordered_float::OrderedFloat;
 use petgraph::{algo::floyd_warshall, prelude::*};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -21,6 +22,8 @@ pub struct MicroBlossomSingle {
     pub vertex_max_growth: Vec<isize>,
     /// primal offloading
     pub offloading: OffloadingFinder,
+    /// microscopic fusion
+    pub layer_fusion: Option<LayerFusion>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -74,6 +77,14 @@ pub enum OffloadingType {
         #[serde(rename = "v")]
         virtual_vertex: usize,
     },
+    /// temporary match with fusion boundary that is guaranteed to be removed in the end
+    #[serde(rename = "fm")]
+    FusionMatch {
+        #[serde(rename = "e")]
+        edge_index: usize,
+        #[serde(rename = "c")]
+        conditioned_vertex: usize,
+    },
 }
 
 impl MicroBlossomSingle {
@@ -105,8 +116,8 @@ impl MicroBlossomSingle {
         let vertex_edge_binary_tree = BinaryTree::inferred_from_positions(&vertex_edge_positions);
         let vertex_max_growth = infer_vertex_max_growth(initializer);
         let mut offloading = OffloadingFinder::new();
-        offloading.find_all(initializer);
-        Self {
+        offloading.find_first_order(initializer);
+        let mut result = Self {
             vertex_num: initializer.vertex_num.try_into().unwrap(),
             positions,
             weighted_edges,
@@ -116,7 +127,10 @@ impl MicroBlossomSingle {
             vertex_edge_binary_tree,
             vertex_max_growth,
             offloading,
-        }
+            layer_fusion: None,
+        };
+        result.layer_fusion = Some(LayerFusion::new(&result));
+        result
     }
 
     pub fn new_code(code: &dyn ExampleCode) -> Self {
@@ -152,7 +166,7 @@ impl OffloadingFinder {
         Self(vec![])
     }
 
-    pub fn find_all(&mut self, initializer: &SolverInitializer) {
+    pub fn find_first_order(&mut self, initializer: &SolverInitializer) {
         self.find_defect_match(initializer);
         self.find_virtual_match(initializer);
     }
@@ -335,6 +349,89 @@ impl BinaryTree {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LayerFusion {
+    pub num_layers: usize,
+    /// `layers[layer_id] = Vec<vertices>`
+    pub layers: Vec<Vec<usize>>,
+    /// mapping from vertex index to layer id
+    pub vertex_layer_id: BTreeMap<usize, usize>,
+    /// mapping from edge index to the conditioned vertex index
+    pub fusion_edges: BTreeMap<usize, usize>,
+    /// mapping from vertex index to the conditioned edge indices
+    pub unique_tight_conditions: BTreeMap<usize, Vec<usize>>,
+}
+
+impl LayerFusion {
+    /// automatically infer fusion plan according to the position
+    pub fn new(graph: &MicroBlossomSingle) -> Self {
+        // useful for observing fusion when the graph is 2D
+        let mut demo_2d_fusion = false;
+        {
+            let t_values: BTreeSet<OrderedFloat<f64>> = graph.positions.iter().map(|pos| pos.t.into()).collect();
+            if t_values.len() == 1 {
+                demo_2d_fusion = true;
+            }
+        }
+        let get_t = if !demo_2d_fusion {
+            |position: &Position| position.t
+        } else {
+            |position: &Position| -position.i
+        };
+        // first find all t position values
+        let mut layers = BTreeMap::<OrderedFloat<f64>, Vec<usize>>::new();
+        let virtual_vertices: BTreeSet<usize> = graph.virtual_vertices.iter().cloned().collect();
+        for (vertex_index, position) in graph.positions.iter().enumerate() {
+            if virtual_vertices.contains(&vertex_index) {
+                continue; // do not count virtual vertices
+            }
+            let t = get_t(position).into();
+            if let Some(layer) = layers.get_mut(&t) {
+                layer.push(vertex_index);
+            } else {
+                layers.insert(t, vec![vertex_index]);
+            }
+        }
+        let mut vertex_layer_id = BTreeMap::<usize, usize>::new(); // vertex_index: layer id
+        for (layer_id, vertices) in layers.values().enumerate() {
+            for vertex_index in vertices.iter() {
+                vertex_layer_id.insert(*vertex_index, layer_id);
+            }
+        }
+        // iterate every edge and see if they should have conditioned half weight
+        let mut fusion_edges = BTreeMap::<usize, usize>::new(); // edge_index: conditioned_vertex_index
+        let mut unique_tight_conditions = BTreeMap::<usize, Vec<usize>>::new(); // vertex_index: conditioned edges
+        for (edge_index, edge) in graph.weighted_edges.iter().enumerate() {
+            if virtual_vertices.contains(&edge.l) || virtual_vertices.contains(&edge.r) {
+                continue; // ignore if one of them is virtual
+            }
+            let left_layer_id = vertex_layer_id[&edge.l];
+            let right_layer_id = vertex_layer_id[&edge.r];
+            if left_layer_id == right_layer_id {
+                continue; // ignore if they are in the same layer
+            }
+            let (early_vertex_index, late_vertex_index) = if left_layer_id < right_layer_id {
+                (edge.l, edge.r)
+            } else {
+                (edge.r, edge.l)
+            };
+            fusion_edges.insert(edge_index, late_vertex_index);
+            if let Some(conditioned_edges) = unique_tight_conditions.get_mut(&early_vertex_index) {
+                conditioned_edges.push(edge_index);
+            } else {
+                unique_tight_conditions.insert(early_vertex_index, vec![edge_index]);
+            }
+        }
+        Self {
+            num_layers: layers.len(),
+            layers: layers.values().cloned().collect(),
+            vertex_layer_id,
+            fusion_edges,
+            unique_tight_conditions,
+        }
+    }
+}
+
 fn find_max_cardinality_matching_with_minimum_weight(vertices: &Vec<(Coordinate2D, usize)>) -> Vec<(usize, usize)> {
     assert!(vertices.len() > 1, "should not call this function with less than 2 vertices");
     let mut matching = vec![];
@@ -391,6 +488,7 @@ fn infer_vertex_max_growth(initializer: &SolverInitializer) -> Vec<isize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn resources_micro_blossom_test_1() {
@@ -415,5 +513,31 @@ mod tests {
         let edges = vec![(0, 3, -10), (3, 2, -20), (2, 1, -10), (3, 4, -100)];
         let mates = Matching::new(edges).max_cardinality().solve();
         assert_eq!(mates, [3, 2, 1, 0, usize::MAX]);
+    }
+
+    #[test]
+    fn resources_micro_blossom_fusion_plan_1() {
+        // cargo test resources_micro_blossom_fusion_plan_1 -- --nocapture
+        let visualize_filename = "resources_micro_blossom_fusion_plan_1.json".to_string();
+        let mut code = PhenomenologicalRotatedCode::new(3, 3, 0.1, 500);
+        let micro_blossom = MicroBlossomSingle::new_code(&code);
+        println!("{:?}", micro_blossom.layer_fusion);
+        visualize_code(&mut code, visualize_filename);
+    }
+
+    #[test]
+    fn resources_micro_blossom_fusion_plan_2() {
+        // cargo test resources_micro_blossom_fusion_plan_2 -- --nocapture
+        let visualize_filename = "resources_micro_blossom_fusion_plan_2.json".to_string();
+        let d = 3;
+        let config = json!({
+            "qubit_type": fusion_blossom::qecp::types::QubitType::StabZ,
+            "max_half_weight": 7,
+            "nm": d-1,  // d-1 noisy measurement rounds and 1 perfect measurement rounds
+        });
+        let mut code = QECPlaygroundCode::new(d, 0.001, config);
+        let micro_blossom = MicroBlossomSingle::new_code(&code);
+        println!("{:?}", micro_blossom.layer_fusion);
+        visualize_code(&mut code, visualize_filename);
     }
 }

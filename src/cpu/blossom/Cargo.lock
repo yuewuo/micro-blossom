@@ -887,7 +887,7 @@ dependencies = [
 
 [[package]]
 name = "fusion-blossom"
-version = "0.2.9"
+version = "0.2.10"
 dependencies = [
  "cc",
  "cfg-if 1.0.0",
@@ -1288,7 +1288,7 @@ dependencies = [
  "cty",
  "derivative",
  "embedded-blossom",
- "fusion-blossom 0.2.9",
+ "fusion-blossom 0.2.10",
  "heapless 0.8.0",
  "konst",
  "lazy_static",
@@ -1297,6 +1297,7 @@ dependencies = [
  "mwmatching",
  "nonzero",
  "num_cpus",
+ "ordered-float 4.2.0",
  "parking_lot",
  "pbr",
  "petgraph",
@@ -1309,6 +1310,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_variant",
+ "tmp_env",
  "urlencoding",
  "wait-timeout",
  "weak-table",
@@ -1488,6 +1490,15 @@ name = "ordered-float"
 version = "3.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2a54938017eacd63036332b4ae5c8a49fc8c0c1d6d629893057e4f13609edd06"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
+name = "ordered-float"
+version = "4.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a76df7075c7d4d01fdcb46c912dd17fba5b60c78ea480b475f2b6ab6f666584e"
 dependencies = [
  "num-traits",
 ]
@@ -1862,7 +1873,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c13a90d3c31ebd0b83e38600c8117083ec4c4e1a7a0cab364e79e19706ade04e"
 dependencies = [
  "num-traits",
- "ordered-float",
+ "ordered-float 3.9.1",
  "serde",
 ]
 
@@ -2094,6 +2105,15 @@ name = "tinyvec_macros"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
+
+[[package]]
+name = "tmp_env"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a56eb9e5a28c3c4f0a6aa8ea70a8ad2d6c53e4bf364571ce78f57945b6766843"
+dependencies = [
+ "rand",
+]
 
 [[package]]
 name = "tokio"

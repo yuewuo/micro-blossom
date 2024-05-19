@@ -515,6 +515,7 @@ pub struct SolverDualComb {
     subgraph_builder: SubGraphBuilder,
     defect_nodes: Vec<VertexIndex>,
     pub offloaded: usize,
+    layer_id: usize,
 }
 
 impl FusionVisualizer for SolverDualComb {
@@ -534,6 +535,7 @@ impl SolverDualComb {
             subgraph_builder: SubGraphBuilder::new(initializer),
             defect_nodes: vec![],
             offloaded: 0,
+            layer_id: 0,
         }
     }
     pub fn new_native(config: MicroBlossomSingle, mut primal_dual_config: serde_json::Value) -> Self {
@@ -555,6 +557,7 @@ impl SolverDualComb {
             subgraph_builder: SubGraphBuilder::new(&initializer),
             defect_nodes: vec![],
             offloaded: 0,
+            layer_id: 0,
         }
     }
 }
@@ -565,6 +568,7 @@ impl PrimalDualSolver for SolverDualComb {
         self.dual_module.reset();
         self.subgraph_builder.clear();
         self.defect_nodes.clear();
+        self.layer_id = 0;
     }
     fn reset_profiler(&mut self) {
         self.dual_module.driver.driver.reset_profiler();
@@ -580,18 +584,37 @@ impl PrimalDualSolver for SolverDualComb {
         if let Some(visualizer) = visualizer.as_mut() {
             visualizer.snapshot_combined("syndrome".to_string(), vec![self]).unwrap();
         }
-        let (mut obstacle, _) = self.dual_module.find_obstacle();
-        while !obstacle.is_none() {
-            // println!("obstacle: {obstacle:?}");
-            debug_assert!(
-                obstacle.is_obstacle(),
-                "dual module should spontaneously process all finite growth"
-            );
-            if let Some(visualizer) = visualizer.as_mut() {
-                visualizer.snapshot_combined(format!("{obstacle:?}"), vec![self]).unwrap();
+        loop {
+            let (mut obstacle, _) = self.dual_module.find_obstacle();
+            while !obstacle.is_none() {
+                // println!("obstacle: {obstacle:?}");
+                debug_assert!(
+                    obstacle.is_obstacle(),
+                    "dual module should spontaneously process all finite growth"
+                );
+                if let Some(visualizer) = visualizer.as_mut() {
+                    visualizer.snapshot_combined(format!("{obstacle:?}"), vec![self]).unwrap();
+                }
+                self.primal_module.resolve(&mut self.dual_module, obstacle);
+                (obstacle, _) = self.dual_module.find_obstacle();
             }
-            self.primal_module.resolve(&mut self.dual_module, obstacle);
-            (obstacle, _) = self.dual_module.find_obstacle();
+            // if there are pending fusion layers, execute them
+            if self.dual_module.driver.driver.dual_config.support_layer_fusion {
+                let num_layers = self.dual_module.driver.driver.graph.layer_fusion.as_ref().unwrap().num_layers;
+                if self.layer_id < num_layers {
+                    self.dual_module.driver.driver.fuse_layer(self.layer_id);
+                    self.primal_module
+                        .fuse_layer(CompactLayerId::new(self.layer_id as CompactLayerNum).unwrap());
+                    if let Some(visualizer) = visualizer.as_mut() {
+                        visualizer
+                            .snapshot_combined(format!("fusion {}", self.layer_id), vec![self])
+                            .unwrap();
+                    }
+                    self.layer_id += 1;
+                    continue;
+                }
+            }
+            break;
         }
         if let Some(visualizer) = visualizer.as_mut() {
             visualizer.snapshot_combined("solved".to_string(), vec![self]).unwrap();
