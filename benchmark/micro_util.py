@@ -34,7 +34,7 @@ fusion_benchmark_dir = os.path.join(fusion_dir, "benchmark")
 if True:
     sys.path.insert(0, fusion_benchmark_dir)
     from util import compile_code_if_necessary as fusion_compile_code_if_necessary
-    from util import fusion_blossom_qecp_generate_command
+    from util import fusion_blossom_qecp_generate_command, fusion_blossom_command
     from util import run_command_get_stdout as fusio_run_command_get_stdout
 
 MICRO_BLOSSOM_COMPILATION_DONE = False
