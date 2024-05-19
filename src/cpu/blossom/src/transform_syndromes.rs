@@ -11,7 +11,7 @@ use std::collections::BTreeSet;
 pub enum TransformSyndromesType {
     /// for the rotated surface code from qecp, this will merge the virtual vertices on each side:
     /// those two vertices will have index 0 and 1 respectively.
-    QecpRotatedSurfaceCode {
+    QecpRotatedPlanarCode {
         #[clap(value_parser)]
         d: usize,
     },
@@ -25,7 +25,7 @@ impl TransformSyndromesType {
         let initializer = reader.get_initializer();
         let positions = reader.get_positions();
         match self {
-            Self::QecpRotatedSurfaceCode { d } => {
+            Self::QecpRotatedPlanarCode { d } => {
                 let d = *d as isize;
                 // first verify the graph structure is as expected
                 let virtual_vertices: BTreeSet<usize> = initializer.virtual_vertices.iter().cloned().collect();
