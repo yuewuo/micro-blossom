@@ -30,6 +30,7 @@ crate-type = ["lib"]
 default = ["std"]
 u16_index = []
 i16_weight = []
+u8_layer_id = []
 std = ["derivative", "serde"]
 obstacle_potentially_outdated = []
 unsafe_unwrap = [] # still keeps the normal boundary check and possibly panic

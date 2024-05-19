@@ -9,24 +9,28 @@
 //!
 
 use crate::interface::*;
+use crate::layer_fusion::*;
 use crate::primal_nodes::*;
 use crate::util::*;
 
 #[cfg_attr(any(test, feature = "std"), derive(Debug))]
-pub struct PrimalModuleEmbedded<const N: usize> {
+pub struct PrimalModuleEmbedded<const N: usize, const VN: usize = 0> {
     /// the alternating tree nodes
     pub nodes: PrimalNodes<N>,
+    /// optionally, it can store the layer fusion table of the vertices
+    pub layer_fusion: LayerFusionData<VN>,
 }
 
-impl<const N: usize> PrimalModuleEmbedded<N> {
+impl<const N: usize, const VN: usize> PrimalModuleEmbedded<N, VN> {
     pub const fn new() -> Self {
         Self {
             nodes: PrimalNodes::new(),
+            layer_fusion: LayerFusionData::new(),
         }
     }
 }
 
-impl<const N: usize> PrimalInterface for PrimalModuleEmbedded<N> {
+impl<const N: usize, const VN: usize> PrimalInterface for PrimalModuleEmbedded<N, VN> {
     fn reset(&mut self) {
         self.nodes.clear();
     }
@@ -163,7 +167,7 @@ impl<const N: usize> PrimalInterface for PrimalModuleEmbedded<N> {
     }
 }
 
-impl<const N: usize> PrimalModuleEmbedded<N> {
+impl<const N: usize, const VN: usize> PrimalModuleEmbedded<N, VN> {
     /// return the perfect matching between nodes
     #[inline]
     pub fn iterate_intermediate_matching(
@@ -354,6 +358,12 @@ impl<const N: usize> PrimalModuleEmbedded<N> {
         }
         self.nodes
             .temporary_match_virtual_vertex(dual_module, node, touch, vertex, virtual_vertex);
+        if VN > 0 {
+            // layer fusion is enabled, record this matching in the list
+            if self.layer_fusion.get_layer_id(virtual_vertex).is_some() {
+                self.layer_fusion.append_break(node);
+            }
+        }
         true
     }
 
@@ -855,6 +865,9 @@ impl<const N: usize> PrimalModuleEmbedded<N> {
             depth -= 1;
         }
     }
+
+    /// fusing a layer will remove all existing virtual matchings with the layer
+    pub fn fuse_layer(&mut self, layer_id: CompactLayerId) {}
 }
 
 #[cfg(test)]

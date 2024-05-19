@@ -8,6 +8,7 @@ pub mod dual_module_stackless;
 pub mod heapless;
 pub mod instruction;
 pub mod interface;
+pub mod layer_fusion;
 pub mod nonmax;
 pub mod primal_module_embedded;
 pub mod primal_nodes;

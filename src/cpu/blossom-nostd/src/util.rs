@@ -16,6 +16,18 @@ cfg_if::cfg_if! {
     }
 }
 
+cfg_if::cfg_if! {
+    if #[cfg(feature="u8_layer_id")] {
+        pub type CompactLayerNum = u8;
+        pub type CompactLayerId = nonmax::NonMaxU8;
+        pub type OptionCompactLayerId = nonmax::OptionNonMaxU8;
+    } else {
+        pub type CompactLayerNum = u32;
+        pub type CompactLayerId = nonmax::NonMaxU32;
+        pub type OptionCompactLayerId = nonmax::OptionNonMaxU32;
+    }
+}
+
 pub type CompactNodeIndex = CompactVertexIndex;
 pub type CompactDefectIndex = CompactVertexIndex;
 pub type CompactVertexNodeIndex = CompactVertexIndex;

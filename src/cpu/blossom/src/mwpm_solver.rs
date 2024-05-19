@@ -602,7 +602,9 @@ impl PrimalDualSolver for SolverDualComb {
             if self.dual_module.driver.driver.dual_config.support_layer_fusion {
                 let num_layers = self.dual_module.driver.driver.graph.layer_fusion.as_ref().unwrap().num_layers;
                 if self.layer_id < num_layers {
-                    self.dual_module.driver.driver.load_fusion_layer(self.layer_id);
+                    self.dual_module.driver.driver.fuse_layer(self.layer_id);
+                    self.primal_module
+                        .fuse_layer(CompactLayerId::new(self.layer_id as CompactLayerNum).unwrap());
                     if let Some(visualizer) = visualizer.as_mut() {
                         visualizer
                             .snapshot_combined(format!("fusion {}", self.layer_id), vec![self])

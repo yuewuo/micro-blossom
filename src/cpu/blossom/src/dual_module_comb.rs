@@ -226,8 +226,9 @@ impl DualModuleCombDriver {
         })
     }
 
-    /// load one layer of defects and perform the fusion
-    pub fn load_fusion_layer(&mut self, layer_id: usize) {
+    /// fuse one layer of defects (in this simulation, the defects are still loaded using `AddDefectVertex`,
+    /// but real hardware should be able to load from some channel)
+    pub fn fuse_layer(&mut self, layer_id: usize) {
         self.execute_instruction(Instruction::LoadDefectsExternal {
             time: layer_id,
             channel: 0,
@@ -492,6 +493,15 @@ pub mod tests {
         dual_module_comb_layer_fusion_standard_syndrome(7, visualize_filename, defect_vertices);
     }
 
+    /// test layer fusion and enable pre matching
+    #[test]
+    fn dual_module_comb_pre_matching_layer_fusion_1() {
+        // cargo test dual_module_comb_pre_matching_layer_fusion_1 -- --nocapture
+        let visualize_filename = "dual_module_comb_pre_matching_layer_fusion_1.json".to_string();
+        let defect_vertices = vec![16, 26];
+        dual_module_comb_pre_matching_layer_fusion_standard_syndrome(7, visualize_filename, defect_vertices);
+    }
+
     /// verify that all single error can be decoded totally offline
     #[test]
     fn dual_module_comb_pre_matching_all_single_error() {
@@ -547,6 +557,18 @@ pub mod tests {
     ) -> SolverDualComb {
         {
             let _tmp_env = tmp_env::set_var("SUPPORT_LAYER_FUSION", "1");
+            dual_module_comb_basic_standard_syndrome(d, visualize_filename, defect_vertices)
+        }
+    }
+
+    pub fn dual_module_comb_pre_matching_layer_fusion_standard_syndrome(
+        d: VertexNum,
+        visualize_filename: String,
+        defect_vertices: Vec<VertexIndex>,
+    ) -> SolverDualComb {
+        {
+            let _tmp_env = tmp_env::set_var("SUPPORT_LAYER_FUSION", "1");
+            let _tmp_env_2 = tmp_env::set_var("SUPPORT_OFFLOADING", "1");
             dual_module_comb_basic_standard_syndrome(d, visualize_filename, defect_vertices)
         }
     }
