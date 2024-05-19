@@ -20,8 +20,9 @@ def main(config: Configuration, peek_smallest_graph: bool = False):
     for idx, d in enumerate(config.d_vec):
         frequency = config.f
         # first generate the graph config file
+        old_syndrome_file_path = os.path.join(hardware_dir, f"{name}_d_{d}.old")
         syndrome_file_path = os.path.join(hardware_dir, f"{name}_d_{d}.syndromes")
-        if not os.path.exists(syndrome_file_path):
+        if not os.path.exists(old_syndrome_file_path):
             command = fusion_blossom_qecp_generate_command(
                 d=d,
                 p=p,
@@ -40,10 +41,23 @@ def main(config: Configuration, peek_smallest_graph: bool = False):
                 "--debug-print",
                 "fusion-blossom-syndrome-file",
                 "--fusion-blossom-syndrome-export-filename",
-                syndrome_file_path,
+                old_syndrome_file_path,
             ]
             command += ["--parallel", f"{STO(0)}"]  # use all cores
             print(command)
+            stdout, returncode = run_command_get_stdout(command)
+            print("\n" + stdout)
+            assert returncode == 0, "command fails..."
+
+        # merge two side of the virtual vertices to reduce resource usage
+        if not os.path.exists(syndrome_file_path):
+            command = micro_blossom_command() + [
+                "transform-syndromes",
+                old_syndrome_file_path,
+                syndrome_file_path,
+                "qecp-rotated-planar-code",
+                f"{d}",
+            ]
             stdout, returncode = run_command_get_stdout(command)
             print("\n" + stdout)
             assert returncode == 0, "command fails..."
@@ -58,7 +72,8 @@ def main(config: Configuration, peek_smallest_graph: bool = False):
             stdout, returncode = run_command_get_stdout(command)
             print("\n" + stdout)
             assert returncode == 0, "command fails..."
-            return
+            if d >= 5:
+                return
 
         # then generate the graph json
         graph_file_path = os.path.join(hardware_dir, f"{name}_d_{d}.json")
