@@ -78,9 +78,12 @@ set_property offset 0x400000000 [get_bd_addr_segs versal_cips_0/M_AXI_FPD/SEG_${
 # get_nets -hier -filter { NAME =~ "vmk180_micro_blossom_i/MicroBlossom_0/inst/dual/broadcastRegInserted_valid" }
 
 # run synthesis, implementation and write bitstream
+set_property strategy Flow_AlternateRoutability [get_runs synth_1]
 launch_runs synth_1 -jobs 10
 wait_on_run synth_1
 
+set_property strategy Congestion_SpreadLogic_high [get_runs impl_1]
+set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveFanoutOpt [get_runs impl_1]
 launch_runs impl_1 -jobs 10
 wait_on_run impl_1
 

@@ -36,6 +36,8 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig
   val broadcastRegInserted = Delay(broadcastMessage, config.broadcastDelay)
   // broadcastRegInserted.addAttribute("keep")
   // broadcastRegInserted.addAttribute("mark_debug = \"true\"")
+  // reduce congestion by using global clocking BUFG to propagate the signal
+  broadcastRegInserted.addAttribute("clock_buffer_type = \"BUFG\"")
 
   // instantiate vertices, edges and offloaders
   val vertices = Seq

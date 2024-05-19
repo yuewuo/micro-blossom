@@ -26,9 +26,9 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 hardware_dir = os.path.join(this_dir, "hardware")
 
 
-d_vec = [3, 5, 7, 9, 11, 13]
+d_vec = [3, 5, 7, 9, 11, 13, 15]
 # d_vec = [3, 5, 7, 9]
-f_vec = [100, 95, 76, 66, 10, 10]
+f_vec = [100, 95, 76, 25, 10, 10, 10]
 p_vec = [0.02, 0.01, 0.005, 0.002, 0.001]
 
 
