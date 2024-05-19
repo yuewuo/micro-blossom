@@ -1,5 +1,6 @@
 use crate::mwpm_solver::*;
 use crate::resources::*;
+use crate::transform_syndromes::*;
 use byteorder::{LittleEndian, WriteBytesExt};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use fusion_blossom::cli::{ExampleCodeType, RunnableBenchmarkParameters, Verifier};
@@ -43,6 +44,15 @@ enum Commands {
     },
     /// parse syndrome file to prepare for Micro Blossom
     Parser(MicroBlossomParserParameters),
+    /// transform syndrome file to another syndrome file that is more suitable for hardware implementation
+    TransformSyndromes {
+        #[clap(value_parser)]
+        input_file: String,
+        #[clap(value_parser)]
+        output_file: String,
+        #[clap(subcommand)]
+        transform_type: TransformSyndromesType,
+    },
 }
 
 #[derive(Parser, Clone)]
@@ -411,6 +421,11 @@ impl Cli {
                     std::fs::write(defects_file, binary).unwrap();
                 }
             }
+            Commands::TransformSyndromes {
+                transform_type,
+                input_file,
+                output_file,
+            } => transform_type.run(input_file, output_file),
         }
     }
 }
