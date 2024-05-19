@@ -23,7 +23,7 @@ use serde::Serialize;
 use std::io::prelude::*;
 use std::io::{BufReader, LineWriter};
 use std::net::{TcpListener, TcpStream};
-use std::process::{Child, Command};
+use std::process::Child;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use wait_timeout::ChildExt;
@@ -65,7 +65,7 @@ pub const MAX_CONFLICT_CHANNELS: usize = 62;
 
 pub struct DualModuleAxi4Driver {
     pub link: Mutex<Link>,
-    pub host_name: String,
+    pub name: String,
     pub context_id: u16,
     pub maximum_growth: Vec<u16>,
     pub simulation_duration: Duration,
@@ -91,7 +91,7 @@ impl DualInterfaceWithInitializer for DualModuleAxi4 {
 impl DualModuleAxi4Driver {
     pub fn new_with_name_raw(
         micro_blossom: MicroBlossomSingle,
-        host_name: String,
+        name: String,
         dual_config: DualConfig,
     ) -> std::io::Result<Self> {
         let hostname = "127.0.0.1";
@@ -99,10 +99,10 @@ impl DualModuleAxi4Driver {
         let port = listener.local_addr()?.port();
         // start the scala simulator host
         println!("Starting Scala simulator host... this may take a while (listening on {hostname}:{port})");
-        let child = Command::new("sbt")
-            .current_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../"))
-            .arg(format!("runMain microblossom.MicroBlossomHost {hostname} {port} {host_name}"))
-            .spawn()?;
+        let child = SCALA_MICRO_BLOSSOM_RUNNER.run(
+            "microblossom.MicroBlossomHost",
+            [format!("{hostname}"), format!("{port}"), format!("{name}")],
+        )?;
         let (socket, _addr) = listener.accept()?;
         let mut reader = BufReader::new(socket.try_clone()?);
         let mut writer = LineWriter::new(socket);
@@ -119,7 +119,7 @@ impl DualModuleAxi4Driver {
         let mut conflicts_store = ConflictsStore::new();
         conflicts_store.reconfigure(conflict_channels as u8);
         let mut value = Self {
-            host_name,
+            name,
             context_id: 0,
             maximum_growth: vec![0; dual_config.context_depth],
             dual_config,
@@ -136,22 +136,22 @@ impl DualModuleAxi4Driver {
         Ok(value)
     }
 
-    pub fn new_with_name(initializer: &SolverInitializer, host_name: String) -> std::io::Result<Self> {
+    pub fn new_with_name(initializer: &SolverInitializer, name: String) -> std::io::Result<Self> {
         // in simulation, positions doesn't matter because it's not going to affect the timing constraint
         Self::new_with_name_raw(
             MicroBlossomSingle::new_initializer_only(initializer),
-            host_name,
+            name,
             Default::default(),
         )
     }
 
     pub fn new(initializer: &SolverInitializer) -> std::io::Result<Self> {
-        let host_name = rand::thread_rng()
+        let name = rand::thread_rng()
             .sample_iter(&Alphanumeric)
             .take(16)
             .map(char::from)
             .collect();
-        Self::new_with_name(initializer, host_name)
+        Self::new_with_name(initializer, name)
     }
 
     fn memory_write(&mut self, num_bytes: usize, address: usize, data: usize) -> std::io::Result<()> {
@@ -342,17 +342,17 @@ impl Drop for DualModuleAxi4Driver {
         if self.dual_config.with_waveform || self.dual_config.dump_debugger_files {
             // only delete binary but keep original waveforms and debugger files
             if !dual_config_default::is_set("KEEP_RTL_FOLDER") {
-                match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/rtl", self.host_name)) {
+                match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/rtl", self.name)) {
                     Err(e) => println!("Could not remove rtl folder: {}", e),
                     Ok(_) => println!("Successfully remove rtl folder"),
                 }
             }
-            match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/verilator", self.host_name)) {
+            match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/verilator", self.name)) {
                 Err(e) => println!("Could not remove verilator folder: {}", e),
                 Ok(_) => println!("Successfully remove verilator folder"),
             }
         } else {
-            match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}", self.host_name)) {
+            match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}", self.name)) {
                 Err(e) => println!("Could not remove build folder: {}", e),
                 Ok(_) => println!("Successfully remove build folder"),
             }

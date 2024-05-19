@@ -17,13 +17,13 @@ use scan_fmt::*;
 use std::io::prelude::*;
 use std::io::{BufReader, LineWriter};
 use std::net::{TcpListener, TcpStream};
-use std::process::{Child, Command};
+use std::process::Child;
 use std::sync::Mutex;
 use wait_timeout::ChildExt;
 
 pub struct DualModuleScalaDriver {
     pub link: Mutex<Link>,
-    pub host_name: String,
+    pub name: String,
 }
 
 pub struct Link {
@@ -65,16 +65,16 @@ impl Drop for DualModuleScalaDriver {
         }
         if cfg!(test) {
             // only delete binary but keep original waveforms
-            match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/rtl", self.host_name)) {
+            match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/rtl", self.name)) {
                 Err(e) => println!("Could not remove rtl folder: {}", e),
                 Ok(_) => println!("Successfully remove rtl folder"),
             }
-            match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/verilator", self.host_name)) {
+            match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/verilator", self.name)) {
                 Err(e) => println!("Could not remove verilator folder: {}", e),
                 Ok(_) => println!("Successfully remove verilator folder"),
             }
         } else {
-            match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}", self.host_name)) {
+            match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}", self.name)) {
                 Err(e) => println!("Could not remove build folder: {}", e),
                 Ok(_) => println!("Successfully remove build folder"),
             }
@@ -83,19 +83,16 @@ impl Drop for DualModuleScalaDriver {
 }
 
 impl DualModuleScalaDriver {
-    pub fn new_with_name_raw(mut micro_blossom: MicroBlossomSingle, host_name: String) -> std::io::Result<Self> {
-        // TODO: later on support offloading
-        micro_blossom.offloading.0.clear();
-
+    pub fn new_with_name_raw(micro_blossom: MicroBlossomSingle, name: String) -> std::io::Result<Self> {
         let hostname = "127.0.0.1";
         let listener = TcpListener::bind(format!("{hostname}:0"))?;
         let port = listener.local_addr()?.port();
         // start the scala simulator host
         println!("Starting Scala simulator host... this may take a while (listening on {hostname}:{port})");
-        let child = Command::new("sbt")
-            .current_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../"))
-            .arg(format!("runMain microblossom.DualHost {hostname} {port} {host_name}"))
-            .spawn()?;
+        let child = SCALA_MICRO_BLOSSOM_RUNNER.run(
+            "microblossom.DualHost",
+            [format!("{hostname}"), format!("{port}"), format!("{name}")],
+        )?;
         let (socket, _addr) = listener.accept()?;
         let mut reader = BufReader::new(socket.try_clone()?);
         let mut writer = LineWriter::new(socket);
@@ -109,7 +106,7 @@ impl DualModuleScalaDriver {
         assert_eq!(line, "simulation started\n");
         write!(writer, "reset()\n")?;
         Ok(Self {
-            host_name,
+            name,
             link: Mutex::new(Link {
                 port,
                 child,
@@ -119,18 +116,18 @@ impl DualModuleScalaDriver {
         })
     }
 
-    pub fn new_with_name(initializer: &SolverInitializer, host_name: String) -> std::io::Result<Self> {
+    pub fn new_with_name(initializer: &SolverInitializer, name: String) -> std::io::Result<Self> {
         // in simulation, positions doesn't matter because it's not going to affect the timing constraint
-        Self::new_with_name_raw(MicroBlossomSingle::new_initializer_only(initializer), host_name)
+        Self::new_with_name_raw(MicroBlossomSingle::new_initializer_only(initializer), name)
     }
 
     pub fn new(initializer: &SolverInitializer) -> std::io::Result<Self> {
-        let host_name = rand::thread_rng()
+        let name = rand::thread_rng()
             .sample_iter(&Alphanumeric)
             .take(16)
             .map(char::from)
             .collect();
-        Self::new_with_name(initializer, host_name)
+        Self::new_with_name(initializer, name)
     }
 }
 
