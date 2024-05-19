@@ -45,6 +45,8 @@ pub mod extern_c {
         pub fn test_read32(bias: uint32_t) -> uint32_t;
         pub fn test_write64(bias: uint32_t, value: uint64_t);
         pub fn test_read64(bias: uint32_t) -> uint64_t;
+        pub fn test_read128(bias: uint32_t, values: &mut [uint64_t; 2]);
+        pub fn test_read256(bias: uint32_t, values: &mut [uint64_t; 4]);
         pub fn set_leds(mask: uint32_t);
         pub fn get_native_time() -> uint64_t;
         pub fn diff_native_time(start: uint64_t, end: uint64_t) -> c_float;
