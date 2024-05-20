@@ -82,7 +82,8 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     val slowClk = in Bool ()
   }
 
-  io.slowClk.setName("slow_clk")
+  val slowClk = io.slowClk
+  slowClk.setName("slow_clk")
 
   val rawFactory = slaveFactory(io.s0)
   val factory = rawFactory.withOffset(baseAddress)
@@ -126,6 +127,42 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       ) init (0)
   }
 
+  // instantiate Micro Blossom module
+  val ioConfig = DualConfig()
+  ioConfig.contextDepth = dualConfig.contextDepth
+  ioConfig.weightBits = dualConfig.weightBits
+  ioConfig.vertexBits = dualConfig.vertexBits
+
+  val micro = new Area {
+    val io = new Bundle {
+      // only inputs need to be registered
+      val message = Reg(BroadcastMessage(ioConfig, explicitReset = false))
+      message.addTag(crossClockDomain)
+      // outputs are slow anyway
+      val maxGrowable = ConvergecastMaxGrowable(ioConfig.weightBits)
+      maxGrowable.addTag(crossClockDomain)
+      val conflict = ConvergecastConflict(ioConfig.vertexBits)
+      conflict.addTag(crossClockDomain)
+    }
+
+    val clockDomain = ClockDomain(
+      clock = slowClk,
+      reset = ClockDomain.current.readResetWire,
+      config = ClockDomainConfig(
+        clockEdge = RISING,
+        resetKind = SYNC,
+        resetActiveLevel = HIGH
+      )
+    )
+
+    val clockingArea = new ClockingArea(clockDomain) {
+      val microBlossom = MicroBlossomMocker(dualConfig, ioConfig)
+      microBlossom.io.message := io.message
+      io.maxGrowable := microBlossom.io.maxGrowable
+      io.conflict := microBlossom.io.conflict
+    }
+  }
+
   def getSimDriver(): TypedDriver = {
     if (io.s0.isInstanceOf[AxiLite4]) {
       AxiLite4TypedDriver(io.s0.asInstanceOf[AxiLite4], clockDomain)
@@ -140,20 +177,17 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
 // sbt 'testOnly *MicroBlossomBusTest'
 class MicroBlossomBusTest extends AnyFunSuite {
 
-  test("construct a MicroBlossomBus Module") {
-    val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
-    config.sanityCheck()
-    Config.spinal().generateVerilog(MicroBlossomAxi4(config))
-  }
-
   test("logic_validity") {
     val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
+    val clockDivideBy = 2
 
     Config.sim
-      .compile(MicroBlossomAxiLite4(config))
-      // .compile(MicroBlossomAxiLite4Bus32(config))
+      .compile(MicroBlossomAxi4(config, clockDivideBy = clockDivideBy))
+      // .compile(MicroBlossomAxiLite4(config, clockDivideBy = clockDivideBy))
+      // .compile(MicroBlossomAxiLite4Bus32(config, clockDivideBy = clockDivideBy))
       .doSim("logic_validity") { dut =>
         dut.clockDomain.forkStimulus(period = 10)
+        dut.micro.clockDomain.forkStimulus(period = 10 * clockDivideBy)
 
         val driver = dut.getSimDriver()
 
