@@ -21,6 +21,7 @@ clock_cycles = [1e3 / f for f in fs]
 for name in names:
     plt.plot(clock_cycles, ys[name], "o-", label=name)
 
+plt.ylim(0, 400)
 plt.xlim(0, 10.5)
 plt.xlabel("clock cycle (ns)")
 plt.ylabel("latency (ns)")

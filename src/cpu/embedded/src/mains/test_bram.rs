@@ -143,16 +143,26 @@ Results: APU is faster than RPU even when comparing latency
 The round-trip time is 217ns in APU and it's 300ns in RPU, even though AXI in RPU is closer to the RPU without
 going through complex interconnect.
 
-Note 2022.1.12: actually A72 can access the LPD port and R5F can access the FPD port, in exchange.
+Note 2024.1.12: actually A72 can access the LPD port and R5F can access the FPD port, in exchange.
 This can be enabled by the comments "cross-access" in src/fpga/Xilinx/VMK180_BRAM/src/binding.h.
 With that experiment, I found that A72 is faster in write because it can issue multiple writes without waiting for it.
 However, when A72 access the BRAM through the LDP AXI port, it becomes slower, down to 160ns per read or 280ns per
-    read-write pair. This conincidence with R5F data which also shows 160ns read latency.
+    read-write pair. This coincidence with R5F data which also shows 160ns read latency.
 On the other hand, when R5 accesses the BRAM through the FPD AXI port, it becomes a lot slower.
 In fact, both read and write goes down to 215ns or 220ns.
 Thus, the conclusion is A72 should use FPD AXI while R5F should use LPD AXI.
-We should build two vivado projects to test them (if needed) instead of a single one.
+We should build two Vivado projects to test them (if needed) instead of a single one.
 To avoid confusion, I'll only instantiate the FPD AXI because we won't be using R5F for the speed test.
+
+Note 2024.5.20: I tried to use L2 cache to further reduce the latency, but it fails. The reason is that invalidate
+the cache itself will take a long time, like 100ns. It involves two separate code blocks that invalidate L1 and L2 cache
+(I suppose), each consuming 50ns. Without invalidating the cache, indeed it is faster, like 100ns for 256 bit read,
+instead of the 260ns normal 256 bit read. However, that is the cost of memory copy inside cache and cannot be used
+to read external memory. I did not commit code about this since it's pretty obvious that it won't work. I just hoped
+that the L2 cache could issue burst read to the axi4 interface to reduce the overhead of CDC. But manipulating cache
+requires extra effort, like disable the interrupt and things like that. This introduces additional harassment.
+One useful information for future is that I can set 1MB block as normal cached memory using the instruction below:
+`Xil_SetTlbAttributes((UINTPTR)BRAM_BASE, NORM_WT_CACHE);`
 
 A72:
 
