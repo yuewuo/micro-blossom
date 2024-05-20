@@ -75,13 +75,13 @@ class AxiLite4TypedDriverTest extends AnyFunSuite {
     ) init (0)
   }
 
-  test("logic validity") {
+  test("logic_validity") {
 
     for (is64bus <- List(true, false)) {
 
       Config.sim
         .compile(MockMemory(is64bus))
-        .doSim("logic validity") { dut =>
+        .doSim("logic_validity") { dut =>
           dut.clockDomain.forkStimulus(period = 10)
 
           val driver = AxiLite4TypedDriver(dut.io.s0, dut.clockDomain)

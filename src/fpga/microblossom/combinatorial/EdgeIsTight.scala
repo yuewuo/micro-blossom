@@ -57,7 +57,7 @@ class EdgeIsTightTest extends AnyFunSuite {
     Config.spinal().generateVerilog(EdgeIsTight(grownBits, grownBits, weightBits))
   }
 
-  test("logic validity") {
+  test("logic_validity") {
     val configurations = List(
       (2, 2),
       (3, 2),
@@ -68,7 +68,7 @@ class EdgeIsTightTest extends AnyFunSuite {
     for ((grownBits, weightBits) <- configurations) {
       Config.sim
         .compile(EdgeIsTight(grownBits, grownBits, weightBits))
-        .doSim("logic validity") { dut =>
+        .doSim("logic_validity") { dut =>
           for (weight <- Range(0, 1 << weightBits)) {
             for (leftGrown <- Range(0, 1 << grownBits)) {
               for (rightGrown <- Range(0, 1 << grownBits)) {

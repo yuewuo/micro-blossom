@@ -527,13 +527,13 @@ class MicroBlossomTest extends AnyFunSuite {
     Config.spinal().generateVerilog(MicroBlossomAxi4(config))
   }
 
-  test("logic validity") {
+  test("logic_validity") {
     val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
 
     Config.sim
       .compile(MicroBlossomAxiLite4(config))
       // .compile(MicroBlossomAxiLite4Bus32(config))
-      .doSim("logic validity") { dut =>
+      .doSim("logic_validity") { dut =>
         dut.clockDomain.forkStimulus(period = 10)
 
         val driver = dut.getSimDriver()
