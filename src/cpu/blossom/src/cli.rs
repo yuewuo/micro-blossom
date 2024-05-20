@@ -145,6 +145,8 @@ pub enum PrimalDualType {
     EmbeddedCombPreMatching,
     /// embedded primal + layer fusion
     EmbeddedCombLayerFusion,
+    /// embedded primal + pre-matching + layer fusion
+    EmbeddedCombPreMatchingLayerFusion,
     /// serial primal and dual, standard solution
     Serial,
     /// log error into a file for later fetch
@@ -182,6 +184,7 @@ enum TestCommands {
     EmbeddedComb(StandardTestParameters),
     EmbeddedCombPreMatching(StandardTestParameters),
     EmbeddedCombLayerFusion(StandardTestParameters),
+    EmbeddedCombPreMatchingLayerFusion(StandardTestParameters),
     DualAxi4(StandardTestParameters),
 }
 
@@ -401,6 +404,9 @@ impl Cli {
                 TestCommands::EmbeddedCombLayerFusion(parameters) => {
                     standard_test_command_body("embedded-comb-layer-fusion", parameters)
                 }
+                TestCommands::EmbeddedCombPreMatchingLayerFusion(parameters) => {
+                    standard_test_command_body("embedded-comb-pre-matching-layer-fusion", parameters)
+                }
                 TestCommands::DualAxi4(parameters) => standard_test_command_body("dual-axi4", parameters),
             },
             Commands::Parser(parameters) => {
@@ -490,18 +496,23 @@ impl PrimalDualType {
                 solver.dual_module.driver.driver.use_pre_matching = true;
                 Box::new(solver)
             }
-            Self::EmbeddedComb | Self::EmbeddedCombPreMatching | Self::EmbeddedCombLayerFusion => {
+            Self::EmbeddedComb
+            | Self::EmbeddedCombPreMatching
+            | Self::EmbeddedCombLayerFusion
+            | Self::EmbeddedCombPreMatchingLayerFusion => {
                 let micro_config = MicroBlossomSingle::new(initializer, positions);
-                let tmp_env_offloading = if self == &Self::EmbeddedCombPreMatching {
-                    Some(tmp_env::set_var("SUPPORT_OFFLOADING", "1"))
-                } else {
-                    None
-                };
-                let tmp_env_layer_fusion = if self == &Self::EmbeddedCombLayerFusion {
-                    Some(tmp_env::set_var("SUPPORT_LAYER_FUSION", "1"))
-                } else {
-                    None
-                };
+                let tmp_env_offloading =
+                    if self == &Self::EmbeddedCombPreMatching || self == &Self::EmbeddedCombPreMatchingLayerFusion {
+                        Some(tmp_env::set_var("SUPPORT_OFFLOADING", "1"))
+                    } else {
+                        None
+                    };
+                let tmp_env_layer_fusion =
+                    if self == &Self::EmbeddedCombLayerFusion || self == &Self::EmbeddedCombPreMatchingLayerFusion {
+                        Some(tmp_env::set_var("SUPPORT_LAYER_FUSION", "1"))
+                    } else {
+                        None
+                    };
                 // build solver
                 let solver = SolverDualComb::new_native(micro_config, primal_dual_config);
                 drop(tmp_env_offloading);

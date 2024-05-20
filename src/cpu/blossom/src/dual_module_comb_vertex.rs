@@ -160,7 +160,7 @@ impl Vertex {
                     // growth may be disabled if it's pre-matched or it's virtual
                     let mut disable_growth = self.get_offloading_stalled(dual_module);
                     if self.layer_id.is_some() {
-                        disable_growth = state.is_virtual;
+                        disable_growth |= state.is_virtual;
                     }
                     if !disable_growth {
                         state.grown = self.registers.grown + Weight::from(self.registers.speed) * length;
@@ -272,9 +272,9 @@ impl Vertex {
         referenced_signal!(self.signals.response, || {
             let post_update_state = self.get_post_update_state(dual_module);
             if post_update_state.speed == CompactGrowState::Shrink {
-                return CompactObstacle::GrowLength {
-                    length: post_update_state.grown.try_into().unwrap(),
-                };
+                let length = post_update_state.grown.try_into().unwrap();
+                debug_assert!(length >= 0, "vertex {} report negative grow length", self.vertex_index);
+                return CompactObstacle::GrowLength { length };
             }
             CompactObstacle::GrowLength {
                 length: CompactWeight::MAX,

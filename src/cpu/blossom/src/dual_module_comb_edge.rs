@@ -232,6 +232,7 @@ impl Edge {
                 "weight": self.registers.snapshot(),
             }),
             "signals": json!({
+                "post_fetch_weight": self.get_post_fetch_weight(dual_module),
                 "post_fetch_is_tight": self.get_post_fetch_is_tight(dual_module),
                 "offloading_stalled": self.get_offloading_stalled(dual_module),
                 "post_execute_state": self.get_post_execute_state(dual_module).snapshot(),

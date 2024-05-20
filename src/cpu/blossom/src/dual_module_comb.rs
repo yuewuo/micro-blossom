@@ -260,6 +260,7 @@ impl DualStacklessDriver for DualModuleCombDriver {
             match obstacle {
                 CompactObstacle::None => unreachable!(),
                 CompactObstacle::GrowLength { length } => {
+                    assert!(length >= 0, "report negative grow length");
                     if length == CompactWeight::MAX {
                         return (CompactObstacle::None, grown);
                     } else {
@@ -534,6 +535,15 @@ pub mod tests {
         let visualize_filename = "dual_module_comb_layer_fusion_debug_1.json".to_string();
         let defect_vertices = vec![1, 8, 9, 15, 20, 26];
         dual_module_comb_basic_standard_syndrome(5, visualize_filename, defect_vertices, false, true);
+    }
+
+    /// debug vertex 85 has negative grown value -500
+    #[test]
+    fn dual_module_comb_pre_matching_layer_fusion_debug_1() {
+        // cargo test dual_module_comb_pre_matching_layer_fusion_debug_1 -- --nocapture
+        let visualize_filename = "dual_module_comb_pre_matching_layer_fusion_debug_1.json".to_string();
+        let defect_vertices = vec![56, 57, 74, 86];
+        dual_module_comb_basic_standard_syndrome(11, visualize_filename, defect_vertices, true, true);
     }
 
     // /// verify that all single error can be decoded totally offline with layer fusion
