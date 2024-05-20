@@ -15,7 +15,7 @@ def main():
     if not os.path.exists(hardware_dir):
         os.mkdir(hardware_dir)
 
-    for frequency in enumerate(f_vec):
+    for frequency in f_vec:
         # create the hardware project
         if not os.path.exists(hardware_proj_dir(frequency)):
             parameters = ["--name", hardware_proj_name(frequency)]
@@ -38,7 +38,7 @@ def main():
     assert process.returncode == 0, "compile error"
 
     # build all hardware projects using the hello world application
-    for frequency in enumerate(f_vec):
+    for frequency in f_vec:
         log_file_path = os.path.join(hardware_proj_dir(frequency), "build.log")
         print(f"building frequency={frequency}, log output to {log_file_path}")
         if not os.path.exists(
@@ -59,7 +59,7 @@ def main():
 
     # check timing reports to make sure there are no negative slacks
     sanity_check_failed = False
-    for frequency in enumerate(f_vec):
+    for frequency in f_vec:
         vivado = VivadoProject(hardware_proj_dir(frequency))
         wns = vivado.routed_timing_summery().clk_pl_0_wns
         frequency = vivado.frequency()
@@ -80,7 +80,7 @@ def main():
     assert not sanity_check_failed
 
     # run the hello world application and run on hardware for sanity check
-    for frequency in enumerate(f_vec):
+    for frequency in f_vec:
         log_file_path = os.path.join(hardware_proj_dir(frequency), "make.log")
         print(f"testing frequency={frequency}, log output to {log_file_path}")
         with open(log_file_path, "a", encoding="utf8") as log:

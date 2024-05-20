@@ -72,7 +72,7 @@ connect_bd_intf_net [get_bd_intf_pins axi_bram_ctrl_1/S_AXI] [get_bd_intf_pins v
 # assign address: A72 uses 0xA4000000 and R5F uses 0x80000000
 assign_bd_address -target_address_space /versal_cips_0/M_AXI_FPD [get_bd_addr_segs axi_bram_ctrl_0/S_AXI/Mem0] -force
 set_property offset 0xA4000000 [get_bd_addr_segs {versal_cips_0/M_AXI_FPD/SEG_axi_bram_ctrl_0_Mem0}]
-set_property range 4K [get_bd_addr_segs {versal_cips_0/M_AXI_LPD/SEG_axi_bram_ctrl_0_Mem0}]
+set_property range 4K [get_bd_addr_segs {versal_cips_0/M_AXI_FPD/SEG_axi_bram_ctrl_0_Mem0}]
 assign_bd_address -target_address_space /versal_cips_0/M_AXI_LPD [get_bd_addr_segs axi_bram_ctrl_1/S_AXI/Mem0] -force
 set_property offset 0x80000000 [get_bd_addr_segs {versal_cips_0/M_AXI_LPD/SEG_axi_bram_ctrl_1_Mem0}]
 set_property range 4K [get_bd_addr_segs {versal_cips_0/M_AXI_LPD/SEG_axi_bram_ctrl_1_Mem0}]
