@@ -180,10 +180,18 @@ def main(args=None):
         os.path.join(template_dir, "src", "main.c"),
         os.path.join(project_dir, "src", "main.c"),
     )
-    shutil.copy2(
-        os.path.join(template_dir, "src", "binding.c"),
-        os.path.join(project_dir, "src", "binding.c"),
-    )
+    # src/binding.c
+    with open(
+        os.path.join(template_dir, "src", "binding.c"), "r", encoding="utf8"
+    ) as f:
+        binding_c = f.read()
+        binding_c = checked_replace(
+            binding_c,
+            "const float TIMER_FREQUENCY = 200e6; // 200MHz",
+            f"const float TIMER_FREQUENCY = {clock_frequency}e6; // {clock_frequency}MHz",
+        )
+    with open(os.path.join(project_dir, "src", "binding.c"), "w", encoding="utf8") as f:
+        f.write(binding_c)
 
 
 def checked_replace(original, old, new):
