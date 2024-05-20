@@ -172,11 +172,11 @@ class Axi4TypedDriverTest extends AnyFunSuite {
     ) init (0)
   }
 
-  test("logic validity") {
+  test("logic_validity") {
 
     Config.sim
       .compile(MockMemory())
-      .doSim("logic validity") { dut =>
+      .doSim("logic_validity") { dut =>
         dut.clockDomain.forkStimulus(period = 10)
 
         val driver = Axi4TypedDriver(dut.io.s0, dut.clockDomain)

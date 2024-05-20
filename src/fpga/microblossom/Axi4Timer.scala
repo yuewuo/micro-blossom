@@ -47,10 +47,10 @@ class Axi4TimerTest extends AnyFunSuite {
     Config.spinal().generateVerilog(Axi4Timer())
   }
 
-  test("logic validity") {
+  test("logic_validity") {
     Config.sim
       .compile(Axi4Timer())
-      .doSim("logic validity") { dut =>
+      .doSim("logic_validity") { dut =>
         dut.clockDomain.forkStimulus(period = 10)
 
       // val driver = AxiLite4Driver(dut.io.bus, dut.clockDomain)

@@ -46,7 +46,7 @@ object MicroBlossomAxi4 extends MicroBlossomBusType {
       baseAddress: BigInt = 0,
       axi4Config: Axi4Config = VersalAxi4Config(addressWidth = log2Up(8 MiB))
   ) = {
-    MicroBlossom(
+    MicroBlossomBus(
       config,
       clockDivideBy,
       baseAddress,
@@ -70,7 +70,7 @@ object MicroBlossomAxiLite4 extends MicroBlossomBusType {
       baseAddress: BigInt = 0,
       axiLite4Config: AxiLite4Config = AxiLite4Config(addressWidth = log2Up(8 MiB), dataWidth = 64)
   ) = {
-    MicroBlossom[AxiLite4, AxiLite4SlaveFactory](
+    MicroBlossomBus[AxiLite4, AxiLite4SlaveFactory](
       config,
       clockDivideBy,
       baseAddress,
@@ -92,7 +92,7 @@ object MicroBlossomAxiLite4Bus32 extends MicroBlossomBusType {
       axiLite4Config: AxiLite4Config = AxiLite4Config(addressWidth = log2Up(8 MiB), dataWidth = 32),
       addressWidth: Int = log2Up(8 MiB)
   ) = {
-    MicroBlossom[AxiLite4, AxiLite4SlaveFactory](
+    MicroBlossomBus[AxiLite4, AxiLite4SlaveFactory](
       config,
       clockDivideBy,
       baseAddress,
@@ -115,7 +115,7 @@ object MicroBlossomWishboneBus32 extends MicroBlossomBusType {
       wishboneConfig: WishboneConfig = WishboneConfig(addressWidth = log2Up(8 MiB), dataWidth = 32),
       addressWidth: Int = log2Up(8 MiB)
   ) = {
-    MicroBlossom(
+    MicroBlossomBus(
       config,
       clockDivideBy,
       baseAddress,

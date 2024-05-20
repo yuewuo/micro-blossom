@@ -68,14 +68,14 @@ class VertexIsUniqueTightTest extends AnyFunSuite {
     Config.spinal().generateVerilog(VertexIsUniqueTight(numEdges))
   }
 
-  test("logic validity") {
+  test("logic_validity") {
     val configurations = List(
       1, 2, 3, 4, 5, 6, 7, 8, 9
     )
     for (numEdges <- configurations) {
       Config.sim
         .compile(VertexIsUniqueTight(numEdges))
-        .doSim("logic validity") { dut =>
+        .doSim("logic_validity") { dut =>
           for (value <- Range(0, 1 << numEdges)) {
             var counter = 0
             for (index <- Range(0, numEdges)) {
