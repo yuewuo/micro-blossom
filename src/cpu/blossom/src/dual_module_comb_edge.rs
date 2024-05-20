@@ -93,11 +93,9 @@ impl Edge {
         referenced_signal!(self.signals.post_fetch_weight, || {
             if let Some(conditioned_vertex) = self.conditioned_vertex {
                 if dual_module.vertices[conditioned_vertex].registers.is_virtual {
-                    // assert!(
-                    //     self.registers.weight % 4 == 0,
-                    //     "this feature requires the edge weight to be a multiply of 4"
-                    // );
-                    self.registers.weight / 2
+                    // make sure the weight is still a multiply of 2
+                    // it's ok to have a little bit lower weight than exactly half
+                    (self.registers.weight / 4) * 2
                 } else {
                     self.registers.weight
                 }
