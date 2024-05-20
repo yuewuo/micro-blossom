@@ -81,6 +81,9 @@ pub struct BenchmarkParameters {
     /// logging to the default visualizer file at visualize/data/visualizer.json
     #[clap(long, action)]
     enable_visualizer: bool,
+    /// visualizer file at visualize/data/<visualizer_filename.json>
+    #[clap(long, default_value_t = fusion_blossom::visualize::static_visualize_data_filename())]
+    pub visualizer_filename: String,
     /// print syndrome patterns
     #[clap(long, action)]
     print_syndrome_pattern: bool,
@@ -163,6 +166,9 @@ pub struct StandardTestParameters {
     /// enable visualizer
     #[clap(short = 'v', long, action)]
     enable_visualizer: bool,
+    /// visualizer file at visualize/data/<visualizer_filename.json>
+    #[clap(long, default_value_t = fusion_blossom::visualize::static_visualize_data_filename())]
+    pub visualizer_filename: String,
     /// disable the fusion verifier
     #[clap(short = 'd', long, action)]
     disable_fusion: bool,
@@ -172,6 +178,12 @@ pub struct StandardTestParameters {
     /// use deterministic seed for debugging purpose
     #[clap(long, action)]
     use_deterministic_seed: bool,
+    /// the number of iterations to run
+    #[clap(short = 'r', long, default_value_t = TEST_EACH_ROUNDS)]
+    total_rounds: usize,
+    /// skip some iterations, useful when debugging
+    #[clap(long, default_value_t = 0)]
+    starting_iteration: usize,
 }
 
 #[derive(Subcommand, Clone)]
@@ -202,6 +214,7 @@ impl From<BenchmarkParameters> for fusion_blossom::cli::BenchmarkParameters {
             code_type,
             code_config,
             enable_visualizer,
+            visualizer_filename,
             print_syndrome_pattern,
             verifier,
             total_rounds,
@@ -219,6 +232,7 @@ impl From<BenchmarkParameters> for fusion_blossom::cli::BenchmarkParameters {
         legacy_parameters.code_type = code_type;
         legacy_parameters.code_config = code_config;
         legacy_parameters.enable_visualizer = enable_visualizer;
+        legacy_parameters.visualizer_filename = visualizer_filename;
         legacy_parameters.print_syndrome_pattern = print_syndrome_pattern;
         legacy_parameters.verifier = verifier;
         legacy_parameters.total_rounds = total_rounds;
@@ -333,7 +347,7 @@ lazy_static! {
 
 pub fn standard_test_command_body(primal_dual_type: &str, parameters: StandardTestParameters) {
     let command_head = vec![format!(""), format!("benchmark")];
-    let mut command_tail = vec!["--total-rounds".to_string(), format!("{TEST_EACH_ROUNDS}")];
+    let mut command_tail = vec!["--total-rounds".to_string(), format!("{}", parameters.total_rounds)];
     if !parameters.disable_fusion {
         command_tail.append(&mut vec![format!("--verifier"), format!("fusion-serial")]);
     } else {
@@ -341,6 +355,7 @@ pub fn standard_test_command_body(primal_dual_type: &str, parameters: StandardTe
     }
     if parameters.enable_visualizer {
         command_tail.append(&mut vec![format!("--enable-visualizer")]);
+        command_tail.append(&mut vec![format!("--visualizer-filename"), parameters.visualizer_filename]);
     }
     if parameters.print_syndrome_pattern {
         command_tail.append(&mut vec![format!("--print-syndrome-pattern")]);
@@ -348,6 +363,10 @@ pub fn standard_test_command_body(primal_dual_type: &str, parameters: StandardTe
     if parameters.use_deterministic_seed {
         command_tail.append(&mut vec![format!("--use-deterministic-seed")]);
     }
+    command_tail.append(&mut vec![
+        format!("--starting-iteration"),
+        format!("{}", parameters.starting_iteration),
+    ]);
     command_tail.append(&mut vec![format!("--primal-dual-type"), primal_dual_type.to_string()]);
     for parameter in RANDOMIZED_TEST_PARAMETERS.iter() {
         execute_in_cli(

@@ -194,6 +194,11 @@ impl Vertex {
         })
     }
 
+    pub fn get_is_propagating(&self, dual_module: &DualModuleCombDriver) -> bool {
+        let state = self.get_post_execute_state(dual_module);
+        !state.is_virtual && state.speed == CompactGrowState::Grow
+    }
+
     pub fn get_propagating_peer(&self, dual_module: &DualModuleCombDriver) -> Ref<'_, Option<PropagatingPeer>> {
         referenced_signal!(self.signals.propagating_peer, || {
             if self.get_post_execute_state(dual_module).grown != 0 {
@@ -205,7 +210,7 @@ impl Vertex {
                 let peer_index = edge.get_peer(self.vertex_index);
                 let peer = &dual_module.vertices[peer_index];
                 let peer_post_execute_state = peer.get_post_execute_state(dual_module);
-                if edge.get_post_execute_is_tight(dual_module) && peer_post_execute_state.speed == CompactGrowState::Grow {
+                if edge.get_post_execute_is_tight(dual_module) && peer.get_is_propagating(dual_module) {
                     return Some(PropagatingPeer {
                         node_index: peer_post_execute_state.node_index,
                         root_index: peer_post_execute_state.root_index,

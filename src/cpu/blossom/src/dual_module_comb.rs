@@ -546,6 +546,40 @@ pub mod tests {
         dual_module_comb_basic_standard_syndrome(11, visualize_filename, defect_vertices, true, true);
     }
 
+    /// debug panic fusion-blossom/src/complete_graph.rs:197:45: no entry found for key
+    /// defect_vertices = [1, 5, 24, 36, 45]
+    #[test]
+    fn dual_module_comb_pre_matching_layer_fusion_debug_2() {
+        // cargo test dual_module_comb_pre_matching_layer_fusion_debug_2 -- --nocapture
+        let visualize_filename = "dual_module_comb_pre_matching_layer_fusion_debug_2.json".to_string();
+        crate::cli::execute_in_cli(
+            [
+                "",
+                "benchmark",
+                "3",
+                "0.499",
+                "--code-type",
+                "circuit-level-planar-code",
+                "--noisy-measurements",
+                "3",
+                "--verifier",
+                "fusion-serial",
+                "--enable-visualizer",
+                "--visualizer-filename",
+                visualize_filename.as_str(),
+                "--print-syndrome-pattern",
+                "--use-deterministic-seed",
+                "--total-rounds",
+                "154",
+                "--starting-iteration",
+                "153",
+                "--primal-dual-type",
+                "embedded-comb-pre-matching-layer-fusion",
+            ],
+            true,
+        );
+    }
+
     // /// verify that all single error can be decoded totally offline with layer fusion
     #[test]
     fn dual_module_comb_pre_matching_layer_fusion_all_single_error() {
