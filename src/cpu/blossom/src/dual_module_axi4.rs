@@ -41,9 +41,9 @@ pub struct DualConfig {
     pub use_64_bus: bool,
     #[derivative(Default(value = "dual_config_default::env_usize(\"CONTEXT_DEPTH\", 1)"))]
     pub context_depth: usize,
-    #[derivative(Default(value = "dual_config_default::env_usize(\"BROADCAST_DELAY\", 1)"))]
+    #[derivative(Default(value = "dual_config_default::env_usize(\"BROADCAST_DELAY\", 0)"))]
     pub broadcast_delay: usize,
-    #[derivative(Default(value = "dual_config_default::env_usize(\"CONVERGECAST_DELAY\", 1)"))]
+    #[derivative(Default(value = "dual_config_default::env_usize(\"CONVERGECAST_DELAY\", 0)"))]
     pub convergecast_delay: usize,
     #[derivative(Default(value = "dual_config_default::env_usize(\"CONFLICT_CHANNELS\", 1)"))]
     pub conflict_channels: usize,

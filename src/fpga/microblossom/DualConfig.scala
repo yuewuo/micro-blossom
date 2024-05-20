@@ -13,8 +13,8 @@ object DualConfig {
 case class DualConfig(
     var vertexBits: Int = 15,
     var weightBits: Int = 26,
-    var broadcastDelay: Int = 1,
-    var convergecastDelay: Int = 1,
+    var broadcastDelay: Int = 0,
+    var convergecastDelay: Int = 0,
     var contextDepth: Int = 1, // how many different contexts are supported
     var conflictChannels: Int = 1, // how many conflicts are collected at once in parallel
     var hardCodeWeights: Boolean = true,  // hard-code the edge weights to simplify logic

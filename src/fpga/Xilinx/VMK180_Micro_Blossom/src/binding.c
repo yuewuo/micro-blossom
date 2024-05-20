@@ -62,33 +62,49 @@ void execute_instruction(uint32_t instruction, uint16_t context_id)
 
 const uint32_t INSTRUCTION_FIND_OBSTACLE = 0b0100;
 
+// void get_conflicts(struct ReadoutHead *head,
+//                    struct ReadoutConflict *conflicts,
+//                    uint8_t conflict_channels,
+//                    uint16_t context_id)
+// {
+//     execute_instruction(INSTRUCTION_FIND_OBSTACLE, context_id);
+//     uintptr_t base = UB_BASE_READOUT + 1024 * context_id;
+//     uint64_t raw_head = Xil_In64(base);
+//     head->maximum_growth = raw_head;
+//     head->accumulated_grown = raw_head >> 16;
+//     head->growable = raw_head >> 32;
+//     if (head->growable == 0)
+//     { // read conflicts only when growable is zero
+//         for (int i = 0; i < conflict_channels; ++i)
+//         {
+//             uintptr_t conflict_base = base + 32 + i * 16;
+//             uint64_t raw_1 = Xil_In64(conflict_base);
+//             uint64_t raw_2 = Xil_In64(conflict_base + 8);
+//             struct ReadoutConflict *conflict = conflicts + i;
+//             conflict->node_1 = raw_1;
+//             conflict->node_2 = raw_1 >> 16;
+//             conflict->touch_1 = raw_1 >> 32;
+//             conflict->touch_2 = raw_1 >> 48;
+//             conflict->vertex_1 = raw_2;
+//             conflict->vertex_2 = raw_2 >> 16;
+//             conflict->valid = raw_2 >> 32;
+//         }
+//     }
+// }
+
+// [warninng] only conflict channels = 1 is supported; use the above one when this is no longer true
+// try to optimize this function as much as possible
 void get_conflicts(struct ReadoutHead *head,
                    struct ReadoutConflict *conflicts,
                    uint8_t conflict_channels,
                    uint16_t context_id)
 {
+    assert(conflict_channels == 1);
     execute_instruction(INSTRUCTION_FIND_OBSTACLE, context_id);
-    uintptr_t base = UB_BASE_READOUT + 1024 * context_id;
-    uint64_t raw_head = Xil_In64(base);
-    head->maximum_growth = raw_head;
-    head->accumulated_grown = raw_head >> 16;
-    head->growable = raw_head >> 32;
+    memcpy(head, (const void *)UB_BASE_READOUT, 8);
     if (head->growable == 0)
-    { // read conflicts only when growable is zero
-        for (int i = 0; i < conflict_channels; ++i)
-        {
-            uintptr_t conflict_base = base + 32 + i * 16;
-            uint64_t raw_1 = Xil_In64(conflict_base);
-            uint64_t raw_2 = Xil_In64(conflict_base + 8);
-            struct ReadoutConflict *conflict = conflicts + i;
-            conflict->node_1 = raw_1;
-            conflict->node_2 = raw_1 >> 16;
-            conflict->touch_1 = raw_1 >> 32;
-            conflict->touch_2 = raw_1 >> 48;
-            conflict->vertex_1 = raw_2;
-            conflict->vertex_2 = raw_2 >> 16;
-            conflict->valid = raw_2 >> 32;
-        }
+    {
+        memcpy(&conflicts[0], (const void *)(UB_BASE_READOUT + 32), 8);
     }
 }
 
