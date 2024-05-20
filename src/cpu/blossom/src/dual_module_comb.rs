@@ -527,6 +527,15 @@ pub mod tests {
         dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices, true, true);
     }
 
+    /// debug deadlock in comb layer fusion
+    #[test]
+    fn dual_module_comb_layer_fusion_debug_1() {
+        // cargo test dual_module_comb_layer_fusion_debug_1 -- --nocapture
+        let visualize_filename = "dual_module_comb_layer_fusion_debug_1.json".to_string();
+        let defect_vertices = vec![1, 8, 9, 15, 20, 26];
+        dual_module_comb_basic_standard_syndrome(5, visualize_filename, defect_vertices, false, true);
+    }
+
     // /// verify that all single error can be decoded totally offline with layer fusion
     #[test]
     fn dual_module_comb_pre_matching_layer_fusion_all_single_error() {

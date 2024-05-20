@@ -256,6 +256,8 @@ impl Vertex {
             if self.layer_id.is_some() {
                 if state.is_virtual {
                     shadow_node.speed = CompactGrowState::Stay;
+                    shadow_node.node_index = None;
+                    shadow_node.root_index = None;
                 }
             }
             if self.get_offloading_stalled(dual_module) {
