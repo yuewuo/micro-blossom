@@ -100,10 +100,12 @@ impl DualModuleScalaDriver {
         reader.read_line(&mut line)?;
         assert_eq!(line, "DualHost v0.0.1, ask for decoding graph\n", "handshake error");
         write!(writer, "{}\n", serde_json::to_string(&micro_blossom).unwrap())?;
+        let simulation_lock = SCALA_SIMULATION_LOCK.lock();
         write!(writer, "{}\n", if cfg!(test) { "with waveform" } else { "no waveform" })?;
         line.clear();
         reader.read_line(&mut line)?;
         assert_eq!(line, "simulation started\n");
+        drop(simulation_lock);
         write!(writer, "reset()\n")?;
         Ok(Self {
             name,
