@@ -54,20 +54,18 @@ import org.rogach.scallop._
 //    0x2008: ... repeat for 1024: in total 4KB space
 // 2. 128KB context readouts at [0x2_0000, 0x4_0000), each context takes 128 byte space, assuming no more than 1024 contexts
 //    [context 0]
-//      0: (RW) 16 bits maximum growth (offloaded primal), when 0, disable offloaded primal,
+//      0: (RW) 64 bits timestamp of receiving the last ``load obstacles'' instruction
+//      8: (RW) 64 bits timestamp of receiving the last ``growable = infinity'' response
+//      16: (RW) head + conflict (max_growth: u16, accumulated: u16, growable: u16, conflict_valid: u8, conflict: 96 bits)
+//            16 bits maximum growth (offloaded primal), when 0, disable offloaded primal,
 //                  write to this field will automatically clear accumulated grown value
-//      2: (RW) 16 bits accumulated grown value (for primal offloading)
-//      4: (RO) 16 bits growable value (writing to this position has no effect)
-//      8: (RW) 64 bits timestamp of receiving the last ``load obstacles'' instruction
-//      16: (RW) 64 bits timestamp of receiving the last ``growable = infinity'' response
-//      (at most 6 concurrent conflict report, large enough)
-//      32: (RO) 128 bits conflict value [0] (96 bits conflict value, 8 bits is_valid)
-//      48: (RO) 128 bits conflict value [1]
-//      64: (RO) 128 bits conflict value [2]
-//         ...
+//            16 bits accumulated grown value (for primal offloading)
+//            16 bits growable value (writing to this position has no effect)
+//      (at most 15 concurrent conflict report, large enough)
+//      32: next obstacle, the head remains the same
+//        ...
 //    [context 1]
-//      128: (RO) 32 bits growable value, when 0, the conflict values are valid
-//         ...
+//      128: ...
 //
 
 case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
