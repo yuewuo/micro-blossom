@@ -21,8 +21,8 @@ Let me first check if the parameter is successfully passed in.
 ```sh
 # under git root folder
 sbt assembly
-java -cp target/scala-2.12/microblossom.jar microblossom.MicroBlossomGenerator --support-offloading --output-dir benchmark/hardware/unit_tests/3_debug_offloading/hardware/offloaded_true/offloaded_true_verilog --graph benchmark/hardware/unit_tests/3_debug_offloading/hardware/prepare.json
-java -cp target/scala-2.12/microblossom.jar microblossom.MicroBlossomGenerator --output-dir benchmark/hardware/unit_tests/3_debug_offloading/hardware/offloaded_false/offloaded_false_verilog --graph benchmark/hardware/unit_tests/3_debug_offloading/hardware/prepare.json
+java -Xmx32G -cp target/scala-2.12/microblossom.jar microblossom.MicroBlossomGenerator --support-offloading --output-dir benchmark/hardware/unit_tests/3_debug_offloading/hardware/offloaded_true/offloaded_true_verilog --graph benchmark/hardware/unit_tests/3_debug_offloading/hardware/prepare.json
+java -Xmx32G -cp target/scala-2.12/microblossom.jar microblossom.MicroBlossomGenerator --output-dir benchmark/hardware/unit_tests/3_debug_offloading/hardware/offloaded_false/offloaded_false_verilog --graph benchmark/hardware/unit_tests/3_debug_offloading/hardware/prepare.json
 ```
 
 Yes it is.
@@ -42,6 +42,7 @@ Or some bug fixes in Rust did not reflect in Scala.
 Anyway we need to figure that out.
 
 To simplify debugging, we only test edge 0 and 1, which corresponds to
+
 ```json
 {"defect_vertices":[0],"erasures":[],"dynamic_weights":[]}
 {"defect_vertices":[0,3],"erasures":[],"dynamic_weights":[]}
@@ -68,6 +69,7 @@ However, while this fixes the offloading behavior, it breaks an existing sanity 
 ```sh
 EMBEDDED_BLOSSOM_MAIN=test_micro_blossom cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_d3.json
 ```
+
 I think replacing `dualConfig.readLatency` with `readoutLatency` does make sense, and the breaking change may come from other bugs in the logic.
 I'll have to dig into the logic and figure out solutions.
 Also, it will be helpful to come up with a sequence of unit tests, including those that enables the offloading.

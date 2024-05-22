@@ -33,7 +33,7 @@ impl ScalaMicroBlossomRunner {
     {
         Command::new("java")
             .current_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../"))
-            .args(["-cp", "target/scala-2.12/microblossom.jar", class_name])
+            .args(["-Xmx32G", "-cp", "target/scala-2.12/microblossom.jar", class_name])
             .args(parameters)
             .spawn()
     }
@@ -46,7 +46,7 @@ impl ScalaMicroBlossomRunner {
     {
         let output = Command::new("java")
             .current_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../"))
-            .args(["-cp", "target/scala-2.12/microblossom.jar", class_name])
+            .args(["-Xmx32G", "-cp", "target/scala-2.12/microblossom.jar", class_name])
             .args(parameters)
             .output()?;
         String::from_utf8(output.stdout).map_err(|err| std::io::Error::new(std::io::ErrorKind::Other, err))
