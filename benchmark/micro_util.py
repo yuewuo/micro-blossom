@@ -60,25 +60,24 @@ class Profile:
 
     def __init__(self, filename, skip_begin_profiles=20):
         assert isinstance(filename, str)
-        with open(filename, "r", encoding="utf8") as f:
-            lines = f.readlines()
         self.partition_config = None
         self.entries = []
         skipped = 0
-        for line_idx, line in enumerate(lines):
-            line = line.strip("\r\n ")
-            if line == "":
-                break
-            value = json.loads(line)
-            if line_idx == 0:
-                self.partition_config = PartitionConfig.from_json(value)
-            elif line_idx == 1:
-                self.benchmark_config = value
-            else:
-                if skipped < skip_begin_profiles:
-                    skipped += 1
+        with open(filename, "r", encoding="utf8") as f:
+            for line_idx, line in enumerate(f.readlines()):
+                line = line.strip("\r\n ")
+                if line == "":
+                    break
+                value = json.loads(line)
+                if line_idx == 0:
+                    self.partition_config = PartitionConfig.from_json(value)
+                elif line_idx == 1:
+                    self.benchmark_config = value
                 else:
-                    self.entries.append(value)
+                    if skipped < skip_begin_profiles:
+                        skipped += 1
+                    else:
+                        self.entries.append(value)
 
     def __repr__(self):
         return f"Profile {{ partition_config: {self.partition_config}, entries: [...{len(self.entries)}] }}"
@@ -226,6 +225,7 @@ def compile_scala_micro_blossom_if_necessary():
         process.wait()
         assert process.returncode == 0, "compile has error"
         SCALA_MICRO_BLOSSOM_COMPILATION_DONE = True
+
 
 def micro_blossom_command():
     micro_path = os.path.join(rust_dir, "target", "release", "micro_blossom")
