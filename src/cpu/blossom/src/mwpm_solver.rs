@@ -254,10 +254,6 @@ impl FusionVisualizer for SolverEmbeddedRTL {
 
 impl SolverEmbeddedRTL {
     pub fn new(initializer: &SolverInitializer) -> Self {
-        assert!(
-            initializer.vertex_num <= MAX_NODE_NUM,
-            "potential overflow, increase `MAX_NODE_NUM` when compile the code"
-        );
         Self {
             dual_module: DualModuleRTL::new_with_initializer(initializer),
             primal_module: PrimalModuleEmbedded::new(),
@@ -406,10 +402,6 @@ impl FusionVisualizer for SolverDualScala {
 
 impl SolverDualScala {
     pub fn new(initializer: &SolverInitializer) -> Self {
-        assert!(
-            initializer.vertex_num <= MAX_NODE_NUM,
-            "potential overflow, increase `MAX_NODE_NUM` when compile the code"
-        );
         Self {
             dual_module: DualModuleScala::new_with_initializer(initializer),
             primal_module: PrimalModuleEmbedded::new(),
@@ -420,10 +412,6 @@ impl SolverDualScala {
     }
 
     pub fn new_with_name(initializer: &SolverInitializer, host_name: String) -> Self {
-        assert!(
-            initializer.vertex_num <= MAX_NODE_NUM,
-            "potential overflow, increase `MAX_NODE_NUM` when compile the code"
-        );
         Self {
             dual_module: DualModuleStackless::new(DualDriverTracked::new(
                 DualModuleScalaDriver::new_with_name(initializer, host_name).unwrap(),
@@ -541,10 +529,6 @@ impl FusionVisualizer for SolverDualComb {
 
 impl SolverDualComb {
     pub fn new(initializer: &SolverInitializer) -> Self {
-        assert!(
-            initializer.vertex_num <= MAX_NODE_NUM,
-            "potential overflow, increase `MAX_NODE_NUM` when compile the code"
-        );
         Self {
             dual_module: DualModuleComb::new_with_initializer(initializer),
             primal_module: PrimalModuleEmbedded::new(),
@@ -555,10 +539,6 @@ impl SolverDualComb {
         }
     }
     pub fn new_native(config: MicroBlossomSingle, mut primal_dual_config: serde_json::Value) -> Self {
-        assert!(
-            config.vertex_num <= MAX_NODE_NUM,
-            "potential overflow, increase `MAX_NODE_NUM` when compile the code"
-        );
         let primal_dual_config = primal_dual_config.as_object_mut().expect("config must be JSON object");
         let mut dual_config = DualCombConfig::default();
         if let Some(value) = primal_dual_config.remove("dual") {
@@ -786,10 +766,6 @@ impl FusionVisualizer for SolverDualAxi4 {
 
 impl SolverDualAxi4 {
     pub fn new(initializer: &SolverInitializer) -> Self {
-        assert!(
-            initializer.vertex_num <= MAX_NODE_NUM,
-            "potential overflow, increase `MAX_NODE_NUM` when compile the code"
-        );
         Self {
             dual_module: DualModuleAxi4::new_with_initializer(initializer),
             primal_module: PrimalModuleEmbedded::new(),
@@ -801,10 +777,6 @@ impl SolverDualAxi4 {
     }
 
     pub fn new_with_name(initializer: &SolverInitializer, host_name: String) -> Self {
-        assert!(
-            initializer.vertex_num <= MAX_NODE_NUM,
-            "potential overflow, increase `MAX_NODE_NUM` when compile the code"
-        );
         Self {
             dual_module: DualModuleStackless::new(DualDriverTracked::new(
                 DualModuleAxi4Driver::new_with_name(initializer, host_name).unwrap(),

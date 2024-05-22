@@ -488,59 +488,65 @@ impl PrimalDualType {
         positions: &Vec<VisualizePosition>,
         primal_dual_config: serde_json::Value,
     ) -> Box<dyn PrimalDualSolver> {
-        match self {
-            Self::DualRTL => {
-                assert_eq!(primal_dual_config, json!({}));
-                Box::new(SolverDualRTL::new(initializer))
+        assert!(
+            initializer.vertex_num <= crate::util::MAX_NODE_NUM,
+            "potential overflow, increase `MAX_NODE_NUM` when compile the code"
+        );
+        stacker::grow(crate::util::MAX_NODE_NUM * 100, || -> Box<dyn PrimalDualSolver> {
+            match self {
+                Self::DualRTL => {
+                    assert_eq!(primal_dual_config, json!({}));
+                    Box::new(SolverDualRTL::new(initializer))
+                }
+                Self::PrimalEmbedded => {
+                    assert_eq!(primal_dual_config, json!({}));
+                    Box::new(SolverPrimalEmbedded::new(initializer))
+                }
+                Self::EmbeddedRTL => {
+                    assert_eq!(primal_dual_config, json!({}));
+                    Box::new(SolverEmbeddedRTL::new(initializer))
+                }
+                Self::DualScala => {
+                    assert_eq!(primal_dual_config, json!({}));
+                    Box::new(SolverDualScala::new(initializer))
+                }
+                Self::DualAxi4 => {
+                    assert_eq!(primal_dual_config, json!({}));
+                    Box::new(SolverDualAxi4::new(initializer))
+                }
+                Self::EmbeddedRTLPreMatching => {
+                    assert_eq!(primal_dual_config, json!({}));
+                    let mut solver = SolverEmbeddedRTL::new(initializer);
+                    solver.dual_module.driver.driver.use_pre_matching = true;
+                    Box::new(solver)
+                }
+                Self::EmbeddedComb
+                | Self::EmbeddedCombPreMatching
+                | Self::EmbeddedCombLayerFusion
+                | Self::EmbeddedCombPreMatchingLayerFusion => {
+                    let micro_config = MicroBlossomSingle::new(initializer, positions);
+                    let tmp_env_offloading =
+                        if self == &Self::EmbeddedCombPreMatching || self == &Self::EmbeddedCombPreMatchingLayerFusion {
+                            Some(tmp_env::set_var("SUPPORT_OFFLOADING", "1"))
+                        } else {
+                            None
+                        };
+                    let tmp_env_layer_fusion =
+                        if self == &Self::EmbeddedCombLayerFusion || self == &Self::EmbeddedCombPreMatchingLayerFusion {
+                            Some(tmp_env::set_var("SUPPORT_LAYER_FUSION", "1"))
+                        } else {
+                            None
+                        };
+                    // build solver
+                    let solver = SolverDualComb::new_native(micro_config, primal_dual_config);
+                    drop(tmp_env_offloading);
+                    drop(tmp_env_layer_fusion);
+                    Box::new(solver)
+                }
+                Self::Serial | Self::ErrorPatternLogger => {
+                    unreachable!()
+                }
             }
-            Self::PrimalEmbedded => {
-                assert_eq!(primal_dual_config, json!({}));
-                Box::new(SolverPrimalEmbedded::new(initializer))
-            }
-            Self::EmbeddedRTL => {
-                assert_eq!(primal_dual_config, json!({}));
-                Box::new(SolverEmbeddedRTL::new(initializer))
-            }
-            Self::DualScala => {
-                assert_eq!(primal_dual_config, json!({}));
-                Box::new(SolverDualScala::new(initializer))
-            }
-            Self::DualAxi4 => {
-                assert_eq!(primal_dual_config, json!({}));
-                Box::new(SolverDualAxi4::new(initializer))
-            }
-            Self::EmbeddedRTLPreMatching => {
-                assert_eq!(primal_dual_config, json!({}));
-                let mut solver = SolverEmbeddedRTL::new(initializer);
-                solver.dual_module.driver.driver.use_pre_matching = true;
-                Box::new(solver)
-            }
-            Self::EmbeddedComb
-            | Self::EmbeddedCombPreMatching
-            | Self::EmbeddedCombLayerFusion
-            | Self::EmbeddedCombPreMatchingLayerFusion => {
-                let micro_config = MicroBlossomSingle::new(initializer, positions);
-                let tmp_env_offloading =
-                    if self == &Self::EmbeddedCombPreMatching || self == &Self::EmbeddedCombPreMatchingLayerFusion {
-                        Some(tmp_env::set_var("SUPPORT_OFFLOADING", "1"))
-                    } else {
-                        None
-                    };
-                let tmp_env_layer_fusion =
-                    if self == &Self::EmbeddedCombLayerFusion || self == &Self::EmbeddedCombPreMatchingLayerFusion {
-                        Some(tmp_env::set_var("SUPPORT_LAYER_FUSION", "1"))
-                    } else {
-                        None
-                    };
-                // build solver
-                let solver = SolverDualComb::new_native(micro_config, primal_dual_config);
-                drop(tmp_env_offloading);
-                drop(tmp_env_layer_fusion);
-                Box::new(solver)
-            }
-            Self::Serial | Self::ErrorPatternLogger => {
-                unreachable!()
-            }
-        }
+        })
     }
 }
