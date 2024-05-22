@@ -341,6 +341,19 @@ impl<const N: usize> FusionVisualizer for PrimalModuleEmbedded<N> {
                         if abbrev { "ct" } else { "children_touching" }: children_touching,
                         if abbrev { "d" } else { "depth" }: depth,
                     }),
+                    if abbrev { "m" } else { "temporary_match" }: primal_node.get_optional_matched().map(|target| {
+                        let touching = primal_node.link.touch.option().map(|v| v.get());
+                        match target {
+                            CompactMatchTarget::Peer(peer_node) => json!({
+                                if abbrev { "p" } else { "peer" }: peer_node.get(),
+                                if abbrev { "t" } else { "touching" }: touching,
+                            }),
+                            CompactMatchTarget::VirtualVertex(virtual_vertex) => json!({
+                                if abbrev { "v" } else { "virtual_vertex" }: virtual_vertex.get(),
+                                if abbrev { "t" } else { "touching" }: touching,
+                            })
+                        }
+                    }),
                 });
             } else {
                 primal_nodes[node_index] = json!({});

@@ -276,16 +276,18 @@ pub mod tests {
         d: VertexNum,
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
-    ) -> SolverDualScala {
+    ) -> Box<SolverDualScala> {
         dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
             d,
             Some(visualize_filename.clone()),
             defect_vertices,
             |initializer, _| {
-                SolverDualScala::new_with_name(
-                    initializer,
-                    visualize_filename.as_str().trim_end_matches(".json").to_string(),
-                ) //.with_max_iterations(30)  // this is helpful when debugging infinite loops
+                Box::new(
+                    SolverDualScala::new_with_name(
+                        initializer,
+                        visualize_filename.as_str().trim_end_matches(".json").to_string(),
+                    ), //.with_max_iterations(30)  // this is helpful when debugging infinite loops
+                )
             },
         )
     }
