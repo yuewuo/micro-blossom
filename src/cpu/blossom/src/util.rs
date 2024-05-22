@@ -1,6 +1,7 @@
 use konst::{option, primitive::parse_usize, result::unwrap_ctx};
 use lazy_static::lazy_static;
 use std::process::{Child, Command};
+use std::sync::Mutex;
 
 // by default guarantees working at d=31 circuit-level-noise (30k vertices), but can increase if needed
 pub const MAX_NODE_NUM: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("MAX_NODE_NUM"), "50000")));
@@ -62,6 +63,12 @@ impl ScalaMicroBlossomRunner {
 
 lazy_static! {
     pub static ref SCALA_MICRO_BLOSSOM_RUNNER: ScalaMicroBlossomRunner = ScalaMicroBlossomRunner::new();
+
+    // lock this when the scala is compiling verilator for simulation
+    // this is a bug of SpinalHDL v1.9.3 and is already fixed in later version:
+    // the temporarily compiled results are not in workspacePath but rather "tmp" relative path
+    // this causes conflicts if running multiple simulations in parallel
+    pub static ref SCALA_SIMULATION_LOCK: Mutex<()> = Mutex::new(());
 }
 
 #[cfg(test)]

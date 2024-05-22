@@ -100,10 +100,12 @@ impl DualModuleScalaDriver {
         reader.read_line(&mut line)?;
         assert_eq!(line, "DualHost v0.0.1, ask for decoding graph\n", "handshake error");
         write!(writer, "{}\n", serde_json::to_string(&micro_blossom).unwrap())?;
+        let simulation_lock = SCALA_SIMULATION_LOCK.lock();
         write!(writer, "{}\n", if cfg!(test) { "with waveform" } else { "no waveform" })?;
         line.clear();
         reader.read_line(&mut line)?;
         assert_eq!(line, "simulation started\n");
+        drop(simulation_lock);
         write!(writer, "reset()\n")?;
         Ok(Self {
             name,
@@ -276,16 +278,18 @@ pub mod tests {
         d: VertexNum,
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
-    ) -> SolverDualScala {
+    ) -> Box<SolverDualScala> {
         dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
             d,
             Some(visualize_filename.clone()),
             defect_vertices,
             |initializer, _| {
-                SolverDualScala::new_with_name(
-                    initializer,
-                    visualize_filename.as_str().trim_end_matches(".json").to_string(),
-                ) //.with_max_iterations(30)  // this is helpful when debugging infinite loops
+                Box::new(
+                    SolverDualScala::new_with_name(
+                        initializer,
+                        visualize_filename.as_str().trim_end_matches(".json").to_string(),
+                    ), //.with_max_iterations(30)  // this is helpful when debugging infinite loops
+                )
             },
         )
     }

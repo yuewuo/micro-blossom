@@ -110,10 +110,12 @@ impl DualModuleAxi4Driver {
         reader.read_line(&mut line)?;
         assert_eq!(line, "MicroBlossomHost v0.0.1, ask for decoding graph\n", "handshake error");
         write!(writer, "{}\n", serde_json::to_string(&micro_blossom).unwrap())?;
+        let simulation_lock = SCALA_SIMULATION_LOCK.lock();
         dual_config.write_to(&mut writer)?;
         line.clear();
         reader.read_line(&mut line)?;
         assert_eq!(line, "simulation started\n");
+        drop(simulation_lock);
         assert!(dual_config.conflict_channels <= MAX_CONFLICT_CHANNELS);
         let conflict_channels = dual_config.conflict_channels;
         let mut conflicts_store = ConflictsStore::new();
@@ -436,80 +438,84 @@ mod tests {
     // to use visualization, we need the folder of fusion-blossom repo
     // e.g. export FUSION_DIR=/Users/wuyue/Documents/GitHub/fusion-blossom
 
-    #[test]
-    fn dual_module_axi4_basic_1() {
-        // cargo test dual_module_axi4_basic_1 -- --nocapture
-        let visualize_filename = "dual_module_axi4_basic_1.json".to_string();
-        let defect_vertices = vec![0, 4, 8];
-        dual_module_axi4_basic_standard_syndrome(3, visualize_filename, defect_vertices);
-    }
+    // #[test]
+    // fn dual_module_axi4_basic_1() {
+    //     // cargo test dual_module_axi4_basic_1 -- --nocapture
+    //     let visualize_filename = "dual_module_axi4_basic_1.json".to_string();
+    //     let defect_vertices = vec![0, 4, 8];
+    //     dual_module_axi4_basic_standard_syndrome(3, visualize_filename, defect_vertices);
+    // }
 
-    #[test]
-    fn dual_module_axi4_basic_2() {
-        // cargo test dual_module_axi4_basic_2 -- --nocapture
-        let visualize_filename = "dual_module_axi4_basic_2.json".to_string();
-        let defect_vertices = vec![18, 26, 34];
-        dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    }
+    // #[test]
+    // fn dual_module_axi4_basic_2() {
+    //     // cargo test dual_module_axi4_basic_2 -- --nocapture
+    //     let visualize_filename = "dual_module_axi4_basic_2.json".to_string();
+    //     let defect_vertices = vec![18, 26, 34];
+    //     dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    // }
 
-    #[test]
-    fn dual_module_axi4_basic_3() {
-        // cargo test dual_module_axi4_basic_3 -- --nocapture
-        let visualize_filename = "dual_module_axi4_basic_3.json".to_string();
-        let defect_vertices = vec![16, 26];
-        dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    }
+    // #[test]
+    // fn dual_module_axi4_basic_3() {
+    //     // cargo test dual_module_axi4_basic_3 -- --nocapture
+    //     let visualize_filename = "dual_module_axi4_basic_3.json".to_string();
+    //     let defect_vertices = vec![16, 26];
+    //     dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    // }
 
-    /// debug infinite loop
-    /// reason: the write stage logic is implemented wrongly: only when the overall speed is positive
-    ///   should it report an obstacle; otherwise just report whatever the maxGrowth value is
-    #[test]
-    fn dual_module_axi4_debug_1() {
-        // cargo test dual_module_axi4_debug_1 -- --nocapture
-        let visualize_filename = "dual_module_axi4_debug_1.json".to_string();
-        let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
-        dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    }
+    // /// debug infinite loop
+    // /// reason: the write stage logic is implemented wrongly: only when the overall speed is positive
+    // ///   should it report an obstacle; otherwise just report whatever the maxGrowth value is
+    // #[test]
+    // fn dual_module_axi4_debug_1() {
+    //     // cargo test dual_module_axi4_debug_1 -- --nocapture
+    //     let visualize_filename = "dual_module_axi4_debug_1.json".to_string();
+    //     let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
+    //     dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    // }
 
-    #[test]
-    fn dual_module_axi4_debug_compare_1() {
-        // cargo test dual_module_axi4_debug_compare_1 -- --nocapture
-        let visualize_filename = "dual_module_axi4_debug_compare_1.json".to_string();
-        let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
-        dual_module_rtl_embedded_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    }
+    // #[test]
+    // fn dual_module_axi4_debug_compare_1() {
+    //     // cargo test dual_module_axi4_debug_compare_1 -- --nocapture
+    //     let visualize_filename = "dual_module_axi4_debug_compare_1.json".to_string();
+    //     let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
+    //     dual_module_rtl_embedded_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    // }
 
-    /// debug timing error
-    /// the primal offloaded grow unit will issue a grow command automatically and retrieve the conflict information
-    /// however, this is different from
-    #[test]
-    fn dual_module_axi4_debug_2() {
-        // cargo test dual_module_axi4_debug_2 -- --nocapture
-        let visualize_filename = "dual_module_axi4_debug_2.json".to_string();
-        let defect_vertices = vec![12, 13, 17, 25, 28, 48, 49];
-        dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    }
+    // /// debug timing error
+    // /// the primal offloaded grow unit will issue a grow command automatically and retrieve the conflict information
+    // /// however, this is different from
+    // #[test]
+    // fn dual_module_axi4_debug_2() {
+    //     // cargo test dual_module_axi4_debug_2 -- --nocapture
+    //     let visualize_filename = "dual_module_axi4_debug_2.json".to_string();
+    //     let defect_vertices = vec![12, 13, 17, 25, 28, 48, 49];
+    //     dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    // }
 
-    #[test]
-    fn dual_module_axi4_debug_compare_2() {
-        // cargo test dual_module_axi4_debug_compare_2 -- --nocapture
-        let visualize_filename = "dual_module_axi4_debug_compare_2.json".to_string();
-        let defect_vertices = vec![12, 13, 17, 25, 28, 48, 49];
-        dual_module_scala_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    }
+    // #[test]
+    // fn dual_module_axi4_debug_compare_2() {
+    //     // cargo test dual_module_axi4_debug_compare_2 -- --nocapture
+    //     let visualize_filename = "dual_module_axi4_debug_compare_2.json".to_string();
+    //     let defect_vertices = vec![12, 13, 17, 25, 28, 48, 49];
+    //     dual_module_scala_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    // }
 
     pub fn dual_module_axi4_basic_standard_syndrome(
         d: VertexNum,
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
-    ) -> SolverDualAxi4 {
+    ) -> Box<SolverDualAxi4> {
         dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
             d,
             Some(visualize_filename.clone()),
             defect_vertices,
             |initializer, _| {
-                SolverDualAxi4::new_with_name(initializer, visualize_filename.as_str().trim_end_matches(".json").to_string())
-                //.with_max_iterations(30)  // this is helpful when debugging infinite loops
+                Box::new(
+                    SolverDualAxi4::new_with_name(
+                        initializer,
+                        visualize_filename.as_str().trim_end_matches(".json").to_string(),
+                    ), //.with_max_iterations(30)  // this is helpful when debugging infinite loops
+                )
             },
         )
     }

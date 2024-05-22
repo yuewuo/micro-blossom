@@ -580,7 +580,62 @@ pub mod tests {
         );
     }
 
-    // /// verify that all single error can be decoded totally offline with layer fusion
+    /// debug panic case
+    /// defect_vertices = [163,212,213,223,224,265,273,281,323]
+    #[test]
+    fn dual_module_comb_pre_matching_layer_fusion_debug_3() {
+        // cargo test dual_module_comb_pre_matching_layer_fusion_debug_3 -- --nocapture
+        let visualize_filename = "dual_module_comb_pre_matching_layer_fusion_debug_3.json".to_string();
+        let defect_vertices = vec![163, 212, 213, 223, 224, 265, 273, 281, 323];
+        println!("{defect_vertices:?}");
+        let config = json!({
+            "code_type": fusion_blossom::qecp::code_builder::CodeType::RotatedPlanarCode,
+            "noise_model": fusion_blossom::qecp::noise_model_builder::NoiseModelBuilder::StimNoiseModel,
+            "qubit_type": fusion_blossom::qecp::types::QubitType::StabZ,
+            "max_half_weight": 7,
+            "trim_isolated_vertices": false,
+        });
+        let mut code = QECPlaygroundCode::new(9, 0.005, config);
+        let mut visualizer = Some(
+            Visualizer::new(
+                option_env!("FUSION_DIR").map(|dir| dir.to_owned() + "/visualize/data/" + visualize_filename.as_str()),
+                code.get_positions(),
+                true,
+            )
+            .unwrap(),
+        );
+        print_visualize_link(visualize_filename.clone());
+        // create dual module
+        let initializer = code.get_initializer();
+        code.set_defect_vertices(&defect_vertices);
+        let syndrome = code.get_syndrome();
+        let mut solver = stacker::grow(crate::util::MAX_NODE_NUM * 1024, || {
+            // lock to avoid environment variable races when testing in parallel
+            let lock = ENV_PARAMETER_LOCK.lock();
+            let tmp_env_offloading = tmp_env::set_var("SUPPORT_OFFLOADING", "1");
+            let tmp_env_layer_fusion = tmp_env::set_var("SUPPORT_LAYER_FUSION", "1");
+            let micro_config = MicroBlossomSingle::new(&initializer, &code.get_positions());
+            let solver = SolverDualComb::new_native(micro_config, json!({}));
+            drop(tmp_env_offloading);
+            drop(tmp_env_layer_fusion);
+            drop(lock);
+            Box::new(solver)
+        });
+        use fusion_blossom::mwpm_solver::*;
+        solver.solve_visualizer(&syndrome, visualizer.as_mut());
+        let subgraph = solver.subgraph_visualizer(visualizer.as_mut());
+        let mut standard_solver = fusion_blossom::mwpm_solver::SolverSerial::new(&initializer);
+        standard_solver.solve_visualizer(&syndrome, None);
+        let standard_subgraph = standard_solver.subgraph_visualizer(None);
+        let mut subgraph_builder = fusion_blossom::primal_module::SubGraphBuilder::new(&initializer);
+        subgraph_builder.load_subgraph(&subgraph);
+        let total_weight = subgraph_builder.total_weight();
+        subgraph_builder.load_subgraph(&standard_subgraph);
+        let standard_total_weight = subgraph_builder.total_weight();
+        assert_eq!(total_weight, standard_total_weight);
+    }
+
+    /// verify that all single error can be decoded totally offline with layer fusion
     #[test]
     fn dual_module_comb_pre_matching_layer_fusion_all_single_error() {
         // cargo test dual_module_comb_pre_matching_layer_fusion_all_single_error -- --nocapture
@@ -607,7 +662,7 @@ pub mod tests {
         defect_vertices: Vec<VertexIndex>,
         support_offloading: bool,
         support_layer_fusion: bool,
-    ) -> SolverDualComb {
+    ) -> Box<SolverDualComb> {
         dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
             d,
             Some(visualize_filename.clone()),
@@ -630,7 +685,7 @@ pub mod tests {
                 drop(tmp_env_offloading);
                 drop(tmp_env_layer_fusion);
                 drop(lock);
-                result
+                Box::new(result)
             },
         )
     }

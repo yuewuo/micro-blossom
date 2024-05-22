@@ -341,6 +341,19 @@ impl<const N: usize> FusionVisualizer for PrimalModuleEmbedded<N> {
                         if abbrev { "ct" } else { "children_touching" }: children_touching,
                         if abbrev { "d" } else { "depth" }: depth,
                     }),
+                    if abbrev { "m" } else { "temporary_match" }: primal_node.get_optional_matched().map(|target| {
+                        let touching = primal_node.link.touch.option().map(|v| v.get());
+                        match target {
+                            CompactMatchTarget::Peer(peer_node) => json!({
+                                if abbrev { "p" } else { "peer" }: peer_node.get(),
+                                if abbrev { "t" } else { "touching" }: touching,
+                            }),
+                            CompactMatchTarget::VirtualVertex(virtual_vertex) => json!({
+                                if abbrev { "v" } else { "virtual_vertex" }: virtual_vertex.get(),
+                                if abbrev { "t" } else { "touching" }: touching,
+                            })
+                        }
+                    }),
                 });
             } else {
                 primal_nodes[node_index] = json!({});
@@ -565,7 +578,7 @@ mod tests {
         visualize_filename: Option<String>,
         defect_vertices: Vec<VertexIndex>,
         final_dual: Weight,
-    ) -> (DualModuleInterfacePtr, PrimalModuleEmbeddedAdaptor, DualModuleSerial) {
+    ) -> (DualModuleInterfacePtr, Box<PrimalModuleEmbeddedAdaptor>, DualModuleSerial) {
         println!("{defect_vertices:?}");
         let half_weight = 500;
         let mut code = CodeCapacityPlanarCode::new(d, 0.1, half_weight);
@@ -586,7 +599,9 @@ mod tests {
         let initializer = code.get_initializer();
         let mut dual_module = DualModuleSerial::new_empty(&initializer);
         // create primal module
-        let mut primal_module = PrimalModuleEmbeddedAdaptor::new_empty(&initializer);
+        let mut primal_module = stacker::grow(crate::util::MAX_NODE_NUM * 1024, || {
+            Box::new(PrimalModuleEmbeddedAdaptor::new_empty(&initializer))
+        });
         code.set_defect_vertices(&defect_vertices);
         let interface_ptr = DualModuleInterfacePtr::new_empty();
         primal_module.solve_visualizer(&interface_ptr, &code.get_syndrome(), &mut dual_module, visualizer.as_mut());
@@ -625,7 +640,7 @@ mod tests {
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
         final_dual: Weight,
-    ) -> (DualModuleInterfacePtr, PrimalModuleEmbeddedAdaptor, DualModuleSerial) {
+    ) -> (DualModuleInterfacePtr, Box<PrimalModuleEmbeddedAdaptor>, DualModuleSerial) {
         primal_module_embedded_basic_standard_syndrome_optional_viz(d, Some(visualize_filename), defect_vertices, final_dual)
     }
 }

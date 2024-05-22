@@ -22,7 +22,6 @@ import modules._
 
 // sbt "runMain microblossom.DualHost localhost 4123 test"
 object DualHost extends App {
-  println(SpinalConfig.defaultTargetDirectory)
   if (args.length != 3) {
     println("usage: <address> <port> <host_name>")
     sys.exit(1)

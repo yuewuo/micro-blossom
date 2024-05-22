@@ -790,8 +790,8 @@ pub mod tests {
         d: VertexNum,
         visualize_filename: Option<String>,
         defect_vertices: Vec<VertexIndex>,
-        constructor: impl FnOnce(&SolverInitializer, &Vec<VisualizePosition>) -> Solver,
-    ) -> Solver {
+        constructor: impl FnOnce(&SolverInitializer, &Vec<VisualizePosition>) -> Box<Solver>,
+    ) -> Box<Solver> {
         println!("{defect_vertices:?}");
         let half_weight = 500;
         let mut code = CodeCapacityPlanarCode::new(d, 0.1, half_weight);
@@ -812,7 +812,9 @@ pub mod tests {
         let initializer = code.get_initializer();
         code.set_defect_vertices(&defect_vertices);
         let syndrome = code.get_syndrome();
-        let mut solver = constructor(&initializer, &code.get_positions());
+        let mut solver = stacker::grow(crate::util::MAX_NODE_NUM * 1024, || -> Box<Solver> {
+            constructor(&initializer, &code.get_positions())
+        });
         solver.solve_visualizer(&syndrome, visualizer.as_mut());
         let subgraph = solver.subgraph_visualizer(visualizer.as_mut());
         let mut standard_solver = SolverSerial::new(&initializer);
@@ -831,12 +833,12 @@ pub mod tests {
         d: VertexNum,
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
-    ) -> SolverEmbeddedRTL {
+    ) -> Box<SolverEmbeddedRTL> {
         dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
             d,
             Some(visualize_filename),
             defect_vertices,
-            |initializer, _| SolverEmbeddedRTL::new(initializer),
+            |initializer, _| Box::new(SolverEmbeddedRTL::new(initializer)),
         )
     }
 
@@ -844,7 +846,7 @@ pub mod tests {
         d: VertexNum,
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
-    ) -> SolverEmbeddedRTL {
+    ) -> Box<SolverEmbeddedRTL> {
         dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
             d,
             Some(visualize_filename),
@@ -852,7 +854,7 @@ pub mod tests {
             |initializer, _| {
                 let mut solver = SolverEmbeddedRTL::new(initializer);
                 solver.dual_module.driver.driver.use_pre_matching = true;
-                solver
+                Box::new(solver)
             },
         )
     }
@@ -861,12 +863,12 @@ pub mod tests {
         d: VertexNum,
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
-    ) -> SolverDualRTL {
+    ) -> Box<SolverDualRTL> {
         dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
             d,
             Some(visualize_filename),
             defect_vertices,
-            |initializer, _| SolverDualRTL::new(initializer),
+            |initializer, _| Box::new(SolverDualRTL::new(initializer)),
         )
     }
 }

@@ -87,7 +87,7 @@ impl<const N: usize> PrimalNodes<N> {
         } else {
             self.prepare_defects_up_to(node_index);
             if get!(self.buffer, node_index.get() as usize).is_none() {
-                // TODO: Bambu HLS cannot handle this, error message:
+                // Bambu HLS cannot handle this, error message:
                 // opt-12: ../../../etc/clang_plugin/dumpGimple.cpp:2935:
                 // int64_t llvm::DumpGimpleRaw::TREE_INT_CST_LOW(const void *): Assertion `val.getNumWords() == 1' failed.
                 cfg_if::cfg_if! {
@@ -167,11 +167,9 @@ impl<const N: usize> PrimalNodes<N> {
             if !node.is_outer_blossom() {
                 continue; // only match outer blossoms
             }
-            debug_assert!(
-                node.is_matched(),
-                "cannot generate perfect matching with unmatched node: {}",
-                node_index
-            );
+            if !node.is_matched() {
+                continue; // for layer fusion with pre-matching, it is possible that a node is offloaded
+            }
             if let Some(peer_index) = node.sibling.option() {
                 if peer_index.get() > node_index.get() {
                     func(node_index, CompactMatchTarget::Peer(peer_index), &node.link);
@@ -448,15 +446,21 @@ impl PrimalNode {
         self.link.peer_touch.set_none();
         self.link.peer_through.set_none();
     }
-}
 
-impl PrimalNode {
     pub fn get_matched(&self) -> CompactMatchTarget {
         debug_assert!(self.is_matched());
         if let Some(node_index) = self.sibling.option() {
             CompactMatchTarget::Peer(node_index)
         } else {
             CompactMatchTarget::VirtualVertex(usu!(self.link.peer_through))
+        }
+    }
+
+    pub fn get_optional_matched(&self) -> Option<CompactMatchTarget> {
+        if self.is_matched() {
+            Some(self.get_matched())
+        } else {
+            None
         }
     }
 }

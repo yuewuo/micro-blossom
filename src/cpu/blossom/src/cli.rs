@@ -492,7 +492,7 @@ impl PrimalDualType {
             initializer.vertex_num <= crate::util::MAX_NODE_NUM,
             "potential overflow, increase `MAX_NODE_NUM` when compile the code"
         );
-        stacker::grow(crate::util::MAX_NODE_NUM * 100, || -> Box<dyn PrimalDualSolver> {
+        stacker::grow(crate::util::MAX_NODE_NUM * 1024, || -> Box<dyn PrimalDualSolver> {
             match self {
                 Self::DualRTL => {
                     assert_eq!(primal_dual_config, json!({}));

@@ -29,7 +29,6 @@ import scala.collection.mutable.ArrayBuffer
 
 // sbt "runMain microblossom.MicroBlossomHost localhost 4123 test"
 object MicroBlossomHost extends App {
-  println(SpinalConfig.defaultTargetDirectory)
   if (args.length != 3) {
     println("usage: <address> <port> <host_name>")
     sys.exit(1)
