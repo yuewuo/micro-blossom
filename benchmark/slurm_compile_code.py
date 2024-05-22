@@ -40,7 +40,4 @@ def force_compile_scala_micro_blossom():
     compile_scala_micro_blossom_if_necessary()
 
 if __name__ == "__main__":
-    print("consider increasing MAX_NODE_NUM when compiling code, because most benchmark requires higher values")
-    print("    accordingly, increase the stack size of the process")
-    print("     ")
     force_compile_code()
