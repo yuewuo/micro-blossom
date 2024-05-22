@@ -26,8 +26,7 @@ embedded_dir = os.path.join(git_root_dir, "src", "cpu", "embedded")
 SCALA_MICRO_BLOSSOM_COMPILATION_DONE = False
 
 
-def run_verilog_generator(parameters):
-    # first compile the Scala library
+def compile_scala_micro_blossom_if_necessary():
     global SCALA_MICRO_BLOSSOM_COMPILATION_DONE
     if SCALA_MICRO_BLOSSOM_COMPILATION_DONE is False:
         process = subprocess.Popen(
@@ -40,6 +39,11 @@ def run_verilog_generator(parameters):
         process.wait()
         assert process.returncode == 0, "compile has error"
         SCALA_MICRO_BLOSSOM_COMPILATION_DONE = True
+
+
+def run_verilog_generator(parameters):
+    # first compile the Scala library
+    compile_scala_micro_blossom_if_necessary()
     # then run the generator
     command = [
         "java",

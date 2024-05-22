@@ -77,17 +77,21 @@ set_property offset 0x400000000 [get_bd_addr_segs versal_cips_0/M_AXI_FPD/SEG_${
 
 # get_nets -hier -filter { NAME =~ "vmk180_micro_blossom_i/MicroBlossom_0/inst/dual/broadcastRegInserted_valid" }
 
+# do not use more jobs because they causes seg fault
+# https://www.reddit.com/r/FPGA/comments/1846nds/i_am_suffering_from_segfault_with_vivado_on_arm/
+# https://support.xilinx.com/s/question/0D54U00008NnuzVSAR/vivado-20222-fails-with-segmentation-fault-during-synthesis?language=en_US
+
 # run synthesis, implementation and write bitstream
 set_property strategy Flow_AlternateRoutability [get_runs synth_1]
-launch_runs synth_1 -jobs 10
+launch_runs synth_1 -jobs 4
 wait_on_run synth_1
 
 set_property strategy Congestion_SpreadLogic_high [get_runs impl_1]
 set_property STEPS.PHYS_OPT_DESIGN.ARGS.DIRECTIVE AggressiveFanoutOpt [get_runs impl_1]
-launch_runs impl_1 -jobs 10
+launch_runs impl_1 -jobs 4
 wait_on_run impl_1
 
-launch_runs impl_1 -to_step write_device_image -jobs 10
+launch_runs impl_1 -to_step write_device_image -jobs 4
 wait_on_run impl_1
 
 # export hardware XSA file

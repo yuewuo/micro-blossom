@@ -396,6 +396,16 @@ class Offloading:
 
 @dataclass_json
 @dataclass
+class LayerFusion:
+    num_layers: int
+    layers: list[list[int]]
+    vertex_layer_id: dict[int, int]
+    fusion_edges: dict[int, int]
+    unique_tight_conditions: dict[int, list[int]]
+
+
+@dataclass_json
+@dataclass
 class SingleGraph:
     positions: list[Position]
     vertex_num: int
@@ -406,6 +416,7 @@ class SingleGraph:
     vertex_edge_binary_tree: BinaryTree
     vertex_max_growth: list[int]
     offloading: list[Offloading]
+    layer_fusion: Optional[LayerFusion]
 
     @staticmethod
     def from_file(filename):
@@ -413,3 +424,14 @@ class SingleGraph:
         with open(filename, "r", encoding="utf8") as f:
             value = f.read()
         return SingleGraph.schema().loads(value)
+
+    def effective_offloader_num(
+        self, support_offloading: bool, support_layer_fusion: bool
+    ) -> int:
+        if not support_offloading:
+            return 0
+        if support_layer_fusion and self.layer_fusion is not None:
+            return len(self.offloading) + sum(
+                len(layer) for layer in self.layer_fusion.layers
+            )
+        return len(self.offloading)

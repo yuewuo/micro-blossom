@@ -5,8 +5,6 @@ from datetime import datetime
 from run import *
 from build_micro_blossom import main as build_micro_blossom_main
 from get_ttyoutput import get_ttyoutput
-from slurm_distribute import slurm_threads_or as STO
-from vivado_project import VivadoProject
 
 
 def main(config: Configuration, peek_smallest_graph: bool = False):
@@ -43,7 +41,7 @@ def main(config: Configuration, peek_smallest_graph: bool = False):
                 "--fusion-blossom-syndrome-export-filename",
                 old_syndrome_file_path,
             ]
-            command += ["--parallel", f"{STO(0)}"]  # use all cores
+            command += ["--parallel", "0"]  # use all cores
             print(command)
             stdout, returncode = run_command_get_stdout(command)
             print("\n" + stdout)

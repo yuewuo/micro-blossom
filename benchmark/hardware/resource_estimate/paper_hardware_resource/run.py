@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.join(git_root_dir, "benchmark", "slurm_utilities"))
 sys.path.insert(0, os.path.join(git_root_dir, "src", "fpga", "utils"))
 if True:
     from micro_util import *
+    from vivado_project import VivadoProject
 
     sys.path.insert(0, fusion_benchmark_dir)
     from util import run_command_get_stdout
@@ -52,30 +53,75 @@ class Configuration:
 configurations = [
     Configuration(
         name="code_capacity",
-        d_vec=[3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31],
+        d_vec=list(range(3, 32, 2)),
         noise_model="phenomenological",
         fix_noisy_measurements=0,
         max_half_weight=1,
     ),
     Configuration(
         name="phenomenological",
-        d_vec=[3, 5, 7, 9, 11, 13, 15, 17, 19, 21],
+        d_vec=[3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23],
         noise_model="phenomenological",
         max_half_weight=1,
     ),
-    Configuration(name="circuit", d_vec=[3, 5, 7, 9, 11, 13, 15]),
+    Configuration(name="circuit", d_vec=[3, 5, 7, 9, 11, 13, 15, 17]),
     Configuration(
         name="circuit_offload",
-        d_vec=[3, 5, 7, 9, 11, 13, 15],
+        d_vec=[3, 5, 7, 9, 11, 13, 15, 17],
         scala_parameters=["--support-offloading"],
     ),
     # Configuration(name="circuit_fusion",d_vec=[3, 5, 7, 9, 11, 13, 15]),
 ]
 
 
-def main():
-    pass
+def main(config: Configuration):
+    name = config.name
+    frequency = config.f
+    p = config.p
+
+    # first check that all the implementations are ready
+    for d in config.d_vec:
+        assert os.path.exists(config.hardware_proj_dir(d)), "run perpare.py first"
+        assert os.path.exists(
+            os.path.join(
+                config.hardware_proj_dir(d), f"{config.hardware_proj_name(d)}.xsa"
+            )
+        ), "the implementation failed, please rerun it or remove it from the configuration"
+
+    # then run the resource report if the file does not exist
+    report_filename = os.path.join(this_dir, f"resource_{name}.txt")
+    # run resource report on each of the project
+    results = [
+        "# <d> <clb LUTs> <clb_percent> <registers> <reg_percent>"
+        + " <#V> <#E> <#pre-matcher>"
+    ]
+    for d in config.d_vec:
+        vivado = VivadoProject(config.hardware_proj_dir(d))
+        report = vivado.report_impl_utilization(force_regenerate=False)
+        clb_luts = report.netlist_logic.clb_luts
+        registers = report.netlist_logic.registers
+        # also read the number of vertices in the graph and the number of edges
+        graph_file_path = os.path.join(hardware_dir, f"{name}_d_{d}.json")
+        graph = SingleGraph.from_file(graph_file_path)
+        pre_match_num = graph.effective_offloader_num(
+            support_offloading=(
+                config.scala_parameters is not None
+                and "--support-offloading" in config.scala_parameters
+            ),
+            support_layer_fusion=(
+                config.scala_parameters is not None
+                and "--support-layer-fusion" in config.scala_parameters
+            ),
+        )
+        results.append(
+            f"{d} {clb_luts.used} {clb_luts.util_percent} {registers.used} {registers.util_percent}"
+            + f" {graph.vertex_num} {len(graph.weighted_edges)} {pre_match_num}"
+        )
+    with open(report_filename, "w", encoding="utf8") as f:
+        f.write("\n".join(results))
 
 
 if __name__ == "__main__":
-    main()
+    errors = []
+    for configuration in configurations:
+        main(configuration)
