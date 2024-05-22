@@ -158,18 +158,15 @@ def main(args=None):
         os.path.join(template_dir, "create_vitis.py"),
         os.path.join(project_dir, "create_vitis.py"),
     )
-    # create_vivado.tcl
-    with open(
-        os.path.join(template_dir, "create_vivado.tcl"), "r", encoding="utf8"
-    ) as f:
-        create_vivado_tcl = f.read()
-        create_vivado_tcl = checked_replace(
-            create_vivado_tcl, "set name vmk180_micro_blossom", f"set name {name}"
-        )
-    with open(
-        os.path.join(project_dir, "create_vivado.tcl"), "w", encoding="utf8"
-    ) as f:
-        f.write(create_vivado_tcl)
+    # create_vivado.tcl and reimpl_vivado.tcl
+    for tcl_filename in ["create_vivado.tcl", "reimpl_vivado.tcl"]:
+        with open(os.path.join(template_dir, tcl_filename), "r", encoding="utf8") as f:
+            vivado_tcl = f.read()
+            vivado_tcl = checked_replace(
+                vivado_tcl, "set name vmk180_micro_blossom", f"set name {name}"
+            )
+        with open(os.path.join(project_dir, tcl_filename), "w", encoding="utf8") as f:
+            f.write(vivado_tcl)
     # run_xsdb.tcl
     with open(os.path.join(template_dir, "run_xsdb.tcl"), "r", encoding="utf8") as f:
         run_xsdb_tcl = f.read()
