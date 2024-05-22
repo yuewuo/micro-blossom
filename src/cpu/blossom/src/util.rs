@@ -2,8 +2,8 @@ use konst::{option, primitive::parse_usize, result::unwrap_ctx};
 use lazy_static::lazy_static;
 use std::process::{Child, Command};
 
-// by default guarantees working at d=15, but can increase if needed
-pub const MAX_NODE_NUM: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("MAX_NODE_NUM"), "3000")));
+// by default guarantees working at d=31 circuit-level-noise (30k vertices), but can increase if needed
+pub const MAX_NODE_NUM: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("MAX_NODE_NUM"), "50000")));
 
 /// a fusion group is a continuous subset of vertices which is recovered simultaneously;
 /// it is required that
@@ -16,13 +16,20 @@ pub struct ScalaMicroBlossomRunner {}
 impl ScalaMicroBlossomRunner {
     /// private new function
     fn new() -> Self {
-        let mut child = Command::new("sbt")
-            .current_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../"))
-            .arg("assembly")
-            .spawn()
-            .unwrap();
-        let status = child.wait().expect("failed to wait on child");
-        assert!(status.success(), "sbt assembly failed");
+        // if MANUALLY_COMPILE_QEC is set, then ignore the compile process
+        let manual_compile = match std::env::var("MANUALLY_COMPILE_QEC") {
+            Ok(value) => value != "",
+            Err(_) => false,
+        };
+        if !manual_compile {
+            let mut child = Command::new("sbt")
+                .current_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/../../../"))
+                .arg("assembly")
+                .spawn()
+                .unwrap();
+            let status = child.wait().expect("failed to wait on child");
+            assert!(status.success(), "sbt assembly failed");
+        }
         Self {}
     }
 

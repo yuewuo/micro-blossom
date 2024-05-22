@@ -44,6 +44,13 @@ if (
 ):
     MICRO_BLOSSOM_COMPILATION_DONE = True
 
+SCALA_MICRO_BLOSSOM_COMPILATION_DONE = False
+if (
+    "MANUALLY_COMPILE_QEC" in os.environ
+    and os.environ["MANUALLY_COMPILE_QEC"] == "TRUE"
+):
+    SCALA_MICRO_BLOSSOM_COMPILATION_DONE = True
+
 
 class Profile:
     """
@@ -205,6 +212,20 @@ def compile_code_if_necessary(additional_build_parameters=None):
         MICRO_BLOSSOM_COMPILATION_DONE = True
     fusion_compile_code_if_necessary(["--features", "qecp_integrate"])
 
+
+def compile_scala_micro_blossom_if_necessary():
+    global SCALA_MICRO_BLOSSOM_COMPILATION_DONE
+    if SCALA_MICRO_BLOSSOM_COMPILATION_DONE is False:
+        process = subprocess.Popen(
+            ["sbt", "assembly"],
+            universal_newlines=True,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            cwd=git_root_dir,
+        )
+        process.wait()
+        assert process.returncode == 0, "compile has error"
+        SCALA_MICRO_BLOSSOM_COMPILATION_DONE = True
 
 def micro_blossom_command():
     micro_path = os.path.join(rust_dir, "target", "release", "micro_blossom")
