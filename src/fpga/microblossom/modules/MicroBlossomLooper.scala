@@ -88,7 +88,11 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
     val dataRaces = Vec.fill(pipelineLength)(Bool())
     for (i <- (0 until pipelineLength)) {
       val entry = pipelineEntries(i)
-      dataRaces(i) := entry.valid && entry.contextId === io.push.payload.contextId
+      if (config.contextBits > 0) {
+        dataRaces(i) := entry.valid && entry.contextId === io.push.payload.contextId
+      } else {
+        dataRaces(i) := entry.valid
+      }
     }
     dataRaces.reduceBalancedTree(_ | _)
   } else { False }
@@ -148,14 +152,19 @@ case class PipelineEntry(config: DualConfig) extends Bundle {
 // sbt 'testOnly *MicroBlossomLooperTest'
 class MicroBlossomLooperTest extends AnyFunSuite {
 
-  for (i <- 0 until 2) {
-    test("logic_validity") {
-      val config =
-        DualConfig(
-          filename = "./resources/graphs/example_code_capacity_d3.json",
-          broadcastDelay = 3,
-          contextDepth = 4
-        )
+  val filename = "./resources/graphs/example_code_capacity_d3.json"
+  val logic_validity_config = Seq(
+    DualConfig(filename = filename, broadcastDelay = 1),
+    DualConfig(filename = filename, broadcastDelay = 2),
+    DualConfig(filename = filename, broadcastDelay = 3),
+    DualConfig(filename = filename, broadcastDelay = 1, contextDepth = 2),
+    DualConfig(filename = filename, broadcastDelay = 1, contextDepth = 4),
+    DualConfig(filename = filename, broadcastDelay = 1, contextDepth = 8),
+    DualConfig(filename = filename, broadcastDelay = 3, contextDepth = 4)
+  )
+
+  test("logic_validity") {
+    for ((config, i) <- logic_validity_config.zipWithIndex) {
       Config.sim
         .compile(MicroBlossomLooper(config))
         .doSim("logic_validity") { dut =>
