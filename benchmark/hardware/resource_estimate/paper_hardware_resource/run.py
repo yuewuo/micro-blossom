@@ -60,17 +60,17 @@ configurations = [
     ),
     Configuration(
         name="phenomenological",
-        d_vec=[3, 5, 7, 9, 11, 13, 15],
+        d_vec=[3, 5, 7, 9, 11, 13, 15, 17],
         noise_model="phenomenological",
         max_half_weight=1,
     ),
     Configuration(
         name="circuit",
-        d_vec=[3, 5, 7, 9, 11, 13],
+        d_vec=[3, 5, 7, 9, 11, 13, 15],
     ),
     Configuration(
         name="circuit_offload",
-        d_vec=[3, 5, 7, 9, 11, 13],
+        d_vec=[3, 5, 7, 9, 11, 13, 15],
         scala_parameters=["--support-offloading"],
     ),
     # Configuration(name="circuit_fusion",d_vec=[3, 5, 7, 9, 11, 13, 15]),
