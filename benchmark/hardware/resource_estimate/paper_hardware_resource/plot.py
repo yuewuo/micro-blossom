@@ -3,9 +3,9 @@ from dataclasses import dataclass, field
 
 names = {
     "code_capacity": "code capacity",
-    # "phenomenological": "phenomenological",
-    # "circuit": "circuit-level",
-    # "circuit_offload": "circuit-level (pre)",
+    "phenomenological": "phenomenological",
+    "circuit": "circuit-level",
+    "circuit_offload": "circuit-level (pre)",
     # "circuit_fusion": "circuit-level (pre+fusion)",
 }
 
@@ -62,6 +62,7 @@ def plot_lut():
     ax1.set_ylim(100, LUT_TOTAL)
     ax2.set_ylabel("Percentage")
     ax2.set_ylim(ax1.get_ylim())
+    ax1.legend()
     plt.savefig("lut.pdf")
 
 
