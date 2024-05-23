@@ -15,9 +15,10 @@ case class DualConfig(
     var weightBits: Int = 26,
     var broadcastDelay: Int = 0,
     var convergecastDelay: Int = 0,
+    var instructionBufferDepth: Int = 4, // buffer write instructions for higher throughput, must be a power of 2
     var contextDepth: Int = 1, // how many different contexts are supported
     var conflictChannels: Int = 1, // how many conflicts are collected at once in parallel
-    var hardCodeWeights: Boolean = true,  // hard-code the edge weights to simplify logic
+    var hardCodeWeights: Boolean = true, // hard-code the edge weights to simplify logic
     // optional features
     var supportAddDefectVertex: Boolean = true,
     var supportOffloading: Boolean = false,
@@ -28,6 +29,8 @@ case class DualConfig(
     val minimizeBits: Boolean = true,
     var injectRegisters: Seq[String] = List()
 ) {
+  assert(isPow2(instructionBufferDepth) & instructionBufferDepth >= 2)
+
   def vertexNum = graph.vertex_num.toInt
   def edgeNum = graph.weighted_edges.length.toInt
   def offloaderNum = if (supportOffloading) {
@@ -37,6 +40,7 @@ case class DualConfig(
   }
   def instructionSpec = InstructionSpec(this)
   def contextBits = log2Up(contextDepth)
+  def instructionBufferBits = log2Up(instructionBufferDepth + 1) // the dual module may be processing an instruction
   def IndexNone = (1 << vertexBits) - 1
   def LengthNone = (1 << weightBits) - 1
   def executeLatency = { // from sending the command to the time it's safe to write to the same context again

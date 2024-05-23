@@ -131,7 +131,17 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   ioConfig.weightBits = dualConfig.weightBits
   ioConfig.vertexBits = dualConfig.vertexBits
 
-  val micro = new Area {
+  val slowClockDomain = ClockDomain(
+    clock = slowClk,
+    reset = ClockDomain.current.readResetWire,
+    config = ClockDomainConfig(
+      clockEdge = RISING,
+      resetKind = SYNC,
+      resetActiveLevel = HIGH
+    )
+  )
+
+  val micro = new ClockingArea(slowClockDomain) {
     val io = new Bundle {
       // only inputs need to be registered
       val message = Reg(BroadcastMessage(ioConfig, explicitReset = false))
@@ -141,24 +151,13 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       maxGrowable.addTag(crossClockDomain)
       val conflict = ConvergecastConflict(ioConfig.vertexBits)
       conflict.addTag(crossClockDomain)
+
     }
 
-    val clockDomain = ClockDomain(
-      clock = slowClk,
-      reset = ClockDomain.current.readResetWire,
-      config = ClockDomainConfig(
-        clockEdge = RISING,
-        resetKind = SYNC,
-        resetActiveLevel = HIGH
-      )
-    )
-
-    val clockingArea = new ClockingArea(clockDomain) {
-      val microBlossom = MicroBlossomMocker(dualConfig, ioConfig)
-      microBlossom.io.message := io.message
-      io.maxGrowable := microBlossom.io.maxGrowable
-      io.conflict := microBlossom.io.conflict
-    }
+    val microBlossom = MicroBlossomMocker(dualConfig, ioConfig)
+    microBlossom.io.message := io.message
+    io.maxGrowable := microBlossom.io.maxGrowable
+    io.conflict := microBlossom.io.conflict
   }
 
   def getSimDriver(): TypedDriver = {
