@@ -15,7 +15,7 @@ import scala.util.control.Breaks._
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.Map
 
-case class MicroBlossomMocker(config: DualConfig, ioConfig: DualConfig = DualConfig()) extends Component {
+case class MicroBlossomMocker(config: DualConfig, ioConfig: DualConfig) extends Component {
   ioConfig.contextDepth = config.contextDepth
 
   val io = new Bundle {
@@ -62,7 +62,7 @@ class MicroBlossomMockerTest extends AnyFunSuite {
       )
 
       Config.sim
-        .compile(MicroBlossomMocker(config))
+        .compile(MicroBlossomMocker(config, config))
         .doSim("logic_validity") { dut =>
           dut.clockDomain.forkStimulus(period = 10)
 

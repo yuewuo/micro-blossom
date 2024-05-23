@@ -126,10 +126,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   }
 
   // instantiate Micro Blossom module
-  val ioConfig = DualConfig()
-  ioConfig.contextDepth = dualConfig.contextDepth
-  ioConfig.weightBits = dualConfig.weightBits
-  ioConfig.vertexBits = dualConfig.vertexBits
+  val ioConfig = dualConfig
 
   val slowClockDomain = ClockDomain(
     clock = slowClk,

@@ -127,6 +127,16 @@ case class InstructionSpec(config: DualConfig) {
     generateExtendedSuffix(ExtendedOpCode.Grow) | extendedPayloadRange.masked(length)
   }
 
+  def dynamicGrow(length: UInt, config: DualConfig = DualConfig()): Instruction = {
+    val instruction = Instruction(config)
+    instruction.opCode := OpCode.SetSpeed
+    instruction.extensionIndicator := True.asBits
+    instruction.extendedOpCode := ExtendedOpCode.Grow
+    instruction.extendedPayload.clearAll()
+    instruction.length := length
+    instruction
+  }
+
   def sanityCheck() = {
     assert(config.weightBits + 2 <= numBits)
   }
