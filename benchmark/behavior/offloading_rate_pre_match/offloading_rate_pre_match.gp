@@ -28,6 +28,7 @@ set output "offloading_rate_pre_match.eps"
 
 plot "data_p0.0005.txt" using 1:4 with linespoints lt rgb "orange" linewidth 3 pointtype 5 pointsize 1.5 title "p = 0.05\%",\
     "data_p0.001.txt" using 1:4 with linespoints lt rgb "red" linewidth 3 pointtype 5 pointsize 1.5 title "p = 0.1\%",\
+    "data_p0.0015.txt" using 1:4 with linespoints lt rgb "grey" linewidth 3 pointtype 5 pointsize 1.5 title "p = 0.15\%",\
     "data_p0.002.txt" using 1:4 with linespoints lt rgb "blue" linewidth 3 pointtype 5 pointsize 1.5 title "p = 0.2\%",\
     "data_p0.005.txt" using 1:4 with linespoints lt rgb "purple" linewidth 3 pointtype 5 pointsize 1.5 title "p = 0.5\%",\
     "data_p0.01.txt" using 1:4 with linespoints lt rgb "black" linewidth 3 pointtype 5 pointsize 1.5 title "p = 1\%"

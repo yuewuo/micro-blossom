@@ -50,7 +50,7 @@ First generate syndrome data under this folder
 
 # d_vec = [3, 5, 7]  # for debugging script
 d_vec = [3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23]
-p_vec = [0.0005, 0.001, 0.002, 0.005, 0.01]
+p_vec = [0.0005, 0.001, 0.0015, 0.002, 0.005, 0.01]
 
 
 def total_rounds(d, p):
