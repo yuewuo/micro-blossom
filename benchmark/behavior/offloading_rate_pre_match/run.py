@@ -135,10 +135,11 @@ if __name__ == "__main__":
                 )
                 results.append(print_result)
 
-            print("\n\n")
-            print("\n".join(results))
-            print("\n\n")
+            if slurm_commands_vec is not None:
+                print("\n\n")
+                print("\n".join(results))
+                print("\n\n")
 
-            with open(filename, "w", encoding="utf8") as f:
-                f.write("<d> <total_defects> <offloaded> <offloading_rate>\n")
-                f.write("\n".join(results) + "\n")
+                with open(filename, "w", encoding="utf8") as f:
+                    f.write("<d> <total_defects> <offloaded> <offloading_rate>\n")
+                    f.write("\n".join(results) + "\n")

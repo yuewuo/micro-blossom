@@ -51,7 +51,7 @@ First generate syndrome data under this folder
 
 # d_vec = [3, 5, 7]  # for debugging script
 d_vec = [3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23]
-p_vec = [0.0005, 0.001, 0.002, 0.005, 0.01]
+p_vec = [0.0005, 0.001, 0.0015, 0.002, 0.005, 0.01]
 
 
 def total_rounds(d, p):
@@ -136,10 +136,11 @@ if __name__ == "__main__":
                 )
                 results.append(print_result)
 
-            print("\n\n")
-            print("\n".join(results))
-            print("\n\n")
+            if slurm_commands_vec is not None:
+                print("\n\n")
+                print("\n".join(results))
+                print("\n\n")
 
-            with open(filename, "w", encoding="utf8") as f:
-                f.write("<d> <total_defects> <offloaded> <offloading_rate>\n")
-                f.write("\n".join(results) + "\n")
+                with open(filename, "w", encoding="utf8") as f:
+                    f.write("<d> <total_defects> <offloaded> <offloading_rate>\n")
+                    f.write("\n".join(results) + "\n")
