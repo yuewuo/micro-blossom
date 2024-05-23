@@ -12,6 +12,10 @@ names = {
 LUT_TOTAL = 899840
 REG_TOTAL = 1799680
 
+LUT_MIN = 500
+VN_MIN = 3
+VN_MAX = 5000
+
 
 @dataclass
 class Curve:
@@ -57,11 +61,16 @@ def plot_lut():
         ax1.loglog(curve.vertex_num_vec, curve.lut_vec, "o-", label=curve.display)
     ax2 = ax1.twinx()
     plt.xlabel("Number of Vertices $|V|$")
-    plt.xlim(1, 3000)
+    plt.xlim(VN_MIN, VN_MAX)
     ax1.set_ylabel("Number of CLB LUTs")
-    ax1.set_ylim(100, LUT_TOTAL)
+    ax1.set_ylim(LUT_MIN, LUT_TOTAL)
     ax2.set_ylabel("Percentage")
-    ax2.set_ylim(ax1.get_ylim())
+    ax2.set_ylim([LUT_MIN / LUT_TOTAL, 1])
+
+    ax2.set_yticks(
+        [i / 10 for i in range(11)],
+        [f"{i}0%" for i in range(11)],
+    )
     ax1.legend()
     plt.savefig("lut.pdf")
 
