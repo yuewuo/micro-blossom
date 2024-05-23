@@ -1,5 +1,13 @@
 package microblossom.modules
 
+/*
+ * # Micro Blossom Looper
+ *
+ * Keeping sending `Grow` instruction until conflicts is detected or growable is infinity.
+ * This module will also detect data races within the same context id and block the input stream if data race is detected.
+ *
+ */
+
 import io.circe._
 import io.circe.generic.extras._
 import io.circe.generic.semiauto._
@@ -15,19 +23,23 @@ import scala.util.control.Breaks._
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.Map
 
-case class MicroBlossomStream(config: DualConfig, ioConfig: DualConfig = DualConfig()) extends Component {
-  ioConfig.contextDepth = config.contextDepth
-
+case class MicroBlossomLooper(config: DualConfig) extends Component {
   val io = new Bundle {
-    val message = in(BroadcastMessage(ioConfig, explicitReset = false))
+    // val input = in(Stream(InputData(ioConfig)))
 
-    val maxGrowable = out(ConvergecastMaxGrowable(ioConfig.weightBits))
-    val conflict = out(ConvergecastConflict(ioConfig.vertexBits))
+    // val maxGrowable = out(ConvergecastMaxGrowable(ioConfig.weightBits))
+    // val conflict = out(ConvergecastConflict(ioConfig.vertexBits))
   }
 
-  val pipelineEntries = Vec.fill(config.readLatency)(Reg(PipelineEntry(config)))
+  // val pipelineEntries = Vec.fill(config.readLatency)(Reg(PipelineEntry(config)))
   // TODO: combinatorial logic to match context id with the one in the pipeline
 
+}
+
+case class InputData(config: DualConfig) extends Bundle {
+  val instruction = Instruction(config)
+  val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
+  val instructionId = UInt(config.instructionBufferBits bits)
 }
 
 case class PipelineEntry(config: DualConfig) extends Bundle {
@@ -36,15 +48,15 @@ case class PipelineEntry(config: DualConfig) extends Bundle {
   val instructionId = UInt(config.instructionBufferBits bits)
 }
 
-// sbt 'testOnly *MicroBlossomStreamTest'
-class MicroBlossomStreamTest extends AnyFunSuite {
+// sbt 'testOnly *MicroBlossomLooperTest'
+class MicroBlossomLooperTest extends AnyFunSuite {
 
   test("logic_validity") {
     val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
     val clockDivideBy = 2
 
     Config.sim
-      .compile(MicroBlossomStream(config))
+      .compile(MicroBlossomLooper(config))
       .doSim("logic_validity") { dut =>
         dut.clockDomain.forkStimulus(period = 10)
 

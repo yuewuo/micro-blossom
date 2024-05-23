@@ -46,6 +46,7 @@ object DualHost extends App {
     // construct and compile a dual accelerator for simulation
     val config = DualConfig(graph = graph, minimizeBits = false)
     config.sanityCheck()
+    val ioConfig = DualConfig() // use internal width conversion
     val simConfig = SimConfig
       .withConfig(Config.spinal())
       .workspacePath(workspacePath)
@@ -64,14 +65,13 @@ object DualHost extends App {
 
     simConfig
       .compile({
-        val dut = DistributedDual(config)
+        val dut = DistributedDual(config, ioConfig)
         if (withWaveform) {
           dut.simMakePublicSnapshot()
         }
         dut
       })
       .doSim("hosted") { dut =>
-        val ioConfig = dut.ioConfig
         outStream.println("simulation started")
         if (withWaveform) {
           println("view waveform: `gtkwave %s/%s/hosted.fst`".format(workspacePath, host_name))

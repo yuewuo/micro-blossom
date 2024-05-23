@@ -15,7 +15,7 @@ import scala.util.control.Breaks._
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.Map
 
-case class DistributedDual(config: DualConfig, ioConfig: DualConfig = DualConfig()) extends Component {
+case class DistributedDual(config: DualConfig, ioConfig: DualConfig) extends Component {
   ioConfig.contextDepth = config.contextDepth
 
   val io = new Bundle {
@@ -295,26 +295,27 @@ class DistributedDualTest extends AnyFunSuite {
 
   test("construct a DistributedDual") {
     val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json")
+    val ioConfig = DualConfig()
     // config.contextDepth = 1024 // fit in a single Block RAM of 36 kbits in 36-bit mode
     config.contextDepth = 1 // no context switch
     config.sanityCheck()
-    Config.spinal().generateVerilog(DistributedDual(config))
+    Config.spinal().generateVerilog(DistributedDual(config, ioConfig))
   }
 
   test("test pipeline registers") {
     // gtkwave simWorkspace/DistributedDual/testA.fst
     val config = DualConfig(filename = "./resources/graphs/example_code_capacity_d3.json", minimizeBits = false)
+    val ioConfig = DualConfig()
     config.graph.offloading = Seq() // remove all offloaders
     config.fitGraph(minimizeBits = false)
     config.sanityCheck()
     Config.sim
       .compile({
-        val dut = DistributedDual(config)
+        val dut = DistributedDual(config, ioConfig)
         dut.simMakePublicSnapshot()
         dut
       })
       .doSim("testA") { dut =>
-        val ioConfig = dut.ioConfig
         dut.io.message.valid #= false
         dut.clockDomain.forkStimulus(period = 10)
 
@@ -355,17 +356,17 @@ class DistributedDualTest extends AnyFunSuite {
 object DistributedDualTestDebug1 extends App {
   // gtkwave simWorkspace/DistributedDualTest/testB.fst
   val config = DualConfig(filename = "./resources/graphs/example_code_capacity_planar_d3.json", minimizeBits = false)
+  val ioConfig = DualConfig()
   config.graph.offloading = Seq() // remove all offloaders
   config.fitGraph(minimizeBits = false)
   config.sanityCheck()
   Config.sim
     .compile({
-      val dut = DistributedDual(config)
+      val dut = DistributedDual(config, ioConfig)
       dut.simMakePublicSnapshot()
       dut
     })
     .doSim("testB") { dut =>
-      val ioConfig = dut.ioConfig
       dut.io.message.valid #= false
       dut.clockDomain.forkStimulus(period = 10)
 
@@ -425,8 +426,8 @@ object DistributedDualEstimation extends App {
     (Local.dualConfig("circuit_level_d9"), "circuit-level d=9")
   )
   for ((config, name) <- configurations) {
-    // val reports = Vivado.report(DistributedDual(config))
-    val reports = Vivado.report(DistributedDual(config), useImpl = true)
+    // val reports = Vivado.report(DistributedDual(config, config))
+    val reports = Vivado.report(DistributedDual(config, config), useImpl = true)
     println(s"$name:")
     // reports.resource.primitivesTable.print()
     reports.resource.netlistLogicTable.print()
@@ -446,7 +447,7 @@ object DistributedDualPhenomenologicalEstimation extends App {
   // d=17: 799536 LUTs (88.85%), 94875 Registers (5.27%)
   for (d <- List(3, 5, 7, 9, 11, 13, 15, 17)) {
     val config = Local.dualConfig(s"phenomenological_rotated_d$d")
-    val reports = Vivado.report(DistributedDual(config), useImpl = true)
+    val reports = Vivado.report(DistributedDual(config, config), useImpl = true)
     println(s"phenomenological d = $d:")
     reports.resource.netlistLogicTable.print()
   }
@@ -462,7 +463,7 @@ object DistributedDualCircuitLevelUnweightedEstimation extends App {
   // d=11: 609352 LUTs (67.72%), 50385 Registers (2.80%)
   for (d <- List(3, 5, 7, 9, 11)) {
     val config = Local.dualConfig(s"circuit_level_d$d", removeWeight = true)
-    val reports = Vivado.report(DistributedDual(config), useImpl = true)
+    val reports = Vivado.report(DistributedDual(config, config), useImpl = true)
     println(s"circuit-level unweighted d = $d:")
     reports.resource.netlistLogicTable.print()
   }
@@ -478,7 +479,7 @@ object DistributedDualCircuitLevelEstimation extends App {
   // d=11: 679519 LUTs (75.52%), 50907 Registers (2.83%)
   for (d <- List(3, 5, 7, 9, 11)) {
     val config = Local.dualConfig(s"circuit_level_d$d")
-    val reports = Vivado.report(DistributedDual(config), useImpl = true)
+    val reports = Vivado.report(DistributedDual(config, config), useImpl = true)
     println(s"circuit-level d = $d:")
     reports.resource.netlistLogicTable.print()
   }
@@ -499,7 +500,7 @@ object DistributedDualContextDepthEstimation extends App {
   for (contextDepth <- List(1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048)) {
     val config = Local.dualConfig(s"circuit_level_d$d")
     config.contextDepth = contextDepth
-    val reports = Vivado.report(DistributedDual(config), useImpl = true)
+    val reports = Vivado.report(DistributedDual(config, config), useImpl = true)
     println(s"contextDepth = $contextDepth:")
     reports.resource.netlistLogicTable.print()
   }
@@ -510,12 +511,12 @@ object DistributedDualExamples extends App {
   for (d <- Seq(3, 5, 7)) {
     val config =
       DualConfig(filename = "./resources/graphs/example_code_capacity_planar_d%d.json".format(d), minimizeBits = true)
-    Config.spinal("gen/example_code_capacity_planar_d%d".format(d)).generateVerilog(DistributedDual(config))
+    Config.spinal("gen/example_code_capacity_planar_d%d".format(d)).generateVerilog(DistributedDual(config, config))
   }
   for (d <- Seq(3, 5, 7)) {
     val config =
       DualConfig(filename = "./resources/graphs/example_code_capacity_rotated_d%d.json".format(d), minimizeBits = true)
-    Config.spinal("gen/example_code_capacity_rotated_d%d".format(d)).generateVerilog(DistributedDual(config))
+    Config.spinal("gen/example_code_capacity_rotated_d%d".format(d)).generateVerilog(DistributedDual(config, config))
   }
   for (d <- Seq(3, 5, 7, 9, 11)) {
     val config =
@@ -525,7 +526,7 @@ object DistributedDualExamples extends App {
       )
     config.broadcastDelay = 2
     config.convergecastDelay = 4
-    Config.spinal("gen/example_phenomenological_rotated_d%d".format(d)).generateVerilog(DistributedDual(config))
+    Config.spinal("gen/example_phenomenological_rotated_d%d".format(d)).generateVerilog(DistributedDual(config, config))
   }
 }
 
@@ -533,5 +534,5 @@ object DistributedDualExamples extends App {
 // sbt "runMain microblossom.modules.DistributedDualLargeInstance"
 object DistributedDualLargeInstance extends App {
   val config = Local.dualConfig(s"circuit_level_d13")
-  Config.spinal().generateVerilog(DistributedDual(config))
+  Config.spinal().generateVerilog(DistributedDual(config, config))
 }

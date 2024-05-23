@@ -137,10 +137,7 @@ case class MicroBlossom[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   }
 
   // instantiate distributed dual
-  val ioConfig = DualConfig()
-  ioConfig.contextDepth = dualConfig.contextDepth
-  ioConfig.weightBits = dualConfig.weightBits
-  ioConfig.vertexBits = dualConfig.vertexBits
+  val ioConfig = dualConfig
 
   val dual = new Area {
     val io = new Bundle {

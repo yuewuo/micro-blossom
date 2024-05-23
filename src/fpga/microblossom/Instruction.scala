@@ -8,7 +8,11 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
   val spec = config.instructionSpec
   setWidth(spec.numBits)
 
-  def resizedFrom(source: Instruction) = {
+  def resizedFrom(source: Instruction): Unit = {
+    if (source.config == config) {
+      this := source
+      return
+    }
     opCode := source.opCode
     switch(source.opCode.asUInt) {
       is(OpCode.SetBlossom) {
