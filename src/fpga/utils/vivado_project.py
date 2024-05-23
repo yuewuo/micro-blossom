@@ -145,8 +145,9 @@ report_utilization -file {filepath}
             )
         # run the tcl script to generate the report file
         with open(log_path, "a", encoding="utf8") as log:
+            # increase stack size: https://support.xilinx.com/s/article/64434?language=en_US
             process = subprocess.Popen(
-                ["vivado", "-mode", "batch", "-source", tcl_path],
+                ["vivado", "-stack", "2000", "-mode", "batch", "-source", tcl_path],
                 universal_newlines=True,
                 stdout=log.fileno(),
                 stderr=log.fileno(),

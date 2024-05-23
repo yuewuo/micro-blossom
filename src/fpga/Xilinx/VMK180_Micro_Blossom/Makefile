@@ -11,6 +11,15 @@ CLOCK_FREQUENCY ?= 200
 
 all: vitis
 
+re_impl:
+	@echo "warning: use this command only if you are sure the vivado design is complete"
+	@read -p "are you sure to reset the existing synth_1 and impl_1 and rerun? [y/N]: " answer; \
+	if [ "$$answer" != "y" ]; then \
+		echo "Aborting."; \
+		exit 1; \
+	fi; \
+	vivado -stack 2000 -mode batch -s reimpl_vivado.tcl
+
 $(VERILOG_DIR)/$(MODULE_NAME).v:
 	@if ! [ -f "./create_verilog.py" ]; then \
 		echo "don't know how to create the verilog"; \
@@ -40,7 +49,8 @@ $(XSA_FILE): $(VERILOG_DIR)/$(MODULE_NAME).v
 			exit 1; \
 		fi \
 	fi
-	vivado -mode batch -s create_vivado.tcl -tclargs $(CLOCK_FREQUENCY)
+# increase stack size: https://support.xilinx.com/s/article/64434?language=en_US
+	vivado -stack 2000 -mode batch -s create_vivado.tcl -tclargs $(CLOCK_FREQUENCY)
 
 vitis: $(XSA_FILE)
 	@echo creating vitis workspace at $(VITIS_DIR)
