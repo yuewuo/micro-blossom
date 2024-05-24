@@ -61,7 +61,7 @@ impl SolverTrackedDual for DualModuleScalaDriver {
         // });
     }
     fn get_pre_matchings(&self, belonging: DualModuleInterfaceWeak) -> PerfectMatching {
-        unimplemented!();
+        PerfectMatching::default()
     }
 }
 

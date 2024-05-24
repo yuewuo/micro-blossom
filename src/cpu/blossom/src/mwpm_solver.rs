@@ -18,6 +18,7 @@ use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
+use serde::*;
 use serde_json::json;
 
 pub struct SolverPrimalEmbedded {
@@ -244,6 +245,22 @@ pub trait SolverTrackedDual: DualStacklessDriver + DualTrackedDriver + FusionVis
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SolverEmbeddedBoxedConfig {
+    pub primal: Option<serde_json::Value>,
+    pub dual: Option<serde_json::Value>,
+    /// to debug the infinite loop bugs: terminate and save the waveform in the middle
+    #[serde(default = "solver_embedded_boxed_config_default::max_iterations")]
+    pub max_iterations: usize,
+}
+
+pub mod solver_embedded_boxed_config_default {
+    pub fn max_iterations() -> usize {
+        usize::MAX
+    }
+}
+
 pub struct SolverEmbeddedBoxed<Dual: SolverTrackedDual> {
     pub dual_module: Box<DualModuleStackless<DualDriverTracked<Dual, MAX_NODE_NUM>>>,
     pub primal_module: Box<PrimalModuleEmbedded<MAX_NODE_NUM>>,
@@ -253,6 +270,7 @@ pub struct SolverEmbeddedBoxed<Dual: SolverTrackedDual> {
     layer_id: usize,
     graph: MicroBlossomSingle,
     sim_config: SimulationConfig,
+    config: SolverEmbeddedBoxedConfig,
 }
 
 impl<Dual: SolverTrackedDual> FusionVisualizer for SolverEmbeddedBoxed<Dual> {
@@ -265,15 +283,14 @@ impl<Dual: SolverTrackedDual> FusionVisualizer for SolverEmbeddedBoxed<Dual> {
 }
 
 impl<Dual: SolverTrackedDual> SolverEmbeddedBoxed<Dual> {
-    pub fn new(graph: MicroBlossomSingle, mut primal_dual_config: serde_json::Value) -> Self {
+    pub fn new(graph: MicroBlossomSingle, primal_dual_config: serde_json::Value) -> Self {
         assert!(graph.vertex_num <= MAX_NODE_NUM, "potential overflow");
-        let primal_dual_config = primal_dual_config.as_object_mut().expect("config must be JSON object");
-        let dual_config = primal_dual_config.remove("dual").unwrap_or(json!({}));
+        let config: SolverEmbeddedBoxedConfig = serde_json::from_value(primal_dual_config).unwrap();
+        let dual_config = config.dual.clone().unwrap_or(json!({}));
         let sim_config: SimulationConfig = dual_config
             .get("sim_config")
             .map(|sim_config| serde_json::from_value(sim_config.clone()).unwrap())
             .unwrap_or_default();
-        assert!(primal_dual_config.is_empty(), "unknown remaining: {:?}", primal_dual_config);
         let initializer = graph.get_initializer();
         let dual_module = stacker::grow(MAX_NODE_NUM * 256, || {
             Box::new(DualModuleStackless::new(DualDriverTracked::new(Dual::new_from_graph_config(
@@ -303,6 +320,7 @@ impl<Dual: SolverTrackedDual> SolverEmbeddedBoxed<Dual> {
             layer_id: 0,
             graph,
             sim_config,
+            config,
         }
     }
 }
@@ -327,21 +345,26 @@ impl<Dual: SolverTrackedDual> PrimalDualSolver for SolverEmbeddedBoxed<Dual> {
             self.defect_nodes.push(defect_index);
         }
         if let Some(visualizer) = visualizer.as_mut() {
-            visualizer.snapshot_combined("syndrome".to_string(), vec![self]).unwrap();
+            visualizer.snapshot("syndrome".to_string(), self).unwrap();
         }
+        let mut iteration = 0;
         loop {
             let (mut obstacle, _) = self.dual_module.find_obstacle();
-            while !obstacle.is_none() {
+            while !obstacle.is_none() && iteration < self.config.max_iterations {
+                iteration += 1;
                 // println!("obstacle: {obstacle:?}");
                 debug_assert!(
                     obstacle.is_obstacle(),
                     "dual module should spontaneously process all finite growth"
                 );
                 if let Some(visualizer) = visualizer.as_mut() {
-                    visualizer.snapshot_combined(format!("{obstacle:?}"), vec![self]).unwrap();
+                    visualizer.snapshot(format!("{obstacle:?}"), self).unwrap();
                 }
                 self.primal_module.resolve(self.dual_module.as_mut(), obstacle);
                 (obstacle, _) = self.dual_module.find_obstacle();
+            }
+            if iteration >= self.config.max_iterations {
+                break;
             }
             // if there are pending fusion layers, execute them
             if self.sim_config.support_layer_fusion {
@@ -353,9 +376,7 @@ impl<Dual: SolverTrackedDual> PrimalDualSolver for SolverEmbeddedBoxed<Dual> {
                         CompactLayerId::new(self.layer_id as CompactLayerNum).unwrap(),
                     );
                     if let Some(visualizer) = visualizer.as_mut() {
-                        visualizer
-                            .snapshot_combined(format!("fusion {}", self.layer_id), vec![self])
-                            .unwrap();
+                        visualizer.snapshot(format!("fusion {}", self.layer_id), self).unwrap();
                     }
                     self.layer_id += 1;
                     continue;
@@ -428,125 +449,6 @@ impl<Dual: SolverTrackedDual> PrimalDualSolver for SolverEmbeddedBoxed<Dual> {
 
 pub type SolverEmbeddedComb = SolverEmbeddedBoxed<DualModuleCombDriver>;
 pub type SolverEmbeddedScala = SolverEmbeddedBoxed<DualModuleScalaDriver>;
-
-// pub struct SolverEmbeddedScala {
-//     pub dual_module: DualModuleScala,
-//     pub primal_module: Box<PrimalModuleEmbedded<MAX_NODE_NUM>>,
-//     subgraph_builder: SubGraphBuilder,
-//     defect_nodes: Vec<VertexIndex>,
-//     pub max_iterations: usize, // to debug the infinite loop cases: save a waveform in the middle
-// }
-
-// bind_fusion_visualizer!(SolverEmbeddedScala, 1);
-
-// impl SolverEmbeddedScala {
-//     pub fn new(initializer: &SolverInitializer) -> Self {
-//         Self {
-//             dual_module: DualModuleScala::new_with_initializer(initializer),
-//             primal_module: PrimalModuleEmbedded::new(),
-//             subgraph_builder: SubGraphBuilder::new(initializer),
-//             defect_nodes: vec![],
-//             max_iterations: usize::MAX,
-//         }
-//     }
-
-//     pub fn new_with_name(initializer: &SolverInitializer, host_name: String) -> Self {
-//         Self {
-//             dual_module: DualModuleStackless::new(DualDriverTracked::new(
-//                 DualModuleScalaDriver::new_with_name(initializer, host_name).unwrap(),
-//             )),
-//             primal_module: PrimalModuleEmbedded::new(),
-//             subgraph_builder: SubGraphBuilder::new(initializer),
-//             defect_nodes: vec![],
-//             max_iterations: usize::MAX,
-//         }
-//     }
-
-//     pub fn with_max_iterations(mut self, max_iterations: usize) -> Self {
-//         self.max_iterations = max_iterations;
-//         self
-//     }
-// }
-
-// impl PrimalDualSolver for SolverEmbeddedScala {
-//     fn clear(&mut self) {
-//         self.primal_module.reset();
-//         self.dual_module.reset();
-//         self.subgraph_builder.clear();
-//         self.defect_nodes.clear();
-//     }
-//     fn solve_visualizer(&mut self, syndrome_pattern: &SyndromePattern, mut visualizer: Option<&mut Visualizer>) {
-//         assert!(syndrome_pattern.erasures.is_empty());
-//         assert!(syndrome_pattern.dynamic_weights.is_empty());
-//         assert!(self.defect_nodes.is_empty(), "must call `clear` between different runs");
-//         for (node_index, &defect_index) in syndrome_pattern.defect_vertices.iter().enumerate() {
-//             self.dual_module.add_defect(ni!(defect_index), ni!(node_index));
-//             self.defect_nodes.push(defect_index);
-//         }
-//         if let Some(visualizer) = visualizer.as_mut() {
-//             visualizer.snapshot_combined("syndrome".to_string(), vec![self]).unwrap();
-//         }
-//         let (mut obstacle, _) = self.dual_module.find_obstacle();
-//         let mut iteration = 0;
-//         while !obstacle.is_none() && iteration < self.max_iterations {
-//             iteration += 1;
-//             // println!("obstacle: {obstacle:?}");
-//             debug_assert!(
-//                 obstacle.is_obstacle(),
-//                 "dual module should spontaneously process all finite growth"
-//             );
-//             if let Some(visualizer) = visualizer.as_mut() {
-//                 visualizer.snapshot_combined(format!("{obstacle:?}"), vec![self]).unwrap();
-//             }
-//             self.primal_module.resolve(&mut self.dual_module, obstacle);
-//             (obstacle, _) = self.dual_module.find_obstacle();
-//         }
-//         if let Some(visualizer) = visualizer.as_mut() {
-//             visualizer.snapshot_combined("solved".to_string(), vec![self]).unwrap();
-//         }
-//         let perfect_matching = self.perfect_matching();
-//         self.subgraph_builder.load_perfect_matching(&perfect_matching);
-//     }
-//     fn perfect_matching_visualizer(&mut self, visualizer: Option<&mut Visualizer>) -> PerfectMatching {
-//         // this perfect matching is not necessarily complete when some of the matchings are inside the dual module
-//         let (perfect_matching, _) = perfect_matching_from_embedded_primal(&mut self.primal_module, &self.defect_nodes);
-//         if let Some(visualizer) = visualizer {
-//             visualizer
-//                 .snapshot_combined("perfect matching".to_string(), vec![self, &perfect_matching])
-//                 .unwrap();
-//         }
-//         perfect_matching
-//     }
-//     fn subgraph_visualizer(&mut self, visualizer: Option<&mut Visualizer>) -> Vec<EdgeIndex> {
-//         let perfect_matching = self.perfect_matching();
-//         self.subgraph_builder.load_perfect_matching(&perfect_matching);
-//         let subgraph = self.subgraph_builder.get_subgraph();
-//         if let Some(visualizer) = visualizer {
-//             visualizer
-//                 .snapshot_combined(
-//                     "perfect matching and subgraph".to_string(),
-//                     vec![
-//                         &self.dual_module.driver.driver,
-//                         &DualNodesOf::new(&self.primal_module),
-//                         &perfect_matching,
-//                         &VisualizeSubgraph::new(&subgraph),
-//                     ],
-//                 )
-//                 .unwrap();
-//         }
-//         subgraph
-//     }
-//     fn sum_dual_variables(&self) -> Weight {
-//         // cannot adapt: neither the primal nor dual node know all the information
-//         self.subgraph_builder.total_weight()
-//     }
-//     fn generate_profiler_report(&self) -> serde_json::Value {
-//         json!({
-//             // "dual": self.dual_module.generate_profiler_report(),
-//             // "primal": self.primal_module.generate_profiler_report(),
-//         })
-//     }
-// }
 
 // pub struct SolverEmbeddedAxi4 {
 //     pub dual_module: DualModuleAxi4,
