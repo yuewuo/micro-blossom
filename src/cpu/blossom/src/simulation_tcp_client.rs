@@ -236,7 +236,7 @@ pub mod simulation_config_default {
         env_usize("BROADCAST_DELAY", 0)
     }
     pub fn convergecast_delay() -> usize {
-        env_usize("CONVERGECAST_DELAY", 0)
+        env_usize("CONVERGECAST_DELAY", 1)
     }
     pub fn conflict_channels() -> usize {
         env_usize("CONFLICT_CHANNELS", 1)

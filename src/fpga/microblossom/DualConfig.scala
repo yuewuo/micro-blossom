@@ -14,7 +14,7 @@ case class DualConfig(
     var vertexBits: Int = 15,
     var weightBits: Int = 26,
     var broadcastDelay: Int = 0,
-    var convergecastDelay: Int = 0,
+    var convergecastDelay: Int = 1, // the write or register update takes 1 clock cycle, so delay the output by 1
     var instructionBufferDepth: Int = 4, // buffer write instructions for higher throughput, must be a power of 2
     var contextDepth: Int = 1, // how many different contexts are supported
     var conflictChannels: Int = 1, // how many conflicts are collected at once in parallel
