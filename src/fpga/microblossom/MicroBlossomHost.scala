@@ -1,7 +1,7 @@
 package microblossom
 
 /*
- * # Micro Blossom Host with AXI4 emulation
+ * # Micro Blossom Host with AXI4 simulation
  *
  * Similar to DualHost, it communicates with a parent process through TCP and provides read/write
  * to the underlying AXI4 interface.

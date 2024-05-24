@@ -5,11 +5,13 @@ pub mod dual_module_comb;
 pub mod dual_module_comb_edge;
 pub mod dual_module_comb_offloading;
 pub mod dual_module_comb_vertex;
+// pub mod dual_module_looper;
 pub mod dual_module_rtl;
 pub mod dual_module_scala;
 pub mod mwpm_solver;
 pub mod primal_module_embedded_adaptor;
 pub mod resources;
+pub mod simulation_tcp_host;
 pub mod transform_syndromes;
 pub mod util;
 

@@ -613,7 +613,7 @@ impl PrimalDualSolver for SolverDualComb {
                 (obstacle, _) = self.dual_module.find_obstacle();
             }
             // if there are pending fusion layers, execute them
-            if self.dual_module.driver.driver.dual_config.support_layer_fusion {
+            if self.dual_module.driver.driver.sim_config.support_layer_fusion {
                 let num_layers = self.dual_module.driver.driver.graph.layer_fusion.as_ref().unwrap().num_layers;
                 if self.layer_id < num_layers {
                     self.dual_module.driver.driver.fuse_layer(self.layer_id);

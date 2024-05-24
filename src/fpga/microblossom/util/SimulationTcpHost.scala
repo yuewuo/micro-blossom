@@ -30,7 +30,7 @@ import spinal.core.sim._
 import spinal.lib.bus.misc._
 import scala.collection.mutable.ArrayBuffer
 
-class EmulationTcpHost(val emulationName: String, val cleanFileOnDisconnect: Boolean = false) extends App {
+class SimulationTcpHost(val simulationName: String, val cleanFileOnDisconnect: Boolean = false) extends App {
 
   if (args.length != 3) {
     println("usage: <address> <port> <name>")
@@ -40,11 +40,17 @@ class EmulationTcpHost(val emulationName: String, val cleanFileOnDisconnect: Boo
   val port = Integer.parseInt(args(1))
   val name = args(2)
   val socket = new Socket(hostname, port)
-  val workspacePath = s"./simWorkspace/${emulationName}"
+  val workspacePath = s"./simWorkspace/${simulationName}"
+  val outStream = new PrintWriter(socket.getOutputStream, true)
+  val inStream = new BufferedReader(new InputStreamReader(socket.getInputStream))
 
+  // must call this function after the simulator is compiled
+  def simulationStarted() = {
+    outStream.println("simulation started")
+  }
 }
 
-case class EmulationConfig(
+case class SimulationConfig(
     var graph: SingleGraph,
     var withWaveform: Boolean,
     var dumpDebuggerFiles: Boolean,
@@ -92,8 +98,8 @@ case class EmulationConfig(
   }
 }
 
-object EmulationConfig {
-  def readFromStream(inStream: BufferedReader): EmulationConfig = {
+object SimulationConfig {
+  def readFromStream(inStream: BufferedReader): SimulationConfig = {
     var response = inStream.readLine()
     val graph = decode[SingleGraph](response) match {
       case Right(graph) => graph
@@ -128,7 +134,7 @@ object EmulationConfig {
       case Left(ex)     => throw ex
     }
     val clockDivideBy = readNamedValue("clock_divide_by").toInt
-    EmulationConfig(
+    SimulationConfig(
       graph,
       withWaveform,
       dumpDebuggerFiles,

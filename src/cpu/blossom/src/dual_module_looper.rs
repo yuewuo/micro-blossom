@@ -1,12 +1,12 @@
-//! Dual Module implemented in Scala (SpinalHDL) with AXI4 interface and simulated via verilator
+//! Dual Module implemented in Scala (SpinalHDL) with Stream interface and simulated via verilator
 //!
 //! This dual module will spawn a Scala program that compiles and runs a given decoding graph.
-//! It simulates the complete MicroBlossom module, which provides a AXI4 memory-mapped interface.
+//! It simulates the complete MicroBlossomLooper module, which provides a stream interface.
+//! (A wrapper around the DistributedDual module)
 //!
 
 use crate::dual_module_adaptor::*;
 use crate::resources::*;
-use crate::simulation_tcp_host::*;
 use crate::util::*;
 use derivative::Derivative;
 use embedded_blossom::extern_c::*;
@@ -29,13 +29,15 @@ use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use wait_timeout::ChildExt;
 
+pub const MAX_CONFLICT_CHANNELS: usize = 62;
+
 pub struct DualModuleAxi4Driver {
     pub link: Mutex<Link>,
     pub name: String,
     pub context_id: u16,
     pub maximum_growth: Vec<u16>,
     pub simulation_duration: Duration,
-    pub sim_config: SimulationConfig,
+    pub dual_config: DualConfig,
     pub conflicts_store: ConflictsStore<MAX_CONFLICT_CHANNELS>,
 }
 
@@ -58,7 +60,7 @@ impl DualModuleAxi4Driver {
     pub fn new_with_name_raw(
         micro_blossom: MicroBlossomSingle,
         name: String,
-        sim_config: SimulationConfig,
+        dual_config: DualConfig,
     ) -> std::io::Result<Self> {
         let hostname = "127.0.0.1";
         let listener = TcpListener::bind(format!("{hostname}:0"))?;
@@ -77,20 +79,20 @@ impl DualModuleAxi4Driver {
         assert_eq!(line, "MicroBlossomHost v0.0.1, ask for decoding graph\n", "handshake error");
         write!(writer, "{}\n", serde_json::to_string(&micro_blossom).unwrap())?;
         let simulation_lock = SCALA_SIMULATION_LOCK.lock();
-        sim_config.write_to(&mut writer)?;
+        dual_config.write_to(&mut writer)?;
         line.clear();
         reader.read_line(&mut line)?;
         assert_eq!(line, "simulation started\n");
         drop(simulation_lock);
-        assert!(sim_config.conflict_channels <= MAX_CONFLICT_CHANNELS);
-        let conflict_channels = sim_config.conflict_channels;
+        assert!(dual_config.conflict_channels <= MAX_CONFLICT_CHANNELS);
+        let conflict_channels = dual_config.conflict_channels;
         let mut conflicts_store = ConflictsStore::new();
         conflicts_store.reconfigure(conflict_channels as u8);
         let mut value = Self {
             name,
             context_id: 0,
-            maximum_growth: vec![0; sim_config.context_depth],
-            sim_config,
+            maximum_growth: vec![0; dual_config.context_depth],
+            dual_config,
             simulation_duration: Duration::ZERO,
             link: Mutex::new(Link {
                 port,
@@ -165,7 +167,7 @@ impl DualModuleAxi4Driver {
     }
 
     pub fn execute_instruction(&mut self, instruction: Instruction32, context_id: u16) -> std::io::Result<()> {
-        if self.sim_config.use_64_bus {
+        if self.dual_config.use_64_bus {
             let data = (instruction.0 as u64) | ((context_id as u64) << 32);
             self.memory_write_64(4096, data)
         } else {
@@ -279,7 +281,7 @@ impl DualTrackedDriver for DualModuleAxi4Driver {
 impl FusionVisualizer for DualModuleAxi4Driver {
     #[allow(clippy::unnecessary_cast)]
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
-        assert_eq!(self.sim_config.context_depth, 1, "context snapshot is not yet supported");
+        assert_eq!(self.dual_config.context_depth, 1, "context snapshot is not yet supported");
         write!(self.link.lock().unwrap().writer, "snapshot({abbrev})\n").unwrap();
         let mut line = String::new();
         self.link.lock().unwrap().reader.read_line(&mut line).unwrap();
@@ -307,9 +309,9 @@ impl Drop for DualModuleAxi4Driver {
         } else {
             println!("Scala process quit normally");
         }
-        if self.sim_config.with_waveform || self.sim_config.dump_debugger_files {
+        if self.dual_config.with_waveform || self.dual_config.dump_debugger_files {
             // only delete binary but keep original waveforms and debugger files
-            if !env_is_set("KEEP_RTL_FOLDER") {
+            if !dual_config_default::is_set("KEEP_RTL_FOLDER") {
                 match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/rtl", self.name)) {
                     Err(e) => println!("Could not remove rtl folder: {}", e),
                     Ok(_) => println!("Successfully remove rtl folder"),

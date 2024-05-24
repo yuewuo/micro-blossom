@@ -1,5 +1,6 @@
 use konst::{option, primitive::parse_usize, result::unwrap_ctx};
 use lazy_static::lazy_static;
+use std::env;
 use std::process::{Child, Command};
 use std::sync::Mutex;
 
@@ -69,6 +70,31 @@ lazy_static! {
     // the temporarily compiled results are not in workspacePath but rather "tmp" relative path
     // this causes conflicts if running multiple simulations in parallel
     pub static ref SCALA_SIMULATION_LOCK: Mutex<()> = Mutex::new(());
+}
+
+pub fn env_is_set(name: &str) -> bool {
+    match env::var(name) {
+        Ok(value) => value != "",
+        Err(_) => false,
+    }
+}
+
+pub fn env_bool(name: &str, false_name: &str, default_value: bool) -> bool {
+    if env_is_set(name) {
+        assert!(!env_is_set(false_name), "bool environment variable conflicts");
+        true
+    } else if env_is_set(false_name) {
+        false
+    } else {
+        default_value
+    }
+}
+
+pub fn env_usize(name: &str, default: usize) -> usize {
+    match env::var(name) {
+        Ok(value) => value.parse().unwrap(),
+        Err(_) => default,
+    }
 }
 
 #[cfg(test)]

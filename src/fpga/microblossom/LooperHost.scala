@@ -16,14 +16,12 @@ import scala.util.control.Breaks._
 import modules._
 
 // sbt "runMain microblossom.LooperHost localhost 4123 test"
-object LooperHost extends EmulationTcpHost("LooperHost") {
+object LooperHost extends SimulationTcpHost("LooperHost") {
   try {
-    val outStream = new PrintWriter(socket.getOutputStream, true)
-    val inStream = new BufferedReader(new InputStreamReader(socket.getInputStream))
 
     // initial handshake and obtain a decoding graph
-    outStream.println(s"${emulationName} v0.0.1, ask for decoding graph")
-    val emuConfig = EmulationConfig.readFromStream(inStream)
+    outStream.println(s"${simulationName} v0.0.1, ask for decoding graph")
+    val emuConfig = SimulationConfig.readFromStream(inStream)
     val config = emuConfig.dualConfig
     val simConfig = emuConfig.simConfig(workspacePath, name)
 
@@ -36,7 +34,7 @@ object LooperHost extends EmulationTcpHost("LooperHost") {
         dut
       })
       .doSim("hosted") { dut =>
-        outStream.println("simulation started")
+        simulationStarted()
 
         var cycleCounter = 0L
         dut.clockDomain.onActiveEdges { cycleCounter += 1 }

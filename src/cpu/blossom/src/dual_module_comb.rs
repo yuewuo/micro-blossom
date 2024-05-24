@@ -8,11 +8,11 @@
 //!
 
 use crate::dual_module_adaptor::*;
-use crate::dual_module_axi4::DualConfig;
 use crate::dual_module_comb_edge::*;
 use crate::dual_module_comb_offloading::*;
 use crate::dual_module_comb_vertex::*;
 use crate::resources::*;
+use crate::simulation_tcp_host::SimulationConfig;
 use crate::util::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
@@ -33,7 +33,7 @@ pub struct DualModuleCombDriver {
     /// the current instruction for computing the combinatorial logic
     pub(crate) instruction: Instruction,
     pub config: DualCombConfig,
-    pub dual_config: DualConfig,
+    pub sim_config: SimulationConfig,
     pub graph: MicroBlossomSingle,
     /// only enabled when `config.log_instructions` is true
     pub profiler_instruction_history: Vec<Instruction>,
@@ -77,7 +77,7 @@ impl DualModuleCombDriver {
             }
         }
         let initializer = graph.get_initializer();
-        let dual_config: DualConfig = Default::default();
+        let sim_config: SimulationConfig = Default::default();
         let mut comb_driver = Self {
             initializer: initializer.clone(),
             vertices: all_incident_edges
@@ -99,11 +99,11 @@ impl DualModuleCombDriver {
             instruction: Instruction::FindObstacle,
             graph: graph.clone(),
             config: comb_config,
-            dual_config: dual_config.clone(),
+            sim_config: sim_config.clone(),
             profiler_instruction_history: vec![],
         };
         let mut offloading_vec = graph.offloading.0.clone();
-        if dual_config.support_layer_fusion {
+        if sim_config.support_layer_fusion {
             let layer_fusion = graph.layer_fusion.as_ref().unwrap();
             for (edge_index, conditioned_vertex) in layer_fusion.fusion_edges.iter() {
                 offloading_vec.push(OffloadingType::FusionMatch {
@@ -116,7 +116,7 @@ impl DualModuleCombDriver {
                 comb_driver.vertices[*vertex_index].layer_id = Some(*layer_id);
             }
         }
-        if dual_config.support_offloading {
+        if sim_config.support_offloading {
             comb_driver.set_offloading_units(&initializer, offloading_vec);
         }
         comb_driver.clear();
