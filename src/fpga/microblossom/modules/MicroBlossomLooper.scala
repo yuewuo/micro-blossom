@@ -171,12 +171,15 @@ class MicroBlossomLooperTest extends AnyFunSuite {
           dut.clockDomain.forkStimulus(period = 10)
           dut.io.pop.ready #= true
           dut.io.push.valid #= false
+          if (config.contextBits > 0) { dut.io.push.payload.contextId #= 0 }
 
           for (idx <- 0 to 5) { dut.clockDomain.waitSampling() }
 
           dut.io.push.valid #= true
+          if (config.contextBits > 0) { dut.io.push.payload.contextId #= config.contextDepth - 1 }
           dut.clockDomain.waitSampling()
           dut.io.push.valid #= false
+          if (config.contextBits > 0) { dut.io.push.payload.contextId #= 0 }
 
           for (idx <- 0 to 10) { dut.clockDomain.waitSampling() }
 
