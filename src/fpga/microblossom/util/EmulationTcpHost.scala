@@ -31,9 +31,10 @@ import scala.collection.mutable.ArrayBuffer
 
 class EmulationTcpHost(val emulationName: String, val cleanFileOnDisconnect: Boolean = false) extends App {
 
+  var inStream: BufferedReader = null
   var outStream: PrintWriter = null
   var emuConfig: EmulationConfig = null
-  var inStream: BufferedReader = null
+  var config: DualConfig = null
   abstract override def funcBody() = {}
 
   if (args.length != 3) {
@@ -54,7 +55,7 @@ class EmulationTcpHost(val emulationName: String, val cleanFileOnDisconnect: Boo
     emuConfig = EmulationConfig.readFromStream(inStream)
 
     // construct and compile a MicroBlossom module for simulation
-    val config = DualConfig(
+    config = DualConfig(
       graph = emuConfig.graph,
       contextDepth = emuConfig.contextDepth,
       broadcastDelay = emuConfig.broadcastDelay,
@@ -67,7 +68,7 @@ class EmulationTcpHost(val emulationName: String, val cleanFileOnDisconnect: Boo
     )
     config.sanityCheck()
 
-    // func(emuConfig)
+    funcBody()
 
   } catch {
     case e: Exception => e.printStackTrace()
