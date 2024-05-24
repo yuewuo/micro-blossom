@@ -777,9 +777,10 @@ impl SolverDualAxi4 {
     }
 
     pub fn new_with_name(initializer: &SolverInitializer, host_name: String) -> Self {
+        let micro_blossom = MicroBlossomSingle::new_initializer_only(initializer);
         Self {
             dual_module: DualModuleStackless::new(DualDriverTracked::new(
-                DualModuleAxi4Driver::new_with_name(initializer, host_name).unwrap(),
+                DualModuleAxi4Driver::new(micro_blossom, host_name, Default::default()).unwrap(),
             )),
             primal_module: PrimalModuleEmbedded::new(),
             subgraph_builder: SubGraphBuilder::new(initializer),

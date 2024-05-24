@@ -66,10 +66,8 @@ impl EmbeddedSimulator {
         {
             let mut driver = SIMULATOR_DRIVER.lock();
             assert!(driver.is_none(), "EmbeddedSimulator::run should not be executed twice");
-            let _ = driver.insert(
-                DualModuleAxi4Driver::new_with_name_raw(micro_blossom, RUST_MAIN_NAME.to_string(), Default::default())
-                    .unwrap(),
-            );
+            let _ = driver
+                .insert(DualModuleAxi4Driver::new(micro_blossom, RUST_MAIN_NAME.to_string(), Default::default()).unwrap());
         }
         // get_native_time();
         rust_main_raw();
@@ -117,7 +115,7 @@ extern "C" fn get_native_time() -> u64 {
     let driver = locked.as_mut().unwrap();
     let nanos = driver.memory_read_64(0).unwrap() as f64 / *MICRO_BLOSSOM_FREQUENCY * 1e9;
     if *CONSIDER_CPU_TIME {
-        nanos.round() as u64 + ((BEGIN_TIME.elapsed().as_nanos() - driver.simulation_duration.as_nanos()) as u64)
+        nanos.round() as u64 + ((BEGIN_TIME.elapsed().as_nanos() - driver.client.link_wall_time().as_nanos()) as u64)
     } else {
         nanos.round() as u64
     }

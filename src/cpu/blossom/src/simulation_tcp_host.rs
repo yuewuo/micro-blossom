@@ -1,24 +1,14 @@
-use crate::dual_module_adaptor::*;
 use crate::resources::*;
 use crate::util::*;
 use derivative::Derivative;
-use embedded_blossom::extern_c::*;
-use embedded_blossom::util::*;
-use fusion_blossom::util::*;
-use fusion_blossom::visualize::*;
-use micro_blossom_nostd::dual_driver_tracked::*;
-use micro_blossom_nostd::dual_module_stackless::*;
-use micro_blossom_nostd::instruction::*;
-use micro_blossom_nostd::interface::*;
-use micro_blossom_nostd::util::*;
-use rand::{distributions::Alphanumeric, Rng};
-use scan_fmt::*;
 use serde::Serialize;
-use std::env;
 use std::io::prelude::*;
 use std::io::{BufReader, LineWriter};
 use std::net::{TcpListener, TcpStream};
 use std::process::Child;
+use std::sync::Mutex;
+use std::time::{Duration, Instant};
+use wait_timeout::ChildExt;
 
 pub const MAX_CONFLICT_CHANNELS: usize = 15;
 
@@ -55,12 +45,13 @@ pub struct SimulationConfig {
     pub clock_divide_by: usize,
 }
 
-pub struct SimulationTcpClient<const SIMULATION_NAME: &'static str> {
-    pub link: Mutex<Link>,
+pub struct SimulationTcpClient {
+    /// Scala class name, e.g. `DualHost`, `LooperHost`, `MicroBlossomHost`
+    pub simulation_name: String,
+    /// arbitrary name, used to distinguish between different simulations
     pub name: String,
-    pub context_id: u16,
-    pub maximum_growth: Vec<u16>,
-    pub simulation_duration: Duration,
+    link: Mutex<Link>,
+    pub compile_wall_time: Duration,
     pub sim_config: SimulationConfig,
 }
 
@@ -69,21 +60,25 @@ pub struct Link {
     pub child: Child,
     pub reader: BufReader<TcpStream>,
     pub writer: LineWriter<TcpStream>,
+    pub wall_time: Duration,
 }
 
-impl<const SIMULATION_NAME: &'static str> SimulationTcpClient<SIMULATION_NAME> {
-    pub fn new_with_name_raw(
+impl SimulationTcpClient {
+    pub fn new(
+        simulation_name: &str,
         micro_blossom: MicroBlossomSingle,
         name: String,
         sim_config: SimulationConfig,
     ) -> std::io::Result<Self> {
+        assert!(sim_config.conflict_channels <= MAX_CONFLICT_CHANNELS);
+
         let hostname = "127.0.0.1";
         let listener = TcpListener::bind(format!("{hostname}:0"))?;
         let port = listener.local_addr()?.port();
         // start the scala simulator host
         println!("Starting Scala simulator host... this may take a while (listening on {hostname}:{port})");
         let child = SCALA_MICRO_BLOSSOM_RUNNER.run(
-            format!("microblossom.{SimulationName}"),
+            format!("microblossom.{simulation_name}").as_str(),
             [format!("{hostname}"), format!("{port}"), format!("{name}")],
         )?;
         let (socket, _addr) = listener.accept()?;
@@ -93,149 +88,96 @@ impl<const SIMULATION_NAME: &'static str> SimulationTcpClient<SIMULATION_NAME> {
         reader.read_line(&mut line)?;
         assert_eq!(
             line,
-            format!("{SimulationName} v0.0.1, ask for decoding graph\n"),
+            format!("{simulation_name} v0.0.1, ask for decoding graph\n"),
             "handshake error"
         );
         write!(writer, "{}\n", serde_json::to_string(&micro_blossom).unwrap())?;
-        let simulation_lock = SCALA_SIMULATION_LOCK.lock();
-        sim_config.write_to(&mut writer)?;
-        line.clear();
-        reader.read_line(&mut line)?;
-        assert_eq!(line, "simulation started\n");
-        drop(simulation_lock);
-        assert!(sim_config.conflict_channels <= MAX_CONFLICT_CHANNELS);
-        let conflict_channels = sim_config.conflict_channels;
-        let mut conflicts_store = ConflictsStore::new();
-        conflicts_store.reconfigure(conflict_channels as u8);
-        let mut value = Self {
+        let compile_wall_time = {
+            let simulation_lock = SCALA_SIMULATION_LOCK.lock();
+            let compile_begin = Instant::now();
+            sim_config.write_to(&mut writer)?;
+            line.clear();
+            reader.read_line(&mut line)?;
+            assert_eq!(line, "simulation started\n");
+            drop(simulation_lock);
+            compile_begin.elapsed()
+        };
+        Ok(Self {
+            simulation_name: simulation_name.to_string(),
             name,
-            context_id: 0,
-            maximum_growth: vec![0; sim_config.context_depth],
             sim_config,
-            simulation_duration: Duration::ZERO,
+            compile_wall_time,
             link: Mutex::new(Link {
                 port,
                 child,
                 reader,
                 writer,
+                wall_time: Duration::ZERO,
             }),
-        };
-        value.reset();
-        Ok(value)
-    }
-
-    pub fn new_with_name(initializer: &SolverInitializer, name: String) -> std::io::Result<Self> {
-        // in simulation, positions doesn't matter because it's not going to affect the timing constraint
-        Self::new_with_name_raw(
-            MicroBlossomSingle::new_initializer_only(initializer),
-            name,
-            Default::default(),
-        )
-    }
-
-    pub fn new(initializer: &SolverInitializer) -> std::io::Result<Self> {
-        let name = rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(16)
-            .map(char::from)
-            .collect();
-        Self::new_with_name(initializer, name)
-    }
-
-    fn memory_write(&mut self, num_bytes: usize, address: usize, data: usize) -> std::io::Result<()> {
-        let begin = Instant::now();
-        write!(self.link.lock().unwrap().writer, "write({num_bytes}, {address}, {data})\n")?;
-        self.simulation_duration += begin.elapsed();
-        Ok(())
-    }
-    pub fn memory_write_64(&mut self, address: usize, data: u64) -> std::io::Result<()> {
-        self.memory_write(8, address, data as usize)
-    }
-    pub fn memory_write_32(&mut self, address: usize, data: u32) -> std::io::Result<()> {
-        self.memory_write(4, address, data as usize)
-    }
-    pub fn memory_write_16(&mut self, address: usize, data: u16) -> std::io::Result<()> {
-        self.memory_write(2, address, data as usize)
-    }
-    pub fn memory_write_8(&mut self, address: usize, data: u8) -> std::io::Result<()> {
-        self.memory_write(1, address, data as usize)
-    }
-
-    fn memory_read(&mut self, num_bytes: usize, address: usize) -> std::io::Result<usize> {
-        let begin = Instant::now();
-        let mut link = self.link.lock().unwrap();
-        write!(link.writer, "read({num_bytes}, {address})\n")?;
-        let mut line = String::new();
-        link.reader.read_line(&mut line)?;
-        let value = scan_fmt!(&line, "{d}", usize).unwrap();
-        self.simulation_duration += begin.elapsed();
-        Ok(value)
-    }
-    pub fn memory_read_64(&mut self, address: usize) -> std::io::Result<u64> {
-        self.memory_read(8, address).map(|v| v as u64)
-    }
-    pub fn memory_read_32(&mut self, address: usize) -> std::io::Result<u32> {
-        self.memory_read(4, address).map(|v| v as u32)
-    }
-    pub fn memory_read_16(&mut self, address: usize) -> std::io::Result<u16> {
-        self.memory_read(2, address).map(|v| v as u16)
-    }
-    pub fn memory_read_8(&mut self, address: usize) -> std::io::Result<u8> {
-        self.memory_read(1, address).map(|v| v as u8)
-    }
-
-    pub fn execute_instruction(&mut self, instruction: Instruction32, context_id: u16) -> std::io::Result<()> {
-        if self.sim_config.use_64_bus {
-            let data = (instruction.0 as u64) | ((context_id as u64) << 32);
-            self.memory_write_64(4096, data)
-        } else {
-            self.memory_write_32(64 * 1024 + 4 * context_id as usize, instruction.0)
-        }
-    }
-
-    pub fn get_hardware_info(&mut self) -> std::io::Result<MicroBlossomHardwareInfo> {
-        let raw_1 = self.memory_read_64(8)?;
-        let raw_2 = self.memory_read_32(16)?;
-        Ok(MicroBlossomHardwareInfo {
-            version: raw_1 as u32,
-            context_depth: (raw_1 >> 32) as u32,
-            conflict_channels: raw_2 as u8,
-            vertex_bits: (raw_2 >> 8) as u8,
-            weight_bits: (raw_2 >> 16) as u8,
-            grown_bits: (raw_2 >> 24) as u8,
         })
     }
 
-    pub const READOUT_BASE: usize = 4 * 1024 * 1024;
-
-    pub fn get_conflicts(&mut self, context_id: u16) -> std::io::Result<()> {
-        let base = Self::READOUT_BASE + 1024 * context_id as usize;
-        self.execute_instruction(Instruction32::find_obstacle(), context_id)?;
-        let raw_head = self.memory_read_64(base)?;
-        self.conflicts_store.head.maximum_growth = raw_head as u16;
-        self.conflicts_store.head.accumulated_grown = (raw_head >> 16) as u16;
-        self.conflicts_store.head.growable = (raw_head >> 32) as u16;
-        if self.conflicts_store.head.growable == 0 {
-            for i in 0..self.conflicts_store.channels as usize {
-                let conflict_base = base + 32 + i * 16;
-                let raw_1 = self.memory_read_64(conflict_base)?;
-                let raw_2 = self.memory_read_64(conflict_base + 8)?;
-                let conflict = self.conflicts_store.maybe_uninit_conflict(i);
-                conflict.node_1 = raw_1 as u16;
-                conflict.node_2 = (raw_1 >> 16) as u16;
-                conflict.touch_1 = (raw_1 >> 32) as u16;
-                conflict.touch_2 = (raw_1 >> 48) as u16;
-                conflict.vertex_1 = raw_2 as u16;
-                conflict.vertex_2 = (raw_2 >> 16) as u16;
-                conflict.valid = (raw_2 >> 32) as u8;
-            }
-        }
+    pub fn write_line(&self, message: String) -> std::io::Result<()> {
+        let mut link = self.link.lock().unwrap();
+        let begin = Instant::now();
+        writeln!(link.writer, "{}", message)?;
+        link.wall_time += begin.elapsed();
         Ok(())
     }
 
-    pub fn set_maximum_growth(&mut self, maximum_growth: u16, context_id: u16) -> std::io::Result<()> {
-        let base = Self::READOUT_BASE + 1024 * context_id as usize;
-        self.memory_write_16(base, maximum_growth)
+    pub fn read_line(&self, message: String) -> std::io::Result<String> {
+        let mut link = self.link.lock().unwrap();
+        let begin = Instant::now();
+        writeln!(link.writer, "{}", message)?;
+        let mut line = String::new();
+        link.reader.read_line(&mut line)?;
+        link.wall_time += begin.elapsed();
+        Ok(line)
+    }
+
+    pub fn link_wall_time(&self) -> Duration {
+        self.link.lock().unwrap().wall_time
+    }
+}
+
+// https://stackoverflow.com/questions/30538004/how-do-i-ensure-that-a-spawned-child-process-is-killed-if-my-app-panics
+impl Drop for SimulationTcpClient {
+    fn drop(&mut self) {
+        let need_to_kill: bool = (|| {
+            if write!(self.link.lock().unwrap().writer, "quit\n").is_ok() {
+                let wait_time = std::time::Duration::from_millis(1000);
+                if let Ok(Some(status)) = self.link.lock().unwrap().child.wait_timeout(wait_time) {
+                    return !status.success();
+                }
+            }
+            true
+        })();
+        if need_to_kill {
+            match self.link.lock().unwrap().child.kill() {
+                Err(e) => println!("Could not kill Scala process: {}", e),
+                Ok(_) => println!("Successfully killed Scala process"),
+            }
+        } else {
+            println!("Scala process quit normally");
+        }
+        if self.sim_config.with_waveform || self.sim_config.dump_debugger_files {
+            // only delete binary but keep original waveforms and debugger files
+            if !env_is_set("KEEP_RTL_FOLDER") {
+                match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/rtl", self.name)) {
+                    Err(e) => println!("Could not remove rtl folder: {}", e),
+                    Ok(_) => println!("Successfully remove rtl folder"),
+                }
+            }
+            match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/verilator", self.name)) {
+                Err(e) => println!("Could not remove verilator folder: {}", e),
+                Ok(_) => println!("Successfully remove verilator folder"),
+            }
+        } else {
+            match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}", self.name)) {
+                Err(e) => println!("Could not remove build folder: {}", e),
+                Ok(_) => println!("Successfully remove build folder"),
+            }
+        }
     }
 }
 

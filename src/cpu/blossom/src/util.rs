@@ -1,5 +1,6 @@
 use konst::{option, primitive::parse_usize, result::unwrap_ctx};
 use lazy_static::lazy_static;
+use rand::{distributions::Alphanumeric, Rng};
 use std::env;
 use std::process::{Child, Command};
 use std::sync::Mutex;
@@ -95,6 +96,14 @@ pub fn env_usize(name: &str, default: usize) -> usize {
         Ok(value) => value.parse().unwrap(),
         Err(_) => default,
     }
+}
+
+pub fn random_name_16() -> String {
+    rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(16)
+        .map(char::from)
+        .collect()
 }
 
 #[cfg(test)]

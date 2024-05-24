@@ -8,7 +8,6 @@ use crate::dual_module_adaptor::*;
 use crate::resources::*;
 use crate::simulation_tcp_host::*;
 use crate::util::*;
-use derivative::Derivative;
 use embedded_blossom::extern_c::*;
 use embedded_blossom::util::*;
 use fusion_blossom::util::*;
@@ -18,115 +17,46 @@ use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::instruction::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
-use rand::{distributions::Alphanumeric, Rng};
 use scan_fmt::*;
-use serde::Serialize;
-use std::io::prelude::*;
-use std::io::{BufReader, LineWriter};
-use std::net::{TcpListener, TcpStream};
-use std::process::Child;
-use std::sync::Mutex;
-use std::time::{Duration, Instant};
-use wait_timeout::ChildExt;
 
 pub struct DualModuleAxi4Driver {
-    pub link: Mutex<Link>,
-    pub name: String,
+    pub client: SimulationTcpClient,
     pub context_id: u16,
     pub maximum_growth: Vec<u16>,
-    pub simulation_duration: Duration,
-    pub sim_config: SimulationConfig,
     pub conflicts_store: ConflictsStore<MAX_CONFLICT_CHANNELS>,
-}
-
-pub struct Link {
-    pub port: u16,
-    pub child: Child,
-    pub reader: BufReader<TcpStream>,
-    pub writer: LineWriter<TcpStream>,
 }
 
 pub type DualModuleAxi4 = DualModuleStackless<DualDriverTracked<DualModuleAxi4Driver, MAX_NODE_NUM>>;
 
 impl DualInterfaceWithInitializer for DualModuleAxi4 {
     fn new_with_initializer(initializer: &SolverInitializer) -> Self {
-        DualModuleStackless::new(DualDriverTracked::new(DualModuleAxi4Driver::new(initializer).unwrap()))
+        let micro_blossom = MicroBlossomSingle::new_initializer_only(initializer);
+        let name = random_name_16();
+        let sim_config: SimulationConfig = Default::default();
+        DualModuleStackless::new(DualDriverTracked::new(
+            DualModuleAxi4Driver::new(micro_blossom, name, sim_config).unwrap(),
+        ))
     }
 }
 
 impl DualModuleAxi4Driver {
-    pub fn new_with_name_raw(
-        micro_blossom: MicroBlossomSingle,
-        name: String,
-        sim_config: SimulationConfig,
-    ) -> std::io::Result<Self> {
-        let hostname = "127.0.0.1";
-        let listener = TcpListener::bind(format!("{hostname}:0"))?;
-        let port = listener.local_addr()?.port();
-        // start the scala simulator host
-        println!("Starting Scala simulator host... this may take a while (listening on {hostname}:{port})");
-        let child = SCALA_MICRO_BLOSSOM_RUNNER.run(
-            "microblossom.MicroBlossomHost",
-            [format!("{hostname}"), format!("{port}"), format!("{name}")],
-        )?;
-        let (socket, _addr) = listener.accept()?;
-        let mut reader = BufReader::new(socket.try_clone()?);
-        let mut writer = LineWriter::new(socket);
-        let mut line = String::new();
-        reader.read_line(&mut line)?;
-        assert_eq!(line, "MicroBlossomHost v0.0.1, ask for decoding graph\n", "handshake error");
-        write!(writer, "{}\n", serde_json::to_string(&micro_blossom).unwrap())?;
-        let simulation_lock = SCALA_SIMULATION_LOCK.lock();
-        sim_config.write_to(&mut writer)?;
-        line.clear();
-        reader.read_line(&mut line)?;
-        assert_eq!(line, "simulation started\n");
-        drop(simulation_lock);
-        assert!(sim_config.conflict_channels <= MAX_CONFLICT_CHANNELS);
+    pub fn new(micro_blossom: MicroBlossomSingle, name: String, sim_config: SimulationConfig) -> std::io::Result<Self> {
         let conflict_channels = sim_config.conflict_channels;
         let mut conflicts_store = ConflictsStore::new();
         conflicts_store.reconfigure(conflict_channels as u8);
+        let maximum_growth = vec![0; sim_config.context_depth];
         let mut value = Self {
-            name,
+            client: SimulationTcpClient::new("MicroBlossomHost", micro_blossom, name, sim_config)?,
             context_id: 0,
-            maximum_growth: vec![0; sim_config.context_depth],
-            sim_config,
-            simulation_duration: Duration::ZERO,
-            link: Mutex::new(Link {
-                port,
-                child,
-                reader,
-                writer,
-            }),
+            maximum_growth,
             conflicts_store,
         };
         value.reset();
         Ok(value)
     }
 
-    pub fn new_with_name(initializer: &SolverInitializer, name: String) -> std::io::Result<Self> {
-        // in simulation, positions doesn't matter because it's not going to affect the timing constraint
-        Self::new_with_name_raw(
-            MicroBlossomSingle::new_initializer_only(initializer),
-            name,
-            Default::default(),
-        )
-    }
-
-    pub fn new(initializer: &SolverInitializer) -> std::io::Result<Self> {
-        let name = rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(16)
-            .map(char::from)
-            .collect();
-        Self::new_with_name(initializer, name)
-    }
-
     fn memory_write(&mut self, num_bytes: usize, address: usize, data: usize) -> std::io::Result<()> {
-        let begin = Instant::now();
-        write!(self.link.lock().unwrap().writer, "write({num_bytes}, {address}, {data})\n")?;
-        self.simulation_duration += begin.elapsed();
-        Ok(())
+        self.client.write_line(format!("write({num_bytes}, {address}, {data})"))
     }
     pub fn memory_write_64(&mut self, address: usize, data: u64) -> std::io::Result<()> {
         self.memory_write(8, address, data as usize)
@@ -142,13 +72,8 @@ impl DualModuleAxi4Driver {
     }
 
     fn memory_read(&mut self, num_bytes: usize, address: usize) -> std::io::Result<usize> {
-        let begin = Instant::now();
-        let mut link = self.link.lock().unwrap();
-        write!(link.writer, "read({num_bytes}, {address})\n")?;
-        let mut line = String::new();
-        link.reader.read_line(&mut line)?;
+        let line = self.client.read_line(format!("read({num_bytes}, {address})"))?;
         let value = scan_fmt!(&line, "{d}", usize).unwrap();
-        self.simulation_duration += begin.elapsed();
         Ok(value)
     }
     pub fn memory_read_64(&mut self, address: usize) -> std::io::Result<u64> {
@@ -165,7 +90,7 @@ impl DualModuleAxi4Driver {
     }
 
     pub fn execute_instruction(&mut self, instruction: Instruction32, context_id: u16) -> std::io::Result<()> {
-        if self.sim_config.use_64_bus {
+        if self.client.sim_config.use_64_bus {
             let data = (instruction.0 as u64) | ((context_id as u64) << 32);
             self.memory_write_64(4096, data)
         } else {
@@ -279,52 +204,12 @@ impl DualTrackedDriver for DualModuleAxi4Driver {
 impl FusionVisualizer for DualModuleAxi4Driver {
     #[allow(clippy::unnecessary_cast)]
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
-        assert_eq!(self.sim_config.context_depth, 1, "context snapshot is not yet supported");
-        write!(self.link.lock().unwrap().writer, "snapshot({abbrev})\n").unwrap();
-        let mut line = String::new();
-        self.link.lock().unwrap().reader.read_line(&mut line).unwrap();
+        assert_eq!(
+            self.client.sim_config.context_depth, 1,
+            "context snapshot is not yet supported"
+        );
+        let line = self.client.read_line(format!("snapshot({abbrev})")).unwrap();
         serde_json::from_str(&line).unwrap()
-    }
-}
-
-// https://stackoverflow.com/questions/30538004/how-do-i-ensure-that-a-spawned-child-process-is-killed-if-my-app-panics
-impl Drop for DualModuleAxi4Driver {
-    fn drop(&mut self) {
-        let need_to_kill: bool = (|| {
-            if write!(self.link.lock().unwrap().writer, "quit\n").is_ok() {
-                let wait_time = std::time::Duration::from_millis(1000);
-                if let Ok(Some(status)) = self.link.lock().unwrap().child.wait_timeout(wait_time) {
-                    return !status.success();
-                }
-            }
-            true
-        })();
-        if need_to_kill {
-            match self.link.lock().unwrap().child.kill() {
-                Err(e) => println!("Could not kill Scala process: {}", e),
-                Ok(_) => println!("Successfully killed Scala process"),
-            }
-        } else {
-            println!("Scala process quit normally");
-        }
-        if self.sim_config.with_waveform || self.sim_config.dump_debugger_files {
-            // only delete binary but keep original waveforms and debugger files
-            if !env_is_set("KEEP_RTL_FOLDER") {
-                match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/rtl", self.name)) {
-                    Err(e) => println!("Could not remove rtl folder: {}", e),
-                    Ok(_) => println!("Successfully remove rtl folder"),
-                }
-            }
-            match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/verilator", self.name)) {
-                Err(e) => println!("Could not remove verilator folder: {}", e),
-                Ok(_) => println!("Successfully remove verilator folder"),
-            }
-        } else {
-            match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}", self.name)) {
-                Err(e) => println!("Could not remove build folder: {}", e),
-                Ok(_) => println!("Successfully remove build folder"),
-            }
-        }
     }
 }
 
