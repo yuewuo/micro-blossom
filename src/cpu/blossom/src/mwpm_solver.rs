@@ -157,30 +157,16 @@ pub struct SolverEmbeddedComb {
 bind_fusion_visualizer!(SolverEmbeddedComb, 1);
 
 impl SolverEmbeddedComb {
-    pub fn new(initializer: &SolverInitializer) -> Self {
-        Self {
-            dual_module: DualModuleComb::new_with_initializer(initializer),
-            primal_module: stacker::grow(MAX_NODE_NUM * 128, || Box::new(PrimalModuleEmbedded::new())),
-            subgraph_builder: SubGraphBuilder::new(initializer),
-            defect_nodes: vec![],
-            offloaded: 0,
-            layer_id: 0,
-        }
-    }
-    pub fn new_native(config: MicroBlossomSingle, mut primal_dual_config: serde_json::Value) -> Self {
+    pub fn new(graph: MicroBlossomSingle, mut primal_dual_config: serde_json::Value) -> Self {
+        assert!(graph.vertex_num <= MAX_NODE_NUM, "potential overflow");
         let primal_dual_config = primal_dual_config.as_object_mut().expect("config must be JSON object");
-        let mut dual_config = DualCombConfig::default();
-        if let Some(value) = primal_dual_config.remove("dual") {
-            dual_config = serde_json::from_value(value).unwrap();
-        }
-        if !primal_dual_config.is_empty() {
-            panic!(
-                "unknown primal_dual_config keys: {:?}",
-                primal_dual_config.keys().collect::<Vec<&String>>()
-            );
-        }
-        let initializer = config.get_initializer();
-        let dual_module = DualModuleStackless::new(DualDriverTracked::new(DualModuleCombDriver::new(config, dual_config)));
+        let dual_config = primal_dual_config
+            .remove("dual")
+            .map(|value| serde_json::from_value(value).unwrap())
+            .unwrap_or_default();
+        assert!(primal_dual_config.is_empty(), "unknown remaining: {:?}", primal_dual_config);
+        let initializer = graph.get_initializer();
+        let dual_module = DualModuleStackless::new(DualDriverTracked::new(DualModuleCombDriver::new(graph, dual_config)));
         let mut primal_module = stacker::grow(MAX_NODE_NUM * 128, || Box::new(PrimalModuleEmbedded::new()));
         // load the layer id to the primal
         if let Some(layer_fusion) = dual_module.driver.driver.graph.layer_fusion.as_ref() {

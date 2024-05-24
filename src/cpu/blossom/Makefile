@@ -29,6 +29,8 @@ test-involves-scala:
 # make test-parallel
 # DISABLE_PROGRESS_BAR=1 make test-parallel -j8
 test-parallel: test-primal-embedded test-dual-comb test-embedded-comb test-embedded-comb-pre-matching test-embedded-comb-layer-fusion test-embedded-comb-pre-matching-layer-fusion
+# DISABLE_PROGRESS_BAR=1 make test-all-comb -j4
+test-all-comb: test-dual-comb test-embedded-comb test-embedded-comb-pre-matching test-embedded-comb-layer-fusion
 
 test-primal-embedded:
 	cargo run --release -- test primal-embedded $(test_parameter)

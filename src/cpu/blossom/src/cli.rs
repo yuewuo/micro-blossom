@@ -487,13 +487,8 @@ impl PrimalDualType {
         positions: &Vec<VisualizePosition>,
         primal_dual_config: serde_json::Value,
     ) -> Box<dyn PrimalDualSolver> {
-        // TODO: move this assert to the solvers that actually uses MAX_NODE_NUM
-        assert!(
-            initializer.vertex_num <= crate::util::MAX_NODE_NUM,
-            "potential overflow, increase `MAX_NODE_NUM` when compile the code"
-        );
-        // TODO: move this stack change to solvers that actually need it
-        // stacker::grow(crate::util::MAX_NODE_NUM * 1024, || -> Box<dyn PrimalDualSolver> {
+        // create micro blossom single graph configuration
+        let graph = MicroBlossomSingle::new(initializer, positions);
         match self {
             Self::PrimalEmbedded => {
                 assert_eq!(primal_dual_config, json!({}));
@@ -503,7 +498,7 @@ impl PrimalDualType {
                 assert_eq!(primal_dual_config, json!({}));
                 Box::new(SolverDualComb::new(initializer))
             }
-            Self::EmbeddedComb => Box::new(SolverEmbeddedComb::new(initializer)),
+            Self::EmbeddedComb => Box::new(SolverEmbeddedComb::new(graph, primal_dual_config)),
             // Self::EmbeddedScala => Box::new(SolverEmbeddedScala::new(initializer)),
 
             // /// embedded primal + Scala simulation dual

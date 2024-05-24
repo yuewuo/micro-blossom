@@ -16,32 +16,46 @@ pub const MAX_CONFLICT_CHANNELS: usize = 15;
 #[derivative(Default)]
 pub struct SimulationConfig {
     #[derivative(Default(value = "simulation_config_default::with_waveform()"))]
+    #[serde(default = "simulation_config_default::with_waveform")]
     pub with_waveform: bool,
     #[derivative(Default(value = "simulation_config_default::dump_debugger_files()"))]
+    #[serde(default = "simulation_config_default::dump_debugger_files")]
     pub dump_debugger_files: bool,
     #[derivative(Default(value = "simulation_config_default::bus_type()"))]
+    #[serde(default = "simulation_config_default::bus_type")]
     pub bus_type: String,
     #[derivative(Default(value = "simulation_config_default::use_64_bus()"))]
+    #[serde(default = "simulation_config_default::use_64_bus")]
     pub use_64_bus: bool,
-    #[derivative(Default(value = "env_usize(\"CONTEXT_DEPTH\", 1)"))]
+    #[derivative(Default(value = "simulation_config_default::context_depth()"))]
+    #[serde(default = "simulation_config_default::context_depth")]
     pub context_depth: usize,
-    #[derivative(Default(value = "env_usize(\"BROADCAST_DELAY\", 0)"))]
+    #[derivative(Default(value = "simulation_config_default::broadcast_delay()"))]
+    #[serde(default = "simulation_config_default::broadcast_delay")]
     pub broadcast_delay: usize,
-    #[derivative(Default(value = "env_usize(\"CONVERGECAST_DELAY\", 0)"))]
+    #[derivative(Default(value = "simulation_config_default::convergecast_delay()"))]
+    #[serde(default = "simulation_config_default::convergecast_delay")]
     pub convergecast_delay: usize,
-    #[derivative(Default(value = "env_usize(\"CONFLICT_CHANNELS\", 1)"))]
+    #[derivative(Default(value = "simulation_config_default::conflict_channels()"))]
+    #[serde(default = "simulation_config_default::conflict_channels")]
     pub conflict_channels: usize,
     #[derivative(Default(value = "simulation_config_default::hard_code_weights()"))]
+    #[serde(default = "simulation_config_default::hard_code_weights")]
     pub hard_code_weights: bool,
     #[derivative(Default(value = "simulation_config_default::support_add_defect_vertex()"))]
+    #[serde(default = "simulation_config_default::support_add_defect_vertex")]
     pub support_add_defect_vertex: bool,
     #[derivative(Default(value = "simulation_config_default::support_offloading()"))]
+    #[serde(default = "simulation_config_default::support_offloading")]
     pub support_offloading: bool,
     #[derivative(Default(value = "simulation_config_default::support_layer_fusion()"))]
+    #[serde(default = "simulation_config_default::support_layer_fusion")]
     pub support_layer_fusion: bool,
     #[derivative(Default(value = "simulation_config_default::inject_registers()"))]
+    #[serde(default = "simulation_config_default::inject_registers")]
     pub inject_registers: Vec<String>,
-    #[derivative(Default(value = "env_usize(\"CLOCK_DIVIDE_BY\", 1)"))]
+    #[derivative(Default(value = "simulation_config_default::clock_divide_by()"))]
+    #[serde(default = "simulation_config_default::clock_divide_by")]
     pub clock_divide_by: usize,
 }
 
@@ -214,6 +228,21 @@ pub mod simulation_config_default {
             Ok(value) => value.split(',').map(|a| a.to_string()).collect(),
             Err(_) => vec![],
         }
+    }
+    pub fn context_depth() -> usize {
+        env_usize("CONTEXT_DEPTH", 1)
+    }
+    pub fn broadcast_delay() -> usize {
+        env_usize("BROADCAST_DELAY", 0)
+    }
+    pub fn convergecast_delay() -> usize {
+        env_usize("CONVERGECAST_DELAY", 0)
+    }
+    pub fn conflict_channels() -> usize {
+        env_usize("CONFLICT_CHANNELS", 1)
+    }
+    pub fn clock_divide_by() -> usize {
+        env_usize("CLOCK_DIVIDE_BY", 1)
     }
 }
 
