@@ -33,7 +33,6 @@ pub struct DualModuleCombDriver {
     /// the current instruction for computing the combinatorial logic
     pub(crate) instruction: Instruction,
     pub config: DualCombConfig,
-    pub sim_config: SimulationConfig,
     pub graph: MicroBlossomSingle,
     /// only enabled when `config.log_instructions` is true
     pub profiler_instruction_history: Vec<Instruction>,
@@ -45,6 +44,8 @@ pub struct DualCombConfig {
     /// record instructions into the profile
     #[serde(default = "dual_comb_config_default::log_instructions")]
     pub log_instructions: bool,
+    #[serde(default = "Default::default")]
+    pub sim_config: SimulationConfig,
 }
 
 impl Default for DualCombConfig {
@@ -60,6 +61,7 @@ pub mod dual_comb_config_default {
 }
 
 pub type DualModuleComb = DualModuleStackless<DualDriverTracked<DualModuleCombDriver, MAX_NODE_NUM>>;
+pub type DualModuleCombAdaptor = DualModuleAdaptor<DualModuleComb>;
 
 impl DualInterfaceWithInitializer for DualModuleComb {
     fn new_with_initializer(initializer: &SolverInitializer) -> Self {
@@ -77,7 +79,6 @@ impl DualModuleCombDriver {
             }
         }
         let initializer = graph.get_initializer();
-        let sim_config: SimulationConfig = Default::default();
         let mut comb_driver = Self {
             initializer: initializer.clone(),
             vertices: all_incident_edges
@@ -99,11 +100,10 @@ impl DualModuleCombDriver {
             instruction: Instruction::FindObstacle,
             graph: graph.clone(),
             config: comb_config,
-            sim_config: sim_config.clone(),
             profiler_instruction_history: vec![],
         };
         let mut offloading_vec = graph.offloading.0.clone();
-        if sim_config.support_layer_fusion {
+        if comb_driver.config.sim_config.support_layer_fusion {
             let layer_fusion = graph.layer_fusion.as_ref().unwrap();
             for (edge_index, conditioned_vertex) in layer_fusion.fusion_edges.iter() {
                 offloading_vec.push(OffloadingType::FusionMatch {
@@ -116,7 +116,7 @@ impl DualModuleCombDriver {
                 comb_driver.vertices[*vertex_index].layer_id = Some(*layer_id);
             }
         }
-        if sim_config.support_offloading {
+        if comb_driver.config.sim_config.support_offloading {
             comb_driver.set_offloading_units(&initializer, offloading_vec);
         }
         comb_driver.clear();
@@ -380,6 +380,12 @@ impl FusionVisualizer for DualModuleCombDriver {
             "vertices_comb": vertices_comb,
             "edges_comb": edges_comb,
         })
+    }
+}
+
+impl FusionVisualizer for DualModuleCombAdaptor {
+    fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+        self.dual_module.driver.driver.snapshot(abbrev)
     }
 }
 

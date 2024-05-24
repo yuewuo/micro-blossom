@@ -8,6 +8,7 @@ pub mod dual_module_comb_vertex;
 pub mod dual_module_looper;
 pub mod dual_module_scala;
 pub mod mwpm_solver;
+pub mod mwpm_solver_macro;
 pub mod primal_module_embedded_adaptor;
 pub mod resources;
 pub mod simulation_tcp_host;

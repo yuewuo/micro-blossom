@@ -17,20 +17,13 @@ clean-env: clean
 # make test 
 # make test test_parameter=--silent -j8
 test: test-parallel test-involves-scala
-	
-
-	cargo run --release -- test primal-embedded
-	cargo run --release -- test dual-comb
-
-# this command runs way too slow, so it's important to enable syndrome printing to help locate problem
-	cargo run --release -- test dual-scala --print-syndrome-pattern --print-command
-	cargo run --release -- test dual-axi4 --print-syndrome-pattern --print-command
 
 test-involves-scala:
 	cargo test
 	cargo test --release
+# these tests are too slow, thus enable syndrome printing to help locate problem if they occur
 	cargo run --release -- test embedded-scala --print-syndrome-pattern --print-command
-	cargo run --release -- test embedded-scala --print-syndrome-pattern --print-command
+	cargo run --release -- test embedded-looper --print-syndrome-pattern --print-command
 	cargo run --release -- test embedded-axi4 --print-syndrome-pattern --print-command
 
 # make test-parallel

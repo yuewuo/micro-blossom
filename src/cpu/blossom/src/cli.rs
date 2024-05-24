@@ -138,7 +138,7 @@ pub enum PrimalDualType {
     PrimalEmbedded,
     /// standard primal + combinatorial dual
     DualComb,
-    /// standard primal + combinatorial dual
+    /// embedded primal + combinatorial dual
     EmbeddedComb,
     /// embedded primal + Scala simulation dual
     EmbeddedScala,
@@ -499,6 +499,23 @@ impl PrimalDualType {
                 assert_eq!(primal_dual_config, json!({}));
                 Box::new(SolverPrimalEmbedded::new(initializer))
             }
+            Self::DualComb => {
+                assert_eq!(primal_dual_config, json!({}));
+                Box::new(SolverDualComb::new(initializer))
+            }
+            Self::EmbeddedComb => Box::new(SolverEmbeddedComb::new(initializer)),
+            // Self::EmbeddedScala => Box::new(SolverEmbeddedScala::new(initializer)),
+
+            // /// embedded primal + Scala simulation dual
+            // EmbeddedScala,
+            // /// embedded primal + Looper simulated dual
+            // EmbeddedLooper,
+            // /// embedded primal + Axi4 simulated dual
+            // EmbeddedAxi4,
+            // /// serial primal and dual, standard solution
+            // Serial,
+            // /// log error into a file for later fetch
+            // ErrorPatternLogger,
             _ => unimplemented!(),
             // Self::EmbeddedComb => {
             //     let micro_config = MicroBlossomSingle::new(initializer, positions);

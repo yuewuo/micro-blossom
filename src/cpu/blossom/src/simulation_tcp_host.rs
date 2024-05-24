@@ -1,7 +1,7 @@
 use crate::resources::*;
 use crate::util::*;
 use derivative::Derivative;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
 use std::io::{BufReader, LineWriter};
 use std::net::{TcpListener, TcpStream};
@@ -12,7 +12,7 @@ use wait_timeout::ChildExt;
 
 pub const MAX_CONFLICT_CHANNELS: usize = 15;
 
-#[derive(Serialize, Derivative, Clone)]
+#[derive(Serialize, Deserialize, Derivative, Clone, Debug)]
 #[derivative(Default)]
 pub struct SimulationConfig {
     #[derivative(Default(value = "simulation_config_default::with_waveform()"))]
