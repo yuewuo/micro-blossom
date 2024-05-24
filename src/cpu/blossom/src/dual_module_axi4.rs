@@ -216,7 +216,6 @@ impl FusionVisualizer for DualModuleAxi4Driver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dual_module_rtl::tests::*;
     use crate::dual_module_scala::tests::*;
     use crate::mwpm_solver::*;
 
@@ -263,7 +262,7 @@ mod tests {
     //     // cargo test dual_module_axi4_debug_compare_1 -- --nocapture
     //     let visualize_filename = "dual_module_axi4_debug_compare_1.json".to_string();
     //     let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
-    //     dual_module_rtl_embedded_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+    //     dual_module_comb_embedded_basic_standard_syndrome(7, visualize_filename, defect_vertices);
     // }
 
     // /// debug timing error
@@ -289,19 +288,14 @@ mod tests {
         d: VertexNum,
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
-    ) -> Box<SolverDualAxi4> {
-        dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
-            d,
-            Some(visualize_filename.clone()),
-            defect_vertices,
-            |initializer, _| {
-                Box::new(
-                    SolverDualAxi4::new_with_name(
-                        initializer,
-                        visualize_filename.as_str().trim_end_matches(".json").to_string(),
-                    ), //.with_max_iterations(30)  // this is helpful when debugging infinite loops
-                )
-            },
-        )
+    ) -> Box<SolverEmbeddedAxi4> {
+        dual_module_standard_optional_viz(d, Some(visualize_filename.clone()), defect_vertices, |initializer, _| {
+            Box::new(
+                SolverEmbeddedAxi4::new_with_name(
+                    initializer,
+                    visualize_filename.as_str().trim_end_matches(".json").to_string(),
+                ), //.with_max_iterations(30)  // this is helpful when debugging infinite loops
+            )
+        })
     }
 }

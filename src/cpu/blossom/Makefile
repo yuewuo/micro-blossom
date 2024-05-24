@@ -1,3 +1,5 @@
+test_parameter ?= 
+
 all: test coverage check build
 
 fmt:
@@ -12,21 +14,41 @@ clean:
 
 clean-env: clean
 
-test: test-comb
-# using single thread testing to run sbt safely and also setting environment variables without races
-	cargo test -- --test-threads=1
+# make test 
+# make test test_parameter=--silent -j8
+test: test-parallel test-involves-scala
+	
 
 	cargo run --release -- test primal-embedded
-	cargo run --release -- test dual-rtl
-	cargo run --release -- test embedded-rtl
+	cargo run --release -- test dual-comb
+
 # this command runs way too slow, so it's important to enable syndrome printing to help locate problem
 	cargo run --release -- test dual-scala --print-syndrome-pattern --print-command
 	cargo run --release -- test dual-axi4 --print-syndrome-pattern --print-command
 
-test-comb:
-	cargo run --release -- test embedded-comb
-	cargo run --release -- test embedded-comb-pre-matching
-	cargo run --release -- test embedded-comb-pre-matching-virtual
+test-involves-scala:
+	cargo test
+	cargo test --release
+	cargo run --release -- test embedded-scala --print-syndrome-pattern --print-command
+	cargo run --release -- test embedded-scala --print-syndrome-pattern --print-command
+	cargo run --release -- test embedded-axi4 --print-syndrome-pattern --print-command
+
+# make test-parallel
+# DISABLE_PROGRESS_BAR=1 make test-parallel -j8
+test-parallel: test-primal-embedded test-dual-comb test-embedded-comb test-embedded-comb-pre-matching test-embedded-comb-layer-fusion test-embedded-comb-pre-matching-layer-fusion
+
+test-primal-embedded:
+	cargo run --release -- test primal-embedded $(test_parameter)
+test-dual-comb:
+	cargo run --release -- test dual-comb $(test_parameter)
+test-embedded-comb:
+	cargo run --release -- test embedded-comb $(test_parameter)
+test-embedded-comb-pre-matching:
+	cargo run --release -- test embedded-comb-pre-matching $(test_parameter)
+test-embedded-comb-layer-fusion:
+	cargo run --release -- test embedded-comb-layer-fusion $(test_parameter)
+test-embedded-comb-pre-matching-layer-fusion:
+	cargo run --release -- test embedded-comb-pre-matching-layer-fusion $(test_parameter)
 
 build: clean-env
 	cargo test --no-run

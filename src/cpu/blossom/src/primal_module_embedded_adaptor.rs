@@ -36,7 +36,7 @@ impl<const N: usize> PrimalModuleEmbedded<N> {
 #[derive(Debug)]
 pub struct PrimalModuleEmbeddedAdaptor {
     /// the embedded primal module
-    pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM>,
+    pub primal_module: Box<PrimalModuleEmbedded<MAX_NODE_NUM>>,
     /// mapping between the integer index interface and the pointer interface
     pub index_to_ptr: BTreeMap<CompactNodeIndex, DualNodePtr>,
     pub ptr_to_index: BTreeMap<DualNodePtr, CompactNodeIndex>,
@@ -118,9 +118,10 @@ impl<'a, D: DualModuleImpl> DualInterface for MockDualInterface<'a, D> {
 }
 
 impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
-    fn new_empty(_initializer: &SolverInitializer) -> Self {
+    fn new_empty(initializer: &SolverInitializer) -> Self {
+        assert!(initializer.vertex_num <= MAX_NODE_NUM, "potential overflow");
         Self {
-            primal_module: PrimalModuleEmbedded::new(),
+            primal_module: stacker::grow(MAX_NODE_NUM * 128, || Box::new(PrimalModuleEmbedded::new())),
             index_to_ptr: BTreeMap::new(),
             ptr_to_index: BTreeMap::new(),
             debug_resolve_only_one: true,

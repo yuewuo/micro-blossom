@@ -10,7 +10,9 @@ use fusion_blossom::visualize::VisualizePosition;
 use lazy_static::lazy_static;
 use serde::Serialize;
 use serde_json::json;
+use std::convert::AsRef;
 use std::env;
+use strum_macros::AsRefStr;
 
 cfg_if::cfg_if! {
     if #[cfg(test)] {
@@ -94,7 +96,7 @@ pub struct BenchmarkParameters {
     #[clap(short = 'r', long, default_value_t = 1000)]
     total_rounds: usize,
     /// select the combination of primal and dual module
-    #[clap(short = 'p', long, value_enum, default_value_t = PrimalDualType::DualRTL)]
+    #[clap(short = 'p', long, value_enum, default_value_t = PrimalDualType::EmbeddedComb)]
     primal_dual_type: PrimalDualType,
     /// the configuration of primal and dual module
     #[clap(long, default_value_t = ("{}").to_string())]
@@ -132,30 +134,22 @@ pub struct MicroBlossomParserParameters {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Debug)]
 pub enum PrimalDualType {
-    /// standard primal + RTL-behavior dual
-    DualRTL,
     /// embedded primal + standard dual
     PrimalEmbedded,
-    /// embedded primal + RTL-behavior dual
-    EmbeddedRTL,
-    /// embedded primal + Scala simulation dual
-    DualScala,
-    /// embedded primal + RTL dual with pre-matching
-    EmbeddedRTLPreMatching,
-    /// embedded primal + Combinatorial-behavior dual
+    /// standard primal + combinatorial dual
+    DualComb,
+    /// standard primal + combinatorial dual
     EmbeddedComb,
-    /// embedded primal + Combinatorial-behavior dual with pre-matching
-    EmbeddedCombPreMatching,
-    /// embedded primal + layer fusion
-    EmbeddedCombLayerFusion,
-    /// embedded primal + pre-matching + layer fusion
-    EmbeddedCombPreMatchingLayerFusion,
+    /// embedded primal + Scala simulation dual
+    EmbeddedScala,
+    /// embedded primal + Looper simulated dual
+    EmbeddedLooper,
+    /// embedded primal + Axi4 simulated dual
+    EmbeddedAxi4,
     /// serial primal and dual, standard solution
     Serial,
     /// log error into a file for later fetch
     ErrorPatternLogger,
-    /// embedded primal + Axi4 simulation dual
-    DualAxi4,
 }
 
 #[derive(Args, Clone)]
@@ -186,18 +180,17 @@ pub struct StandardTestParameters {
     starting_iteration: usize,
 }
 
-#[derive(Subcommand, Clone)]
+#[derive(Subcommand, Clone, AsRefStr)]
 enum TestCommands {
-    DualRTL(StandardTestParameters),
     PrimalEmbedded(StandardTestParameters),
-    EmbeddedRTL(StandardTestParameters),
-    DualScala(StandardTestParameters),
-    EmbeddedRTLPreMatching(StandardTestParameters),
+    DualComb(StandardTestParameters),
     EmbeddedComb(StandardTestParameters),
     EmbeddedCombPreMatching(StandardTestParameters),
     EmbeddedCombLayerFusion(StandardTestParameters),
     EmbeddedCombPreMatchingLayerFusion(StandardTestParameters),
-    DualAxi4(StandardTestParameters),
+    EmbeddedScala(StandardTestParameters),
+    EmbeddedLooper(StandardTestParameters),
+    EmbeddedAxi4(StandardTestParameters),
 }
 
 impl From<BenchmarkParameters> for fusion_blossom::cli::BenchmarkParameters {
@@ -286,93 +279,118 @@ impl From<BenchmarkParameters> for RunnableBenchmarkParameters {
     }
 }
 
-lazy_static! {
-    static ref RANDOMIZED_TEST_PARAMETERS: Vec<Vec<String>> = {
-        let mut parameters = vec![];
-        for p in [0.01, 0.03, 0.1, 0.3, 0.499] {
-            for d in [3, 7, 11, 15, 19] {
-                parameters.push(vec![
-                    format!("{d}"),
-                    format!("{p}"),
-                    format!("--code-type"),
-                    format!("code-capacity-repetition-code"),
-                    format!("--pb-message"),
-                    format!("repetition {d} {p}"),
-                ]);
-            }
+pub fn build_randomized_test_parameters(test_name: String) -> Vec<Vec<String>> {
+    let prefix = format!("[{test_name}]");
+    let mut parameters = vec![];
+    for p in [0.01, 0.03, 0.1, 0.3, 0.499] {
+        for d in [3, 7, 11, 15, 19] {
+            parameters.push(vec![
+                format!("{d}"),
+                format!("{p}"),
+                format!("--code-type"),
+                format!("code-capacity-repetition-code"),
+                format!("--pb-message"),
+                format!("{prefix} repetition {d} {p}"),
+            ]);
         }
-        for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
-            for d in [3, 5, 7, 11, 15] {
-                parameters.push(vec![
-                    format!("{d}"),
-                    format!("{p}"),
-                    format!("--code-type"),
-                    format!("code-capacity-planar-code"),
-                    format!("--pb-message"),
-                    format!("planar {d} {p}"),
-                ]);
-            }
+    }
+    for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
+        for d in [3, 5, 7, 11, 15] {
+            parameters.push(vec![
+                format!("{d}"),
+                format!("{p}"),
+                format!("--code-type"),
+                format!("code-capacity-planar-code"),
+                format!("--pb-message"),
+                format!("{prefix} planar {d} {p}"),
+            ]);
         }
-        for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
-            for d in [3, 7, 11] {
-                parameters.push(vec![
-                    format!("{d}"),
-                    format!("{p}"),
-                    format!("--code-type"),
-                    format!("phenomenological-planar-code"),
-                    format!("--noisy-measurements"),
-                    format!("{d}"),
-                    format!("--pb-message"),
-                    format!("phenomenological {d} {p}"),
-                ]);
-            }
+    }
+    for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
+        for d in [3, 7, 11] {
+            parameters.push(vec![
+                format!("{d}"),
+                format!("{p}"),
+                format!("--code-type"),
+                format!("phenomenological-planar-code"),
+                format!("--noisy-measurements"),
+                format!("{d}"),
+                format!("--pb-message"),
+                format!("{prefix} phenomenological {d} {p}"),
+            ]);
         }
-        for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
-            for d in [3, 7, 11] {
-                parameters.push(vec![
-                    format!("{d}"),
-                    format!("{p}"),
-                    format!("--code-type"),
-                    format!("circuit-level-planar-code"),
-                    format!("--noisy-measurements"),
-                    format!("{d}"),
-                    format!("--pb-message"),
-                    format!("circuit-level {d} {p}"),
-                ]);
-            }
+    }
+    for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
+        for d in [3, 7, 11] {
+            parameters.push(vec![
+                format!("{d}"),
+                format!("{p}"),
+                format!("--code-type"),
+                format!("circuit-level-planar-code"),
+                format!("--noisy-measurements"),
+                format!("{d}"),
+                format!("--pb-message"),
+                format!("{prefix} circuit-level {d} {p}"),
+            ]);
         }
-        parameters
-    };
+    }
+    parameters
 }
 
-pub fn standard_test_command_body(primal_dual_type: &str, parameters: StandardTestParameters) {
-    let command_head = vec![format!(""), format!("benchmark")];
-    let mut command_tail = vec!["--total-rounds".to_string(), format!("{}", parameters.total_rounds)];
-    if !parameters.disable_fusion {
-        command_tail.append(&mut vec![format!("--verifier"), format!("fusion-serial")]);
-    } else {
-        command_tail.append(&mut vec![format!("--verifier"), format!("none")]);
-    }
-    if parameters.enable_visualizer {
-        command_tail.append(&mut vec![format!("--enable-visualizer")]);
-        command_tail.append(&mut vec![format!("--visualizer-filename"), parameters.visualizer_filename]);
-    }
-    if parameters.print_syndrome_pattern {
-        command_tail.append(&mut vec![format!("--print-syndrome-pattern")]);
-    }
-    if parameters.use_deterministic_seed {
-        command_tail.append(&mut vec![format!("--use-deterministic-seed")]);
-    }
-    command_tail.append(&mut vec![
-        format!("--starting-iteration"),
-        format!("{}", parameters.starting_iteration),
-    ]);
-    command_tail.append(&mut vec![format!("--primal-dual-type"), primal_dual_type.to_string()]);
-    for parameter in RANDOMIZED_TEST_PARAMETERS.iter() {
-        execute_in_cli(
-            command_head.iter().chain(parameter.iter()).chain(command_tail.iter()),
-            parameters.print_command,
-        );
+impl TestCommands {
+    pub fn run(&self) {
+        let (primal_dual_type, parameters, primal_dual_config) = match self.clone() {
+            TestCommands::PrimalEmbedded(parameters) => ("primal-embedded", parameters, json!({})),
+            TestCommands::DualComb(parameters) => ("dual-comb", parameters, json!({})),
+            TestCommands::EmbeddedComb(parameters) => ("embedded-comb", parameters, json!({})),
+            TestCommands::EmbeddedCombPreMatching(parameters) => (
+                "embedded-comb",
+                parameters,
+                json!({"dual":{"sim_config":{"support_offloading":true}}}),
+            ),
+            TestCommands::EmbeddedCombLayerFusion(parameters) => (
+                "embedded-comb",
+                parameters,
+                json!({"dual":{"sim_config":{"support_layer_fusion":true}}}),
+            ),
+            TestCommands::EmbeddedCombPreMatchingLayerFusion(parameters) => (
+                "embedded-comb",
+                parameters,
+                json!({"dual":{"sim_config":{"support_offloading":true,"support_layer_fusion":true}}}),
+            ),
+            TestCommands::EmbeddedScala(parameters) => ("dual-scala", parameters, json!({})),
+            TestCommands::EmbeddedLooper(parameters) => ("dual-looper", parameters, json!({})),
+            TestCommands::EmbeddedAxi4(parameters) => ("dual-axi4", parameters, json!({})),
+        };
+        let command_head = vec![format!(""), format!("benchmark")];
+        let mut command_tail = vec!["--total-rounds".to_string(), format!("{}", parameters.total_rounds)];
+        if !parameters.disable_fusion {
+            command_tail.append(&mut vec![format!("--verifier"), format!("fusion-serial")]);
+        } else {
+            command_tail.append(&mut vec![format!("--verifier"), format!("none")]);
+        }
+        if parameters.enable_visualizer {
+            command_tail.append(&mut vec![format!("--enable-visualizer")]);
+            command_tail.append(&mut vec![format!("--visualizer-filename"), parameters.visualizer_filename]);
+        }
+        if parameters.print_syndrome_pattern {
+            command_tail.append(&mut vec![format!("--print-syndrome-pattern")]);
+        }
+        if parameters.use_deterministic_seed {
+            command_tail.append(&mut vec![format!("--use-deterministic-seed")]);
+        }
+        command_tail.append(&mut vec![
+            format!("--starting-iteration"),
+            format!("{}", parameters.starting_iteration),
+        ]);
+        command_tail.append(&mut vec![format!("--primal-dual-type"), primal_dual_type.to_string()]);
+        command_tail.append(&mut vec![format!("--primal-dual-config"), primal_dual_config.to_string()]);
+        for parameter in build_randomized_test_parameters(self.as_ref().to_string()).iter() {
+            execute_in_cli(
+                command_head.iter().chain(parameter.iter()).chain(command_tail.iter()),
+                parameters.print_command,
+            );
+        }
     }
 }
 
@@ -408,26 +426,7 @@ impl Cli {
                     );
                 }
             }
-            Commands::Test { command } => match command {
-                TestCommands::DualRTL(parameters) => standard_test_command_body("dual-rtl", parameters),
-                TestCommands::PrimalEmbedded(parameters) => standard_test_command_body("primal-embedded", parameters),
-                TestCommands::EmbeddedRTL(parameters) => standard_test_command_body("embedded-rtl", parameters),
-                TestCommands::DualScala(parameters) => standard_test_command_body("dual-scala", parameters),
-                TestCommands::EmbeddedRTLPreMatching(parameters) => {
-                    standard_test_command_body("embedded-rtl-pre-matching", parameters)
-                }
-                TestCommands::EmbeddedComb(parameters) => standard_test_command_body("embedded-comb", parameters),
-                TestCommands::EmbeddedCombPreMatching(parameters) => {
-                    standard_test_command_body("embedded-comb-pre-matching", parameters)
-                }
-                TestCommands::EmbeddedCombLayerFusion(parameters) => {
-                    standard_test_command_body("embedded-comb-layer-fusion", parameters)
-                }
-                TestCommands::EmbeddedCombPreMatchingLayerFusion(parameters) => {
-                    standard_test_command_body("embedded-comb-pre-matching-layer-fusion", parameters)
-                }
-                TestCommands::DualAxi4(parameters) => standard_test_command_body("dual-axi4", parameters),
-            },
+            Commands::Test { command } => command.run(),
             Commands::Parser(parameters) => {
                 let code = fusion_blossom::example_codes::ErrorPatternReader::new(json!({
                     "filename": parameters.syndromes_file,
@@ -488,65 +487,37 @@ impl PrimalDualType {
         positions: &Vec<VisualizePosition>,
         primal_dual_config: serde_json::Value,
     ) -> Box<dyn PrimalDualSolver> {
+        // TODO: move this assert to the solvers that actually uses MAX_NODE_NUM
         assert!(
             initializer.vertex_num <= crate::util::MAX_NODE_NUM,
             "potential overflow, increase `MAX_NODE_NUM` when compile the code"
         );
-        stacker::grow(crate::util::MAX_NODE_NUM * 1024, || -> Box<dyn PrimalDualSolver> {
-            match self {
-                Self::DualRTL => {
-                    assert_eq!(primal_dual_config, json!({}));
-                    Box::new(SolverDualRTL::new(initializer))
-                }
-                Self::PrimalEmbedded => {
-                    assert_eq!(primal_dual_config, json!({}));
-                    Box::new(SolverPrimalEmbedded::new(initializer))
-                }
-                Self::EmbeddedRTL => {
-                    assert_eq!(primal_dual_config, json!({}));
-                    Box::new(SolverEmbeddedRTL::new(initializer))
-                }
-                Self::DualScala => {
-                    assert_eq!(primal_dual_config, json!({}));
-                    Box::new(SolverDualScala::new(initializer))
-                }
-                Self::DualAxi4 => {
-                    assert_eq!(primal_dual_config, json!({}));
-                    Box::new(SolverDualAxi4::new(initializer))
-                }
-                Self::EmbeddedRTLPreMatching => {
-                    assert_eq!(primal_dual_config, json!({}));
-                    let mut solver = SolverEmbeddedRTL::new(initializer);
-                    solver.dual_module.driver.driver.use_pre_matching = true;
-                    Box::new(solver)
-                }
-                Self::EmbeddedComb
-                | Self::EmbeddedCombPreMatching
-                | Self::EmbeddedCombLayerFusion
-                | Self::EmbeddedCombPreMatchingLayerFusion => {
-                    let micro_config = MicroBlossomSingle::new(initializer, positions);
-                    let tmp_env_offloading =
-                        if self == &Self::EmbeddedCombPreMatching || self == &Self::EmbeddedCombPreMatchingLayerFusion {
-                            Some(tmp_env::set_var("SUPPORT_OFFLOADING", "1"))
-                        } else {
-                            None
-                        };
-                    let tmp_env_layer_fusion =
-                        if self == &Self::EmbeddedCombLayerFusion || self == &Self::EmbeddedCombPreMatchingLayerFusion {
-                            Some(tmp_env::set_var("SUPPORT_LAYER_FUSION", "1"))
-                        } else {
-                            None
-                        };
-                    // build solver
-                    let solver = SolverDualComb::new_native(micro_config, primal_dual_config);
-                    drop(tmp_env_offloading);
-                    drop(tmp_env_layer_fusion);
-                    Box::new(solver)
-                }
-                Self::Serial | Self::ErrorPatternLogger => {
-                    unreachable!()
-                }
+        // TODO: move this stack change to solvers that actually need it
+        // stacker::grow(crate::util::MAX_NODE_NUM * 1024, || -> Box<dyn PrimalDualSolver> {
+        match self {
+            Self::PrimalEmbedded => {
+                assert_eq!(primal_dual_config, json!({}));
+                Box::new(SolverPrimalEmbedded::new(initializer))
             }
-        })
+            _ => unimplemented!(),
+            // Self::EmbeddedComb => {
+            //     let micro_config = MicroBlossomSingle::new(initializer, positions);
+            //     Box::new(SolverEmbeddedComb::new_native(micro_config, primal_dual_config))
+            // }
+            // Self::EmbeddedScala => {
+            //     assert_eq!(primal_dual_config, json!({}));
+            //     Box::new(SolverEmbeddedScala::new(initializer))
+            // }
+            // Self::EmbeddedLooper => {
+            //     unimplemented!()
+            // }
+            // Self::EmbeddedAxi4 => {
+            //     assert_eq!(primal_dual_config, json!({}));
+            //     Box::new(SolverEmbeddedAxi4::new(initializer))
+            // }
+            // Self::Serial | Self::ErrorPatternLogger => {
+            //     unreachable!()
+            // }
+        }
     }
 }

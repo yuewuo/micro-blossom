@@ -1,3 +1,4 @@
+use crate::resources::*;
 use fusion_blossom::dual_module::*;
 use fusion_blossom::util::*;
 use micro_blossom_nostd::interface::*;
@@ -5,6 +6,11 @@ use micro_blossom_nostd::util::*;
 
 pub trait DualInterfaceWithInitializer {
     fn new_with_initializer(initializer: &SolverInitializer) -> Self;
+}
+
+/// dual module with native initializer from a MicroBlossomSingle graph and configurations
+pub trait DualInterfaceNativeNew {
+    fn new_native(micro_blossom: MicroBlossomSingle, config: serde_json::Value);
 }
 
 pub struct DualModuleAdaptor<D: DualInterface + DualInterfaceWithInitializer> {
@@ -175,5 +181,57 @@ impl<'a> PrimalInterface for MockPrimalInterface<'a> {
     }
     fn iterate_perfect_matching(&mut self, _func: impl FnMut(&Self, CompactNodeIndex, CompactMatchTarget, &TouchingLink)) {
         unreachable!("should not be called")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use fusion_blossom::example_codes::*;
+    use fusion_blossom::mwpm_solver::*;
+    use fusion_blossom::primal_module::*;
+    use fusion_blossom::visualize::*;
+
+    pub fn dual_module_standard_optional_viz<Solver: PrimalDualSolver + Sized>(
+        d: VertexNum,
+        visualize_filename: Option<String>,
+        defect_vertices: Vec<VertexIndex>,
+        constructor: impl FnOnce(&SolverInitializer, &Vec<VisualizePosition>) -> Box<Solver>,
+    ) -> Box<Solver> {
+        println!("{defect_vertices:?}");
+        let half_weight = 500;
+        let mut code = CodeCapacityPlanarCode::new(d, 0.1, half_weight);
+        let mut visualizer = match visualize_filename.as_ref() {
+            Some(visualize_filename) => {
+                let visualizer = Visualizer::new(
+                    option_env!("FUSION_DIR").map(|dir| dir.to_owned() + "/visualize/data/" + visualize_filename.as_str()),
+                    code.get_positions(),
+                    true,
+                )
+                .unwrap();
+                print_visualize_link(visualize_filename.clone());
+                Some(visualizer)
+            }
+            None => None,
+        };
+        // create dual module
+        let initializer = code.get_initializer();
+        code.set_defect_vertices(&defect_vertices);
+        let syndrome = code.get_syndrome();
+        let mut solver = stacker::grow(crate::util::MAX_NODE_NUM * 1024, || -> Box<Solver> {
+            constructor(&initializer, &code.get_positions())
+        });
+        solver.solve_visualizer(&syndrome, visualizer.as_mut());
+        let subgraph = solver.subgraph_visualizer(visualizer.as_mut());
+        let mut standard_solver = SolverSerial::new(&initializer);
+        standard_solver.solve_visualizer(&syndrome, None);
+        let standard_subgraph = standard_solver.subgraph_visualizer(None);
+        let mut subgraph_builder = SubGraphBuilder::new(&initializer);
+        subgraph_builder.load_subgraph(&subgraph);
+        let total_weight = subgraph_builder.total_weight();
+        subgraph_builder.load_subgraph(&standard_subgraph);
+        let standard_total_weight = subgraph_builder.total_weight();
+        assert_eq!(total_weight, standard_total_weight);
+        solver
     }
 }

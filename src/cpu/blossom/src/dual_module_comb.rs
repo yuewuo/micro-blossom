@@ -412,7 +412,7 @@ pub use referenced_signal;
 #[cfg(test)]
 pub mod tests {
     use super::*;
-    use crate::dual_module_rtl::tests::*;
+    use crate::dual_module_adaptor::tests::*;
     use crate::mwpm_solver::*;
     use crate::ENV_PARAMETER_LOCK;
     use fusion_blossom::example_codes::*;
@@ -462,7 +462,6 @@ pub mod tests {
         let visualize_filename = "dual_module_comb_pre_matching_debug_1.json".to_string();
         let defect_vertices = vec![0, 4, 9];
         dual_module_comb_basic_standard_syndrome(3, visualize_filename, defect_vertices, true, false);
-        // dual_module_rtl_adaptor_basic_standard_syndrome(3, visualize_filename, defect_vertices);
     }
 
     /// bug: 4000 != 5000
@@ -663,7 +662,7 @@ pub mod tests {
         support_offloading: bool,
         support_layer_fusion: bool,
     ) -> Box<SolverDualComb> {
-        dual_module_rtl_embedded_basic_standard_syndrome_optional_viz(
+        dual_module_standard_optional_viz(
             d,
             Some(visualize_filename.clone()),
             defect_vertices,
