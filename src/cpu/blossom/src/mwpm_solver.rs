@@ -427,6 +427,7 @@ impl<Dual: SolverTrackedDual> PrimalDualSolver for SolverEmbeddedBoxed<Dual> {
 }
 
 pub type SolverEmbeddedComb = SolverEmbeddedBoxed<DualModuleCombDriver>;
+pub type SolverEmbeddedScala = SolverEmbeddedBoxed<DualModuleScalaDriver>;
 
 // pub struct SolverEmbeddedScala {
 //     pub dual_module: DualModuleScala,

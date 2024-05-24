@@ -357,9 +357,9 @@ impl TestCommands {
                 parameters,
                 json!({"dual":{"sim_config":{"support_offloading":true,"support_layer_fusion":true}}}),
             ),
-            TestCommands::EmbeddedScala(parameters) => ("dual-scala", parameters, json!({})),
-            TestCommands::EmbeddedLooper(parameters) => ("dual-looper", parameters, json!({})),
-            TestCommands::EmbeddedAxi4(parameters) => ("dual-axi4", parameters, json!({})),
+            TestCommands::EmbeddedScala(parameters) => ("embedded-scala", parameters, json!({})),
+            TestCommands::EmbeddedLooper(parameters) => ("embedded-looper", parameters, json!({})),
+            TestCommands::EmbeddedAxi4(parameters) => ("embedded-axi4", parameters, json!({})),
         };
         let command_head = vec![format!(""), format!("benchmark")];
         let mut command_tail = vec!["--total-rounds".to_string(), format!("{}", parameters.total_rounds)];
@@ -488,7 +488,6 @@ impl PrimalDualType {
     ) -> Box<dyn PrimalDualSolver> {
         // create micro blossom single graph configuration
         let graph = MicroBlossomSingle::new(initializer, positions);
-
         match self {
             Self::PrimalEmbedded => {
                 assert_eq!(primal_dual_config, json!({}));
@@ -499,7 +498,7 @@ impl PrimalDualType {
                 Box::new(SolverDualComb::new(initializer))
             }
             Self::EmbeddedComb => Box::new(SolverEmbeddedComb::new(graph, primal_dual_config)),
-            // Self::EmbeddedScala => Box::new(SolverEmbeddedScala::new(graph, primal_dual_config)),
+            Self::EmbeddedScala => Box::new(SolverEmbeddedScala::new(graph, primal_dual_config)),
 
             // /// embedded primal + Scala simulation dual
             // EmbeddedScala,

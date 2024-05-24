@@ -4,8 +4,12 @@
 //!
 
 use crate::dual_module_adaptor::*;
+use crate::mwpm_solver::*;
 use crate::resources::*;
+use crate::simulation_tcp_host::*;
 use crate::util::*;
+use fusion_blossom::dual_module::*;
+use fusion_blossom::primal_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::dual_driver_tracked::*;
@@ -14,6 +18,7 @@ use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
 use rand::{distributions::Alphanumeric, Rng};
 use scan_fmt::*;
+use serde::*;
 use std::io::prelude::*;
 use std::io::{BufReader, LineWriter};
 use std::net::{TcpListener, TcpStream};
@@ -23,6 +28,15 @@ use wait_timeout::ChildExt;
 
 pub struct DualModuleScalaDriver {
     pub link: Mutex<Link>,
+    pub config: DualScalaConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DualScalaConfig {
+    #[serde(default = "Default::default")]
+    pub sim_config: SimulationConfig,
+    #[serde(default = "random_name_16")]
     pub name: String,
 }
 
@@ -35,9 +49,19 @@ pub struct Link {
 
 pub type DualModuleScala = DualModuleStackless<DualDriverTracked<DualModuleScalaDriver, MAX_NODE_NUM>>;
 
-impl DualInterfaceWithInitializer for DualModuleScala {
-    fn new_with_initializer(initializer: &SolverInitializer) -> Self {
-        DualModuleStackless::new(DualDriverTracked::new(DualModuleScalaDriver::new(initializer).unwrap()))
+impl SolverTrackedDual for DualModuleScalaDriver {
+    fn new_from_graph_config(graph: MicroBlossomSingle, config: serde_json::Value) -> Self {
+        Self::new(graph, serde_json::from_value(config).unwrap()).unwrap()
+    }
+    fn fuse_layer(&mut self, layer_id: usize) {
+        unimplemented!();
+        // self.execute_instruction(Instruction::LoadDefectsExternal {
+        //     time: layer_id,
+        //     channel: 0,
+        // });
+    }
+    fn get_pre_matchings(&self, belonging: DualModuleInterfaceWeak) -> PerfectMatching {
+        unimplemented!();
     }
 }
 
@@ -65,16 +89,16 @@ impl Drop for DualModuleScalaDriver {
         }
         if cfg!(test) {
             // only delete binary but keep original waveforms
-            match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/rtl", self.name)) {
+            match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/rtl", self.config.name)) {
                 Err(e) => println!("Could not remove rtl folder: {}", e),
                 Ok(_) => println!("Successfully remove rtl folder"),
             }
-            match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/verilator", self.name)) {
+            match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}/verilator", self.config.name)) {
                 Err(e) => println!("Could not remove verilator folder: {}", e),
                 Ok(_) => println!("Successfully remove verilator folder"),
             }
         } else {
-            match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}", self.name)) {
+            match std::fs::remove_dir_all(format!("../../../simWorkspace/dualHost/{}", self.config.name)) {
                 Err(e) => println!("Could not remove build folder: {}", e),
                 Ok(_) => println!("Successfully remove build folder"),
             }
@@ -83,7 +107,7 @@ impl Drop for DualModuleScalaDriver {
 }
 
 impl DualModuleScalaDriver {
-    pub fn new_with_name_raw(micro_blossom: MicroBlossomSingle, name: String) -> std::io::Result<Self> {
+    pub fn new(micro_blossom: MicroBlossomSingle, config: DualScalaConfig) -> std::io::Result<Self> {
         let hostname = "127.0.0.1";
         let listener = TcpListener::bind(format!("{hostname}:0"))?;
         let port = listener.local_addr()?.port();
@@ -91,7 +115,7 @@ impl DualModuleScalaDriver {
         println!("Starting Scala simulator host... this may take a while (listening on {hostname}:{port})");
         let child = SCALA_MICRO_BLOSSOM_RUNNER.run(
             "microblossom.DualHost",
-            [format!("{hostname}"), format!("{port}"), format!("{name}")],
+            [format!("{hostname}"), format!("{port}"), format!("{}", config.name)],
         )?;
         let (socket, _addr) = listener.accept()?;
         let mut reader = BufReader::new(socket.try_clone()?);
@@ -108,28 +132,14 @@ impl DualModuleScalaDriver {
         drop(simulation_lock);
         write!(writer, "reset()\n")?;
         Ok(Self {
-            name,
             link: Mutex::new(Link {
                 port,
                 child,
                 reader,
                 writer,
             }),
+            config,
         })
-    }
-
-    pub fn new_with_name(initializer: &SolverInitializer, name: String) -> std::io::Result<Self> {
-        // in simulation, positions doesn't matter because it's not going to affect the timing constraint
-        Self::new_with_name_raw(MicroBlossomSingle::new_initializer_only(initializer), name)
-    }
-
-    pub fn new(initializer: &SolverInitializer) -> std::io::Result<Self> {
-        let name = rand::thread_rng()
-            .sample_iter(&Alphanumeric)
-            .take(16)
-            .map(char::from)
-            .collect();
-        Self::new_with_name(initializer, name)
     }
 }
 

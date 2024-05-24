@@ -11,9 +11,9 @@ use crate::dual_module_adaptor::*;
 use crate::dual_module_comb_edge::*;
 use crate::dual_module_comb_offloading::*;
 use crate::dual_module_comb_vertex::*;
-use crate::mwpm_solver::SolverTrackedDual;
+use crate::mwpm_solver::*;
 use crate::resources::*;
-use crate::simulation_tcp_host::SimulationConfig;
+use crate::simulation_tcp_host::*;
 use crate::util::*;
 use fusion_blossom::dual_module::*;
 use fusion_blossom::pointers::*;
@@ -153,7 +153,7 @@ impl SolverTrackedDual for DualModuleCombDriver {
 }
 
 impl DualModuleCombDriver {
-    pub fn new(graph: MicroBlossomSingle, comb_config: DualCombConfig) -> Self {
+    pub fn new(graph: MicroBlossomSingle, config: DualCombConfig) -> Self {
         let virtual_vertices: BTreeSet<VertexIndex> = graph.virtual_vertices.iter().cloned().collect();
         let mut all_incident_edges: Vec<Vec<EdgeIndex>> = vec![vec![]; graph.vertex_num];
         for (edge_index, &WeightedEdge { l, r, .. }) in graph.weighted_edges.iter().enumerate() {
@@ -182,7 +182,7 @@ impl DualModuleCombDriver {
             offloading_units: vec![],
             instruction: Instruction::FindObstacle,
             graph: graph.clone(),
-            config: comb_config,
+            config,
             profiler_instruction_history: vec![],
         };
         let mut offloading_vec = graph.offloading.0.clone();
