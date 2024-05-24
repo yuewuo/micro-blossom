@@ -10,7 +10,7 @@ pub mod dual_module_scala;
 pub mod mwpm_solver;
 pub mod primal_module_embedded_adaptor;
 pub mod resources;
-pub mod simulation_tcp_host;
+pub mod simulation_tcp_client;
 pub mod transform_syndromes;
 pub mod util;
 

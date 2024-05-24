@@ -499,36 +499,11 @@ impl PrimalDualType {
             }
             Self::EmbeddedComb => Box::new(SolverEmbeddedComb::new(graph, primal_dual_config)),
             Self::EmbeddedScala => Box::new(SolverEmbeddedScala::new(graph, primal_dual_config)),
-
-            // /// embedded primal + Scala simulation dual
-            // EmbeddedScala,
-            // /// embedded primal + Looper simulated dual
-            // EmbeddedLooper,
-            // /// embedded primal + Axi4 simulated dual
-            // EmbeddedAxi4,
-            // /// serial primal and dual, standard solution
-            // Serial,
-            // /// log error into a file for later fetch
-            // ErrorPatternLogger,
-            _ => unimplemented!(),
-            // Self::EmbeddedComb => {
-            //     let micro_config = MicroBlossomSingle::new(initializer, positions);
-            //     Box::new(SolverEmbeddedComb::new_native(micro_config, primal_dual_config))
-            // }
-            // Self::EmbeddedScala => {
-            //     assert_eq!(primal_dual_config, json!({}));
-            //     Box::new(SolverEmbeddedScala::new(initializer))
-            // }
-            // Self::EmbeddedLooper => {
-            //     unimplemented!()
-            // }
-            // Self::EmbeddedAxi4 => {
-            //     assert_eq!(primal_dual_config, json!({}));
-            //     Box::new(SolverEmbeddedAxi4::new(initializer))
-            // }
-            // Self::Serial | Self::ErrorPatternLogger => {
-            //     unreachable!()
-            // }
+            Self::EmbeddedLooper => unimplemented!(),
+            Self::EmbeddedAxi4 => Box::new(SolverEmbeddedAxi4::new(graph, primal_dual_config)),
+            Self::Serial | Self::ErrorPatternLogger => {
+                unreachable!()
+            }
         }
     }
 }

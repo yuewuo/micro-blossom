@@ -7,7 +7,7 @@
 
 use crate::dual_module_adaptor::*;
 use crate::resources::*;
-use crate::simulation_tcp_host::*;
+use crate::simulation_tcp_client::*;
 use crate::util::*;
 use embedded_blossom::extern_c::*;
 use embedded_blossom::util::*;

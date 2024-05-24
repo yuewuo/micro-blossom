@@ -6,7 +6,7 @@
 use crate::dual_module_adaptor::*;
 use crate::mwpm_solver::*;
 use crate::resources::*;
-use crate::simulation_tcp_host::*;
+use crate::simulation_tcp_client::*;
 use crate::util::*;
 use fusion_blossom::dual_module::*;
 use fusion_blossom::primal_module::*;
@@ -16,7 +16,6 @@ use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
-use rand::{distributions::Alphanumeric, Rng};
 use scan_fmt::*;
 use serde::*;
 use std::io::prelude::*;

@@ -5,11 +5,14 @@
 //!
 
 use crate::dual_module_adaptor::*;
+use crate::mwpm_solver::*;
 use crate::resources::*;
-use crate::simulation_tcp_host::*;
+use crate::simulation_tcp_client::*;
 use crate::util::*;
 use embedded_blossom::extern_c::*;
 use embedded_blossom::util::*;
+use fusion_blossom::dual_module::*;
+use fusion_blossom::primal_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::dual_driver_tracked::*;
@@ -18,6 +21,7 @@ use micro_blossom_nostd::instruction::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
 use scan_fmt::*;
+use serde::*;
 
 pub struct DualModuleAxi4Driver {
     pub client: SimulationTcpClient,
@@ -26,27 +30,41 @@ pub struct DualModuleAxi4Driver {
     pub conflicts_store: ConflictsStore<MAX_CONFLICT_CHANNELS>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DualAxi4Config {
+    #[serde(default = "Default::default")]
+    pub sim_config: SimulationConfig,
+    #[serde(default = "random_name_16")]
+    pub name: String,
+}
+
 pub type DualModuleAxi4 = DualModuleStackless<DualDriverTracked<DualModuleAxi4Driver, MAX_NODE_NUM>>;
 
-impl DualInterfaceWithInitializer for DualModuleAxi4 {
-    fn new_with_initializer(initializer: &SolverInitializer) -> Self {
-        let micro_blossom = MicroBlossomSingle::new_initializer_only(initializer);
-        let name = random_name_16();
-        let sim_config: SimulationConfig = Default::default();
-        DualModuleStackless::new(DualDriverTracked::new(
-            DualModuleAxi4Driver::new(micro_blossom, name, sim_config).unwrap(),
-        ))
+impl SolverTrackedDual for DualModuleAxi4Driver {
+    fn new_from_graph_config(graph: MicroBlossomSingle, config: serde_json::Value) -> Self {
+        Self::new(graph, serde_json::from_value(config).unwrap()).unwrap()
+    }
+    fn fuse_layer(&mut self, layer_id: usize) {
+        unimplemented!();
+        // self.execute_instruction(Instruction::LoadDefectsExternal {
+        //     time: layer_id,
+        //     channel: 0,
+        // });
+    }
+    fn get_pre_matchings(&self, belonging: DualModuleInterfaceWeak) -> PerfectMatching {
+        PerfectMatching::default()
     }
 }
 
 impl DualModuleAxi4Driver {
-    pub fn new(micro_blossom: MicroBlossomSingle, name: String, sim_config: SimulationConfig) -> std::io::Result<Self> {
-        let conflict_channels = sim_config.conflict_channels;
+    pub fn new(micro_blossom: MicroBlossomSingle, config: DualAxi4Config) -> std::io::Result<Self> {
+        let conflict_channels = config.sim_config.conflict_channels;
         let mut conflicts_store = ConflictsStore::new();
         conflicts_store.reconfigure(conflict_channels as u8);
-        let maximum_growth = vec![0; sim_config.context_depth];
+        let maximum_growth = vec![0; config.sim_config.context_depth];
         let mut value = Self {
-            client: SimulationTcpClient::new("MicroBlossomHost", micro_blossom, name, sim_config)?,
+            client: SimulationTcpClient::new("MicroBlossomHost", micro_blossom, config.name, config.sim_config)?,
             context_id: 0,
             maximum_growth,
             conflicts_store,

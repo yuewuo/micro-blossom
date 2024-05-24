@@ -4,7 +4,7 @@ use crate::dual_module_comb::*;
 use crate::dual_module_scala::*;
 use crate::primal_module_embedded_adaptor::*;
 use crate::resources::*;
-use crate::simulation_tcp_host::SimulationConfig;
+use crate::simulation_tcp_client::SimulationConfig;
 use crate::util::*;
 use fusion_blossom::dual_module::*;
 use fusion_blossom::dual_module_serial::*;
@@ -449,6 +449,7 @@ impl<Dual: SolverTrackedDual> PrimalDualSolver for SolverEmbeddedBoxed<Dual> {
 
 pub type SolverEmbeddedComb = SolverEmbeddedBoxed<DualModuleCombDriver>;
 pub type SolverEmbeddedScala = SolverEmbeddedBoxed<DualModuleScalaDriver>;
+pub type SolverEmbeddedAxi4 = SolverEmbeddedBoxed<DualModuleAxi4Driver>;
 
 // pub struct SolverEmbeddedAxi4 {
 //     pub dual_module: DualModuleAxi4,

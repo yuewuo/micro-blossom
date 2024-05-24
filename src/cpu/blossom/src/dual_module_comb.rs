@@ -13,7 +13,7 @@ use crate::dual_module_comb_offloading::*;
 use crate::dual_module_comb_vertex::*;
 use crate::mwpm_solver::*;
 use crate::resources::*;
-use crate::simulation_tcp_host::*;
+use crate::simulation_tcp_client::*;
 use crate::util::*;
 use fusion_blossom::dual_module::*;
 use fusion_blossom::pointers::*;
