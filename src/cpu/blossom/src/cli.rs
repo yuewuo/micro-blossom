@@ -489,6 +489,7 @@ impl PrimalDualType {
     ) -> Box<dyn PrimalDualSolver> {
         // create micro blossom single graph configuration
         let graph = MicroBlossomSingle::new(initializer, positions);
+
         match self {
             Self::PrimalEmbedded => {
                 assert_eq!(primal_dual_config, json!({}));
@@ -499,7 +500,7 @@ impl PrimalDualType {
                 Box::new(SolverDualComb::new(initializer))
             }
             Self::EmbeddedComb => Box::new(SolverEmbeddedComb::new(graph, primal_dual_config)),
-            // Self::EmbeddedScala => Box::new(SolverEmbeddedScala::new(initializer)),
+            // Self::EmbeddedScala => Box::new(SolverEmbeddedScala::new(graph, primal_dual_config)),
 
             // /// embedded primal + Scala simulation dual
             // EmbeddedScala,

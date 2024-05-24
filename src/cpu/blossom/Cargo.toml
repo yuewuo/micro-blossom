@@ -28,6 +28,7 @@ path = "src/main.rs"
 [features]
 # to enable a feature, use `--features xxx`
 default = []
+compact = ["embedded-blossom/compact"]
 
 [dependencies]
 rand_xoshiro = "0.6.0"

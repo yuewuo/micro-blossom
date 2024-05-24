@@ -119,16 +119,19 @@ impl<const N: usize> PrimalNodes<N> {
     }
 
     pub fn has_node(&self, node_index: CompactNodeIndex) -> bool {
+        debug_assert!((node_index.get() as usize) < N, "node index too large, leading to overflow");
         get!(self.buffer, node_index.get() as usize).is_some()
     }
 
     #[allow(unused_unsafe)]
     pub fn get_node(&self, node_index: CompactNodeIndex) -> &PrimalNode {
+        debug_assert!((node_index.get() as usize) < N, "node index too large, leading to overflow");
         usu!(get!(self.buffer, node_index.get() as usize).as_ref())
     }
 
     #[allow(unused_unsafe)]
     pub fn get_node_mut(&mut self, node_index: CompactNodeIndex) -> &mut PrimalNode {
+        debug_assert!((node_index.get() as usize) < N, "node index too large, leading to overflow");
         usu!(get_mut!(self.buffer, node_index.get() as usize).as_mut())
     }
 

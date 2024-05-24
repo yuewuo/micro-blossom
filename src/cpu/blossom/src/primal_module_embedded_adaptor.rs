@@ -121,7 +121,7 @@ impl PrimalModuleImpl for PrimalModuleEmbeddedAdaptor {
     fn new_empty(initializer: &SolverInitializer) -> Self {
         assert!(initializer.vertex_num <= MAX_NODE_NUM, "potential overflow");
         Self {
-            primal_module: stacker::grow(MAX_NODE_NUM * 128, || Box::new(PrimalModuleEmbedded::new())),
+            primal_module: stacker::grow(MAX_NODE_NUM * 256, || Box::new(PrimalModuleEmbedded::new())),
             index_to_ptr: BTreeMap::new(),
             ptr_to_index: BTreeMap::new(),
             debug_resolve_only_one: true,
@@ -600,7 +600,7 @@ mod tests {
         let initializer = code.get_initializer();
         let mut dual_module = DualModuleSerial::new_empty(&initializer);
         // create primal module
-        let mut primal_module = stacker::grow(crate::util::MAX_NODE_NUM * 1024, || {
+        let mut primal_module = stacker::grow(crate::util::MAX_NODE_NUM * 256, || {
             Box::new(PrimalModuleEmbeddedAdaptor::new_empty(&initializer))
         });
         code.set_defect_vertices(&defect_vertices);

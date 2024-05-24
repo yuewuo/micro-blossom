@@ -2,7 +2,6 @@ use crate::dual_module_adaptor::*;
 use crate::dual_module_axi4::*;
 use crate::dual_module_comb::*;
 use crate::dual_module_scala::*;
-use crate::mwpm_solver_macro::*;
 use crate::primal_module_embedded_adaptor::*;
 use crate::resources::*;
 use crate::util::*;
@@ -28,7 +27,14 @@ pub struct SolverPrimalEmbedded {
     subgraph_builder: SubGraphBuilder,
 }
 
-bind_fusion_visualizer!(SolverPrimalEmbedded);
+impl FusionVisualizer for SolverPrimalEmbedded {
+    fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+        let mut value = self.primal_module.snapshot(abbrev);
+        snapshot_combine_values(&mut value, self.dual_module.snapshot(abbrev), abbrev);
+        snapshot_combine_values(&mut value, self.interface_ptr.snapshot(abbrev), abbrev);
+        value
+    }
+}
 
 impl SolverPrimalEmbedded {
     pub fn new(initializer: &SolverInitializer) -> Self {
@@ -62,29 +68,74 @@ impl PrimalDualSolver for SolverPrimalEmbedded {
         self.primal_module
             .solve_visualizer(&self.interface_ptr, syndrome_pattern, &mut self.dual_module, visualizer);
     }
-    common_perfect_matching_visualizer!();
-    common_subgraph_visualizer!();
-    common_sum_dual_variables!();
-    common_generate_profiler_report!();
+    fn perfect_matching_visualizer(&mut self, visualizer: Option<&mut Visualizer>) -> PerfectMatching {
+        let perfect_matching = self
+            .primal_module
+            .perfect_matching(&self.interface_ptr, &mut self.dual_module);
+        if let Some(visualizer) = visualizer {
+            visualizer
+                .snapshot_combined("perfect matching".to_string(), vec![self, &perfect_matching])
+                .unwrap();
+        }
+        perfect_matching
+    }
+    fn subgraph_visualizer(&mut self, visualizer: Option<&mut Visualizer>) -> Vec<EdgeIndex> {
+        let perfect_matching = self.perfect_matching();
+        self.subgraph_builder.load_perfect_matching(&perfect_matching);
+        let subgraph = self.subgraph_builder.get_subgraph();
+        if let Some(visualizer) = visualizer {
+            visualizer
+                .snapshot_combined(
+                    "perfect matching and subgraph".to_string(),
+                    vec![
+                        &self.interface_ptr,
+                        &self.dual_module,
+                        &perfect_matching,
+                        &VisualizeSubgraph::new(&subgraph),
+                    ],
+                )
+                .unwrap();
+        }
+        subgraph
+    }
+    fn sum_dual_variables(&self) -> Weight {
+        self.interface_ptr.read_recursive().sum_dual_variables
+    }
+    fn generate_profiler_report(&self) -> serde_json::Value {
+        json!({
+            "dual": self.dual_module.generate_profiler_report(),
+            "primal": self.primal_module.generate_profiler_report(),
+        })
+    }
 }
 
 pub struct SolverDualComb {
-    dual_module: DualModuleCombAdaptor,
+    dual_module: Box<DualModuleCombAdaptor>,
     primal_module: PrimalModuleSerialPtr,
     interface_ptr: DualModuleInterfacePtr,
     subgraph_builder: SubGraphBuilder,
 }
 
-bind_fusion_visualizer!(SolverDualComb);
+impl FusionVisualizer for SolverDualComb {
+    fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+        let mut value = self.primal_module.snapshot(abbrev);
+        snapshot_combine_values(&mut value, self.dual_module.snapshot(abbrev), abbrev);
+        snapshot_combine_values(&mut value, self.interface_ptr.snapshot(abbrev), abbrev);
+        value
+    }
+}
 
 impl SolverDualComb {
     pub fn new(initializer: &SolverInitializer) -> Self {
-        Self {
-            dual_module: DualModuleCombAdaptor::new_empty(initializer),
+        let result = Self {
+            dual_module: stacker::grow(MAX_NODE_NUM * 1024, || {
+                Box::new(DualModuleCombAdaptor::new_empty(initializer))
+            }),
             primal_module: PrimalModuleSerialPtr::new_empty(initializer),
             interface_ptr: DualModuleInterfacePtr::new_empty(),
             subgraph_builder: SubGraphBuilder::new(initializer),
-        }
+        };
+        result
     }
 }
 
@@ -109,7 +160,7 @@ impl PrimalDualSolver for SolverDualComb {
         self.primal_module.solve_step_callback(
             &self.interface_ptr,
             syndrome_pattern,
-            &mut self.dual_module,
+            self.dual_module.as_mut(),
             |interface, dual_module, primal_module, group_max_update_length| {
                 #[cfg(test)]
                 println!("group_max_update_length: {:?}", group_max_update_length);
@@ -132,21 +183,53 @@ impl PrimalDualSolver for SolverDualComb {
                 }
             },
         );
-
         if let Some(visualizer) = visualizer.as_mut() {
-            visualizer
-                .snapshot_combined("solved".to_string(), vec![&self.interface_ptr, &self.dual_module, self])
-                .unwrap();
+            visualizer.snapshot("solved".to_string(), self).unwrap();
         }
     }
-    common_perfect_matching_visualizer!();
-    common_subgraph_visualizer!();
-    common_sum_dual_variables!();
-    common_generate_profiler_report!();
+    fn perfect_matching_visualizer(&mut self, visualizer: Option<&mut Visualizer>) -> PerfectMatching {
+        let perfect_matching = self
+            .primal_module
+            .perfect_matching(&self.interface_ptr, self.dual_module.as_mut());
+        if let Some(visualizer) = visualizer {
+            visualizer
+                .snapshot_combined("perfect matching".to_string(), vec![self, &perfect_matching])
+                .unwrap();
+        }
+        perfect_matching
+    }
+    fn subgraph_visualizer(&mut self, visualizer: Option<&mut Visualizer>) -> Vec<EdgeIndex> {
+        let perfect_matching = self.perfect_matching();
+        self.subgraph_builder.load_perfect_matching(&perfect_matching);
+        let subgraph = self.subgraph_builder.get_subgraph();
+        if let Some(visualizer) = visualizer {
+            visualizer
+                .snapshot_combined(
+                    "perfect matching and subgraph".to_string(),
+                    vec![
+                        &self.interface_ptr,
+                        self.dual_module.as_ref(),
+                        &perfect_matching,
+                        &VisualizeSubgraph::new(&subgraph),
+                    ],
+                )
+                .unwrap();
+        }
+        subgraph
+    }
+    fn sum_dual_variables(&self) -> Weight {
+        self.interface_ptr.read_recursive().sum_dual_variables
+    }
+    fn generate_profiler_report(&self) -> serde_json::Value {
+        json!({
+            "dual": self.dual_module.generate_profiler_report(),
+            "primal": self.primal_module.generate_profiler_report(),
+        })
+    }
 }
 
 pub struct SolverEmbeddedComb {
-    pub dual_module: DualModuleComb,
+    pub dual_module: Box<DualModuleComb>,
     pub primal_module: Box<PrimalModuleEmbedded<MAX_NODE_NUM>>,
     subgraph_builder: SubGraphBuilder,
     defect_nodes: Vec<VertexIndex>,
@@ -154,7 +237,14 @@ pub struct SolverEmbeddedComb {
     layer_id: usize,
 }
 
-bind_fusion_visualizer!(SolverEmbeddedComb, 1);
+impl FusionVisualizer for SolverEmbeddedComb {
+    fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+        let mut value = self.dual_module.driver.driver.snapshot(abbrev);
+        snapshot_combine_values(&mut value, self.primal_module.snapshot(abbrev), abbrev);
+        snapshot_combine_values(&mut value, DualNodesOf::new(&self.primal_module).snapshot(abbrev), abbrev);
+        value
+    }
+}
 
 impl SolverEmbeddedComb {
     pub fn new(graph: MicroBlossomSingle, mut primal_dual_config: serde_json::Value) -> Self {
@@ -166,8 +256,13 @@ impl SolverEmbeddedComb {
             .unwrap_or_default();
         assert!(primal_dual_config.is_empty(), "unknown remaining: {:?}", primal_dual_config);
         let initializer = graph.get_initializer();
-        let dual_module = DualModuleStackless::new(DualDriverTracked::new(DualModuleCombDriver::new(graph, dual_config)));
-        let mut primal_module = stacker::grow(MAX_NODE_NUM * 128, || Box::new(PrimalModuleEmbedded::new()));
+        let dual_module = stacker::grow(MAX_NODE_NUM * 128, || {
+            Box::new(DualModuleStackless::new(DualDriverTracked::new(DualModuleCombDriver::new(
+                graph,
+                dual_config,
+            ))))
+        });
+        let mut primal_module = stacker::grow(MAX_NODE_NUM * 256, || Box::new(PrimalModuleEmbedded::new()));
         // load the layer id to the primal
         if let Some(layer_fusion) = dual_module.driver.driver.graph.layer_fusion.as_ref() {
             for vertex_index in 0..dual_module.driver.driver.graph.vertex_num {
@@ -224,7 +319,7 @@ impl PrimalDualSolver for SolverEmbeddedComb {
                 if let Some(visualizer) = visualizer.as_mut() {
                     visualizer.snapshot_combined(format!("{obstacle:?}"), vec![self]).unwrap();
                 }
-                self.primal_module.resolve(&mut self.dual_module, obstacle);
+                self.primal_module.resolve(self.dual_module.as_mut(), obstacle);
                 (obstacle, _) = self.dual_module.find_obstacle();
             }
             // if there are pending fusion layers, execute them
@@ -233,7 +328,7 @@ impl PrimalDualSolver for SolverEmbeddedComb {
                 if self.layer_id < num_layers {
                     self.dual_module.driver.driver.fuse_layer(self.layer_id);
                     self.primal_module.fuse_layer(
-                        &mut self.dual_module,
+                        self.dual_module.as_mut(),
                         CompactLayerId::new(self.layer_id as CompactLayerNum).unwrap(),
                     );
                     if let Some(visualizer) = visualizer.as_mut() {
@@ -248,7 +343,7 @@ impl PrimalDualSolver for SolverEmbeddedComb {
             break;
         }
         if let Some(visualizer) = visualizer.as_mut() {
-            visualizer.snapshot_combined("solved".to_string(), vec![self]).unwrap();
+            visualizer.snapshot("solved".to_string(), self).unwrap();
         }
         let perfect_matching = self.perfect_matching();
         self.subgraph_builder.load_perfect_matching(&perfect_matching);
@@ -260,7 +355,6 @@ impl PrimalDualSolver for SolverEmbeddedComb {
             }
         }
     }
-
     fn perfect_matching_visualizer(&mut self, visualizer: Option<&mut Visualizer>) -> PerfectMatching {
         // this perfect matching is not necessarily complete when some of the matchings are inside the dual module
         let (mut perfect_matching, belonging) =
@@ -349,7 +443,6 @@ impl PrimalDualSolver for SolverEmbeddedComb {
         subgraph
     }
     fn sum_dual_variables(&self) -> Weight {
-        // cannot adapt: neither the primal nor dual node know all the information
         self.subgraph_builder.total_weight()
     }
     fn generate_profiler_report(&self) -> serde_json::Value {
@@ -362,170 +455,15 @@ impl PrimalDualSolver for SolverEmbeddedComb {
     }
 }
 
-// pub struct SolverEmbeddedRTL {
-//     pub dual_module: DualModuleRTL,
-//     pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM>,
-//     subgraph_builder: SubGraphBuilder,
-//     defect_nodes: Vec<VertexIndex>,
-//     offloaded: usize,
-// }
-
-// impl FusionVisualizer for SolverEmbeddedRTL {
-//     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
-//         let mut value = self.dual_module.driver.driver.snapshot(abbrev);
-//         snapshot_combine_values(&mut value, self.primal_module.snapshot(abbrev), abbrev);
-//         snapshot_combine_values(&mut value, DualNodesOf::new(&self.primal_module).snapshot(abbrev), abbrev);
-//         value
-//     }
-// }
-
-// impl SolverEmbeddedRTL {
-//     pub fn new(initializer: &SolverInitializer) -> Self {
-//         Self {
-//             dual_module: DualModuleRTL::new_with_initializer(initializer),
-//             primal_module: PrimalModuleEmbedded::new(),
-//             subgraph_builder: SubGraphBuilder::new(initializer),
-//             defect_nodes: vec![],
-//             offloaded: 0,
-//         }
-//     }
-// }
-
-// impl PrimalDualSolver for SolverEmbeddedRTL {
-//     fn clear(&mut self) {
-//         self.primal_module.reset();
-//         self.dual_module.reset();
-//         self.subgraph_builder.clear();
-//         self.defect_nodes.clear();
-//     }
-//     fn solve_visualizer(&mut self, syndrome_pattern: &SyndromePattern, mut visualizer: Option<&mut Visualizer>) {
-//         assert!(syndrome_pattern.erasures.is_empty());
-//         assert!(syndrome_pattern.dynamic_weights.is_empty());
-//         assert!(self.defect_nodes.is_empty(), "must call `clear` between different runs");
-//         for (node_index, &defect_index) in syndrome_pattern.defect_vertices.iter().enumerate() {
-//             self.dual_module.add_defect(ni!(defect_index), ni!(node_index));
-//             self.defect_nodes.push(defect_index);
-//         }
-//         if let Some(visualizer) = visualizer.as_mut() {
-//             visualizer.snapshot_combined("syndrome".to_string(), vec![self]).unwrap();
-//         }
-//         let (mut obstacle, _) = self.dual_module.find_obstacle();
-//         while !obstacle.is_none() {
-//             // println!("obstacle: {obstacle:?}");
-//             debug_assert!(
-//                 obstacle.is_obstacle(),
-//                 "dual module should spontaneously process all finite growth"
-//             );
-//             if let Some(visualizer) = visualizer.as_mut() {
-//                 visualizer.snapshot_combined(format!("{obstacle:?}"), vec![self]).unwrap();
-//             }
-//             self.primal_module.resolve(&mut self.dual_module, obstacle);
-//             (obstacle, _) = self.dual_module.find_obstacle();
-//         }
-//         if let Some(visualizer) = visualizer.as_mut() {
-//             visualizer.snapshot_combined("solved".to_string(), vec![self]).unwrap();
-//         }
-//         let perfect_matching = self.perfect_matching();
-//         self.subgraph_builder.load_perfect_matching(&perfect_matching);
-//         // check how many defect vertices are offloaded (not maintained by the primal module at all)
-//         self.offloaded = 0;
-//         for node_index in 0..self.defect_nodes.len() {
-//             if !self.primal_module.nodes.has_node(ni!(node_index)) {
-//                 self.offloaded += 1;
-//             }
-//         }
-//     }
-//     fn perfect_matching_visualizer(&mut self, visualizer: Option<&mut Visualizer>) -> PerfectMatching {
-//         // this perfect matching is not necessarily complete when some of the matchings are inside the dual module
-//         let (mut perfect_matching, belonging) =
-//             perfect_matching_from_embedded_primal(&mut self.primal_module, &self.defect_nodes);
-//         // also add pre matchings from the dual driver
-//         let dual_module = &self.dual_module.driver.driver;
-//         let pre_matchings = dual_module.get_pre_matchings();
-//         for &edge_index in pre_matchings.iter() {
-//             let edge = &dual_module.edges[edge_index];
-//             let left_vertex = &dual_module.vertices[edge.left_index];
-//             let right_vertex = &dual_module.vertices[edge.right_index];
-//             let left_node = DualNodePtr::new_value(DualNode {
-//                 index: left_vertex.node_index.unwrap(),
-//                 class: DualNodeClass::DefectVertex {
-//                     defect_index: self.defect_nodes[left_vertex.node_index.unwrap() as usize],
-//                 },
-//                 grow_state: DualNodeGrowState::Stay,
-//                 defect_size: nz!(1usize),
-//                 parent_blossom: None,
-//                 dual_variable_cache: (0, 0),
-//                 belonging: belonging.clone(),
-//             });
-//             let right_node = DualNodePtr::new_value(DualNode {
-//                 index: right_vertex.node_index.unwrap(),
-//                 class: DualNodeClass::DefectVertex {
-//                     defect_index: self.defect_nodes[right_vertex.node_index.unwrap() as usize],
-//                 },
-//                 grow_state: DualNodeGrowState::Stay,
-//                 defect_size: nz!(1usize),
-//                 parent_blossom: None,
-//                 dual_variable_cache: (0, 0),
-//                 belonging: belonging.clone(),
-//             });
-//             perfect_matching.peer_matchings.push((left_node, right_node));
-//         }
-//         if let Some(visualizer) = visualizer {
-//             visualizer
-//                 .snapshot_combined("perfect matching".to_string(), vec![self, &perfect_matching])
-//                 .unwrap();
-//         }
-//         perfect_matching
-//     }
-//     fn subgraph_visualizer(&mut self, visualizer: Option<&mut Visualizer>) -> Vec<EdgeIndex> {
-//         let perfect_matching = self.perfect_matching();
-//         self.subgraph_builder.load_perfect_matching(&perfect_matching);
-//         let subgraph = self.subgraph_builder.get_subgraph();
-//         if let Some(visualizer) = visualizer {
-//             visualizer
-//                 .snapshot_combined(
-//                     "perfect matching and subgraph".to_string(),
-//                     vec![
-//                         &self.dual_module.driver.driver,
-//                         &DualNodesOf::new(&self.primal_module),
-//                         &perfect_matching,
-//                         &VisualizeSubgraph::new(&subgraph),
-//                     ],
-//                 )
-//                 .unwrap();
-//         }
-//         subgraph
-//     }
-//     fn sum_dual_variables(&self) -> Weight {
-//         // cannot adapt: neither the primal nor dual node know all the information
-//         self.subgraph_builder.total_weight()
-//     }
-//     fn generate_profiler_report(&self) -> serde_json::Value {
-//         json!({
-//             "dual": self.dual_module.driver.driver.generate_profiler_report(),
-//             "primal": {
-//                 "offloaded": self.offloaded,
-//             },
-//         })
-//     }
-// }
-
 // pub struct SolverEmbeddedScala {
 //     pub dual_module: DualModuleScala,
-//     pub primal_module: PrimalModuleEmbedded<MAX_NODE_NUM>,
+//     pub primal_module: Box<PrimalModuleEmbedded<MAX_NODE_NUM>>,
 //     subgraph_builder: SubGraphBuilder,
 //     defect_nodes: Vec<VertexIndex>,
 //     pub max_iterations: usize, // to debug the infinite loop cases: save a waveform in the middle
 // }
 
-// impl FusionVisualizer for SolverEmbeddedScala {
-//     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
-//         let mut value = self.dual_module.driver.driver.snapshot(abbrev);
-//         snapshot_combine_values(&mut value, self.primal_module.snapshot(abbrev), abbrev);
-//         snapshot_combine_values(&mut value, DualNodesOf::new(&self.primal_module).snapshot(abbrev), abbrev);
-//         value
-//     }
-// }
+// bind_fusion_visualizer!(SolverEmbeddedScala, 1);
 
 // impl SolverEmbeddedScala {
 //     pub fn new(initializer: &SolverInitializer) -> Self {

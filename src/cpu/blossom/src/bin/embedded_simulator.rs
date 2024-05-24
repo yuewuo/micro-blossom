@@ -4,18 +4,18 @@
 //!
 //! ## Examples
 //!
-//! First generate the resources using `cargo run --bin generate_example_graphs`.
+//! First generate the resources using `cargo run --features=compact --bin generate_example_graphs`.
 //!
 //! ```sh
-//! cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
-//! EMBEDDED_BLOSSOM_MAIN=test_get_time cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json  # note: it's normal that sleep() will take almost forever
+//! cargo run --features=compact --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
+//! EMBEDDED_BLOSSOM_MAIN=test_get_time cargo run --features=compact --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json  # note: it's normal that sleep() will take almost forever
 //!
-//! EMBEDDED_BLOSSOM_MAIN=benchmark_reset_speed WITH_WAVEFORM=1 cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
+//! EMBEDDED_BLOSSOM_MAIN=benchmark_reset_speed WITH_WAVEFORM=1 cargo run --features=compact --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
 //! gtkwave ../../../simWorkspace/MicroBlossomHost/benchmark_reset_speed/hosted.fst
 //!
-//! EMBEDDED_BLOSSOM_MAIN=benchmark_primal_simple_match cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
+//! EMBEDDED_BLOSSOM_MAIN=benchmark_primal_simple_match cargo run --features=compact --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
 //!
-//! EMBEDDED_BLOSSOM_MAIN=test_micro_blossom cargo run --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_d3.json
+//! EMBEDDED_BLOSSOM_MAIN=test_micro_blossom cargo run --features=compact --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_d3.json
 //! ```
 //!
 //! For more use cases and details, see https://docs.google.com/document/d/1HA6VL_ywSoCpS7PODIA8HeTbg_VIbbpyqtazdunSRvc/edit?usp=sharing
