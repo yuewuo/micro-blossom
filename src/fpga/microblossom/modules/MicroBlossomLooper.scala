@@ -42,8 +42,7 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
   io.dataLoss := dataLoss
 
   // create MicroBlossom module
-  val microBlossom = MicroBlossomMocker(config, config)
-  // val microBlossom = DistributedDual(config, config)
+  val microBlossom = DistributedDual(config, config)
 
   // immediate feedback happens when the response allows immediate growth
   immediateLoopback := !microBlossom.io.conflict.valid &&

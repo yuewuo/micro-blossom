@@ -17,6 +17,7 @@ import play.api.libs.json._
 import io.circe.parser.decode
 import scala.reflect.io.Directory
 import scala.util.control.Breaks._
+import microblossom._
 import microblossom.util._
 import microblossom.modules._
 import microblossom.driver._
@@ -31,12 +32,6 @@ import scala.collection.mutable.ArrayBuffer
 
 class EmulationTcpHost(val emulationName: String, val cleanFileOnDisconnect: Boolean = false) extends App {
 
-  var inStream: BufferedReader = null
-  var outStream: PrintWriter = null
-  var emuConfig: EmulationConfig = null
-  var config: DualConfig = null
-  abstract override def funcBody() = {}
-
   if (args.length != 3) {
     println("usage: <address> <port> <name>")
     sys.exit(1)
@@ -46,41 +41,7 @@ class EmulationTcpHost(val emulationName: String, val cleanFileOnDisconnect: Boo
   val name = args(2)
   val socket = new Socket(hostname, port)
   val workspacePath = s"./simWorkspace/${emulationName}"
-  try {
-    outStream = new PrintWriter(socket.getOutputStream, true)
-    inStream = new BufferedReader(new InputStreamReader(socket.getInputStream))
 
-    // initial handshake and obtain a decoding graph
-    outStream.println(s"${emulationName} v0.0.1, ask for decoding graph")
-    emuConfig = EmulationConfig.readFromStream(inStream)
-
-    // construct and compile a MicroBlossom module for simulation
-    config = DualConfig(
-      graph = emuConfig.graph,
-      contextDepth = emuConfig.contextDepth,
-      broadcastDelay = emuConfig.broadcastDelay,
-      convergecastDelay = emuConfig.convergecastDelay,
-      conflictChannels = emuConfig.conflictChannels,
-      hardCodeWeights = emuConfig.hardCodeWeights,
-      supportAddDefectVertex = emuConfig.supportAddDefectVertex,
-      supportOffloading = emuConfig.supportOffloading,
-      injectRegisters = emuConfig.injectRegisters
-    )
-    config.sanityCheck()
-
-    funcBody()
-
-  } catch {
-    case e: Exception => e.printStackTrace()
-  } finally {
-    socket.close()
-    if (cleanFileOnDisconnect) {
-      for (subfolder <- Seq("verilator", "rtl")) {
-        val directory = new Directory(new File("%s/%d/%s".format(workspacePath, name, subfolder)))
-        directory.deleteRecursively()
-      }
-    }
-  }
 }
 
 case class EmulationConfig(
@@ -99,7 +60,37 @@ case class EmulationConfig(
     val supportLayerFusion: Boolean,
     val injectRegisters: Seq[String],
     val clockDivideBy: Int
-) {}
+) {
+  def dualConfig = {
+    val config = DualConfig(
+      graph = graph,
+      contextDepth = contextDepth,
+      broadcastDelay = broadcastDelay,
+      convergecastDelay = convergecastDelay,
+      conflictChannels = conflictChannels,
+      hardCodeWeights = hardCodeWeights,
+      supportAddDefectVertex = supportAddDefectVertex,
+      supportOffloading = supportOffloading,
+      injectRegisters = injectRegisters
+    )
+    config.sanityCheck()
+    config
+  }
+
+  def simConfig(workspacePath: String, name: String) = {
+    val simConfig = SimConfig
+      .withConfig(Config.spinal())
+      .workspacePath(workspacePath)
+      .workspaceName(name)
+    if (withWaveform) {
+      println("view waveform: `gtkwave %s/%s/hosted.fst`".format(workspacePath, name))
+      simConfig.withFstWave
+    } else {
+      println("waveform disabled")
+      simConfig.allOptimisation
+    }
+  }
+}
 
 object EmulationConfig {
   def readFromStream(inStream: BufferedReader): EmulationConfig = {
