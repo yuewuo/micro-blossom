@@ -7,7 +7,6 @@ use fusion_blossom::cli::{ExampleCodeType, RunnableBenchmarkParameters, Verifier
 use fusion_blossom::mwpm_solver::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::VisualizePosition;
-use lazy_static::lazy_static;
 use serde::Serialize;
 use serde_json::json;
 use std::convert::AsRef;

@@ -11,9 +11,13 @@ use crate::dual_module_adaptor::*;
 use crate::dual_module_comb_edge::*;
 use crate::dual_module_comb_offloading::*;
 use crate::dual_module_comb_vertex::*;
+use crate::mwpm_solver::SolverTrackedDual;
 use crate::resources::*;
 use crate::simulation_tcp_host::SimulationConfig;
 use crate::util::*;
+use fusion_blossom::dual_module::*;
+use fusion_blossom::pointers::*;
+use fusion_blossom::primal_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::dual_driver_tracked::*;
@@ -66,6 +70,85 @@ pub type DualModuleCombAdaptor = DualModuleAdaptor<DualModuleComb>;
 impl DualInterfaceWithInitializer for DualModuleComb {
     fn new_with_initializer(initializer: &SolverInitializer) -> Self {
         DualModuleStackless::new(DualDriverTracked::new(DualModuleCombDriver::new_empty(initializer)))
+    }
+}
+
+impl SolverTrackedDual for DualModuleCombDriver {
+    fn new_from_graph_config(graph: MicroBlossomSingle, config: serde_json::Value) -> Self {
+        Self::new(graph, serde_json::from_value(config).unwrap())
+    }
+    fn reset_profiler(&mut self) {
+        self.profiler_instruction_history.clear();
+    }
+    fn generate_profiler_report(&self) -> serde_json::Value {
+        json!({
+            "history": self.profiler_instruction_history,
+        })
+    }
+    fn fuse_layer(&mut self, layer_id: usize) {
+        self.execute_instruction(Instruction::LoadDefectsExternal {
+            time: layer_id,
+            channel: 0,
+        });
+    }
+    fn get_pre_matchings(&self, belonging: DualModuleInterfaceWeak) -> PerfectMatching {
+        let edges = self.pre_matching_edges();
+        let mut perfect_matching = PerfectMatching::default();
+        for edge_index in edges.into_iter() {
+            let edge = &self.edges[edge_index];
+            let left_vertex = &self.vertices[edge.left_index];
+            let right_vertex = &self.vertices[edge.right_index];
+            if !left_vertex.registers.is_virtual && !right_vertex.registers.is_virtual {
+                let left_node = DualNodePtr::new_value(DualNode {
+                    index: left_vertex.registers.node_index.unwrap(),
+                    class: DualNodeClass::DefectVertex {
+                        defect_index: left_vertex.vertex_index,
+                    },
+                    grow_state: DualNodeGrowState::Stay,
+                    defect_size: nonzero::nonzero!(1usize),
+                    parent_blossom: None,
+                    dual_variable_cache: (0, 0),
+                    belonging: belonging.clone(),
+                });
+                let right_node = DualNodePtr::new_value(DualNode {
+                    index: right_vertex.registers.node_index.unwrap(),
+                    class: DualNodeClass::DefectVertex {
+                        defect_index: right_vertex.vertex_index,
+                    },
+                    grow_state: DualNodeGrowState::Stay,
+                    defect_size: nonzero::nonzero!(1usize),
+                    parent_blossom: None,
+                    dual_variable_cache: (0, 0),
+                    belonging: belonging.clone(),
+                });
+                perfect_matching.peer_matchings.push((left_node, right_node));
+            } else {
+                assert!(
+                    !left_vertex.registers.is_virtual || !right_vertex.registers.is_virtual,
+                    "cannot match virtual vertex with another virtual vertex"
+                );
+                let (regular_vertex, virtual_vertex) = if left_vertex.registers.is_virtual {
+                    (right_vertex, left_vertex)
+                } else {
+                    (left_vertex, right_vertex)
+                };
+                let regular_node = DualNodePtr::new_value(DualNode {
+                    index: regular_vertex.registers.node_index.unwrap(),
+                    class: DualNodeClass::DefectVertex {
+                        defect_index: regular_vertex.vertex_index,
+                    },
+                    grow_state: DualNodeGrowState::Stay,
+                    defect_size: nonzero::nonzero!(1usize),
+                    parent_blossom: None,
+                    dual_variable_cache: (0, 0),
+                    belonging: belonging.clone(),
+                });
+                perfect_matching
+                    .virtual_matchings
+                    .push((regular_node, virtual_vertex.vertex_index));
+            }
+        }
+        perfect_matching
     }
 }
 
@@ -163,10 +246,6 @@ impl DualModuleCombDriver {
         }
     }
 
-    pub fn reset_profiler(&mut self) {
-        self.profiler_instruction_history.clear();
-    }
-
     pub fn register_updated(&mut self) {
         for vertex in self.vertices.iter_mut() {
             vertex.register_updated()
@@ -212,27 +291,12 @@ impl DualModuleCombDriver {
     }
 
     /// get all the edges that are pre-matched in the graph
-    pub fn get_pre_matchings(&self) -> Vec<EdgeIndex> {
+    pub fn pre_matching_edges(&self) -> Vec<EdgeIndex> {
         self.edges
             .iter()
             .filter(|edge| edge.get_offloading_stalled(self))
             .map(|edge| edge.edge_index)
             .collect()
-    }
-
-    pub fn generate_profiler_report(&self) -> serde_json::Value {
-        json!({
-            "history": self.profiler_instruction_history,
-        })
-    }
-
-    /// fuse one layer of defects (in this simulation, the defects are still loaded using `AddDefectVertex`,
-    /// but real hardware should be able to load from some channel)
-    pub fn fuse_layer(&mut self, layer_id: usize) {
-        self.execute_instruction(Instruction::LoadDefectsExternal {
-            time: layer_id,
-            channel: 0,
-        });
     }
 }
 

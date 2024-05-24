@@ -1,6 +1,7 @@
 use crate::util::*;
 use derivative::Derivative;
 use fusion_blossom::dual_module::*;
+use fusion_blossom::pointers::*;
 use fusion_blossom::primal_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
@@ -379,6 +380,50 @@ impl<'a, const N: usize> DualNodesOf<'a, N> {
     pub fn new(primal_module: &'a PrimalModuleEmbedded<N>) -> Self {
         Self(primal_module)
     }
+}
+
+pub fn perfect_matching_from_embedded_primal<const N: usize>(
+    primal_module: &mut PrimalModuleEmbedded<N>,
+    defect_nodes: &[VertexIndex],
+) -> (PerfectMatching, DualModuleInterfaceWeak) {
+    let mut perfect_matching = PerfectMatching::new();
+    let interface_ptr = DualModuleInterfacePtr::new_empty();
+    let belonging = interface_ptr.downgrade();
+    primal_module.iterate_perfect_matching(|_, node_index, match_target, _link| {
+        let node = DualNodePtr::new_value(DualNode {
+            index: node_index.get() as NodeIndex,
+            class: DualNodeClass::DefectVertex {
+                defect_index: defect_nodes[node_index.get() as usize],
+            },
+            defect_size: nonzero::nonzero!(1usize),
+            grow_state: DualNodeGrowState::Stay,
+            parent_blossom: None,
+            dual_variable_cache: (0, 0),
+            belonging: belonging.clone(),
+        });
+        match match_target {
+            CompactMatchTarget::Peer(peer_index) => {
+                let peer = DualNodePtr::new_value(DualNode {
+                    index: peer_index.get() as NodeIndex,
+                    class: DualNodeClass::DefectVertex {
+                        defect_index: defect_nodes[peer_index.get() as usize],
+                    },
+                    defect_size: nonzero::nonzero!(1usize),
+                    grow_state: DualNodeGrowState::Stay,
+                    parent_blossom: None,
+                    dual_variable_cache: (0, 0),
+                    belonging: belonging.clone(),
+                });
+                perfect_matching.peer_matchings.push((node, peer));
+            }
+            CompactMatchTarget::VirtualVertex(virtual_index) => {
+                perfect_matching
+                    .virtual_matchings
+                    .push((node, virtual_index.get() as VertexIndex));
+            }
+        }
+    });
+    (perfect_matching, belonging)
 }
 
 impl<'a, const N: usize> FusionVisualizer for DualNodesOf<'a, N> {

@@ -4,6 +4,7 @@ use crate::dual_module_comb::*;
 use crate::dual_module_scala::*;
 use crate::primal_module_embedded_adaptor::*;
 use crate::resources::*;
+use crate::simulation_tcp_host::SimulationConfig;
 use crate::util::*;
 use fusion_blossom::dual_module::*;
 use fusion_blossom::dual_module_serial::*;
@@ -17,7 +18,6 @@ use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
-use nonzero::nonzero as nz;
 use serde_json::json;
 
 pub struct SolverPrimalEmbedded {
@@ -228,16 +228,34 @@ impl PrimalDualSolver for SolverDualComb {
     }
 }
 
-pub struct SolverEmbeddedComb {
-    pub dual_module: Box<DualModuleComb>,
+pub trait SolverTrackedDual: DualStacklessDriver + DualTrackedDriver + FusionVisualizer {
+    fn new_from_graph_config(graph: MicroBlossomSingle, config: serde_json::Value) -> Self;
+    fn reset_profiler(&mut self) {}
+    fn generate_profiler_report(&self) -> serde_json::Value {
+        json!({})
+    }
+    /// fuse one layer of defects (in this simulation, the defects are still loaded using `AddDefectVertex`,
+    /// but real hardware should be able to load from some channel)
+    fn fuse_layer(&mut self, _layer_id: usize) {
+        unimplemented!()
+    }
+    fn get_pre_matchings(&self, _belonging: DualModuleInterfaceWeak) -> PerfectMatching {
+        Default::default()
+    }
+}
+
+pub struct SolverEmbeddedBoxed<Dual: SolverTrackedDual> {
+    pub dual_module: Box<DualModuleStackless<DualDriverTracked<Dual, MAX_NODE_NUM>>>,
     pub primal_module: Box<PrimalModuleEmbedded<MAX_NODE_NUM>>,
     subgraph_builder: SubGraphBuilder,
     defect_nodes: Vec<VertexIndex>,
     pub offloaded: usize,
     layer_id: usize,
+    graph: MicroBlossomSingle,
+    sim_config: SimulationConfig,
 }
 
-impl FusionVisualizer for SolverEmbeddedComb {
+impl<Dual: SolverTrackedDual> FusionVisualizer for SolverEmbeddedBoxed<Dual> {
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
         let mut value = self.dual_module.driver.driver.snapshot(abbrev);
         snapshot_combine_values(&mut value, self.primal_module.snapshot(abbrev), abbrev);
@@ -246,26 +264,27 @@ impl FusionVisualizer for SolverEmbeddedComb {
     }
 }
 
-impl SolverEmbeddedComb {
+impl<Dual: SolverTrackedDual> SolverEmbeddedBoxed<Dual> {
     pub fn new(graph: MicroBlossomSingle, mut primal_dual_config: serde_json::Value) -> Self {
         assert!(graph.vertex_num <= MAX_NODE_NUM, "potential overflow");
         let primal_dual_config = primal_dual_config.as_object_mut().expect("config must be JSON object");
-        let dual_config = primal_dual_config
-            .remove("dual")
-            .map(|value| serde_json::from_value(value).unwrap())
+        let dual_config = primal_dual_config.remove("dual").unwrap_or(json!({}));
+        let sim_config: SimulationConfig = dual_config
+            .get("sim_config")
+            .map(|sim_config| serde_json::from_value(sim_config.clone()).unwrap())
             .unwrap_or_default();
         assert!(primal_dual_config.is_empty(), "unknown remaining: {:?}", primal_dual_config);
         let initializer = graph.get_initializer();
-        let dual_module = stacker::grow(MAX_NODE_NUM * 128, || {
-            Box::new(DualModuleStackless::new(DualDriverTracked::new(DualModuleCombDriver::new(
-                graph,
+        let dual_module = stacker::grow(MAX_NODE_NUM * 256, || {
+            Box::new(DualModuleStackless::new(DualDriverTracked::new(Dual::new_from_graph_config(
+                graph.clone(),
                 dual_config,
             ))))
         });
         let mut primal_module = stacker::grow(MAX_NODE_NUM * 256, || Box::new(PrimalModuleEmbedded::new()));
         // load the layer id to the primal
-        if let Some(layer_fusion) = dual_module.driver.driver.graph.layer_fusion.as_ref() {
-            for vertex_index in 0..dual_module.driver.driver.graph.vertex_num {
+        if let Some(layer_fusion) = graph.layer_fusion.as_ref() {
+            for vertex_index in 0..graph.vertex_num {
                 if let Some(layer_id) = layer_fusion.vertex_layer_id.get(&vertex_index) {
                     assert!(*layer_id < CompactLayerNum::MAX as usize);
                     primal_module.layer_fusion.vertex_layer_id[vertex_index] =
@@ -282,11 +301,13 @@ impl SolverEmbeddedComb {
             defect_nodes: vec![],
             offloaded: 0,
             layer_id: 0,
+            graph,
+            sim_config,
         }
     }
 }
 
-impl PrimalDualSolver for SolverEmbeddedComb {
+impl<Dual: SolverTrackedDual> PrimalDualSolver for SolverEmbeddedBoxed<Dual> {
     fn clear(&mut self) {
         self.primal_module.reset();
         self.dual_module.reset();
@@ -323,8 +344,8 @@ impl PrimalDualSolver for SolverEmbeddedComb {
                 (obstacle, _) = self.dual_module.find_obstacle();
             }
             // if there are pending fusion layers, execute them
-            if self.dual_module.driver.driver.config.sim_config.support_layer_fusion {
-                let num_layers = self.dual_module.driver.driver.graph.layer_fusion.as_ref().unwrap().num_layers;
+            if self.sim_config.support_layer_fusion {
+                let num_layers = self.graph.layer_fusion.as_ref().unwrap().num_layers;
                 if self.layer_id < num_layers {
                     self.dual_module.driver.driver.fuse_layer(self.layer_id);
                     self.primal_module.fuse_layer(
@@ -361,61 +382,11 @@ impl PrimalDualSolver for SolverEmbeddedComb {
             perfect_matching_from_embedded_primal(&mut self.primal_module, &self.defect_nodes);
         // also add pre matchings from the dual driver
         let dual_module = &self.dual_module.driver.driver;
-        let pre_matchings = dual_module.get_pre_matchings();
-        for &edge_index in pre_matchings.iter() {
-            let edge = &dual_module.edges[edge_index];
-            let left_vertex = &dual_module.vertices[edge.left_index];
-            let right_vertex = &dual_module.vertices[edge.right_index];
-            if !left_vertex.registers.is_virtual && !right_vertex.registers.is_virtual {
-                let left_node = DualNodePtr::new_value(DualNode {
-                    index: left_vertex.registers.node_index.unwrap(),
-                    class: DualNodeClass::DefectVertex {
-                        defect_index: self.defect_nodes[left_vertex.registers.node_index.unwrap() as usize],
-                    },
-                    grow_state: DualNodeGrowState::Stay,
-                    defect_size: nz!(1usize),
-                    parent_blossom: None,
-                    dual_variable_cache: (0, 0),
-                    belonging: belonging.clone(),
-                });
-                let right_node = DualNodePtr::new_value(DualNode {
-                    index: right_vertex.registers.node_index.unwrap(),
-                    class: DualNodeClass::DefectVertex {
-                        defect_index: self.defect_nodes[right_vertex.registers.node_index.unwrap() as usize],
-                    },
-                    grow_state: DualNodeGrowState::Stay,
-                    defect_size: nz!(1usize),
-                    parent_blossom: None,
-                    dual_variable_cache: (0, 0),
-                    belonging: belonging.clone(),
-                });
-                perfect_matching.peer_matchings.push((left_node, right_node));
-            } else {
-                assert!(
-                    !left_vertex.registers.is_virtual || !right_vertex.registers.is_virtual,
-                    "cannot match virtual vertex with another virtual vertex"
-                );
-                let (regular_vertex, virtual_vertex) = if left_vertex.registers.is_virtual {
-                    (right_vertex, left_vertex)
-                } else {
-                    (left_vertex, right_vertex)
-                };
-                let regular_node = DualNodePtr::new_value(DualNode {
-                    index: regular_vertex.registers.node_index.unwrap(),
-                    class: DualNodeClass::DefectVertex {
-                        defect_index: self.defect_nodes[regular_vertex.registers.node_index.unwrap() as usize],
-                    },
-                    grow_state: DualNodeGrowState::Stay,
-                    defect_size: nz!(1usize),
-                    parent_blossom: None,
-                    dual_variable_cache: (0, 0),
-                    belonging: belonging.clone(),
-                });
-                perfect_matching
-                    .virtual_matchings
-                    .push((regular_node, virtual_vertex.vertex_index));
-            }
-        }
+        let mut pre_matchings = dual_module.get_pre_matchings(belonging.clone());
+        perfect_matching.peer_matchings.append(&mut pre_matchings.peer_matchings);
+        perfect_matching
+            .virtual_matchings
+            .append(&mut pre_matchings.virtual_matchings);
         if let Some(visualizer) = visualizer {
             visualizer
                 .snapshot_combined("perfect matching".to_string(), vec![self, &perfect_matching])
@@ -454,6 +425,8 @@ impl PrimalDualSolver for SolverEmbeddedComb {
         })
     }
 }
+
+pub type SolverEmbeddedComb = SolverEmbeddedBoxed<DualModuleCombDriver>;
 
 // pub struct SolverEmbeddedScala {
 //     pub dual_module: DualModuleScala,
@@ -709,47 +682,3 @@ impl PrimalDualSolver for SolverEmbeddedComb {
 //         })
 //     }
 // }
-
-fn perfect_matching_from_embedded_primal<const N: usize>(
-    primal_module: &mut PrimalModuleEmbedded<N>,
-    defect_nodes: &[VertexIndex],
-) -> (PerfectMatching, DualModuleInterfaceWeak) {
-    let mut perfect_matching = PerfectMatching::new();
-    let interface_ptr = DualModuleInterfacePtr::new_empty();
-    let belonging = interface_ptr.downgrade();
-    primal_module.iterate_perfect_matching(|_, node_index, match_target, _link| {
-        let node = DualNodePtr::new_value(DualNode {
-            index: node_index.get() as NodeIndex,
-            class: DualNodeClass::DefectVertex {
-                defect_index: defect_nodes[node_index.get() as usize],
-            },
-            defect_size: nz!(1usize),
-            grow_state: DualNodeGrowState::Stay,
-            parent_blossom: None,
-            dual_variable_cache: (0, 0),
-            belonging: belonging.clone(),
-        });
-        match match_target {
-            CompactMatchTarget::Peer(peer_index) => {
-                let peer = DualNodePtr::new_value(DualNode {
-                    index: peer_index.get() as NodeIndex,
-                    class: DualNodeClass::DefectVertex {
-                        defect_index: defect_nodes[peer_index.get() as usize],
-                    },
-                    defect_size: nz!(1usize),
-                    grow_state: DualNodeGrowState::Stay,
-                    parent_blossom: None,
-                    dual_variable_cache: (0, 0),
-                    belonging: belonging.clone(),
-                });
-                perfect_matching.peer_matchings.push((node, peer));
-            }
-            CompactMatchTarget::VirtualVertex(virtual_index) => {
-                perfect_matching
-                    .virtual_matchings
-                    .push((node, virtual_index.get() as VertexIndex));
-            }
-        }
-    });
-    (perfect_matching, belonging)
-}

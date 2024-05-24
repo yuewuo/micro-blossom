@@ -185,7 +185,7 @@ impl<'a> PrimalInterface for MockPrimalInterface<'a> {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use super::*;
     use fusion_blossom::example_codes::*;
     use fusion_blossom::mwpm_solver::*;
