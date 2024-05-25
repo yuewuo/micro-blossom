@@ -98,13 +98,14 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
 
   stages.offloadSet3.connect(stages.offloadGet2)
   var offload3Area = new Area {
-    var isUniqueTight = VertexIsUniqueTight(
+    var tightCounter = VertexTightCounter(
       numEdges = config.numIncidentEdgeOf(vertexIndex)
     )
     for (localIndex <- 0 until config.numIncidentEdgeOf(vertexIndex)) {
-      isUniqueTight.io.tights(localIndex) := io.edgeInputs(localIndex).offloadGet2.isTight
+      tightCounter.io.tights(localIndex) := io.edgeInputs(localIndex).offloadGet2.isTightExFusion
     }
-    stages.offloadSet3.isUniqueTight := isUniqueTight.io.isUnique
+    stages.offloadSet3.isUniqueTight := tightCounter.io.isUnique
+    stages.offloadSet3.isIsolated := tightCounter.io.isIsolated
   }
 
   stages.offloadSet4.connect(stages.offloadGet3)

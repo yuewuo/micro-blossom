@@ -8,13 +8,15 @@ import microblossom.util.Vivado
 import scala.collection.mutable
 import org.scalatest.funsuite.AnyFunSuite
 
-object VertexIsUniqueTight {
+object VertexTightCounter {
   def build(
-      isUnique: Bool, // output
+      isUnique: Bool, // output: count == 1
+      isIsolated: Bool, // output: count == 0
       tights: Seq[Bool]
   ): Unit = {
     if (tights.length == 0) {
       isUnique := False
+      isIsolated := True
       return
     }
 
@@ -47,7 +49,19 @@ object VertexIsUniqueTight {
     }
 
     isUnique := sliceHasTight(sliceHasTight.length - 1) && sliceIsUnique(sliceIsUnique.length - 1)
+    isIsolated := !sliceHasTight(sliceHasTight.length - 1)
   }
+}
+
+case class VertexTightCounter(numEdges: Int) extends Component {
+  val io = new Bundle {
+    val tights = in(Vec.fill(numEdges)(Bool))
+    val isUnique = out(Bool)
+    val isIsolated = out(Bool)
+  }
+
+  VertexTightCounter.build(io.isUnique, io.isIsolated, io.tights)
+
 }
 
 case class VertexIsUniqueTight(numEdges: Int) extends Component {
@@ -56,7 +70,8 @@ case class VertexIsUniqueTight(numEdges: Int) extends Component {
     val isUnique = out(Bool)
   }
 
-  VertexIsUniqueTight.build(io.isUnique, io.tights)
+  val isIsolated = Bool
+  VertexTightCounter.build(io.isUnique, isIsolated, io.tights)
 
 }
 

@@ -27,7 +27,8 @@ case class StageOffloadVertex2(config: DualConfig, vertexIndex: Int) extends Bun
 case class StageOffloadVertex3(config: DualConfig, vertexIndex: Int) extends Bundle {
   val state = VertexState(config.vertexBits, config.grownBitsOf(vertexIndex))
   val message = BroadcastMessage(config)
-  val isUniqueTight = Bool
+  val isUniqueTight = Bool // |incident tight edges| = 1
+  val isIsolated = Bool // |incident tight edges| = 0
 
   def connect(last: StageOffloadVertex2) = {
     state := last.state
@@ -75,6 +76,7 @@ case class StageOffloadEdge(config: DualConfig) extends Bundle {
 case class StageOffloadEdge2(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
   val isTight = Bool
+  val isTightExFusion = Bool // if the conditioned vertex is virtual, then this edge is not consider tight when counting
   val compact = BroadcastCompact(config)
 
   def connect(last: StageOffloadEdge) = {

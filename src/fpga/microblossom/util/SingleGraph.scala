@@ -16,7 +16,8 @@ case class SingleGraph(
     var edge_binary_tree: BinaryTree,
     var vertex_edge_binary_tree: BinaryTree,
     var vertex_max_growth: Seq[Long],
-    var offloading: Seq[Offloading]
+    var offloading: Seq[Offloading],
+    var layer_fusion: Option[LayerFusion]
 )
 
 @ConfiguredJsonCodec
@@ -47,9 +48,9 @@ case class BinaryTreeNode(
 
 @ConfiguredJsonCodec
 case class Offloading(
-    var dm: Option[DefectMatch],
-    var vm: Option[VirtualMatch],
-    var fm: Option[FusionMatch]
+    var dm: Option[DefectMatch] = None,
+    var vm: Option[VirtualMatch] = None,
+    var fm: Option[FusionMatch] = None
 )
 
 @ConfiguredJsonCodec
@@ -67,6 +68,15 @@ case class VirtualMatch(
 case class FusionMatch(
     var e: Long, // edge_index
     var c: Long // conditioned_vertex
+)
+
+@ConfiguredJsonCodec
+case class LayerFusion(
+    var num_layers: Long,
+    var layers: Seq[Seq[Long]],
+    var vertex_layer_id: Map[Long, Long],
+    var fusion_edges: Map[Long, Long],
+    var unique_tight_conditions: Map[Long, Seq[Long]]
 )
 
 object SingleGraph {
@@ -94,5 +104,8 @@ object VirtualMatch {
   implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
 }
 object FusionMatch {
+  implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
+}
+object LayerFusion {
   implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
 }

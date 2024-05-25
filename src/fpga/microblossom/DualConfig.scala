@@ -33,21 +33,7 @@ case class DualConfig(
 
   def vertexNum = graph.vertex_num.toInt
   def edgeNum = graph.weighted_edges.length.toInt
-  def offloaderNum = if (supportOffloading) {
-    activeOffloading.length.toInt
-  } else {
-    0
-  }
-  def activeOffloading: Seq[Offloading] = {
-    if (!supportOffloading) {
-      return Seq()
-    }
-    val offloading = ArrayBuffer() ++ graph.offloading
-    if (supportLayerFusion) {
-      throw new Exception("unimplemented")
-    }
-    offloading
-  }
+  def offloaderNum = activeOffloading.length.toInt
   def instructionSpec = InstructionSpec(this)
   def contextBits = log2Up(contextDepth)
   def instructionBufferBits = log2Up(instructionBufferDepth + 1) // the dual module may be processing an instruction
@@ -61,10 +47,19 @@ case class DualConfig(
   def readLatency = { // from sending the command to receiving the obstacle
     broadcastDelay + convergecastDelay + executeLatency
   }
+  def layerFusion = {
+    graph.layer_fusion match {
+      case Some(layer_fusion) => layer_fusion
+      case None               => LayerFusion(0, Seq(), Map(), Map(), Map())
+    }
+  }
 
   private val virtualVertices = collection.mutable.Set[Int]()
   private val incidentEdges = collection.mutable.Map[Int, ArrayBuffer[Int]]() // vertexIndex -> Seq[edgeIndex]
   private val incidentOffloaders = collection.mutable.Map[Int, ArrayBuffer[Int]]() // vertexIndex -> Seq[offloaderIndex]
+  val activeOffloading = ArrayBuffer[Offloading]()
+  val edgeConditionedVertex = collection.mutable.Map[Int, Int]()
+  val vertexLayerId = collection.mutable.Map[Int, Int]()
 
   if (filename != null) {
     val source = scala.io.Source.fromFile(filename)
@@ -101,16 +96,14 @@ case class DualConfig(
         vertexBits = 5 // at least 5 bits to support all instructions
       }
     }
-    // build vertex to neighbor edge mapping
-    updateIncidentEdges()
-    if (supportOffloading) {
-      updateIncidentOffloaders()
-    }
     // update virtual vertices
     virtualVertices.clear()
     for (vertexIndex <- graph.virtual_vertices) {
       virtualVertices += vertexIndex.toInt
     }
+    // build vertex to neighbor edge mapping
+    updateIncidentEdges()
+    updateOffloading()
   }
 
   def updateIncidentEdges() = {
@@ -124,8 +117,26 @@ case class DualConfig(
       }
     }
   }
-  def updateIncidentOffloaders() = {
+  def updateOffloading(): Unit = {
     incidentOffloaders.clear()
+    activeOffloading.clear()
+    edgeConditionedVertex.clear()
+    vertexLayerId.clear()
+    if (!supportOffloading) {
+      return ()
+    }
+    for (offloading <- graph.offloading) {
+      activeOffloading.append(offloading)
+    }
+    if (supportLayerFusion) {
+      for ((edgeIndex, conditionedVertex) <- layerFusion.fusion_edges) {
+        activeOffloading.append(Offloading(fm = Some(FusionMatch(edgeIndex, conditionedVertex))))
+        edgeConditionedVertex(edgeIndex.toInt) = conditionedVertex.toInt
+      }
+      for ((vertexIndex, layerId) <- layerFusion.vertex_layer_id) {
+        vertexLayerId(vertexIndex.toInt) = layerId.toInt
+      }
+    }
     for ((offloader, offloaderIndex) <- activeOffloading.zipWithIndex) {
       for (vertexIndex <- offloaderNeighborVertexIndices(offloaderIndex)) {
         if (!incidentOffloaders.contains(vertexIndex)) {
@@ -230,6 +241,14 @@ case class DualConfig(
             List(virtualVertex, regularVertex),
           neighborEdges.filter(_ != edgeIndex)
         )
+      case None =>
+    }
+    offloader.fm match {
+      case Some(fusionMatch) =>
+        val edgeIndex = fusionMatch.e.toInt
+        val conditionalVertex = fusionMatch.c.toInt
+        val regularVertex = peerVertexOfEdge(edgeIndex, conditionalVertex)
+        return (edgeIndex, Seq(conditionalVertex, regularVertex), Seq())
       case None =>
     }
     throw new Exception("unrecognized definition of offloader")

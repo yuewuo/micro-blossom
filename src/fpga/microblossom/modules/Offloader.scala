@@ -89,6 +89,22 @@ case class Offloader(config: DualConfig, offloaderIndex: Int) extends Component 
         return ()
       case None =>
     }
+    offloader.fm match {
+      case Some(fusionMatch) =>
+        var offloadFusionMatch = OffloadFusionMatch()
+        require(io.vertexInputsOffloadGet3.length == 2)
+        offloadFusionMatch.io.edgeIsTight := io.edgeInputOffloadGet3.isTight
+        offloadFusionMatch.io.conditionalIsVirtual := io.vertexInputsOffloadGet3(0).state.isVirtual
+        offloadFusionMatch.io.regularIsDefect := io.vertexInputsOffloadGet3(1).state.isDefect
+        offloadFusionMatch.io.regularSpeed := io.vertexInputsOffloadGet3(1).state.speed
+        offloadFusionMatch.io.regularIsIsolated := io.vertexInputsOffloadGet3(1).isIsolated
+        require(stages.offloadSet4.stallVertex.length == 2)
+        stages.offloadSet4.condition := offloadFusionMatch.io.condition
+        stages.offloadSet4.stallVertex(0) := False // no need to stall the conditional vertex
+        stages.offloadSet4.stallVertex(1) := offloadFusionMatch.io.condition
+        return ()
+      case None =>
+    }
     throw new Exception("unrecognized definition of offloader")
   }
   connectLogic()

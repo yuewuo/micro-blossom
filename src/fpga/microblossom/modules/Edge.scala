@@ -99,6 +99,20 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
     edgeIsTight.io.rightGrown := io.rightVertexInput.offloadGet.state.grown
     edgeIsTight.io.weight := stages.offloadGet.state.weight
     stages.offloadSet2.isTight := edgeIsTight.io.isTight
+    if (config.edgeConditionedVertex.contains(edgeIndex)) {
+      val conditionedVertex = config.edgeConditionedVertex(edgeIndex)
+      stages.offloadSet2.isTightExFusion := edgeIsTight.io.isTight && (
+        if (conditionedVertex == leftVertex) {
+          !io.leftVertexInput.offloadGet.state.isVirtual
+        } else if (conditionedVertex == rightVertex) {
+          !io.rightVertexInput.offloadGet.state.isVirtual
+        } else {
+          throw new Exception("cannot find the conditioned vertex")
+        }
+      )
+    } else {
+      stages.offloadSet2.isTightExFusion := edgeIsTight.io.isTight
+    }
   }
 
   stages.offloadSet3.connect(stages.offloadGet2)
