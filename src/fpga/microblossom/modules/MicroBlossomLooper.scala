@@ -8,6 +8,7 @@ package microblossom.modules
  *
  */
 
+import io.circe._
 import spinal.core._
 import spinal.lib._
 import spinal.core.sim._
@@ -83,7 +84,7 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
   }
 
   // detect data races: forbid an instruction to enter until the pipeline does not have any entry of the same context ID
-  val isDataRace = if (config.contextDepth > 0) {
+  val isDataRace = if (config.contextBits > 0) {
     val dataRaces = Vec.fill(pipelineLength)(Bool())
     for (i <- (0 until pipelineLength)) {
       val entry = pipelineEntries(i)
@@ -115,6 +116,38 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
   // take the data from input only if it's valid, no data race, and not inserting immediate loopback
   io.push.ready := io.push.valid && !isDataRace && !immediateLoopback
 
+  def simExecute(instruction: Long, contextId: Int, maximumGrowth: Int): (DataMaxGrowable, DataConflict, Int) = {
+    io.push.valid #= true
+    io.push.payload.instruction #= instruction
+    if (config.contextBits > 0) {
+      io.push.payload.contextId #= contextId
+    }
+    io.pop.ready #= true
+    io.push.payload.maximumGrowth #= maximumGrowth
+    clockDomain.waitSamplingWhere(io.push.ready.toBoolean)
+    io.push.valid #= false
+    clockDomain.waitSamplingWhere(io.pop.valid.toBoolean)
+    io.pop.ready #= false
+    (
+      DataMaxGrowable(io.pop.payload.maxGrowable.length.toInt),
+      DataConflict(
+        io.pop.payload.conflict.valid.toBoolean,
+        io.pop.payload.conflict.node1.toInt,
+        io.pop.payload.conflict.node2.toInt,
+        io.pop.payload.conflict.touch1.toInt,
+        io.pop.payload.conflict.touch2.toInt,
+        io.pop.payload.conflict.vertex1.toInt,
+        io.pop.payload.conflict.vertex2.toInt
+      ),
+      io.pop.payload.grown.toInt
+    )
+  }
+  def simMakePublicSnapshot() = {
+    microBlossom.simMakePublicSnapshot()
+  }
+  def simSnapshot(abbrev: Boolean = true): Json = {
+    microBlossom.simSnapshot(abbrev)
+  }
 }
 
 case class InputData(config: DualConfig) extends Bundle {

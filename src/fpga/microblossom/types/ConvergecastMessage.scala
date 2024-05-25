@@ -1,5 +1,8 @@
 package microblossom.types
 
+import io.circe._
+import io.circe.generic.extras._
+import io.circe.generic.semiauto._
 import spinal.core._
 import spinal.lib._
 import microblossom._
@@ -49,6 +52,7 @@ case class DataMaxGrowable(
     var length: Int
 )
 
+@ConfiguredJsonCodec
 case class DataConflict(
     var valid: Boolean,
     var node1: Int,
@@ -58,3 +62,7 @@ case class DataConflict(
     var vertex1: Int,
     var vertex2: Int
 )
+
+object DataConflict {
+  implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
+}

@@ -86,6 +86,15 @@ object Speed {
   def Stay = Integer.parseInt("00", 2)
   def Grow = Integer.parseInt("01", 2)
   def Shrink = Integer.parseInt("10", 2)
+
+  def format(value: Long): String = {
+    value match {
+      case 0 => "Stay"
+      case 1 => "Grow"
+      case 2 => "Shrink"
+      case _ => throw new Exception(s"unknown speed field {speed(value)}")
+    }
+  }
 }
 
 case class RspCode() extends Bits {
