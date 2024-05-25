@@ -193,7 +193,6 @@ mod tests {
 
     #[test]
     fn dual_module_looper_basic_1() {
-        // cargo test dual_module_looper_basic_1 -- --nocapture
         // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_looper_basic_1 -- --nocapture
         // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 BROADCAST_DELAY=2 cargo test dual_module_looper_basic_1 -- --nocapture
         let visualize_filename = "dual_module_looper_basic_1.json".to_string();
@@ -204,11 +203,20 @@ mod tests {
     /// test pre-matching
     #[test]
     fn dual_module_looper_basic_2() {
-        // cargo test dual_module_looper_basic_2 -- --nocapture
         // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_looper_basic_2 -- --nocapture
         // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 BROADCAST_DELAY=2 cargo test dual_module_looper_basic_2 -- --nocapture
         let visualize_filename = "dual_module_looper_basic_2.json".to_string();
         let defect_vertices = vec![0, 4];
+        let config = json!({ "support_offloading": true });
+        dual_module_looper_basic_standard_syndrome(3, visualize_filename, defect_vertices, config);
+    }
+
+    /// test pre-matching
+    #[test]
+    fn dual_module_looper_debug_1() {
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_looper_debug_1 -- --nocapture
+        let visualize_filename = "dual_module_looper_debug_1.json".to_string();
+        let defect_vertices = vec![1, 5, 8];
         let config = json!({ "support_offloading": true });
         dual_module_looper_basic_standard_syndrome(3, visualize_filename, defect_vertices, config);
     }

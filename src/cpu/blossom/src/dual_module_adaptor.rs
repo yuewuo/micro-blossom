@@ -232,7 +232,6 @@ pub mod tests {
         let mut subgraph_builder = SubGraphBuilder::new(&initializer);
         subgraph_builder.load_subgraph(&subgraph);
         let total_weight = subgraph_builder.total_weight();
-        println!("total_weight: {total_weight:?}");
         subgraph_builder.load_subgraph(&standard_subgraph);
         let standard_total_weight = subgraph_builder.total_weight();
         assert_eq!(total_weight, standard_total_weight);

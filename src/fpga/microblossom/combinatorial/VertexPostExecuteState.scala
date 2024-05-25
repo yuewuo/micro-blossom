@@ -15,7 +15,8 @@ object VertexPostExecuteStateCommon {
       before: VertexState,
       message: BroadcastMessage,
       config: DualConfig,
-      isVertexEqField1: Bool // should be `instruction.field1 === vertexIndex`, when config.supportAddDefectVertex is true
+      isVertexEqField1: Bool, // should be `instruction.field1 === vertexIndex`, when config.supportAddDefectVertex is true
+      isStalled: Bool
   ) = {
 
     val instruction = message.instruction
@@ -34,12 +35,14 @@ object VertexPostExecuteStateCommon {
         }
       }
       when(instruction.isGrow) {
-        switch(before.speed.asUInt) {
-          is(Speed.Grow) {
-            after.grown := before.grown + instruction.length.resized
-          }
-          is(Speed.Shrink) {
-            after.grown := before.grown - instruction.length.resized
+        when(!isStalled) {
+          switch(before.speed.asUInt) {
+            is(Speed.Grow) {
+              after.grown := before.grown + instruction.length.resized
+            }
+            is(Speed.Shrink) {
+              after.grown := before.grown - instruction.length.resized
+            }
           }
         }
       }
@@ -68,11 +71,12 @@ case class VertexPostExecuteStateCommon(config: DualConfig, grownBits: Int) exte
     val before = in(VertexState(config.vertexBits, grownBits))
     val message = in(BroadcastMessage(config))
     val isVertexEqField1 = in(Bool)
+    val isStalled = in(Bool)
 
     val after = out(VertexState(config.vertexBits, grownBits))
   }
 
-  VertexPostExecuteStateCommon.build(io.after, io.before, io.message, config, io.isVertexEqField1)
+  VertexPostExecuteStateCommon.build(io.after, io.before, io.message, config, io.isVertexEqField1, io.isStalled)
 }
 
 case class VertexPostExecuteState(config: DualConfig, vertexIndex: Int) extends Component {
@@ -81,6 +85,7 @@ case class VertexPostExecuteState(config: DualConfig, vertexIndex: Int) extends 
   val io = new Bundle {
     val before = in(VertexState(config.vertexBits, grownBits))
     val message = in(BroadcastMessage(config))
+    val isStalled = in(Bool)
 
     val after = out(VertexState(config.vertexBits, grownBits))
   }
@@ -89,6 +94,7 @@ case class VertexPostExecuteState(config: DualConfig, vertexIndex: Int) extends 
   common.io.before := io.before
   common.io.message := io.message
   common.io.isVertexEqField1 := (io.message.instruction.field1 === vertexIndex)
+  common.io.isStalled := io.isStalled
   io.after := common.io.after
 
 }

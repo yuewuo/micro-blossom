@@ -129,6 +129,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
     )
     vertexPostExecuteState.io.before := stages.executeGet.state
     vertexPostExecuteState.io.message := stages.executeGet.message
+    vertexPostExecuteState.io.isStalled := stages.executeGet.isStalled
     stages.executeSet2.state := vertexPostExecuteState.io.after
   }
 
