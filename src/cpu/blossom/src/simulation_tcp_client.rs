@@ -177,17 +177,20 @@ impl Drop for SimulationTcpClient {
         if self.sim_config.with_waveform || self.sim_config.dump_debugger_files {
             // only delete binary but keep original waveforms and debugger files
             if !env_is_set("KEEP_RTL_FOLDER") {
-                match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/rtl", self.name)) {
+                match std::fs::remove_dir_all(format!("../../../simWorkspace/{}/{}/rtl", self.simulation_name, self.name)) {
                     Err(e) => println!("Could not remove rtl folder: {}", e),
                     Ok(_) => println!("Successfully remove rtl folder"),
                 }
             }
-            match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}/verilator", self.name)) {
+            match std::fs::remove_dir_all(format!(
+                "../../../simWorkspace/{}/{}/verilator",
+                self.simulation_name, self.name
+            )) {
                 Err(e) => println!("Could not remove verilator folder: {}", e),
                 Ok(_) => println!("Successfully remove verilator folder"),
             }
         } else {
-            match std::fs::remove_dir_all(format!("../../../simWorkspace/MicroBlossomHost/{}", self.name)) {
+            match std::fs::remove_dir_all(format!("../../../simWorkspace/{}/{}", self.simulation_name, self.name)) {
                 Err(e) => println!("Could not remove build folder: {}", e),
                 Ok(_) => println!("Successfully remove build folder"),
             }

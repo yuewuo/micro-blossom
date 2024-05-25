@@ -97,7 +97,6 @@ impl DualModuleLooperDriver {
             .client
             .read_line(format!("execute: {}", serde_json::to_string(&input)?))?;
         self.instruction_count += 1;
-        self.instruction_count = 0;
         Ok(serde_json::from_str(line.as_str())?)
     }
 
