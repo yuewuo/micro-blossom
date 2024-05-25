@@ -51,7 +51,7 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
 
   // immediate feedback happens when the response allows immediate growth
   // when maximumGrowth is 0, the loopback is forbidden
-  immediateLoopback := !microBlossom.io.conflict.valid &&
+  immediateLoopback := responseEntry.valid && !microBlossom.io.conflict.valid &&
     (microBlossom.io.maxGrowable.length =/= microBlossom.io.maxGrowable.length.maxValue) &&
     (responseEntry.grown < responseEntry.maximumGrowth)
 
