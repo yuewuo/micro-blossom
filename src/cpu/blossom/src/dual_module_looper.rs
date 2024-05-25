@@ -9,19 +9,15 @@ use crate::mwpm_solver::*;
 use crate::resources::*;
 use crate::simulation_tcp_client::*;
 use crate::util::*;
-use embedded_blossom::util::*;
 use fusion_blossom::dual_module::*;
 use fusion_blossom::primal_module::*;
-use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::instruction::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
-use scan_fmt::*;
 use serde::*;
-use serde_json::json;
 
 pub struct DualModuleLooperDriver {
     pub client: SimulationTcpClient,
@@ -45,13 +41,11 @@ impl SolverTrackedDual for DualModuleLooperDriver {
         Self::new(graph, serde_json::from_value(config).unwrap()).unwrap()
     }
     fn fuse_layer(&mut self, layer_id: usize) {
-        unimplemented!();
-        // self.execute_instruction(Instruction::LoadDefectsExternal {
-        //     time: layer_id,
-        //     channel: 0,
-        // });
+        self.execute_instruction(Instruction32::load_syndrome_external(ni!(layer_id)), self.context_id)
+            .unwrap();
     }
-    fn get_pre_matchings(&self, belonging: DualModuleInterfaceWeak) -> PerfectMatching {
+    fn get_pre_matchings(&self, _belonging: DualModuleInterfaceWeak) -> PerfectMatching {
+        // TODO: implement pre matching fetching
         PerfectMatching::default()
     }
 }
@@ -200,7 +194,8 @@ impl FusionVisualizer for DualModuleLooperDriver {
 mod tests {
     use super::*;
     use crate::dual_module_adaptor::tests::*;
-    use crate::mwpm_solver::*;
+    use fusion_blossom::util::*;
+    use serde_json::json;
 
     // to use visualization, we need the folder of fusion-blossom repo
     // e.g. export FUSION_DIR=/Users/wuyue/Documents/GitHub/fusion-blossom

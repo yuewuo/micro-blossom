@@ -68,7 +68,7 @@ pub fn main() {
         unsafe { extern_c::execute_instruction(Instruction32::reset().into(), cid) };
         for _ in 0..nop {
             if cfg!(feature = "tiny_benchmark_time") {
-                unsafe { extern_c::execute_instruction(Instruction32::reserved().into(), cid) };
+                unsafe { extern_c::execute_instruction(Instruction32::find_obstacle().into(), cid) };
             } else {
                 nop_delay(10);
             }
@@ -81,7 +81,7 @@ pub fn main() {
         unsafe { extern_c::execute_instruction(Instruction32::add_defect_vertex(left, node).into(), cid) };
         for _ in 0..nop {
             if cfg!(feature = "tiny_benchmark_time") {
-                unsafe { extern_c::execute_instruction(Instruction32::reserved().into(), cid) };
+                unsafe { extern_c::execute_instruction(Instruction32::find_obstacle().into(), cid) };
             } else {
                 nop_delay(10);
             }

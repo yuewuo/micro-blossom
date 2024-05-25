@@ -23,9 +23,9 @@ pub const EXTENDED_OP_CODE_MASK: u32 = 0b111 << 3;
 pub const EXTENDED_OP_CODE_FIND_OBSTACLE: u32 = 0b000 << 3;
 pub const EXTENDED_OP_CODE_CLEAR_ACCUMULATOR: u32 = 0b001 << 3;
 pub const EXTENDED_OP_CODE_ACCUMULATE_EDGE: u32 = 0b010 << 3;
-pub const EXTENDED_OP_CODE_RESERVED: u32 = 0b011 << 3;
+pub const EXTENDED_OP_CODE_LOAD_WEIGHTS_EXTERNAL: u32 = 0b011 << 3;
 pub const EXTENDED_OP_CODE_RESET: u32 = 0b100 << 3;
-pub const EXTENDED_OP_CODE_LOAD_SYNDROME_EXTERNAL: u32 = 0b101 << 3;
+pub const EXTENDED_OP_CODE_LOAD_DEFECTS_EXTERNAL: u32 = 0b101 << 3;
 pub const EXTENDED_OP_CODE_GROW: u32 = 0b110 << 3;
 
 impl Instruction32 {
@@ -51,8 +51,12 @@ impl Instruction32 {
         let field_node = (node.get() as u32) << 2;
         Self(field_vertex | field_node | OP_CODE_ADD_DEFECT_VERTEX)
     }
-    pub fn reserved() -> Self {
-        Self(EXTENDED_OP_CODE_ENABLE | EXTENDED_OP_CODE_RESERVED)
+    pub fn load_syndrome_external(time: CompactNodeIndex) -> Self {
+        let field_time = (time.get() as u32) << 17;
+        Self(field_time | EXTENDED_OP_CODE_ENABLE | EXTENDED_OP_CODE_LOAD_DEFECTS_EXTERNAL)
+    }
+    pub fn load_weights_external() -> Self {
+        Self(EXTENDED_OP_CODE_ENABLE | EXTENDED_OP_CODE_LOAD_WEIGHTS_EXTERNAL)
     }
     pub fn find_obstacle() -> Self {
         Self(EXTENDED_OP_CODE_ENABLE | EXTENDED_OP_CODE_FIND_OBSTACLE)

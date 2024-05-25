@@ -18,7 +18,6 @@ use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
 use scan_fmt::*;
 use serde::*;
-use serde_json::json;
 use std::io::prelude::*;
 use std::io::{BufReader, LineWriter};
 use std::net::{TcpListener, TcpStream};
@@ -54,13 +53,10 @@ impl SolverTrackedDual for DualModuleScalaDriver {
         Self::new(graph, serde_json::from_value(config).unwrap()).unwrap()
     }
     fn fuse_layer(&mut self, layer_id: usize) {
-        unimplemented!();
-        // self.execute_instruction(Instruction::LoadDefectsExternal {
-        //     time: layer_id,
-        //     channel: 0,
-        // });
+        self.load_syndrome_external(ni!(layer_id));
     }
-    fn get_pre_matchings(&self, belonging: DualModuleInterfaceWeak) -> PerfectMatching {
+    fn get_pre_matchings(&self, _belonging: DualModuleInterfaceWeak) -> PerfectMatching {
+        // TODO: implement pre matching fetching
         PerfectMatching::default()
     }
 }
@@ -140,6 +136,10 @@ impl DualModuleScalaDriver {
             }),
             config,
         })
+    }
+
+    fn load_syndrome_external(&mut self, layer_id: CompactVertexIndex) {
+        write!(self.link.lock().unwrap().writer, "load_syndrome_external({layer_id})\n").unwrap();
     }
 }
 
@@ -234,7 +234,7 @@ pub mod tests {
     use super::*;
     use crate::dual_module_adaptor::tests::*;
     use crate::dual_module_comb::tests::*;
-    use crate::mwpm_solver::*;
+    use serde_json::json;
 
     // to use visualization, we need the folder of fusion-blossom repo
     // e.g. export FUSION_DIR=/Users/wuyue/Documents/GitHub/fusion-blossom

@@ -1,4 +1,3 @@
-use crate::dual_module_adaptor::*;
 use crate::dual_module_axi4::*;
 use crate::dual_module_comb::*;
 use crate::dual_module_looper::*;

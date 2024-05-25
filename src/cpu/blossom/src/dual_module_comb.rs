@@ -483,8 +483,6 @@ pub use referenced_signal;
 pub mod tests {
     use super::*;
     use crate::dual_module_adaptor::tests::*;
-    use crate::mwpm_solver::*;
-    use crate::ENV_PARAMETER_LOCK;
     use fusion_blossom::example_codes::*;
 
     // to use visualization, we need the folder of fusion-blossom repo

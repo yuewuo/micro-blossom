@@ -12,7 +12,6 @@ use embedded_blossom::extern_c::*;
 use embedded_blossom::util::*;
 use fusion_blossom::dual_module::*;
 use fusion_blossom::primal_module::*;
-use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
@@ -21,7 +20,6 @@ use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
 use scan_fmt::*;
 use serde::*;
-use serde_json::json;
 
 pub struct DualModuleAxi4Driver {
     pub client: SimulationTcpClient,
@@ -46,13 +44,11 @@ impl SolverTrackedDual for DualModuleAxi4Driver {
         Self::new(graph, serde_json::from_value(config).unwrap()).unwrap()
     }
     fn fuse_layer(&mut self, layer_id: usize) {
-        unimplemented!();
-        // self.execute_instruction(Instruction::LoadDefectsExternal {
-        //     time: layer_id,
-        //     channel: 0,
-        // });
+        self.execute_instruction(Instruction32::load_syndrome_external(ni!(layer_id)), self.context_id)
+            .unwrap();
     }
-    fn get_pre_matchings(&self, belonging: DualModuleInterfaceWeak) -> PerfectMatching {
+    fn get_pre_matchings(&self, _belonging: DualModuleInterfaceWeak) -> PerfectMatching {
+        // TODO: implement pre matching fetching
         PerfectMatching::default()
     }
 }
@@ -231,97 +227,100 @@ impl FusionVisualizer for DualModuleAxi4Driver {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::dual_module_adaptor::tests::*;
-    use crate::mwpm_solver::*;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use crate::dual_module_adaptor::tests::*;
+//     use crate::dual_module_comb::tests::*;
+//     use crate::dual_module_scala::tests::*;
+//     use fusion_blossom::util::*;
+//     use serde_json::json;
 
-    // to use visualization, we need the folder of fusion-blossom repo
-    // e.g. export FUSION_DIR=/Users/wuyue/Documents/GitHub/fusion-blossom
+//     // to use visualization, we need the folder of fusion-blossom repo
+//     // e.g. export FUSION_DIR=/Users/wuyue/Documents/GitHub/fusion-blossom
 
-    // #[test]
-    // fn dual_module_axi4_basic_1() {
-    //     // cargo test dual_module_axi4_basic_1 -- --nocapture
-    //     let visualize_filename = "dual_module_axi4_basic_1.json".to_string();
-    //     let defect_vertices = vec![0, 4, 8];
-    //     dual_module_axi4_basic_standard_syndrome(3, visualize_filename, defect_vertices);
-    // }
+//     #[test]
+//     fn dual_module_axi4_basic_1() {
+//         // cargo test dual_module_axi4_basic_1 -- --nocapture
+//         let visualize_filename = "dual_module_axi4_basic_1.json".to_string();
+//         let defect_vertices = vec![0, 4, 8];
+//         dual_module_axi4_basic_standard_syndrome(3, visualize_filename, defect_vertices);
+//     }
 
-    // #[test]
-    // fn dual_module_axi4_basic_2() {
-    //     // cargo test dual_module_axi4_basic_2 -- --nocapture
-    //     let visualize_filename = "dual_module_axi4_basic_2.json".to_string();
-    //     let defect_vertices = vec![18, 26, 34];
-    //     dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    // }
+//     #[test]
+//     fn dual_module_axi4_basic_2() {
+//         // cargo test dual_module_axi4_basic_2 -- --nocapture
+//         let visualize_filename = "dual_module_axi4_basic_2.json".to_string();
+//         let defect_vertices = vec![18, 26, 34];
+//         dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+//     }
 
-    // #[test]
-    // fn dual_module_axi4_basic_3() {
-    //     // cargo test dual_module_axi4_basic_3 -- --nocapture
-    //     let visualize_filename = "dual_module_axi4_basic_3.json".to_string();
-    //     let defect_vertices = vec![16, 26];
-    //     dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    // }
+//     #[test]
+//     fn dual_module_axi4_basic_3() {
+//         // cargo test dual_module_axi4_basic_3 -- --nocapture
+//         let visualize_filename = "dual_module_axi4_basic_3.json".to_string();
+//         let defect_vertices = vec![16, 26];
+//         dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+//     }
 
-    // /// debug infinite loop
-    // /// reason: the write stage logic is implemented wrongly: only when the overall speed is positive
-    // ///   should it report an obstacle; otherwise just report whatever the maxGrowth value is
-    // #[test]
-    // fn dual_module_axi4_debug_1() {
-    //     // cargo test dual_module_axi4_debug_1 -- --nocapture
-    //     let visualize_filename = "dual_module_axi4_debug_1.json".to_string();
-    //     let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
-    //     dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    // }
+//     /// debug infinite loop
+//     /// reason: the write stage logic is implemented wrongly: only when the overall speed is positive
+//     ///   should it report an obstacle; otherwise just report whatever the maxGrowth value is
+//     #[test]
+//     fn dual_module_axi4_debug_1() {
+//         // cargo test dual_module_axi4_debug_1 -- --nocapture
+//         let visualize_filename = "dual_module_axi4_debug_1.json".to_string();
+//         let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
+//         dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+//     }
 
-    // #[test]
-    // fn dual_module_axi4_debug_compare_1() {
-    //     // cargo test dual_module_axi4_debug_compare_1 -- --nocapture
-    //     let visualize_filename = "dual_module_axi4_debug_compare_1.json".to_string();
-    //     let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
-    //     dual_module_comb_embedded_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    // }
+//     #[test]
+//     fn dual_module_axi4_debug_compare_1() {
+//         // cargo test dual_module_axi4_debug_compare_1 -- --nocapture
+//         let visualize_filename = "dual_module_axi4_debug_compare_1.json".to_string();
+//         let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
+//         dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices, false, false);
+//     }
 
-    // /// debug timing error
-    // /// the primal offloaded grow unit will issue a grow command automatically and retrieve the conflict information
-    // /// however, this is different from
-    // #[test]
-    // fn dual_module_axi4_debug_2() {
-    //     // cargo test dual_module_axi4_debug_2 -- --nocapture
-    //     let visualize_filename = "dual_module_axi4_debug_2.json".to_string();
-    //     let defect_vertices = vec![12, 13, 17, 25, 28, 48, 49];
-    //     dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    // }
+//     /// debug timing error
+//     /// the primal offloaded grow unit will issue a grow command automatically and retrieve the conflict information
+//     /// however, this is different from
+//     #[test]
+//     fn dual_module_axi4_debug_2() {
+//         // cargo test dual_module_axi4_debug_2 -- --nocapture
+//         let visualize_filename = "dual_module_axi4_debug_2.json".to_string();
+//         let defect_vertices = vec![12, 13, 17, 25, 28, 48, 49];
+//         dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+//     }
 
-    // #[test]
-    // fn dual_module_axi4_debug_compare_2() {
-    //     // cargo test dual_module_axi4_debug_compare_2 -- --nocapture
-    //     let visualize_filename = "dual_module_axi4_debug_compare_2.json".to_string();
-    //     let defect_vertices = vec![12, 13, 17, 25, 28, 48, 49];
-    //     dual_module_scala_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    // }
+//     #[test]
+//     fn dual_module_axi4_debug_compare_2() {
+//         // cargo test dual_module_axi4_debug_compare_2 -- --nocapture
+//         let visualize_filename = "dual_module_axi4_debug_compare_2.json".to_string();
+//         let defect_vertices = vec![12, 13, 17, 25, 28, 48, 49];
+//         dual_module_scala_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+//     }
 
-    pub fn dual_module_axi4_basic_standard_syndrome(
-        d: VertexNum,
-        visualize_filename: String,
-        defect_vertices: Vec<VertexIndex>,
-    ) -> SolverEmbeddedAxi4 {
-        dual_module_standard_optional_viz(
-            d,
-            Some(visualize_filename.clone()),
-            defect_vertices,
-            |initializer, positions| {
-                SolverEmbeddedAxi4::new(
-                    MicroBlossomSingle::new(initializer, positions),
-                    json!({
-                        "dual": {
-                            "name": visualize_filename.as_str().trim_end_matches(".json").to_string()
-                            // "with_max_iterations": 30, // this is helpful when debugging infinite loops
-                        }
-                    }),
-                )
-            },
-        )
-    }
-}
+//     pub fn dual_module_axi4_basic_standard_syndrome(
+//         d: VertexNum,
+//         visualize_filename: String,
+//         defect_vertices: Vec<VertexIndex>,
+//     ) -> SolverEmbeddedAxi4 {
+//         dual_module_standard_optional_viz(
+//             d,
+//             Some(visualize_filename.clone()),
+//             defect_vertices,
+//             |initializer, positions| {
+//                 SolverEmbeddedAxi4::new(
+//                     MicroBlossomSingle::new(initializer, positions),
+//                     json!({
+//                         "dual": {
+//                             "name": visualize_filename.as_str().trim_end_matches(".json").to_string()
+//                             // "with_max_iterations": 30, // this is helpful when debugging infinite loops
+//                         }
+//                     }),
+//                 )
+//             },
+//         )
+//     }
+// }
