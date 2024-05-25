@@ -42,29 +42,32 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
   val pipelineEntries = Vec.fill(pipelineLength)(Reg(PipelineEntry(config)).init_default())
   val responseEntry = pipelineEntries(pipelineLength - 1)
   val dataLoss = Reg(Bool()) init False
+  val growLength = UInt(16 bits)
+
   io.dataLoss := dataLoss
 
   // create MicroBlossom module
   val microBlossom = DistributedDual(config, config)
 
   // immediate feedback happens when the response allows immediate growth
+  // when maximumGrowth is 0, the loopback is forbidden
   immediateLoopback := !microBlossom.io.conflict.valid &&
-    (microBlossom.io.maxGrowable.length =/= microBlossom.io.maxGrowable.length.maxValue)
+    (microBlossom.io.maxGrowable.length =/= microBlossom.io.maxGrowable.length.maxValue) &&
+    (responseEntry.grown < responseEntry.maximumGrowth)
 
   // the input entry to the MicroBlossom module
+  growLength := Mux( // the growth value of issuing another grow instruction in the loop back
+    responseEntry.grown + microBlossom.io.maxGrowable.length.resize(16) > responseEntry.maximumGrowth,
+    responseEntry.maximumGrowth - responseEntry.grown,
+    microBlossom.io.maxGrowable.length.resize(16)
+  )
   when(immediateLoopback) {
     inputEntry.valid := True
     if (config.contextBits > 0) { inputEntry.contextId := responseEntry.contextId }
     inputEntry.instructionId := responseEntry.instructionId
     inputEntry.maximumGrowth := responseEntry.maximumGrowth
-    val growLength = UInt(16 bits)
-    when(responseEntry.grown + microBlossom.io.maxGrowable.length.resized > responseEntry.maximumGrowth) {
-      growLength := responseEntry.maximumGrowth - responseEntry.grown
-    } otherwise {
-      growLength := microBlossom.io.maxGrowable.length.resized
-    }
     inputEntry.grown := responseEntry.grown + growLength
-    inputInstruction := inputInstruction.spec.dynamicGrow(growLength, config)
+    inputInstruction.assignGrow(growLength)
   } otherwise {
     inputEntry.valid := io.push.valid
     if (config.contextBits > 0) { inputEntry.contextId := io.push.payload.contextId }

@@ -70,6 +70,15 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
   def isFindObstacle(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.FindObstacle)
   def isReset(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.Reset)
   def isLoadDefectsExternal(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.LoadDefectsExternal)
+
+  def assignGrow(length: UInt) = {
+    opCode := OpCode.SetSpeed
+    extensionIndicator := True.asBits
+    extendedOpCode := ExtendedOpCode.Grow
+    val lengthBits = sliceOf(spec.lengthRange) // must use Bits assign...
+    lengthBits := length.asBits.resized
+    this.assignDontCareToUnasigned
+  }
 }
 
 case class BitRange(msb: Int, lsb: Int) {
@@ -136,16 +145,6 @@ case class InstructionSpec(config: DualConfig) {
   }
   def generateLoadDefectsExternal(time: Long): Long = {
     generateExtendedSuffix(ExtendedOpCode.LoadDefectsExternal) | field1Range.masked(time)
-  }
-
-  def dynamicGrow(length: UInt, config: DualConfig = DualConfig()): Instruction = {
-    val instruction = Instruction(config)
-    instruction.opCode := OpCode.SetSpeed
-    instruction.extensionIndicator := True.asBits
-    instruction.extendedOpCode := ExtendedOpCode.Grow
-    instruction.extendedPayload.clearAll()
-    instruction.length := length
-    instruction
   }
 
   def sanityCheck() = {
