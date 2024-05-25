@@ -177,7 +177,6 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
   }
 
   def simMakePublicSnapshot() = microBlossom.simMakePublicSnapshot()
-  def simEnablePreMatchingSnapshot() = microBlossom.simEnablePreMatchingSnapshot()
   def simSnapshot(abbrev: Boolean = true): Json = microBlossom.simSnapshot(abbrev)
   def simPreMatchings(): Seq[DataPreMatching] = microBlossom.simPreMatchings()
 

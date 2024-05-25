@@ -170,11 +170,6 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig) extends Com
       offloader.io.simPublic()
     })
   }
-  def simEnablePreMatchingSnapshot() = {
-    offloaders.foreach(offloader => {
-      offloader.io.simPublic()
-    })
-  }
 
   // a temporary solution without primal offloading
   def simFindObstacle(maxGrowth: Long): (DataMaxGrowable, DataConflict, Long) = {
