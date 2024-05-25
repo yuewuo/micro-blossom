@@ -1,6 +1,7 @@
 use crate::dual_module_adaptor::*;
 use crate::dual_module_axi4::*;
 use crate::dual_module_comb::*;
+use crate::dual_module_looper::*;
 use crate::dual_module_scala::*;
 use crate::primal_module_embedded_adaptor::*;
 use crate::resources::*;
@@ -449,6 +450,7 @@ impl<Dual: SolverTrackedDual> PrimalDualSolver for SolverEmbeddedBoxed<Dual> {
 
 pub type SolverEmbeddedComb = SolverEmbeddedBoxed<DualModuleCombDriver>;
 pub type SolverEmbeddedScala = SolverEmbeddedBoxed<DualModuleScalaDriver>;
+pub type SolverEmbeddedLooper = SolverEmbeddedBoxed<DualModuleLooperDriver>;
 pub type SolverEmbeddedAxi4 = SolverEmbeddedBoxed<DualModuleAxi4Driver>;
 
 // pub struct SolverEmbeddedAxi4 {

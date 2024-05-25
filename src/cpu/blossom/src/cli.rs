@@ -499,7 +499,7 @@ impl PrimalDualType {
             }
             Self::EmbeddedComb => Box::new(SolverEmbeddedComb::new(graph, primal_dual_config)),
             Self::EmbeddedScala => Box::new(SolverEmbeddedScala::new(graph, primal_dual_config)),
-            Self::EmbeddedLooper => unimplemented!(),
+            Self::EmbeddedLooper => Box::new(SolverEmbeddedLooper::new(graph, primal_dual_config)),
             Self::EmbeddedAxi4 => Box::new(SolverEmbeddedAxi4::new(graph, primal_dual_config)),
             Self::Serial | Self::ErrorPatternLogger => {
                 unreachable!()

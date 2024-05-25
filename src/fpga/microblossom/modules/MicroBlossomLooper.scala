@@ -127,7 +127,7 @@ case class InputData(config: DualConfig) extends Bundle {
 case class OutputData(config: DualConfig) extends Bundle {
   val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
   val instructionId = UInt(config.instructionBufferBits bits)
-  val maxGrowable = ConvergecastMaxGrowable(config.weightBits)
+  val growable = ConvergecastMaxGrowable(config.weightBits)
   val conflict = ConvergecastConflict(config.vertexBits)
   val grown = UInt(16 bits)
 }

@@ -18,6 +18,7 @@ use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
 use scan_fmt::*;
 use serde::*;
+use serde_json::json;
 use std::io::prelude::*;
 use std::io::{BufReader, LineWriter};
 use std::net::{TcpListener, TcpStream};
@@ -288,13 +289,19 @@ pub mod tests {
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
     ) -> Box<SolverEmbeddedScala> {
-        dual_module_standard_optional_viz(d, Some(visualize_filename.clone()), defect_vertices, |initializer, _| {
-            Box::new(
-                SolverEmbeddedScala::new_with_name(
-                    initializer,
-                    visualize_filename.as_str().trim_end_matches(".json").to_string(),
-                ), //.with_max_iterations(30)  // this is helpful when debugging infinite loops
-            )
-        })
+        dual_module_standard_optional_viz(
+            d,
+            Some(visualize_filename.clone()),
+            defect_vertices,
+            |initializer, positions| {
+                SolverEmbeddedScala::new(
+                    MicroBlossomSingle::new(initializer, positions),
+                    json!({
+                        "name": visualize_filename.as_str().trim_end_matches(".json").to_string()
+                        // "with_max_iterations": 30, // this is helpful when debugging infinite loops
+                    }),
+                )
+            },
+        )
     }
 }

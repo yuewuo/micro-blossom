@@ -30,6 +30,7 @@ use micro_blossom::dual_module_axi4::*;
 use micro_blossom::resources::MicroBlossomSingle;
 use micro_blossom_nostd::instruction::Instruction32;
 use parking_lot::Mutex;
+use serde_json::json;
 use std::env;
 use std::fs;
 use std::time::Instant;
@@ -66,8 +67,16 @@ impl EmbeddedSimulator {
         {
             let mut driver = SIMULATOR_DRIVER.lock();
             assert!(driver.is_none(), "EmbeddedSimulator::run should not be executed twice");
-            let _ = driver
-                .insert(DualModuleAxi4Driver::new(micro_blossom, RUST_MAIN_NAME.to_string(), Default::default()).unwrap());
+            let _ = driver.insert(
+                DualModuleAxi4Driver::new(
+                    micro_blossom,
+                    serde_json::from_value(json!({
+                        "name": RUST_MAIN_NAME.to_string(),
+                    }))
+                    .unwrap(),
+                )
+                .unwrap(),
+            );
         }
         // get_native_time();
         rust_main_raw();

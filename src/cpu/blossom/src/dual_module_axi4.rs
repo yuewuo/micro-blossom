@@ -4,7 +4,6 @@
 //! It simulates the complete MicroBlossom module, which provides a AXI4 memory-mapped interface.
 //!
 
-use crate::dual_module_adaptor::*;
 use crate::mwpm_solver::*;
 use crate::resources::*;
 use crate::simulation_tcp_client::*;
@@ -22,6 +21,7 @@ use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
 use scan_fmt::*;
 use serde::*;
+use serde_json::json;
 
 pub struct DualModuleAxi4Driver {
     pub client: SimulationTcpClient,
@@ -234,7 +234,7 @@ impl FusionVisualizer for DualModuleAxi4Driver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dual_module_scala::tests::*;
+    use crate::dual_module_adaptor::tests::*;
     use crate::mwpm_solver::*;
 
     // to use visualization, we need the folder of fusion-blossom repo
@@ -308,11 +308,12 @@ mod tests {
         defect_vertices: Vec<VertexIndex>,
     ) -> Box<SolverEmbeddedAxi4> {
         dual_module_standard_optional_viz(d, Some(visualize_filename.clone()), defect_vertices, |initializer, _| {
-            Box::new(
-                SolverEmbeddedAxi4::new_with_name(
-                    initializer,
-                    visualize_filename.as_str().trim_end_matches(".json").to_string(),
-                ), //.with_max_iterations(30)  // this is helpful when debugging infinite loops
+            SolverEmbeddedAxi4::new(
+                MicroBlossomSingle::new(initializer, positions),
+                json!({
+                    "name": visualize_filename.as_str().trim_end_matches(".json").to_string()
+                    // "with_max_iterations": 30, // this is helpful when debugging infinite loops
+                }),
             )
         })
     }

@@ -5,12 +5,13 @@
 //! (A wrapper around the DistributedDual module)
 //!
 
-use crate::dual_module_adaptor::*;
+use crate::mwpm_solver::*;
 use crate::resources::*;
 use crate::simulation_tcp_client::*;
 use crate::util::*;
-use embedded_blossom::extern_c::*;
 use embedded_blossom::util::*;
+use fusion_blossom::dual_module::*;
+use fusion_blossom::primal_module::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
 use micro_blossom_nostd::dual_driver_tracked::*;
@@ -19,136 +20,146 @@ use micro_blossom_nostd::instruction::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
 use scan_fmt::*;
+use serde::*;
+use serde_json::json;
 
 pub struct DualModuleLooperDriver {
     pub client: SimulationTcpClient,
     pub context_id: u16,
-    pub maximum_growth: Vec<u16>,
-    pub conflicts_store: ConflictsStore<MAX_CONFLICT_CHANNELS>,
+    pub instruction_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DualLooperConfig {
+    #[serde(default = "Default::default")]
+    pub sim_config: SimulationConfig,
+    #[serde(default = "random_name_16")]
+    pub name: String,
 }
 
 pub type DualModuleLooper = DualModuleStackless<DualDriverTracked<DualModuleLooperDriver, MAX_NODE_NUM>>;
 
-impl DualInterfaceWithInitializer for DualModuleLooper {
-    fn new_with_initializer(initializer: &SolverInitializer) -> Self {
-        let micro_blossom = MicroBlossomSingle::new_initializer_only(initializer);
-        let name = random_name_16();
-        let sim_config: SimulationConfig = Default::default();
-        DualModuleStackless::new(DualDriverTracked::new(
-            DualModuleLooperDriver::new(micro_blossom, name, sim_config).unwrap(),
-        ))
+impl SolverTrackedDual for DualModuleLooperDriver {
+    fn new_from_graph_config(graph: MicroBlossomSingle, config: serde_json::Value) -> Self {
+        Self::new(graph, serde_json::from_value(config).unwrap()).unwrap()
+    }
+    fn fuse_layer(&mut self, layer_id: usize) {
+        unimplemented!();
+        // self.execute_instruction(Instruction::LoadDefectsExternal {
+        //     time: layer_id,
+        //     channel: 0,
+        // });
+    }
+    fn get_pre_matchings(&self, belonging: DualModuleInterfaceWeak) -> PerfectMatching {
+        PerfectMatching::default()
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct InputData {
+    pub instruction: u32, // use Instruction32
+    pub context_id: u16,
+    pub instruction_id: u16,
+    pub maximum_growth: u16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OutputData {
+    pub context_id: u16,
+    pub instruction_id: u16,
+    pub growable: u16,
+    pub conflict: ConvergecastConflict,
+    pub grown: u16,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ConvergecastConflict {
+    pub node1: u16,
+    pub node2: u16,
+    pub touch1: u16,
+    pub touch2: u16,
+    pub vertex1: u16,
+    pub vertex2: u16,
+    pub valid: bool,
+}
+
 impl DualModuleLooperDriver {
-    pub fn new(micro_blossom: MicroBlossomSingle, name: String, sim_config: SimulationConfig) -> std::io::Result<Self> {
-        let conflict_channels = sim_config.conflict_channels;
-        let mut conflicts_store = ConflictsStore::new();
-        conflicts_store.reconfigure(conflict_channels as u8);
-        let maximum_growth = vec![0; sim_config.context_depth];
+    pub fn new(micro_blossom: MicroBlossomSingle, config: DualLooperConfig) -> std::io::Result<Self> {
         let mut value = Self {
-            client: SimulationTcpClient::new("MicroBlossomHost", micro_blossom, name, sim_config)?,
+            client: SimulationTcpClient::new("LooperHost", micro_blossom, config.name, config.sim_config)?,
             context_id: 0,
-            maximum_growth,
-            conflicts_store,
+            instruction_count: 0,
         };
         value.reset();
         Ok(value)
     }
 
-    fn memory_write(&mut self, num_bytes: usize, address: usize, data: usize) -> std::io::Result<()> {
-        self.client.write_line(format!("write({num_bytes}, {address}, {data})"))
-    }
-    pub fn memory_write_64(&mut self, address: usize, data: u64) -> std::io::Result<()> {
-        self.memory_write(8, address, data as usize)
-    }
-    pub fn memory_write_32(&mut self, address: usize, data: u32) -> std::io::Result<()> {
-        self.memory_write(4, address, data as usize)
-    }
-    pub fn memory_write_16(&mut self, address: usize, data: u16) -> std::io::Result<()> {
-        self.memory_write(2, address, data as usize)
-    }
-    pub fn memory_write_8(&mut self, address: usize, data: u8) -> std::io::Result<()> {
-        self.memory_write(1, address, data as usize)
+    fn execute(&mut self, input: InputData) -> std::io::Result<OutputData> {
+        let line = self
+            .client
+            .read_line(format!("execute({})", serde_json::to_string(&input)?))?;
+        self.instruction_count += 1;
+        self.instruction_count = 0;
+        Ok(serde_json::from_str(line.as_str())?)
     }
 
-    fn memory_read(&mut self, num_bytes: usize, address: usize) -> std::io::Result<usize> {
-        let line = self.client.read_line(format!("read({num_bytes}, {address})"))?;
-        let value = scan_fmt!(&line, "{d}", usize).unwrap();
-        Ok(value)
-    }
-    pub fn memory_read_64(&mut self, address: usize) -> std::io::Result<u64> {
-        self.memory_read(8, address).map(|v| v as u64)
-    }
-    pub fn memory_read_32(&mut self, address: usize) -> std::io::Result<u32> {
-        self.memory_read(4, address).map(|v| v as u32)
-    }
-    pub fn memory_read_16(&mut self, address: usize) -> std::io::Result<u16> {
-        self.memory_read(2, address).map(|v| v as u16)
-    }
-    pub fn memory_read_8(&mut self, address: usize) -> std::io::Result<u8> {
-        self.memory_read(1, address).map(|v| v as u8)
-    }
-
-    pub fn execute_instruction(&mut self, instruction: Instruction32, context_id: u16) -> std::io::Result<()> {
-        if self.client.sim_config.use_64_bus {
-            let data = (instruction.0 as u64) | ((context_id as u64) << 32);
-            self.memory_write_64(4096, data)
-        } else {
-            self.memory_write_32(64 * 1024 + 4 * context_id as usize, instruction.0)
-        }
-    }
-
-    pub fn get_hardware_info(&mut self) -> std::io::Result<MicroBlossomHardwareInfo> {
-        let raw_1 = self.memory_read_64(8)?;
-        let raw_2 = self.memory_read_32(16)?;
-        Ok(MicroBlossomHardwareInfo {
-            version: raw_1 as u32,
-            context_depth: (raw_1 >> 32) as u32,
-            conflict_channels: raw_2 as u8,
-            vertex_bits: (raw_2 >> 8) as u8,
-            weight_bits: (raw_2 >> 16) as u8,
-            grown_bits: (raw_2 >> 24) as u8,
+    pub fn execute_instruction(&mut self, instruction: Instruction32, context_id: u16) -> std::io::Result<OutputData> {
+        self.execute(InputData {
+            instruction: instruction.into(),
+            context_id,
+            instruction_id: self.instruction_count as u16,
+            maximum_growth: 0,
         })
     }
 
-    pub const READOUT_BASE: usize = 4 * 1024 * 1024;
-
-    pub fn get_conflicts(&mut self, context_id: u16) -> std::io::Result<()> {
-        let base = Self::READOUT_BASE + 1024 * context_id as usize;
-        self.execute_instruction(Instruction32::find_obstacle(), context_id)?;
-        let raw_head = self.memory_read_64(base)?;
-        self.conflicts_store.head.maximum_growth = raw_head as u16;
-        self.conflicts_store.head.accumulated_grown = (raw_head >> 16) as u16;
-        self.conflicts_store.head.growable = (raw_head >> 32) as u16;
-        if self.conflicts_store.head.growable == 0 {
-            for i in 0..self.conflicts_store.channels as usize {
-                let conflict_base = base + 32 + i * 16;
-                let raw_1 = self.memory_read_64(conflict_base)?;
-                let raw_2 = self.memory_read_64(conflict_base + 8)?;
-                let conflict = self.conflicts_store.maybe_uninit_conflict(i);
-                conflict.node_1 = raw_1 as u16;
-                conflict.node_2 = (raw_1 >> 16) as u16;
-                conflict.touch_1 = (raw_1 >> 32) as u16;
-                conflict.touch_2 = (raw_1 >> 48) as u16;
-                conflict.vertex_1 = raw_2 as u16;
-                conflict.vertex_2 = (raw_2 >> 16) as u16;
-                conflict.valid = (raw_2 >> 32) as u8;
-            }
+    pub fn execute_find_obstacle(
+        &mut self,
+        context_id: u16,
+        maximum_growth: u16,
+    ) -> std::io::Result<(CompactObstacle, CompactWeight)> {
+        let instruction_id = self.instruction_count as u16;
+        let output = self.execute(InputData {
+            instruction: Instruction32::find_obstacle().into(),
+            context_id,
+            instruction_id,
+            maximum_growth,
+        })?;
+        assert_eq!(output.instruction_id, instruction_id);
+        let grown = CompactWeight::from(output.grown);
+        if output.growable == u16::MAX {
+            assert!(!output.conflict.valid, "growable must be finite when conflict is detected");
+            return Ok((CompactObstacle::None, grown));
         }
-        Ok(())
-    }
-
-    pub fn set_maximum_growth(&mut self, maximum_growth: u16, context_id: u16) -> std::io::Result<()> {
-        let base = Self::READOUT_BASE + 1024 * context_id as usize;
-        self.memory_write_16(base, maximum_growth)
+        if output.conflict.valid {
+            return Ok((
+                CompactObstacle::Conflict {
+                    node_1: ni!(output.conflict.node1).option(),
+                    node_2: ni!(output.conflict.node2).option(),
+                    touch_1: ni!(output.conflict.touch1).option(),
+                    touch_2: ni!(output.conflict.touch2).option(),
+                    vertex_1: ni!(output.conflict.vertex1),
+                    vertex_2: ni!(output.conflict.vertex2),
+                },
+                grown,
+            ));
+        }
+        return Ok((
+            CompactObstacle::GrowLength {
+                length: CompactWeight::from(output.growable),
+            },
+            grown,
+        ));
     }
 }
 
 impl DualStacklessDriver for DualModuleLooperDriver {
     fn reset(&mut self) {
         self.execute_instruction(Instruction32::reset(), self.context_id).unwrap();
-        self.set_maximum_growth(0, self.context_id).unwrap();
+        self.instruction_count = 0;
     }
     fn set_speed(&mut self, _is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState) {
         self.execute_instruction(Instruction32::set_speed(node, speed), self.context_id)
@@ -159,33 +170,7 @@ impl DualStacklessDriver for DualModuleLooperDriver {
             .unwrap();
     }
     fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
-        // first check whether there are some unhandled conflicts in the store
-        if let Some(conflict) = self.conflicts_store.pop() {
-            return (conflict.get_obstacle(), 0);
-        }
-        // then query the hardware
-        self.get_conflicts(self.context_id).unwrap();
-        // check again
-        let grown = self.conflicts_store.head.accumulated_grown as CompactWeight;
-        let growable = self.conflicts_store.head.growable;
-        if growable == u16::MAX {
-            (CompactObstacle::None, grown)
-        } else if growable != 0 {
-            (
-                CompactObstacle::GrowLength {
-                    length: growable as CompactWeight,
-                },
-                grown,
-            )
-        } else {
-            // find a single obstacle from the list of obstacles
-            if let Some(conflict) = self.conflicts_store.pop() {
-                return (conflict.get_obstacle(), grown);
-            }
-            // when this happens, the DualDriverTracked should check for BlossomNeedExpand event
-            // this is usually triggered by reaching maximum growth set by the DualDriverTracked
-            (CompactObstacle::GrowLength { length: 0 }, grown)
-        }
+        self.execute_find_obstacle(self.context_id, u16::MAX).unwrap()
     }
     fn add_defect(&mut self, vertex: CompactVertexIndex, node: CompactNodeIndex) {
         self.execute_instruction(Instruction32::add_defect_vertex(vertex, node), self.context_id)
@@ -195,10 +180,7 @@ impl DualStacklessDriver for DualModuleLooperDriver {
 
 impl DualTrackedDriver for DualModuleLooperDriver {
     fn find_conflict(&mut self, maximum_growth: CompactWeight) -> (CompactObstacle, CompactWeight) {
-        self.set_maximum_growth(maximum_growth as u16, self.context_id).unwrap();
-        let result = self.find_obstacle();
-        self.set_maximum_growth(0, self.context_id).unwrap(); // clear maximum growth to avoid any spontaneous growth
-        result
+        self.execute_find_obstacle(self.context_id, maximum_growth as u16).unwrap()
     }
 }
 
@@ -238,11 +220,12 @@ mod tests {
         defect_vertices: Vec<VertexIndex>,
     ) -> Box<SolverDualLooper> {
         dual_module_standard_optional_viz(d, Some(visualize_filename.clone()), defect_vertices, |initializer, _| {
-            Box::new(
-                SolverDualLooper::new_with_name(
-                    initializer,
-                    visualize_filename.as_str().trim_end_matches(".json").to_string(),
-                ), //.with_max_iterations(30)  // this is helpful when debugging infinite loops
+            SolverDualLooper::new(
+                MicroBlossomSingle::new(initializer, positions),
+                json!({
+                    "name": visualize_filename.as_str().trim_end_matches(".json").to_string()
+                    // "with_max_iterations": 30, // this is helpful when debugging infinite loops
+                }),
             )
         })
     }

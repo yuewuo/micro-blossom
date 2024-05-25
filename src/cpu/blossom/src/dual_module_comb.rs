@@ -737,24 +737,17 @@ pub mod tests {
             Some(visualize_filename.clone()),
             defect_vertices,
             |initializer, positions| {
-                // lock to avoid environment variable races when testing in parallel
-                let lock = ENV_PARAMETER_LOCK.lock();
-                let tmp_env_offloading = if support_offloading {
-                    Some(tmp_env::set_var("SUPPORT_OFFLOADING", "1"))
-                } else {
-                    None
-                };
-                let tmp_env_layer_fusion = if support_layer_fusion {
-                    Some(tmp_env::set_var("SUPPORT_LAYER_FUSION", "1"))
-                } else {
-                    None
-                };
-                let micro_config = MicroBlossomSingle::new(initializer, positions);
-                let result = SolverDualComb::new_native(micro_config, json!({}));
-                drop(tmp_env_offloading);
-                drop(tmp_env_layer_fusion);
-                drop(lock);
-                Box::new(result)
+                SolverDualComb::new_native(
+                    MicroBlossomSingle::new(initializer, positions),
+                    json!({
+                        "dual": {
+                            "sim_config": {
+                                "support_offloading": support_offloading,
+                                "support_layer_fusion": support_layer_fusion,
+                            }
+                        }
+                    }),
+                )
             },
         )
     }
