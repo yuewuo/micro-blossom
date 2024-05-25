@@ -297,8 +297,9 @@ impl<Dual: SolverTrackedDual> SolverEmbeddedBoxed<Dual> {
             ))))
         });
         let mut primal_module = stacker::grow(MAX_NODE_NUM * 256, || Box::new(PrimalModuleEmbedded::new()));
-        // load the layer id to the primal
+        primal_module.nodes.blossom_begin = graph.vertex_num; // make sure the index is not overflow on the dual side
         if let Some(layer_fusion) = graph.layer_fusion.as_ref() {
+            // load the layer id to the primal
             for vertex_index in 0..graph.vertex_num {
                 if let Some(layer_id) = layer_fusion.vertex_layer_id.get(&vertex_index) {
                     assert!(*layer_id < CompactLayerNum::MAX as usize);

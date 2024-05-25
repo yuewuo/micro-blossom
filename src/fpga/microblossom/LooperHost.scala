@@ -66,14 +66,9 @@ object LooperHost extends SimulationTcpHost("LooperHost") {
               val instructionId = inputData.instructionId % config.instructionBufferDepth
               val adaptedInput = inputData.copy(instruction = instruction, instructionId = instructionId)
               val outputData = dut.simExecute(adaptedInput)
-              val adaptedOutput = outputData.copy(
-                maxGrowable = if (outputData.maxGrowable == config.LengthNone) {
-                  65535
-                } else {
-                  outputData.maxGrowable
-                },
-                instructionId = inputData.instructionId
-              )
+              // adapt output
+              val adaptedOutput = outputData.copy(instructionId = inputData.instructionId)
+              if (outputData.maxGrowable == config.LengthNone) { adaptedOutput.maxGrowable = 65535 }
               // sanity checks
               if (config.contextBits > 0) {
                 assert(adaptedOutput.contextId == inputData.contextId)

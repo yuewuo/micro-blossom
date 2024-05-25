@@ -73,9 +73,9 @@ pub struct OutputData {
 #[serde(deny_unknown_fields)]
 pub struct ConvergecastConflict {
     pub node1: u16,
-    pub node2: u16,
+    pub node2: Option<u16>,
     pub touch1: u16,
-    pub touch2: u16,
+    pub touch2: Option<u16>,
     pub vertex1: u16,
     pub vertex2: u16,
     pub valid: bool,
@@ -131,9 +131,9 @@ impl DualModuleLooperDriver {
             return Ok((
                 CompactObstacle::Conflict {
                     node_1: ni!(output.conflict.node1).option(),
-                    node_2: ni!(output.conflict.node2).option(),
+                    node_2: output.conflict.node2.map(|v| ni!(v)).into(),
                     touch_1: ni!(output.conflict.touch1).option(),
-                    touch_2: ni!(output.conflict.touch2).option(),
+                    touch_2: output.conflict.touch2.map(|v| ni!(v)).into(),
                     vertex_1: ni!(output.conflict.vertex1),
                     vertex_2: ni!(output.conflict.vertex2),
                 },

@@ -141,12 +141,13 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig) extends Com
     sleep(1)
     (
       DataMaxGrowable(io.maxGrowable.length.toInt),
+      // the distributed dual does not do node reordering, so leave the original index here
       DataConflict(
         io.conflict.valid.toBoolean,
         io.conflict.node1.toInt,
-        io.conflict.node2.toInt,
+        Some(io.conflict.node2.toInt),
         io.conflict.touch1.toInt,
-        io.conflict.touch2.toInt,
+        Some(io.conflict.touch2.toInt),
         io.conflict.vertex1.toInt,
         io.conflict.vertex2.toInt
       )
@@ -337,9 +338,9 @@ class DistributedDualTest extends AnyFunSuite {
         assert(grown3 == 1)
         assert(conflict3.valid == true)
         assert(conflict3.node1 == 0)
-        assert(conflict3.node2 == ioConfig.IndexNone)
+        assert(conflict3.node2 == Some(ioConfig.IndexNone))
         assert(conflict3.touch1 == 0)
-        assert(conflict3.touch2 == ioConfig.IndexNone)
+        assert(conflict3.touch2 == Some(ioConfig.IndexNone))
         assert(conflict3.vertex1 == 0)
         assert(conflict3.vertex2 == 3)
 

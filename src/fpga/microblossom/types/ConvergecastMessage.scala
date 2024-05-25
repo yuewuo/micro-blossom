@@ -46,6 +46,24 @@ case class ConvergecastConflict(vertexBits: Int) extends Bundle {
     vertex1 := source.vertex1.resized
     vertex2 := source.vertex2.resized
   }
+
+  def assignReordered(source: ConvergecastConflict) = {
+    val IndexNone = (1 << vertexBits) - 1
+    valid := source.valid
+    when(source.node1 === IndexNone) {
+      node1 := source.node2
+      node2 := source.node1
+      touch1 := source.touch2
+      touch2 := source.touch1
+    } otherwise {
+      node1 := source.node1
+      node2 := source.node2
+      touch1 := source.touch1
+      touch2 := source.touch2
+    }
+    vertex1 := source.vertex1
+    vertex2 := source.vertex2
+  }
 }
 
 case class DataMaxGrowable(
@@ -56,9 +74,9 @@ case class DataMaxGrowable(
 case class DataConflict(
     var valid: Boolean,
     var node1: Int,
-    var node2: Int,
+    var node2: Option[Int],
     var touch1: Int,
-    var touch2: Int,
+    var touch2: Option[Int],
     var vertex1: Int,
     var vertex2: Int
 )

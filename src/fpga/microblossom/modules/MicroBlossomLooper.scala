@@ -111,7 +111,7 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
     if (config.contextBits > 0) { io.pop.payload.contextId := responseEntry.contextId }
     io.pop.payload.instructionId := responseEntry.instructionId
     io.pop.payload.maxGrowable := microBlossom.io.maxGrowable
-    io.pop.payload.conflict := microBlossom.io.conflict
+    io.pop.payload.conflict.assignReordered(microBlossom.io.conflict)
     io.pop.payload.grown := responseEntry.grown
   } otherwise {
     io.pop.valid := False
@@ -134,6 +134,23 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
     io.push.valid #= false
     clockDomain.waitSamplingWhere(io.pop.valid.toBoolean)
     io.pop.ready #= false
+    val valid = io.pop.payload.conflict.valid.toBoolean
+    val node1 = io.pop.payload.conflict.node1.toInt
+    val node2 = io.pop.payload.conflict.node2.toInt
+    val touch1 = io.pop.payload.conflict.touch1.toInt
+    val touch2 = io.pop.payload.conflict.touch2.toInt
+    val vertex1 = io.pop.payload.conflict.vertex1.toInt
+    val vertex2 = io.pop.payload.conflict.vertex2.toInt
+    if (valid) {
+      assert(node1 != config.IndexNone)
+      assert(touch1 != config.IndexNone)
+      assert(vertex1 != config.IndexNone)
+      assert(vertex2 != config.IndexNone)
+    }
+    val option_node2: Option[Int] = if (node2 == config.IndexNone) { None }
+    else { Some(node2) }
+    val option_touch2: Option[Int] = if (touch2 == config.IndexNone) { None }
+    else { Some(touch2) }
     LooperOutputData(
       contextId = if (config.contextBits > 0) {
         io.pop.payload.contextId.toInt
@@ -142,15 +159,7 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
       },
       instructionId = io.pop.payload.instructionId.toInt,
       maxGrowable = io.pop.payload.maxGrowable.length.toInt,
-      conflict = DataConflict(
-        io.pop.payload.conflict.valid.toBoolean,
-        io.pop.payload.conflict.node1.toInt,
-        io.pop.payload.conflict.node2.toInt,
-        io.pop.payload.conflict.touch1.toInt,
-        io.pop.payload.conflict.touch2.toInt,
-        io.pop.payload.conflict.vertex1.toInt,
-        io.pop.payload.conflict.vertex2.toInt
-      ),
+      conflict = DataConflict(valid, node1, option_node2, touch1, option_touch2, vertex1, vertex2),
       grown = io.pop.payload.grown.toInt
     )
   }
