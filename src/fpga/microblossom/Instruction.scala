@@ -75,9 +75,11 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
     opCode := OpCode.SetSpeed
     extensionIndicator := True.asBits
     extendedOpCode := ExtendedOpCode.Grow
+    if (spec.lengthRange.msb < spec.numBits - 1) {
+      sliceOf(BitRange(spec.numBits - 1, spec.lengthRange.msb + 1)).assignDontCare()
+    }
     val lengthBits = sliceOf(spec.lengthRange) // must use Bits assign...
     lengthBits := length.asBits.resized
-    this.assignDontCareToUnasigned
   }
 }
 
