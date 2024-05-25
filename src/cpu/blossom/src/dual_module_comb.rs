@@ -621,6 +621,14 @@ pub mod tests {
     fn dual_module_comb_pre_matching_layer_fusion_debug_2() {
         // cargo test dual_module_comb_pre_matching_layer_fusion_debug_2 -- --nocapture
         let visualize_filename = "dual_module_comb_pre_matching_layer_fusion_debug_2.json".to_string();
+        let primal_dual_config = json!({
+            "dual": {
+                "sim_config": {
+                    "support_offloading": true,
+                    "support_layer_fusion": true,
+                }
+            }
+        });
         crate::cli::execute_in_cli(
             [
                 "",
@@ -643,7 +651,9 @@ pub mod tests {
                 "--starting-iteration",
                 "153",
                 "--primal-dual-type",
-                "embedded-comb-pre-matching-layer-fusion",
+                "embedded-comb",
+                "--primal-dual-config",
+                primal_dual_config.to_string().as_str(),
             ],
             true,
         );
@@ -678,18 +688,18 @@ pub mod tests {
         let initializer = code.get_initializer();
         code.set_defect_vertices(&defect_vertices);
         let syndrome = code.get_syndrome();
-        let mut solver = stacker::grow(crate::util::MAX_NODE_NUM * 1024, || {
-            // lock to avoid environment variable races when testing in parallel
-            let lock = ENV_PARAMETER_LOCK.lock();
-            let tmp_env_offloading = tmp_env::set_var("SUPPORT_OFFLOADING", "1");
-            let tmp_env_layer_fusion = tmp_env::set_var("SUPPORT_LAYER_FUSION", "1");
-            let micro_config = MicroBlossomSingle::new(&initializer, &code.get_positions());
-            let solver = SolverDualComb::new_native(micro_config, json!({}));
-            drop(tmp_env_offloading);
-            drop(tmp_env_layer_fusion);
-            drop(lock);
-            Box::new(solver)
-        });
+        let graph = MicroBlossomSingle::new(&initializer, &code.get_positions());
+        let mut solver = SolverEmbeddedComb::new(
+            graph,
+            json!({
+                "dual": {
+                    "sim_config": {
+                        "support_offloading": true,
+                        "support_layer_fusion": true,
+                    }
+                }
+            }),
+        );
         use fusion_blossom::mwpm_solver::*;
         solver.solve_visualizer(&syndrome, visualizer.as_mut());
         let subgraph = solver.subgraph_visualizer(visualizer.as_mut());
@@ -731,13 +741,13 @@ pub mod tests {
         defect_vertices: Vec<VertexIndex>,
         support_offloading: bool,
         support_layer_fusion: bool,
-    ) -> Box<SolverDualComb> {
+    ) -> SolverEmbeddedComb {
         dual_module_standard_optional_viz(
             d,
             Some(visualize_filename.clone()),
             defect_vertices,
             |initializer, positions| {
-                SolverDualComb::new_native(
+                SolverEmbeddedComb::new(
                     MicroBlossomSingle::new(initializer, positions),
                     json!({
                         "dual": {

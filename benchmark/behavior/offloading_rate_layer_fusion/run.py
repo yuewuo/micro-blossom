@@ -5,6 +5,7 @@ batch decoding receives all syndrome data and start decoding
 import os
 import sys
 import subprocess
+import json
 
 git_root_dir = (
     subprocess.run(
@@ -58,6 +59,13 @@ def total_rounds(d, p):
     return int(100000 * ((7 / d) ** 3) * (0.001 / p))
 
 
+primal_dual_config = {
+    "dual": {
+        "log_instructions": True,
+        "sim_config": {"support_offloading": True, "support_layer_fusion": True},
+    }
+}
+
 if __name__ == "__main__":
 
     @slurm_distribute.slurm_distribute_run(os.path.dirname(__file__))
@@ -92,15 +100,8 @@ if __name__ == "__main__":
                         f'{{"filename":"{syndrome_file_path}"}}',
                     ]
                     command += ["--verifier", "fusion-serial"]
-                    command += [
-                        "--primal-dual-type",
-                        "embedded-comb-pre-matching-layer-fusion",
-                    ]
-                    command += [
-                        "--primal-dual-config",
-                        '{"dual":{"log_instructions":true}}',
-                    ]
-                    # command += ["--primal-dual-type", "embedded-comb"]
+                    command += ["--primal-dual-type", "embedded-comb"]
+                    command += ["--primal-dual-config", json.dumps(primal_dual_config)]
                     command += ["--benchmark-profiler-output", benchmark_profile_path]
                     if slurm_commands_vec is not None:
                         slurm_commands_vec.sanity_checked_append(command)

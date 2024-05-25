@@ -233,6 +233,7 @@ impl FusionVisualizer for DualModuleScalaDriver {
 pub mod tests {
     use super::*;
     use crate::dual_module_adaptor::tests::*;
+    use crate::dual_module_comb::tests::*;
     use crate::mwpm_solver::*;
 
     // to use visualization, we need the folder of fusion-blossom repo
@@ -281,14 +282,14 @@ pub mod tests {
         // cargo test dual_module_scala_debug_compare_1 -- --nocapture
         let visualize_filename = "dual_module_scala_debug_compare_1.json".to_string();
         let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
-        dual_module_comb_embedded_basic_standard_syndrome(7, visualize_filename, defect_vertices);
+        dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices, false, false);
     }
 
     pub fn dual_module_scala_basic_standard_syndrome(
         d: VertexNum,
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
-    ) -> Box<SolverEmbeddedScala> {
+    ) -> SolverEmbeddedScala {
         dual_module_standard_optional_viz(
             d,
             Some(visualize_filename.clone()),
@@ -297,8 +298,10 @@ pub mod tests {
                 SolverEmbeddedScala::new(
                     MicroBlossomSingle::new(initializer, positions),
                     json!({
-                        "name": visualize_filename.as_str().trim_end_matches(".json").to_string()
-                        // "with_max_iterations": 30, // this is helpful when debugging infinite loops
+                        "dual": {
+                            "name": visualize_filename.as_str().trim_end_matches(".json").to_string()
+                            // "with_max_iterations": 30, // this is helpful when debugging infinite loops
+                        }
                     }),
                 )
             },

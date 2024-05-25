@@ -70,7 +70,7 @@ pub struct InputData {
 pub struct OutputData {
     pub context_id: u16,
     pub instruction_id: u16,
-    pub growable: u16,
+    pub max_growable: u16,
     pub conflict: ConvergecastConflict,
     pub grown: u16,
 }
@@ -130,7 +130,7 @@ impl DualModuleLooperDriver {
         })?;
         assert_eq!(output.instruction_id, instruction_id);
         let grown = CompactWeight::from(output.grown);
-        if output.growable == u16::MAX {
+        if output.max_growable == u16::MAX {
             assert!(!output.conflict.valid, "growable must be finite when conflict is detected");
             return Ok((CompactObstacle::None, grown));
         }
@@ -149,7 +149,7 @@ impl DualModuleLooperDriver {
         }
         return Ok((
             CompactObstacle::GrowLength {
-                length: CompactWeight::from(output.growable),
+                length: CompactWeight::from(output.max_growable),
             },
             grown,
         ));
@@ -200,7 +200,6 @@ impl FusionVisualizer for DualModuleLooperDriver {
 mod tests {
     use super::*;
     use crate::dual_module_adaptor::tests::*;
-    use crate::dual_module_scala::tests::*;
     use crate::mwpm_solver::*;
 
     // to use visualization, we need the folder of fusion-blossom repo
@@ -218,15 +217,22 @@ mod tests {
         d: VertexNum,
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
-    ) -> Box<SolverDualLooper> {
-        dual_module_standard_optional_viz(d, Some(visualize_filename.clone()), defect_vertices, |initializer, _| {
-            SolverDualLooper::new(
-                MicroBlossomSingle::new(initializer, positions),
-                json!({
-                    "name": visualize_filename.as_str().trim_end_matches(".json").to_string()
-                    // "with_max_iterations": 30, // this is helpful when debugging infinite loops
-                }),
-            )
-        })
+    ) -> SolverEmbeddedLooper {
+        dual_module_standard_optional_viz(
+            d,
+            Some(visualize_filename.clone()),
+            defect_vertices,
+            |initializer, positions| {
+                SolverEmbeddedLooper::new(
+                    MicroBlossomSingle::new(initializer, positions),
+                    json!({
+                        "dual": {
+                            "name": visualize_filename.as_str().trim_end_matches(".json").to_string()
+                            // "with_max_iterations": 30, // this is helpful when debugging infinite loops
+                        }
+                    }),
+                )
+            },
+        )
     }
 }

@@ -306,15 +306,22 @@ mod tests {
         d: VertexNum,
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
-    ) -> Box<SolverEmbeddedAxi4> {
-        dual_module_standard_optional_viz(d, Some(visualize_filename.clone()), defect_vertices, |initializer, _| {
-            SolverEmbeddedAxi4::new(
-                MicroBlossomSingle::new(initializer, positions),
-                json!({
-                    "name": visualize_filename.as_str().trim_end_matches(".json").to_string()
-                    // "with_max_iterations": 30, // this is helpful when debugging infinite loops
-                }),
-            )
-        })
+    ) -> SolverEmbeddedAxi4 {
+        dual_module_standard_optional_viz(
+            d,
+            Some(visualize_filename.clone()),
+            defect_vertices,
+            |initializer, positions| {
+                SolverEmbeddedAxi4::new(
+                    MicroBlossomSingle::new(initializer, positions),
+                    json!({
+                        "dual": {
+                            "name": visualize_filename.as_str().trim_end_matches(".json").to_string()
+                            // "with_max_iterations": 30, // this is helpful when debugging infinite loops
+                        }
+                    }),
+                )
+            },
+        )
     }
 }

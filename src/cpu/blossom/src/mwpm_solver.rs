@@ -130,9 +130,7 @@ impl FusionVisualizer for SolverDualComb {
 impl SolverDualComb {
     pub fn new(initializer: &SolverInitializer) -> Self {
         let result = Self {
-            dual_module: stacker::grow(MAX_NODE_NUM * 1024, || {
-                Box::new(DualModuleCombAdaptor::new_empty(initializer))
-            }),
+            dual_module: stacker::grow(MAX_NODE_NUM * 256, || Box::new(DualModuleCombAdaptor::new_empty(initializer))),
             primal_module: PrimalModuleSerialPtr::new_empty(initializer),
             interface_ptr: DualModuleInterfacePtr::new_empty(),
             subgraph_builder: SubGraphBuilder::new(initializer),
