@@ -661,6 +661,9 @@ pub mod tests {
     /// defect_vertices = [163,212,213,223,224,265,273,281,323]
     #[test]
     fn dual_module_comb_pre_matching_layer_fusion_debug_3() {
+        if !env_is_set("COMPLEX_DEBUG_TESTS") {
+            return;
+        }
         // cargo test dual_module_comb_pre_matching_layer_fusion_debug_3 -- --nocapture
         let visualize_filename = "dual_module_comb_pre_matching_layer_fusion_debug_3.json".to_string();
         let defect_vertices = vec![163, 212, 213, 223, 224, 265, 273, 281, 323];

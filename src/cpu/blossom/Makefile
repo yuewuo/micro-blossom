@@ -20,7 +20,7 @@ test: test-parallel test-involves-scala
 
 test-involves-scala:
 	cargo test
-	cargo test --release
+	COMPLEX_DEBUG_TESTS=1 cargo test --release
 # these tests are too slow, thus enable syndrome printing to help locate problem if they occur
 	cargo run --release -- test embedded-scala --print-syndrome-pattern --print-command
 	cargo run --release -- test embedded-looper --print-syndrome-pattern --print-command
