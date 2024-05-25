@@ -167,21 +167,21 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   io.maxGrowable := Delay(edgeResponse.io.maxGrowable, outDelay)
   io.conflict := Delay(edgeResponse.io.conflict, outDelay)
 
-  // write back
-  val writeState = stages.updateGet3.state
-  if (config.contextBits > 0) {
-    ram.write(
-      address = stages.updateGet3.compact.contextId,
-      data = writeState,
-      enable = stages.updateGet3.compact.valid
-    )
-  } else {
-    when(stages.updateGet3.compact.valid) {
-      if (!config.hardCodeWeights) {
-        register := writeState
-      }
-    }
-  }
+  /* No write back: giving ports for external edge weights channels */
+  // val writeState = stages.updateGet3.state
+  // if (config.contextBits > 0) {
+  //   ram.write(
+  //     address = stages.updateGet3.compact.contextId,
+  //     data = writeState,
+  //     enable = stages.updateGet3.compact.valid
+  //   )
+  // } else {
+  //   when(stages.updateGet3.compact.valid) {
+  //     if (!config.hardCodeWeights) {
+  //       register := writeState
+  //     }
+  //   }
+  // }
 
   // inject registers
   for (stageName <- config.injectRegisters) {

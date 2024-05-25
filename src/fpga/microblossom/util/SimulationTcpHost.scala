@@ -77,6 +77,7 @@ case class SimulationConfig(
       hardCodeWeights = hardCodeWeights,
       supportAddDefectVertex = supportAddDefectVertex,
       supportOffloading = supportOffloading,
+      supportLayerFusion = supportLayerFusion,
       injectRegisters = injectRegisters
     )
     config.sanityCheck()

@@ -122,15 +122,16 @@ case class DualConfig(
     activeOffloading.clear()
     edgeConditionedVertex.clear()
     vertexLayerId.clear()
-    if (!supportOffloading) {
-      return ()
-    }
-    for (offloading <- graph.offloading) {
-      activeOffloading.append(offloading)
+    if (supportOffloading) {
+      for (offloading <- graph.offloading) {
+        activeOffloading.append(offloading)
+      }
     }
     if (supportLayerFusion) {
       for ((edgeIndex, conditionedVertex) <- layerFusion.fusion_edges) {
-        activeOffloading.append(Offloading(fm = Some(FusionMatch(edgeIndex, conditionedVertex))))
+        if (supportOffloading) {
+          activeOffloading.append(Offloading(fm = Some(FusionMatch(edgeIndex, conditionedVertex))))
+        }
         edgeConditionedVertex(edgeIndex.toInt) = conditionedVertex.toInt
       }
       for ((vertexIndex, layerId) <- layerFusion.vertex_layer_id) {

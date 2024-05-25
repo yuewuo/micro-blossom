@@ -17,12 +17,14 @@ case class VertexShadowResult(vertexBits: Int) extends Bundle {
 object VertexShadow {
   def build(
       shadow: VertexShadowResult, // output
+      isVirtual: Bool,
       node: Bits,
       root: Bits,
       speed: Speed,
       grown: UInt,
       isStalled: Bool,
-      propagator: VertexPropagatingPeerResult
+      propagator: VertexPropagatingPeerResult,
+      config: DualConfig
   ) = {
 
     // default to the original state
@@ -38,6 +40,15 @@ object VertexShadow {
         shadow.speed := Speed.Grow
       }
     }
+
+    if (config.supportLayerFusion) {
+      when(isVirtual) {
+        shadow.node := config.IndexNone
+        shadow.root := config.IndexNone
+        shadow.speed := Speed.Stay
+      }
+    }
+
     when(isStalled) {
       shadow.speed := Speed.Stay
     }
@@ -48,6 +59,7 @@ case class VertexShadow(config: DualConfig, vertexIndex: Int) extends Component 
   val grownBits = config.grownBitsOf(vertexIndex)
 
   val io = new Bundle {
+    val isVirtual = in(Bool)
     val node = in(Bits(config.vertexBits bits))
     val root = in(Bits(config.vertexBits bits))
     val speed = in(Speed())
@@ -59,15 +71,7 @@ case class VertexShadow(config: DualConfig, vertexIndex: Int) extends Component 
     val shadow = out(VertexShadowResult(config.vertexBits))
   }
 
-  VertexShadow.build(
-    io.shadow,
-    io.node,
-    io.root,
-    io.speed,
-    io.grown,
-    io.isStalled,
-    io.propagator
-  )
+  VertexShadow.build(io.shadow, io.isVirtual, io.node, io.root, io.speed, io.grown, io.isStalled, io.propagator, config)
 }
 
 // sbt 'testOnly microblossom.combinatorial.VertexShadowTest'

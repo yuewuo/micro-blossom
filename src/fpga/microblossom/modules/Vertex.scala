@@ -170,6 +170,7 @@ case class Vertex(config: DualConfig, vertexIndex: Int) extends Component {
       config = config,
       vertexIndex = vertexIndex
     )
+    vertexShadow.io.isVirtual := stages.updateGet2.state.isVirtual
     vertexShadow.io.node := stages.updateGet2.state.node
     vertexShadow.io.root := stages.updateGet2.state.root
     vertexShadow.io.speed := stages.updateGet2.state.speed

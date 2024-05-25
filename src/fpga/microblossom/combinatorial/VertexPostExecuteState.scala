@@ -16,6 +16,7 @@ object VertexPostExecuteStateCommon {
       message: BroadcastMessage,
       config: DualConfig,
       isVertexEqField1: Bool, // should be `instruction.field1 === vertexIndex`, when config.supportAddDefectVertex is true
+      isLayerIdEqField1: Bool,
       isStalled: Bool
   ) = {
 
@@ -61,6 +62,11 @@ object VertexPostExecuteStateCommon {
           }
         }
       }
+      if (config.supportLayerFusion) {
+        when(instruction.isLoadDefectsExternal && isLayerIdEqField1) {
+          after.isVirtual := False
+        }
+      }
     }
 
   }
@@ -71,12 +77,21 @@ case class VertexPostExecuteStateCommon(config: DualConfig, grownBits: Int) exte
     val before = in(VertexState(config.vertexBits, grownBits))
     val message = in(BroadcastMessage(config))
     val isVertexEqField1 = in(Bool)
+    val isLayerIdEqField1 = in(Bool)
     val isStalled = in(Bool)
 
     val after = out(VertexState(config.vertexBits, grownBits))
   }
 
-  VertexPostExecuteStateCommon.build(io.after, io.before, io.message, config, io.isVertexEqField1, io.isStalled)
+  VertexPostExecuteStateCommon.build(
+    io.after,
+    io.before,
+    io.message,
+    config,
+    io.isVertexEqField1,
+    io.isLayerIdEqField1,
+    io.isStalled
+  )
 }
 
 case class VertexPostExecuteState(config: DualConfig, vertexIndex: Int) extends Component {
@@ -94,7 +109,14 @@ case class VertexPostExecuteState(config: DualConfig, vertexIndex: Int) extends 
   common.io.before := io.before
   common.io.message := io.message
   common.io.isVertexEqField1 := (io.message.instruction.field1 === vertexIndex)
-  common.io.isStalled := io.isStalled
+  if (config.vertexLayerId.contains(vertexIndex)) {
+    val layerId = config.vertexLayerId(vertexIndex)
+    common.io.isLayerIdEqField1 := (io.message.instruction.field1 === layerId)
+    common.io.isStalled := io.isStalled || io.before.isVirtual
+  } else {
+    common.io.isLayerIdEqField1 := False
+    common.io.isStalled := io.isStalled
+  }
   io.after := common.io.after
 
 }

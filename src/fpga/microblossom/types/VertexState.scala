@@ -19,7 +19,11 @@ object VertexState {
     reset.speed := Speed.Stay
     reset.node := config.IndexNone
     reset.root := config.IndexNone
-    reset.isVirtual := Bool(config.isVirtual(vertexIndex))
+    if (config.vertexLayerId.contains(vertexIndex)) {
+      reset.isVirtual := True
+    } else {
+      reset.isVirtual := Bool(config.isVirtual(vertexIndex))
+    }
     reset.isDefect := False
     reset.grown := 0
     reset
