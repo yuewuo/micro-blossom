@@ -53,7 +53,7 @@ class Configuration:
 configurations = [
     Configuration(
         name="code_capacity",
-        d_vec=list(range(3, 32, 2)) + [35, 39, 43, 47, 51, 55, 59, 63, 69, 75, 81],
+        d_vec=[3, 5, 7, 9, 11, 15, 21, 27] + [35, 51, 69, 81],
         noise_model="phenomenological",
         fix_noisy_measurements=0,
         max_half_weight=1,
