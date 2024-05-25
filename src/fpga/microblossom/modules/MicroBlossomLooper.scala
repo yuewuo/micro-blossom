@@ -9,6 +9,8 @@ package microblossom.modules
  */
 
 import io.circe._
+import io.circe.generic.extras._
+import io.circe.generic.semiauto._
 import spinal.core._
 import spinal.lib._
 import spinal.core.sim._
@@ -116,21 +118,28 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
   // take the data from input only if it's valid, no data race, and not inserting immediate loopback
   io.push.ready := io.push.valid && !isDataRace && !immediateLoopback
 
-  def simExecute(instruction: Long, contextId: Int, maximumGrowth: Int): (DataMaxGrowable, DataConflict, Int) = {
+  def simExecute(input: LooperInputData): LooperOutputData = {
     io.push.valid #= true
-    io.push.payload.instruction #= instruction
+    io.push.payload.instruction #= input.instruction
+    io.push.payload.instructionId #= input.instructionId
     if (config.contextBits > 0) {
-      io.push.payload.contextId #= contextId
+      io.push.payload.contextId #= input.contextId
     }
     io.pop.ready #= true
-    io.push.payload.maximumGrowth #= maximumGrowth
+    io.push.payload.maximumGrowth #= input.maximumGrowth
     clockDomain.waitSamplingWhere(io.push.ready.toBoolean)
     io.push.valid #= false
     clockDomain.waitSamplingWhere(io.pop.valid.toBoolean)
     io.pop.ready #= false
-    (
-      DataMaxGrowable(io.pop.payload.maxGrowable.length.toInt),
-      DataConflict(
+    LooperOutputData(
+      contextId = if (config.contextBits > 0) {
+        io.pop.payload.contextId.toInt
+      } else {
+        0
+      },
+      instructionId = io.pop.payload.instructionId.toInt,
+      maxGrowable = io.pop.payload.maxGrowable.length.toInt,
+      conflict = DataConflict(
         io.pop.payload.conflict.valid.toBoolean,
         io.pop.payload.conflict.node1.toInt,
         io.pop.payload.conflict.node2.toInt,
@@ -139,7 +148,7 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
         io.pop.payload.conflict.vertex1.toInt,
         io.pop.payload.conflict.vertex2.toInt
       ),
-      io.pop.payload.grown.toInt
+      grown = io.pop.payload.grown.toInt
     )
   }
   def simMakePublicSnapshot() = {
@@ -179,6 +188,31 @@ case class PipelineEntry(config: DualConfig) extends Bundle {
     this.init(defaultEntry)
     this
   }
+}
+
+@ConfiguredJsonCodec
+case class LooperInputData(
+    var instruction: Long,
+    var contextId: Int,
+    var instructionId: Int,
+    var maximumGrowth: Int
+)
+
+object LooperInputData {
+  implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
+}
+
+@ConfiguredJsonCodec
+case class LooperOutputData(
+    var contextId: Int,
+    var instructionId: Int,
+    var maxGrowable: Int,
+    var conflict: DataConflict,
+    var grown: Int
+)
+
+object LooperOutputData {
+  implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
 }
 
 // sbt 'testOnly *MicroBlossomLooperTest'

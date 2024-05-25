@@ -5,9 +5,7 @@ package microblossom
  *
  */
 
-import io.circe._
-import io.circe.generic.extras._
-import io.circe.generic.semiauto._
+import io.circe.syntax._
 import java.io._
 import java.net._
 import util._
@@ -19,31 +17,6 @@ import scala.util.control.Breaks._
 import types._
 import modules._
 import java.lang.module.ModuleDescriptor.Exports
-
-@ConfiguredJsonCodec
-case class LooperHostInputData(
-    var instruction: Long,
-    var contextId: Int,
-    var instructionId: Int,
-    var maximumGrowth: Int
-)
-
-object LooperHostInputData {
-  implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
-}
-
-@ConfiguredJsonCodec
-case class LooperHostOutData(
-    var contextId: Int,
-    var instructionId: Int,
-    var maxGrowable: Int,
-    var conflict: DataConflict,
-    var grown: Int
-)
-
-object LooperHostOutData {
-  implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
-}
 
 // sbt "runMain microblossom.LooperHost localhost 4123 test"
 object LooperHost extends SimulationTcpHost("LooperHost") {
@@ -83,17 +56,21 @@ object LooperHost extends SimulationTcpHost("LooperHost") {
               break
             } else if (command.startsWith("execute: ")) {
               var json_content = command.substring("execute: ".length, command.length)
-              var inputData = decode[LooperHostInputData](json_content) match {
+              var inputData = decode[LooperInputData](json_content) match {
                 case Right(inputData) => inputData
                 case Left(ex)         => throw ex
               }
-              println(clientSpec.format(inputData.instruction))
               // adapt instruction width
+              println(clientSpec.format(inputData.instruction))
               val instruction = config.instructionSpec.from(inputData.instruction, clientSpec)
-              println(config.instructionSpec.format(instruction))
-              dut.simExecute(instruction, inputData.contextId, inputData.maximumGrowth)
-
-              throw new Exception("unimplemented")
+              val outputData = dut.simExecute(inputData.copy(instruction = instruction))
+              // sanity checks
+              if (config.contextBits > 0) {
+                assert(outputData.contextId == inputData.contextId)
+              }
+              println(outputData)
+              assert(outputData.instructionId == inputData.instructionId)
+              outStream.println(outputData.asJson.noSpacesSortKeys)
             } else if (command.startsWith("snapshot(")) {
               val parameters = command.substring("snapshot(".length, command.length - 1).split(", ")
               assert(parameters.length == 1)
