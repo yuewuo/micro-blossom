@@ -35,6 +35,7 @@ object LooperHost extends SimulationTcpHost("LooperHost") {
         if (emuConfig.withWaveform) {
           dut.simMakePublicSnapshot()
         }
+        dut.simEnablePreMatchingSnapshot()
         dut
       })
       .doSim("hosted") { dut =>
