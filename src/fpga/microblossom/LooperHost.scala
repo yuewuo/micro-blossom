@@ -61,7 +61,7 @@ object LooperHost extends SimulationTcpHost("LooperHost") {
                 case Left(ex)         => throw ex
               }
               // adapt instruction width
-              println(clientSpec.format(inputData.instruction))
+              // println(clientSpec.format(inputData.instruction))
               val instruction = config.instructionSpec.from(inputData.instruction, clientSpec)
               val instructionId = inputData.instructionId % config.instructionBufferDepth
               val adaptedInput = inputData.copy(instruction = instruction, instructionId = instructionId)
@@ -73,7 +73,7 @@ object LooperHost extends SimulationTcpHost("LooperHost") {
               if (config.contextBits > 0) {
                 assert(adaptedOutput.contextId == inputData.contextId)
               }
-              println(adaptedOutput)
+              // println(adaptedOutput)
               assert(outputData.instructionId == outputData.instructionId)
               outStream.println(adaptedOutput.asJson.noSpacesSortKeys)
             } else if (command.startsWith("snapshot(")) {
