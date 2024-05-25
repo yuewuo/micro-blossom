@@ -42,7 +42,7 @@ case class Offloader(config: DualConfig, offloaderIndex: Int) extends Component 
   stages.connectStageOutput(io.stageOutputs)
 
   def connectLogic(): Unit = {
-    var offloader = config.graph.offloading(offloaderIndex)
+    var offloader = config.activeOffloading(offloaderIndex)
     offloader.dm match {
       case Some(defectMatch) =>
         var offloadDefectMatch = OffloadDefectMatch()

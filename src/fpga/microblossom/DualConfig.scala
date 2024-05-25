@@ -34,9 +34,19 @@ case class DualConfig(
   def vertexNum = graph.vertex_num.toInt
   def edgeNum = graph.weighted_edges.length.toInt
   def offloaderNum = if (supportOffloading) {
-    graph.offloading.length.toInt
+    activeOffloading.length.toInt
   } else {
     0
+  }
+  def activeOffloading: Seq[Offloading] = {
+    if (!supportOffloading) {
+      return Seq()
+    }
+    val offloading = ArrayBuffer() ++ graph.offloading
+    if (supportLayerFusion) {
+      throw new Exception("unimplemented")
+    }
+    offloading
   }
   def instructionSpec = InstructionSpec(this)
   def contextBits = log2Up(contextDepth)
@@ -116,7 +126,7 @@ case class DualConfig(
   }
   def updateIncidentOffloaders() = {
     incidentOffloaders.clear()
-    for ((offloader, offloaderIndex) <- graph.offloading.zipWithIndex) {
+    for ((offloader, offloaderIndex) <- activeOffloading.zipWithIndex) {
       for (vertexIndex <- offloaderNeighborVertexIndices(offloaderIndex)) {
         if (!incidentOffloaders.contains(vertexIndex)) {
           incidentOffloaders(vertexIndex) = ArrayBuffer()

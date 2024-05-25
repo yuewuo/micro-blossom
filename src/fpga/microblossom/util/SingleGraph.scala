@@ -48,7 +48,8 @@ case class BinaryTreeNode(
 @ConfiguredJsonCodec
 case class Offloading(
     var dm: Option[DefectMatch],
-    var vm: Option[VirtualMatch]
+    var vm: Option[VirtualMatch],
+    var fm: Option[FusionMatch]
 )
 
 @ConfiguredJsonCodec
@@ -60,6 +61,12 @@ case class DefectMatch(
 case class VirtualMatch(
     var e: Long, // edge_index
     var v: Long // virtual_vertex
+)
+
+@ConfiguredJsonCodec
+case class FusionMatch(
+    var e: Long, // edge_index
+    var c: Long // conditioned_vertex
 )
 
 object SingleGraph {
@@ -84,5 +91,8 @@ object DefectMatch {
   implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
 }
 object VirtualMatch {
+  implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
+}
+object FusionMatch {
   implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
 }
