@@ -55,6 +55,7 @@ case class Offloader(config: DualConfig, offloaderIndex: Int) extends Component 
         offloadDefectMatch.io.rightSpeed := io.vertexInputsOffloadGet3(1).state.speed
         offloadDefectMatch.io.rightIsUniqueTight := io.vertexInputsOffloadGet3(1).isUniqueTight
         require(stages.offloadSet4.stallVertex.length == 2)
+        stages.offloadSet4.condition := offloadDefectMatch.io.condition
         stages.offloadSet4.stallVertex(0) := offloadDefectMatch.io.condition
         stages.offloadSet4.stallVertex(1) := offloadDefectMatch.io.condition
         return ()
@@ -67,6 +68,7 @@ case class Offloader(config: DualConfig, offloaderIndex: Int) extends Component 
         val regularVertex = config.peerVertexOfEdge(edgeIndex, virtualVertex)
         var offloadVirtualMatch = OffloadVirtualMatch(io.vertexInputsOffloadGet3.length - 2)
         offloadVirtualMatch.io.edgeIsTight := io.edgeInputOffloadGet3.isTight
+        stages.offloadSet4.condition := offloadVirtualMatch.io.condition
         for ((vertexIndex, localIndex) <- config.offloaderNeighborVertexIndices(offloaderIndex).zipWithIndex) {
           val vertexOffloadGet3 = io.vertexInputsOffloadGet3(localIndex)
           if (vertexIndex == virtualVertex) {

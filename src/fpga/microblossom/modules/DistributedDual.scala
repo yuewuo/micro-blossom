@@ -289,6 +289,38 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig) extends Com
     )
   }
 
+  def simPreMatchings(): Seq[DataPreMatching] = {
+    var preMatchings = ArrayBuffer[DataPreMatching]()
+    for ((offloader, offloaderIndex) <- offloaders.zipWithIndex) {
+      val edgeIndex = config.offloaderEdgeIndex(offloaderIndex)
+      if (offloader.io.stageOutputs.offloadGet4.condition.toBoolean) {
+        var pairIndex = config.incidentVerticesOf(edgeIndex)
+        var pair = (vertices(pairIndex._1).register, vertices(pairIndex._2).register)
+        if (pair._1.node.toLong == config.IndexNone) {
+          pair = pair.swap
+          pairIndex = pairIndex.swap
+        }
+        val node1 = pair._1.node.toInt
+        val node2 = pair._2.node.toInt
+        val touch1 = pair._1.root.toInt
+        val touch2 = pair._2.root.toInt
+        var vertex1 = pairIndex._1
+        var vertex2 = pairIndex._2
+        assert(node1 != config.IndexNone)
+        assert(touch1 != config.IndexNone)
+        assert(vertex1 != config.IndexNone)
+        assert(vertex2 != config.IndexNone)
+        val option_node2: Option[Int] = if (node2 == config.IndexNone) { None }
+        else { Some(node2) }
+        val option_touch2: Option[Int] = if (touch2 == config.IndexNone) { None }
+        else { Some(touch2) }
+        preMatchings.append(
+          DataPreMatching(edgeIndex, node1, option_node2, touch1, option_touch2, vertex1, vertex2)
+        )
+      }
+    }
+    preMatchings
+  }
 }
 
 // sbt 'testOnly microblossom.modules.DistributedDualTest'

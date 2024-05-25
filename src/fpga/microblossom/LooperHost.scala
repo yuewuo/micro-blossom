@@ -81,6 +81,8 @@ object LooperHost extends SimulationTcpHost("LooperHost") {
               assert(parameters.length == 1)
               val abbrev = parameters(0).toBoolean
               outStream.println(dut.simSnapshot(abbrev).noSpacesSortKeys)
+            } else if (command == "pre_matchings()") {
+              outStream.println(dut.simPreMatchings().asJson.noSpacesSortKeys)
             } else {
               println("[error] unknown command: %s".format(command))
             }

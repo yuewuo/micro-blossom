@@ -50,6 +50,7 @@ case class StageOffloadVertex4(config: DualConfig, vertexIndex: Int) extends Bun
  */
 
 case class StageOffloadOffloader4(config: DualConfig, offloaderIndex: Int) extends Bundle {
+  val condition = Bool
   val stallVertex = Vec.fill(config.numOffloaderNeighborOf(offloaderIndex))(Bool)
 
   def getVertexIsStalled(targetVertexIndex: Int): Bool = {

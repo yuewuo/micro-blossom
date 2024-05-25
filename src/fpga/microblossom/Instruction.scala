@@ -71,15 +71,20 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
   def isReset(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.Reset)
   def isLoadDefectsExternal(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.LoadDefectsExternal)
 
-  def assignGrow(length: UInt) = {
+  def assignExtendedOpCode(code: Int) = {
     opCode := OpCode.SetSpeed
     extensionIndicator := True.asBits
-    extendedOpCode := ExtendedOpCode.Grow
-    if (spec.lengthRange.msb < spec.numBits - 1) {
-      sliceOf(BitRange(spec.numBits - 1, spec.lengthRange.msb + 1)).assignDontCare()
-    }
+    extendedOpCode := code
+  }
+  def assignGrow(length: UInt) = {
+    payload.clearAll()
+    assignExtendedOpCode(ExtendedOpCode.Grow)
     val lengthBits = sliceOf(spec.lengthRange) // must use Bits assign...
     lengthBits := length.asBits.resized
+  }
+  def assignFindObstacle() = {
+    payload.clearAll()
+    assignExtendedOpCode(ExtendedOpCode.FindObstacle)
   }
 }
 

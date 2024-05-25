@@ -44,9 +44,8 @@ impl SolverTrackedDual for DualModuleLooperDriver {
         self.execute_instruction(Instruction32::load_syndrome_external(ni!(layer_id)), self.context_id)
             .unwrap();
     }
-    fn get_pre_matchings(&self, _belonging: DualModuleInterfaceWeak) -> PerfectMatching {
-        // TODO: implement pre matching fetching
-        PerfectMatching::default()
+    fn get_pre_matchings(&self, belonging: DualModuleInterfaceWeak) -> PerfectMatching {
+        self.client.get_pre_matchings(belonging)
     }
 }
 
@@ -93,9 +92,8 @@ impl DualModuleLooperDriver {
     }
 
     fn execute(&mut self, input: InputData) -> std::io::Result<OutputData> {
-        let line = self
-            .client
-            .read_line(format!("execute: {}", serde_json::to_string(&input)?))?;
+        let json_str = serde_json::to_string(&input)?;
+        let line = self.client.read_line(format!("execute: {json_str}"))?;
         self.instruction_count += 1;
         Ok(serde_json::from_str(line.as_str())?)
     }
@@ -178,14 +176,8 @@ impl DualTrackedDriver for DualModuleLooperDriver {
 }
 
 impl FusionVisualizer for DualModuleLooperDriver {
-    #[allow(clippy::unnecessary_cast)]
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
-        assert_eq!(
-            self.client.sim_config.context_depth, 1,
-            "context snapshot is not yet supported"
-        );
-        let line = self.client.read_line(format!("snapshot({abbrev})")).unwrap();
-        serde_json::from_str(&line).unwrap()
+        self.client.snapshot(abbrev)
     }
 }
 

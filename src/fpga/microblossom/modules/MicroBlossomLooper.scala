@@ -51,9 +51,13 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
 
   // immediate feedback happens when the response allows immediate growth
   // when maximumGrowth is 0, the loopback is forbidden
-  immediateLoopback := responseEntry.valid && !microBlossom.io.conflict.valid &&
-    (microBlossom.io.maxGrowable.length =/= microBlossom.io.maxGrowable.length.maxValue) &&
-    (responseEntry.grown < responseEntry.maximumGrowth)
+  immediateLoopback := responseEntry.valid && (
+    responseEntry.isLoopBackGrow || (
+      !microBlossom.io.conflict.valid &&
+        (microBlossom.io.maxGrowable.length =/= microBlossom.io.maxGrowable.length.maxValue) &&
+        (responseEntry.grown < responseEntry.maximumGrowth)
+    )
+  )
 
   // the input entry to the MicroBlossom module
   growLength := Mux( // the growth value of issuing another grow instruction in the loop back
@@ -66,14 +70,22 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
     if (config.contextBits > 0) { inputEntry.contextId := responseEntry.contextId }
     inputEntry.instructionId := responseEntry.instructionId
     inputEntry.maximumGrowth := responseEntry.maximumGrowth
-    inputEntry.grown := responseEntry.grown + growLength
-    inputInstruction.assignGrow(growLength)
+    when(responseEntry.isLoopBackGrow) {
+      inputEntry.grown := responseEntry.grown
+      inputEntry.isLoopBackGrow := False
+      inputInstruction.assignFindObstacle()
+    } otherwise {
+      inputEntry.grown := responseEntry.grown + growLength
+      inputEntry.isLoopBackGrow := True
+      inputInstruction.assignGrow(growLength)
+    }
   } otherwise {
     inputEntry.valid := io.push.valid
     if (config.contextBits > 0) { inputEntry.contextId := io.push.payload.contextId }
     inputEntry.instructionId := io.push.payload.instructionId
     inputEntry.maximumGrowth := io.push.payload.maximumGrowth
     inputEntry.grown := 0
+    inputEntry.isLoopBackGrow := False
     inputInstruction := io.push.payload.instruction
   }
 
@@ -163,12 +175,11 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
       grown = io.pop.payload.grown.toInt
     )
   }
-  def simMakePublicSnapshot() = {
-    microBlossom.simMakePublicSnapshot()
-  }
-  def simSnapshot(abbrev: Boolean = true): Json = {
-    microBlossom.simSnapshot(abbrev)
-  }
+
+  def simMakePublicSnapshot() = microBlossom.simMakePublicSnapshot()
+  def simSnapshot(abbrev: Boolean = true): Json = microBlossom.simSnapshot(abbrev)
+  def simPreMatchings(): Seq[DataPreMatching] = microBlossom.simPreMatchings()
+
 }
 
 case class InputData(config: DualConfig) extends Bundle {
@@ -192,6 +203,10 @@ case class PipelineEntry(config: DualConfig) extends Bundle {
   val instructionId = UInt(config.instructionBufferBits bits)
   val maximumGrowth = UInt(16 bits)
   val grown = UInt(16 bits)
+  // bug 2024.5.25: the conflict reported after a loopback Grow instruction is not trustworthy:
+  // the offloading module has not taken effect. The fix is to always issue a FindObstacle
+  // instruction after the loopback Grow instruction (isLoopBackGrow := True)
+  val isLoopBackGrow = Bool
 
   def init_default(): PipelineEntry = {
     val defaultEntry = PipelineEntry(config)

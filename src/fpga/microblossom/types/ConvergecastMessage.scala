@@ -84,3 +84,18 @@ case class DataConflict(
 object DataConflict {
   implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
 }
+
+@ConfiguredJsonCodec
+case class DataPreMatching(
+    var edgeIndex: Int,
+    var node1: Int,
+    var node2: Option[Int],
+    var touch1: Int,
+    var touch2: Option[Int],
+    var vertex1: Int,
+    var vertex2: Int
+)
+
+object DataPreMatching {
+  implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
+}

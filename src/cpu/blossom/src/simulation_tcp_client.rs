@@ -1,6 +1,10 @@
 use crate::resources::*;
 use crate::util::*;
 use derivative::Derivative;
+use fusion_blossom::dual_module::*;
+use fusion_blossom::pointers::*;
+use fusion_blossom::primal_module::*;
+use fusion_blossom::util::*;
 use serde::{Deserialize, Serialize};
 use std::io::prelude::*;
 use std::io::{BufReader, LineWriter};
@@ -151,6 +155,65 @@ impl SimulationTcpClient {
 
     pub fn link_wall_time(&self) -> Duration {
         self.link.lock().unwrap().wall_time
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PreMatchingData {
+    pub edge_index: usize,
+    pub node1: u16,
+    pub node2: Option<u16>,
+    pub touch1: u16,
+    pub touch2: Option<u16>,
+    pub vertex1: u16,
+    pub vertex2: u16,
+}
+
+// some helper common functions
+impl SimulationTcpClient {
+    pub fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+        assert_eq!(self.sim_config.context_depth, 1, "context snapshot is not yet supported");
+        let line = self.read_line(format!("snapshot({abbrev})")).unwrap();
+        serde_json::from_str(&line).unwrap()
+    }
+
+    pub fn get_pre_matchings(&self, belonging: DualModuleInterfaceWeak) -> PerfectMatching {
+        let line = self.read_line(format!("pre_matchings()")).unwrap();
+        let pre_matchings: Vec<PreMatchingData> = serde_json::from_str(&line).unwrap();
+        let mut perfect_matching = PerfectMatching::default();
+        for pre_matching in pre_matchings.into_iter() {
+            let node = DualNodePtr::new_value(DualNode {
+                index: pre_matching.node1 as NodeIndex,
+                class: DualNodeClass::DefectVertex {
+                    defect_index: pre_matching.vertex1 as VertexIndex,
+                },
+                defect_size: nonzero::nonzero!(1usize),
+                grow_state: DualNodeGrowState::Stay,
+                parent_blossom: None,
+                dual_variable_cache: (0, 0),
+                belonging: belonging.clone(),
+            });
+            if let Some(node2) = pre_matching.node2 {
+                let peer = DualNodePtr::new_value(DualNode {
+                    index: node2 as NodeIndex,
+                    class: DualNodeClass::DefectVertex {
+                        defect_index: pre_matching.vertex2 as VertexIndex,
+                    },
+                    defect_size: nonzero::nonzero!(1usize),
+                    grow_state: DualNodeGrowState::Stay,
+                    parent_blossom: None,
+                    dual_variable_cache: (0, 0),
+                    belonging: belonging.clone(),
+                });
+                perfect_matching.peer_matchings.push((node, peer));
+            } else {
+                perfect_matching
+                    .virtual_matchings
+                    .push((node, pre_matching.vertex2 as VertexIndex));
+            }
+        }
+        perfect_matching
     }
 }
 
