@@ -221,12 +221,18 @@ pub mod tests {
         let mut solver = constructor(&initializer, &code.get_positions());
         solver.solve_visualizer(&syndrome, visualizer.as_mut());
         let subgraph = solver.subgraph_visualizer(visualizer.as_mut());
+        // first check that the subgraph indeed corresponds to the syndrome
+        let subgraph_defects = initializer.syndrome_of(&subgraph);
+        let original_defects = defect_vertices.iter().cloned().collect();
+        assert_eq!(subgraph_defects, original_defects, "does not correct the defects");
+        // then check the weight is the same
         let mut standard_solver = SolverSerial::new(&initializer);
         standard_solver.solve_visualizer(&syndrome, None);
         let standard_subgraph = standard_solver.subgraph_visualizer(None);
         let mut subgraph_builder = SubGraphBuilder::new(&initializer);
         subgraph_builder.load_subgraph(&subgraph);
         let total_weight = subgraph_builder.total_weight();
+        println!("total_weight: {total_weight:?}");
         subgraph_builder.load_subgraph(&standard_subgraph);
         let standard_total_weight = subgraph_builder.total_weight();
         assert_eq!(total_weight, standard_total_weight);

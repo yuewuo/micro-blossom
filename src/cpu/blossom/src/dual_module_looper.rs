@@ -206,13 +206,25 @@ mod tests {
         // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 BROADCAST_DELAY=2 cargo test dual_module_looper_basic_1 -- --nocapture
         let visualize_filename = "dual_module_looper_basic_1.json".to_string();
         let defect_vertices = vec![0, 4, 8];
-        dual_module_looper_basic_standard_syndrome(3, visualize_filename, defect_vertices);
+        dual_module_looper_basic_standard_syndrome(3, visualize_filename, defect_vertices, json!({}));
+    }
+
+    /// test pre-matching
+    #[test]
+    fn dual_module_looper_basic_2() {
+        // cargo test dual_module_looper_basic_2 -- --nocapture
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_looper_basic_2 -- --nocapture
+        let visualize_filename = "dual_module_looper_basic_2.json".to_string();
+        let defect_vertices = vec![0, 4];
+        let config = json!({ "support_offloading": true });
+        dual_module_looper_basic_standard_syndrome(3, visualize_filename, defect_vertices, config);
     }
 
     pub fn dual_module_looper_basic_standard_syndrome(
         d: VertexNum,
         visualize_filename: String,
         defect_vertices: Vec<VertexIndex>,
+        sim_config: serde_json::Value,
     ) -> SolverEmbeddedLooper {
         dual_module_standard_optional_viz(
             d,
@@ -223,7 +235,8 @@ mod tests {
                     MicroBlossomSingle::new(initializer, positions),
                     json!({
                         "dual": {
-                            "name": visualize_filename.as_str().trim_end_matches(".json").to_string()
+                            "name": visualize_filename.as_str().trim_end_matches(".json").to_string(),
+                            "sim_config": sim_config,
                             // "with_max_iterations": 30, // this is helpful when debugging infinite loops
                         }
                     }),

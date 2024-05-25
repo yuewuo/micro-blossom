@@ -61,7 +61,7 @@ def total_rounds(d, p):
 
 primal_dual_config = {
     "dual": {
-        "log_instructions": True,
+        # "log_instructions": True,
         "sim_config": {"support_offloading": True, "support_layer_fusion": True},
     }
 }
