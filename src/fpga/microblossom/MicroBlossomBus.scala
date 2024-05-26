@@ -207,30 +207,40 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
 
   // define memory mappings for control registers
   // write address: factory.writeAddress()
-  val writeInstruction = Instruction(DualConfig())
-  val writeContextId = UInt(config.contextBits bits)
-  val (instructionMapping, instructionDocumentation) = if (is64bus) {
-    factory.nonStopWrite(writeInstruction, bitOffset = 0)
-    factory.nonStopWrite(writeContextId, bitOffset = 32)
-    (SizeMapping(base = 4 KiB, size = 4 KiB), "instruction array (64 bits)")
+  val instruction = new Area {
+    val value = Instruction(DualConfig())
+    val contextId = UInt(config.contextBits bits)
+    val (mapping, documentation) = if (is64bus) {
+      (SizeMapping(base = 4 KiB, size = 4 KiB), "instruction array (64 bits)")
+    } else {
+      (SizeMapping(base = 8 KiB, size = 4 KiB), "instruction array (32 bits)")
+    }
+  }
+  if (is64bus) {
+    factory.nonStopWrite(instruction.value, bitOffset = 0)
+    factory.nonStopWrite(instruction.contextId, bitOffset = 32)
   } else {
-    factory.nonStopWrite(writeInstruction, bitOffset = 0)
-    writeContextId := factory.writeAddress().resized
-    (SizeMapping(base = 8 KiB, size = 4 KiB), "instruction array (32 bits)")
+    factory.nonStopWrite(instruction.value, bitOffset = 0)
+    instruction.contextId := factory.writeAddress().resized
   }
   // read address: factory.readAddress()
-  val readoutValue = Bits(factory.busDataWidth bits).assignDontCare()
-  val readoutMapping = SizeMapping(base = 128 KiB, size = 128 KiB)
-  val readoutDocumentation = "readout array (128 bytes each, 1024 of them at most)"
-  val readoutContextId = UInt(config.contextBits bits)
-  readoutContextId := (factory.readAddress().resize(log2Up(128 KiB)) >> log2Up(128)).resize(config.contextBits)
-  val readoutWriteContextId = UInt(config.contextBits bits)
-  readoutWriteContextId := (factory.writeAddress().resize(log2Up(128 KiB)) >> log2Up(128)).resize(config.contextBits)
-  val readoutWriteSubAddress = UInt(7 bits)
-  val readoutWriteValue = UInt(16 bits)
-  readoutWriteSubAddress := factory.writeAddress().resize(log2Up(128))
-  factory.readPrimitive(readoutValue, readoutMapping, 0, "readouts")
-  factory.nonStopWrite(readoutWriteValue, bitOffset = 0)
+  val readout = new Area {
+    val value = Bits(factory.busDataWidth bits).assignDontCare()
+    val writeValue = UInt(factory.busDataWidth bits)
+    val contextId = UInt(config.contextBits bits)
+    val subAddress = UInt(7 bits)
+    val writeContextId = UInt(config.contextBits bits)
+    val writeSubAddress = UInt(7 bits)
+    val mapping = SizeMapping(base = 128 KiB, size = 128 KiB)
+    val documentation = "readout array (128 bytes each, 1024 of them at most)"
+  }
+  // set the values
+  factory.readPrimitive(readout.value, readout.mapping, 0, "readouts")
+  factory.nonStopWrite(readout.writeValue, bitOffset = 0)
+  readout.contextId := (factory.readAddress().resize(log2Up(128 KiB)) >> log2Up(128)).resize(config.contextBits)
+  readout.subAddress := factory.readAddress().resize(log2Up(128))
+  readout.writeContextId := (factory.writeAddress().resize(log2Up(128 KiB)) >> log2Up(128)).resize(config.contextBits)
+  readout.writeSubAddress := factory.writeAddress().resize(log2Up(128))
 
   // define bus behavior when reading or writing the control registers
   val isWriteHalt = Bool.setAll()
@@ -259,16 +269,16 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     hardwareInfo.transactionCounter := hardwareInfo.transactionCounter + 1
     isReadDo := True
   }
-  factory.onWritePrimitive(instructionMapping, haltSensitive = false, instructionDocumentation)(onAskWrite)
-  factory.onWritePrimitive(instructionMapping, haltSensitive = true, instructionDocumentation)(onDoWrite)
-  factory.onWritePrimitive(readoutMapping, haltSensitive = false, readoutDocumentation)(onAskWrite)
-  factory.onWritePrimitive(readoutMapping, haltSensitive = true, readoutDocumentation)(onDoWrite)
-  factory.onReadPrimitive(readoutMapping, haltSensitive = false, readoutDocumentation)(onAskRead)
-  factory.onReadPrimitive(readoutMapping, haltSensitive = true, readoutDocumentation)(onDoRead)
+  factory.onWritePrimitive(instruction.mapping, haltSensitive = false, instruction.documentation)(onAskWrite)
+  factory.onWritePrimitive(instruction.mapping, haltSensitive = true, instruction.documentation)(onDoWrite)
+  factory.onWritePrimitive(readout.mapping, haltSensitive = false, readout.documentation)(onAskWrite)
+  factory.onWritePrimitive(readout.mapping, haltSensitive = true, readout.documentation)(onDoWrite)
+  factory.onReadPrimitive(readout.mapping, haltSensitive = false, readout.documentation)(onAskRead)
+  factory.onReadPrimitive(readout.mapping, haltSensitive = true, readout.documentation)(onDoRead)
 
   // use state machine to handle read and write transactions; read has higher priority because it's blocking operation
   val resizedInstruction = Instruction(config)
-  val resizeInstructionHasError = resizedInstruction.resizedFrom(writeInstruction)
+  val resizeInstructionHasError = resizedInstruction.resizedFrom(instruction.value)
   val fsmPushId = pushId.constructReadWriteSyncChannel()
   val fsmMaximumGrowth = maximumGrowth.constructReadWriteSyncChannel()
   // data that are used to communicate between states
@@ -279,15 +289,38 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     val stateIdle: State = new State with EntryPoint {
       whenIsActive {
         when(isReadAsk) {
-          // check read address and prepare the address into the Mem channel
-          goto(stateRead)
+          when(readout.mapping.hit(factory.writeAddress())) {
+            when(readout.subAddress === U(0)) {
+              //
+            } elsewhen (readout.subAddress === U(8)) {
+              //
+            } otherwise {
+              if (!is64bus) {
+                when(readout.subAddress === U(4)) {
+                  //
+                } elsewhen (readout.subAddress === U(12)) {
+                  //
+                } otherwise {
+                  hasError := True
+                  isReadHalt := False
+                }
+              } else {
+                hasError := True
+                isReadHalt := False
+              }
+            }
+          } otherwise {
+            readout.value.setAll() // indicate error in the read value b'11111...111
+            hasError := True
+            isReadHalt := False
+          }
         } elsewhen (isWriteAsk) {
-          when(instructionMapping.hit(factory.writeAddress())) {
-            fsmPushId.readNext(writeContextId)
+          when(instruction.mapping.hit(factory.writeAddress())) {
+            fsmPushId.readNext(instruction.contextId)
             goto(stateWriteInstruction)
-          } elsewhen (readoutMapping.hit(factory.writeAddress())) {
-            when(readoutWriteSubAddress === U(16)) {
-              fsmMaximumGrowth.writeNext(readoutWriteContextId, readoutWriteValue)
+          } elsewhen (readout.mapping.hit(factory.writeAddress())) {
+            when(readout.writeSubAddress === U(16)) {
+              fsmMaximumGrowth.writeNext(readout.writeContextId, readout.writeValue.resize(16))
               isWriteHalt := False
             } otherwise {
               hasError := True
@@ -303,7 +336,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
 
     val stateRead: State = new State {
       whenIsActive {
-        readoutValue.clearAll()
+        readout.value.clearAll()
         isReadHalt := False
         goto(stateIdle)
       }
@@ -314,7 +347,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
         // prepare the looper input
         val looperInput = LooperInput(config)
         looperInput.instruction := resizedInstruction
-        if (config.contextBits > 0) { looperInput.contextId := writeContextId }
+        if (config.contextBits > 0) { looperInput.contextId := instruction.contextId }
         looperInput.instructionId := fsmPushId.rData
         looperInput.maximumGrowth.clearAll()
         // prepare the data into the push FIFO
@@ -323,7 +356,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
         // check for error
         when(resizeInstructionHasError) { hasError := True }
         // increment push ID
-        fsmPushId.writeNext(writeContextId, fsmPushId.rData + 1)
+        fsmPushId.writeNext(instruction.contextId, fsmPushId.rData + 1)
         // update state machine
         when(ccFifoPush.io.push.ready) {
           isWriteHalt := False
