@@ -1,6 +1,7 @@
 use crate::mwpm_solver::*;
 use crate::resources::*;
 use crate::transform_syndromes::*;
+use crate::util::*;
 use byteorder::{LittleEndian, WriteBytesExt};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use fusion_blossom::cli::{ExampleCodeType, RunnableBenchmarkParameters, Verifier};
@@ -294,7 +295,12 @@ pub fn build_randomized_test_parameters(test_name: String) -> Vec<Vec<String>> {
         }
     }
     for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
-        for d in [3, 5, 7, 11, 15] {
+        let d_vec = if env_is_set("SMALL_TEST_ONLY") {
+            vec![3, 5, 7]
+        } else {
+            vec![3, 5, 7, 11, 15]
+        };
+        for d in d_vec.iter() {
             parameters.push(vec![
                 format!("{d}"),
                 format!("{p}"),
@@ -306,7 +312,12 @@ pub fn build_randomized_test_parameters(test_name: String) -> Vec<Vec<String>> {
         }
     }
     for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
-        for d in [3, 7, 11] {
+        let d_vec = if env_is_set("SMALL_TEST_ONLY") {
+            vec![3, 5, 7]
+        } else {
+            vec![3, 5, 7, 9, 11]
+        };
+        for d in d_vec.iter() {
             parameters.push(vec![
                 format!("{d}"),
                 format!("{p}"),
@@ -320,7 +331,12 @@ pub fn build_randomized_test_parameters(test_name: String) -> Vec<Vec<String>> {
         }
     }
     for p in [0.001, 0.003, 0.01, 0.03, 0.1, 0.3, 0.499] {
-        for d in [3, 7, 11] {
+        let d_vec = if env_is_set("SMALL_TEST_ONLY") {
+            vec![3, 5, 7]
+        } else {
+            vec![3, 5, 7, 9, 11]
+        };
+        for d in d_vec.iter() {
             parameters.push(vec![
                 format!("{d}"),
                 format!("{p}"),

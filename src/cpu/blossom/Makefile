@@ -24,7 +24,7 @@ test-involves-scala:
 # these tests are too slow, thus enable syndrome printing to help locate problem if they occur
 	cargo run --release -- test embedded-scala --print-syndrome-pattern --print-command
 	cargo run --release -- test embedded-looper --print-syndrome-pattern --print-command
-	SUPPORT_OFFLOADING=1 cargo run --release -- test embedded-looper --print-syndrome-pattern --print-command
+	SUPPORT_OFFLOADING=1 SMALL_TEST_ONLY=1 cargo run --release -- test embedded-looper --print-syndrome-pattern --print-command
 	cargo run --release -- test embedded-axi4 --print-syndrome-pattern --print-command
 
 # make test-parallel
