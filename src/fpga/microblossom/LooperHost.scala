@@ -19,15 +19,15 @@ import modules._
 
 // sbt "runMain microblossom.LooperHost localhost 4123 test"
 object LooperHost extends SimulationTcpHost("LooperHost") {
+
+  // initial handshake and obtain a decoding graph
+  outStream.println(s"${simulationName} v0.0.1, ask for decoding graph")
+  val emuConfig = SimulationConfig.readFromStream(inStream)
+  val config = emuConfig.dualConfig
+  val simConfig = emuConfig.simConfig(workspacePath, name)
+  val clientSpec = DualConfig().instructionSpec // client side uses the default 32 bit instruction format
+
   try {
-
-    // initial handshake and obtain a decoding graph
-    outStream.println(s"${simulationName} v0.0.1, ask for decoding graph")
-    val emuConfig = SimulationConfig.readFromStream(inStream)
-    val config = emuConfig.dualConfig
-    val simConfig = emuConfig.simConfig(workspacePath, name)
-    val clientSpec = DualConfig().instructionSpec // client side uses the default 32 bit instruction format
-
     simConfig
       .compile({
         val dut = MicroBlossomLooper(config)

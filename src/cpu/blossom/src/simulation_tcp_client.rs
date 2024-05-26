@@ -308,7 +308,7 @@ pub mod simulation_config_default {
         env_usize("CONFLICT_CHANNELS", 1)
     }
     pub fn clock_divide_by() -> usize {
-        env_usize("CLOCK_DIVIDE_BY", 1)
+        env_usize("CLOCK_DIVIDE_BY", 2)
     }
 }
 
