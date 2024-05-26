@@ -113,11 +113,8 @@ impl DualModuleAxi4Driver {
     }
 
     pub fn get_hardware_info(&mut self) -> std::io::Result<MicroBlossomHardwareInfo> {
-        println!("before get");
         let raw_1 = self.memory_read_64(8)?;
-        println!("after get 1");
         let raw_2 = self.memory_read_32(16)?;
-        println!("after get");
         Ok(MicroBlossomHardwareInfo {
             version: raw_1 as u32,
             context_depth: (raw_1 >> 32) as u32,

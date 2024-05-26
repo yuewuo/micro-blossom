@@ -145,6 +145,11 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
         documentation = "error counter"
       ) init (0)
   }
+  val hasError = Bool
+  hasError := False
+  when(hasError) {
+    hardwareInfo.errorCounter := hardwareInfo.errorCounter + 1
+  }
 
   val slowClockDomain = ClockDomain(
     clock = slowClk,
@@ -174,6 +179,9 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     microBlossom.io.pop >> ccFifoPop.io.push
   }
   def microBlossom = slow.microBlossom
+  ccFifoPush.io.push.valid := False
+  ccFifoPush.io.push.payload.assignDontCare()
+  ccFifoPop.io.pop.ready := True
 
   // create the control registers
   val maximumGrowth = OneMem(UInt(16 bits), config.contextDepth) init List.fill(config.contextDepth)(U(0, 16 bits))
@@ -182,9 +190,9 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   val conflicts = List.tabulate(config.conflictChannels)(_ => {
     OneMem(ConvergecastConflict(config.vertexBits), config.contextDepth)
   })
-  val pushInstructionId = OneMem(UInt(config.instructionBufferBits bits), config.contextDepth) init
+  val pushId = OneMem(UInt(config.instructionBufferBits bits), config.contextDepth) init
     List.fill(config.contextDepth)(U(0, config.instructionBufferBits bits))
-  val popInstructionId = OneMem(UInt(config.instructionBufferBits bits), config.contextDepth) init
+  val popId = OneMem(UInt(config.instructionBufferBits bits), config.contextDepth) init
     List.fill(config.contextDepth)(U(0, config.instructionBufferBits bits))
 
   def getSimDriver(): TypedDriver = {
@@ -198,19 +206,19 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   }
 
   // define memory mappings for control registers
-  // write: factory.writeAddress()
+  // write address: factory.writeAddress()
   val writeInstruction = Instruction(DualConfig())
-  val writeContextId = UInt(10 bits)
+  val writeContextId = UInt(config.contextBits bits)
   val (instructionMapping, instructionDocumentation) = if (is64bus) {
     factory.nonStopWrite(writeInstruction, bitOffset = 0)
     factory.nonStopWrite(writeContextId, bitOffset = 32)
     (SizeMapping(base = 4 KiB, size = 4 KiB), "instruction array (64 bits)")
   } else {
     factory.nonStopWrite(writeInstruction, bitOffset = 0)
-    writeContextId := factory.writeAddress().resize(16)
-    (SizeMapping(base = 64 KiB, size = 64 KiB), "instruction array (32 bits)")
+    writeContextId := factory.writeAddress().resized
+    (SizeMapping(base = 8 KiB, size = 4 KiB), "instruction array (32 bits)")
   }
-  // read: factory.readAddress()
+  // read address: factory.readAddress()
   val readoutValue = Bits(factory.busDataWidth bits).assignDontCare()
   val readoutMapping = SizeMapping(base = 128 KiB, size = 128 KiB)
   val readoutDocumentation = "readout array (128 bytes each, 1024 of them at most)"
@@ -250,19 +258,74 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   factory.onReadPrimitive(readoutMapping, haltSensitive = false, readoutDocumentation)(onAskRead)
   factory.onReadPrimitive(readoutMapping, haltSensitive = true, readoutDocumentation)(onDoRead)
 
-  // use state machine to handle read and write transactions; write has higher priority
+  // use state machine to handle read and write transactions; read has higher priority because it's blocking operation
+  val resizedInstruction = Instruction(config)
+  val resizeInstructionHasError = resizedInstruction.resizedFrom(writeInstruction)
+  val fsmPushId = pushId.constructReadWriteSyncChannel()
+  // data that are used to communicate between states
+  val dataWaitFiFoPushLooperInput = Reg(LooperInput(config))
   val fsm = new StateMachine {
     setEncoding(binaryOneHot)
 
     val stateIdle: State = new State with EntryPoint {
       whenIsActive {
-        goto(stateWrite)
+        when(isReadAsk) {
+          // check read address and prepare the address into the Mem channel
+          goto(stateRead)
+        } elsewhen (isWriteAsk) {
+          when(instructionMapping.hit(factory.writeAddress())) {
+            fsmPushId.readNext(writeContextId)
+            goto(stateWriteInstruction)
+          } elsewhen (readoutMapping.hit(factory.writeAddress())) {} otherwise {
+            hasError := True
+            isWriteHalt := False // return immediately
+          }
+        }
       }
     }
 
-    val stateWrite: State = new State {
+    val stateRead: State = new State {
       whenIsActive {
+        readoutValue.clearAll()
+        isReadHalt := False
         goto(stateIdle)
+      }
+    }
+
+    val stateWriteInstruction: State = new State {
+      whenIsActive {
+        // prepare the looper input
+        val looperInput = LooperInput(config)
+        looperInput.instruction := resizedInstruction
+        if (config.contextBits > 0) { looperInput.contextId := writeContextId }
+        looperInput.instructionId := fsmPushId.rData
+        looperInput.maximumGrowth.clearAll()
+        // prepare the data into the push FIFO
+        ccFifoPush.io.push.valid := True
+        ccFifoPush.io.push.payload := looperInput
+        // check for error
+        when(resizeInstructionHasError) { hasError := True }
+        // increment push ID
+        fsmPushId.writeNext(writeContextId, fsmPushId.rData + 1)
+        // update state machine
+        when(ccFifoPush.io.push.ready) {
+          isWriteHalt := False
+          goto(stateIdle)
+        } otherwise {
+          dataWaitFiFoPushLooperInput := looperInput
+          goto(stateWriteWaitFiFoPush)
+        }
+      }
+    }
+
+    val stateWriteWaitFiFoPush: State = new State {
+      whenIsActive {
+        ccFifoPush.io.push.valid := True
+        ccFifoPush.io.push.payload := dataWaitFiFoPushLooperInput
+        when(ccFifoPush.io.push.ready) {
+          isWriteHalt := False
+          goto(stateIdle)
+        }
       }
     }
   }

@@ -39,7 +39,7 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
   val inputInstruction = Instruction(config)
   val inputEntry = PipelineEntry(config)
   val pipelineLength = config.readLatency
-  val pipelineEntries = Vec.fill(pipelineLength)(Reg(PipelineEntry(config)).init_default())
+  val pipelineEntries = Vec.fill(pipelineLength)(Reg(PipelineEntry(config)).initDefault())
   val responseEntry = pipelineEntries(pipelineLength - 1)
   val dataLoss = Reg(Bool()) init False
   val growLength = UInt(16 bits)
@@ -208,7 +208,7 @@ case class PipelineEntry(config: DualConfig) extends Bundle {
   // instruction after the loopback Grow instruction (isLoopBackGrow := True)
   val isLoopBackGrow = Bool
 
-  def init_default(): PipelineEntry = {
+  def initDefault(): PipelineEntry = {
     val defaultEntry = PipelineEntry(config)
     defaultEntry.valid := False
     defaultEntry.assignDontCareToUnasigned()

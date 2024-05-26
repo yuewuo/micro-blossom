@@ -8,42 +8,63 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
   val spec = config.instructionSpec
   setWidth(spec.numBits)
 
-  def resizedFrom(source: Instruction): Unit = {
+  def resizedFrom(source: Instruction): Bool = {
     if (source.config == config) {
       this := source
-      return
+      return False
     }
+    val hasError = Bool
+    hasError := False
     opCode := source.opCode
     switch(source.opCode.asUInt) {
       is(OpCode.SetBlossom) {
         field1 := source.field1.resized // node
         field2 := source.field2.resized // blossom
+        when(source.field1.asUInt > field1.asUInt.maxValue || source.field2.asUInt > field2.asUInt.maxValue) {
+          hasError := True
+        }
       }
       is(OpCode.Match) {
         field1 := source.field1.resized // vertex_1
         field2 := source.field2.resized // vertex_2
+        when(source.field1.asUInt > field1.asUInt.maxValue || source.field2.asUInt > field2.asUInt.maxValue) {
+          hasError := True
+        }
       }
       is(OpCode.SetSpeed) {
         when(source.extensionIndicator === B"0") {
           field1 := source.field1.resized
           speed := source.speed
           setSpeedZero.clearAll()
+          when(source.field1.asUInt > field1.asUInt.maxValue) {
+            hasError := True
+          }
         } otherwise {
           extendedOpCode := source.extendedOpCode
           extensionIndicator := source.extensionIndicator
           when(source.extendedOpCode.asUInt === ExtendedOpCode.Grow) {
             extendedPayload := source.extendedPayload.resized
+            when(source.extendedPayload.asUInt > extendedPayload.asUInt.maxValue) {
+              hasError := True
+            }
           } otherwise {
             field1 := source.field1.resized
             extendedField2 := source.extendedField2.resized
+            when(source.field1.asUInt > field1.asUInt.maxValue) {
+              hasError := True
+            }
           }
         }
       }
       is(OpCode.AddDefectVertex) {
         field1 := source.field1.resized // vertex_1
         field2 := source.field2.resized // vertex_2
+        when(source.field1.asUInt > field1.asUInt.maxValue || source.field2.asUInt > field2.asUInt.maxValue) {
+          hasError := True
+        }
       }
     }
+    hasError
   }
 
   def opCode = sliceOf(spec.opCodeRange)
