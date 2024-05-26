@@ -222,6 +222,17 @@ mod tests {
         dual_module_looper_basic_standard_syndrome(3, visualize_filename, defect_vertices, config);
     }
 
+    /// test layer fusion + pre-matching
+    #[test]
+    fn dual_module_looper_basic_4() {
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_looper_basic_4 -- --nocapture
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 BROADCAST_DELAY=2 cargo test dual_module_looper_basic_4 -- --nocapture
+        let visualize_filename = "dual_module_looper_basic_4.json".to_string();
+        let defect_vertices = vec![4, 8];
+        let config = json!({ "support_layer_fusion": true, "support_offloading": true });
+        dual_module_looper_basic_standard_syndrome(3, visualize_filename, defect_vertices, config);
+    }
+
     /// bug 2024.5.25: the grow value should not increase when isStalled is asserted
     #[test]
     fn dual_module_looper_debug_1() {

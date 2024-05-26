@@ -206,7 +206,7 @@ case class DualConfig(
     log2Up(graph.vertex_max_growth(vertexIndex) + 1).max(weightBits)
   }
   def offloaderTypeOf(offloaderIndex: Int): String = {
-    val offloader = graph.offloading(offloaderIndex)
+    val offloader = activeOffloading(offloaderIndex)
     offloader.dm match {
       case Some(defectMatch) =>
         return "defect_match"
@@ -221,7 +221,7 @@ case class DualConfig(
   }
   // (edgeIndex, neighborVertices, neighborEdges)
   def offloaderInformation(offloaderIndex: Int): (Int, Seq[Int], Seq[Int]) = {
-    val offloader = graph.offloading(offloaderIndex)
+    val offloader = activeOffloading(offloaderIndex)
     offloader.dm match {
       case Some(defectMatch) =>
         val edgeIndex = defectMatch.e.toInt
