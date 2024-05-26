@@ -69,7 +69,7 @@ import org.rogach.scallop._
 //
 
 case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
-    dualConfig: DualConfig,
+    config: DualConfig,
     clockDivideBy: Int = 2, // divided clock at io.dividedClock; note the clock must be synchronous and 0 phase aligned
     baseAddress: BigInt = 0,
     interfaceBuilder: () => T,
@@ -102,12 +102,12 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   // 16: (RO) 8 bits number of conflict channels (we're not using 100+ conflict channels...)
   val hardwareInfo = new Area {
     factory.readMultiWord(
-      U(dualConfig.contextDepth, 32 bits) ## U(DualConfig.version, 32 bits),
+      U(config.contextDepth, 32 bits) ## U(DualConfig.version, 32 bits),
       address = 8,
       documentation = "micro-blossom version and context depth"
     )
     factory.readMultiWord(
-      U(dualConfig.weightBits, 8 bits) ## U(dualConfig.vertexBits, 8 bits) ## U(dualConfig.conflictChannels, 8 bits),
+      U(config.weightBits, 8 bits) ## U(config.vertexBits, 8 bits) ## U(config.conflictChannels, 8 bits),
       address = 16,
       documentation = "the number of conflict channels"
     )
@@ -125,9 +125,6 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       ) init (0)
   }
 
-  // instantiate Micro Blossom module
-  val ioConfig = dualConfig
-
   val slowClockDomain = ClockDomain(
     clock = slowClk,
     reset = ClockDomain.current.readResetWire,
@@ -138,24 +135,26 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     )
   )
 
-  val micro = new ClockingArea(slowClockDomain) {
+  val slow = new ClockingArea(slowClockDomain) {
     val io = new Bundle {
       // only inputs need to be registered
-      val message = Reg(BroadcastMessage(ioConfig, explicitReset = false))
+      val message = Reg(BroadcastMessage(config, explicitReset = false))
       message.addTag(crossClockDomain)
       // outputs are slow anyway
-      val maxGrowable = ConvergecastMaxGrowable(ioConfig.weightBits)
+      val maxGrowable = ConvergecastMaxGrowable(config.weightBits)
       maxGrowable.addTag(crossClockDomain)
-      val conflict = ConvergecastConflict(ioConfig.vertexBits)
+      val conflict = ConvergecastConflict(config.vertexBits)
       conflict.addTag(crossClockDomain)
 
     }
 
-    val microBlossom = MicroBlossomMocker(dualConfig, ioConfig)
+    val microBlossom = DistributedDual(config, config)
+    // val microBlossom = MicroBlossomMocker(config, config)
     microBlossom.io.message := io.message
     io.maxGrowable := microBlossom.io.maxGrowable
     io.conflict := microBlossom.io.conflict
   }
+  def microBlossom = slow.microBlossom
 
   def getSimDriver(): TypedDriver = {
     if (io.s0.isInstanceOf[AxiLite4]) {
@@ -181,7 +180,7 @@ class MicroBlossomBusTest extends AnyFunSuite {
       // .compile(MicroBlossomAxiLite4Bus32(config, clockDivideBy = clockDivideBy))
       .doSim("logic_validity") { dut =>
         dut.clockDomain.forkStimulus(period = 10)
-        dut.micro.clockDomain.forkStimulus(period = 10 * clockDivideBy)
+        dut.slow.clockDomain.forkStimulus(period = 10 * clockDivideBy)
 
         val driver = dut.getSimDriver()
 
@@ -238,7 +237,7 @@ class MicroBlossomBusGeneratorConf(arguments: Seq[String]) extends ScallopConf(a
 // (e.g.) sbt "runMain microblossom.MicroBlossomBusGenerator --graph ./resources/graphs/example_code_capacity_d3.json"
 object MicroBlossomBusGenerator extends App {
   val conf = new MicroBlossomBusGeneratorConf(args)
-  val config = conf.dualConfig
+  val dualConfig = conf.dualConfig
   val genConfig = Config.argFolderPath(conf.outputDir())
   // note: deliberately not creating `component` here, otherwise it encounters null pointer error of GlobalData.get()....
   val mode: SpinalMode = conf.languageHdl() match {
@@ -250,6 +249,6 @@ object MicroBlossomBusGenerator extends App {
   genConfig
     .copy(mode = mode)
     .generateVerilog(
-      MicroBlossomBusType.generateByName(conf.busType(), config, conf.clockDivideBy(), conf.baseAddress())
+      MicroBlossomBusType.generateByName(conf.busType(), dualConfig, conf.clockDivideBy(), conf.baseAddress())
     )
 }
