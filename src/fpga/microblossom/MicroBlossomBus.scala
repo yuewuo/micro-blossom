@@ -158,6 +158,16 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   def microBlossom = slow.microBlossom
 
   // create the control registers
+  val maximumGrowth = OneMem(UInt(16 bits), config.contextDepth) init List.fill(config.contextDepth)(U(0, 16 bits))
+  val accumulatedGrown = OneMem(UInt(16 bits), config.contextDepth) init List.fill(config.contextDepth)(U(0, 16 bits))
+  val maxGrowable = OneMem(ConvergecastMaxGrowable(config.weightBits), config.contextDepth)
+  val conflicts = List.tabulate(config.conflictChannels)(_ => {
+    OneMem(ConvergecastConflict(config.vertexBits), config.contextDepth)
+  })
+  val pushInstructionId = OneMem(UInt(config.instructionBufferBits bits), config.contextDepth) init
+    List.fill(config.contextDepth)(U(0, config.instructionBufferBits bits))
+  val popInstructionId = OneMem(UInt(config.instructionBufferBits bits), config.contextDepth) init
+    List.fill(config.contextDepth)(U(0, config.instructionBufferBits bits))
 
   def getSimDriver(): TypedDriver = {
     if (io.s0.isInstanceOf[AxiLite4]) {

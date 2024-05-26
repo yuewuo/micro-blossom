@@ -18,9 +18,10 @@ object OneMem {
   }
 }
 
-class OneMem[T <: Data](val wordType: HardType[T], val wordCount: Int) {
+class OneMem[T <: Data](val wordType: HardType[T], val wordCount: Int, val assertDualPort: Boolean = true) {
   var mem: Mem[T] = null
   var register: T = Reg(cloneOf(wordType)).allowPruning()
+  var portCount = 0
 
   if (wordCount != 1) {
     mem = Mem(wordType, wordCount)
@@ -36,12 +37,20 @@ class OneMem[T <: Data](val wordType: HardType[T], val wordCount: Int) {
     this
   }
 
+  def portCreated() = {
+    portCount += 1
+    if (assertDualPort) {
+      assert(portCount <= 2, "creating more than 2 ports, may not be synthesizable")
+    }
+  }
+
   def readSync(
       address: UInt,
       enable: Bool = null,
       readUnderWrite: ReadUnderWritePolicy = dontCare,
       clockCrossing: Boolean = false
   ): T = {
+    portCreated()
     if (wordCount == 1) {
       assert(address.getBitsWidth == 0)
       assert(readUnderWrite == dontCare)
@@ -57,6 +66,7 @@ class OneMem[T <: Data](val wordType: HardType[T], val wordCount: Int) {
   }
 
   def write(address: UInt, data: T, enable: Bool = null, mask: Bits = null): Unit = {
+    portCreated()
     if (wordCount == 1) {
       assert(address.getBitsWidth == 0)
       assert(mask == null)
@@ -82,6 +92,7 @@ class OneMem[T <: Data](val wordType: HardType[T], val wordCount: Int) {
       clockCrossing: Boolean = false,
       duringWrite: DuringWritePolicy = dontCare
   ): T = {
+    portCreated()
     if (wordCount == 1) {
       assert(address.getBitsWidth == 0)
       assert(mask == null)
