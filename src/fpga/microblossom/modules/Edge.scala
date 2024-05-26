@@ -85,10 +85,32 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
     message := io.message
   }
 
-  stages.offloadSet.state := Mux(message.isReset, EdgeState.resetValue(config, edgeIndex), fetchState)
+  stages.offloadSet.state := fetchState
   stages.offloadSet.compact.connect(message)
 
-  stages.offloadSet2.connect(stages.offloadGet)
+  stages.offloadSet2.connect(stages.offloadGet) // weight might be changed later
+  val hasLayerFusion = config.edgeConditionedVertex.contains(edgeIndex)
+  val conditionedVertexIsVirtual = if (hasLayerFusion) {
+    val conditionedVertex = config.edgeConditionedVertex(edgeIndex)
+    if (conditionedVertex == leftVertex) {
+      io.leftVertexInput.offloadGet.state.isVirtual
+    } else if (conditionedVertex == rightVertex) {
+      io.rightVertexInput.offloadGet.state.isVirtual
+    } else {
+      throw new Exception("cannot find the conditioned vertex")
+    }
+  } else {
+    False
+  }
+  // weight might be changed because of layer fusion
+  val offload2Weight = UInt(config.weightBits bits)
+  offload2Weight := stages.offloadGet.state.weight
+  if (hasLayerFusion) {
+    when(conditionedVertexIsVirtual) {
+      offload2Weight := (stages.offloadGet.state.weight |>> 2) |<< 1
+      stages.offloadSet2.state.weight := offload2Weight
+    }
+  }
   val offload2Area = new Area {
     val edgeIsTight = EdgeIsTight(
       leftGrownBits = leftGrownBits,
@@ -97,19 +119,10 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
     )
     edgeIsTight.io.leftGrown := io.leftVertexInput.offloadGet.state.grown
     edgeIsTight.io.rightGrown := io.rightVertexInput.offloadGet.state.grown
-    edgeIsTight.io.weight := stages.offloadGet.state.weight
+    edgeIsTight.io.weight := offload2Weight
     stages.offloadSet2.isTight := edgeIsTight.io.isTight
-    if (config.edgeConditionedVertex.contains(edgeIndex)) {
-      val conditionedVertex = config.edgeConditionedVertex(edgeIndex)
-      stages.offloadSet2.isTightExFusion := edgeIsTight.io.isTight && (
-        if (conditionedVertex == leftVertex) {
-          !io.leftVertexInput.offloadGet.state.isVirtual
-        } else if (conditionedVertex == rightVertex) {
-          !io.rightVertexInput.offloadGet.state.isVirtual
-        } else {
-          throw new Exception("cannot find the conditioned vertex")
-        }
-      )
+    if (hasLayerFusion) {
+      stages.offloadSet2.isTightExFusion := edgeIsTight.io.isTight && !conditionedVertexIsVirtual
     } else {
       stages.offloadSet2.isTightExFusion := edgeIsTight.io.isTight
     }
@@ -119,6 +132,8 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
 
   stages.offloadSet4.connect(stages.offloadGet3)
 
+  // TODO: dynamically update edge weights
+  // Mux(message.isReset, EdgeState.resetValue(config, edgeIndex), fetchState)
   stages.executeSet.connect(stages.offloadGet4)
 
   stages.executeSet2.connect(stages.executeGet)

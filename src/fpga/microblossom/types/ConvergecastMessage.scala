@@ -55,14 +55,16 @@ case class ConvergecastConflict(vertexBits: Int) extends Bundle {
       node2 := source.node1
       touch1 := source.touch2
       touch2 := source.touch1
+      vertex1 := source.vertex2
+      vertex2 := source.vertex1
     } otherwise {
       node1 := source.node1
       node2 := source.node2
       touch1 := source.touch1
       touch2 := source.touch2
+      vertex1 := source.vertex1
+      vertex2 := source.vertex2
     }
-    vertex1 := source.vertex1
-    vertex2 := source.vertex2
   }
 }
 
