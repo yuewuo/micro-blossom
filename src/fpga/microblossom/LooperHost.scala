@@ -16,7 +16,6 @@ import scala.reflect.io.Directory
 import scala.util.control.Breaks._
 import types._
 import modules._
-import java.lang.module.ModuleDescriptor.Exports
 
 // sbt "runMain microblossom.LooperHost localhost 4123 test"
 object LooperHost extends SimulationTcpHost("LooperHost") {
