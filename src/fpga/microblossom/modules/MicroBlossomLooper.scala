@@ -29,8 +29,8 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
   )
 
   val io = new Bundle {
-    val push = slave Stream (InputData(config))
-    val pop = master Stream (OutputData(config))
+    val push = slave Stream (LooperInput(config))
+    val pop = master Stream (LooperOutput(config))
     val dataLoss = out(Bool())
   }
 
@@ -182,14 +182,14 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
 
 }
 
-case class InputData(config: DualConfig) extends Bundle {
+case class LooperInput(config: DualConfig) extends Bundle {
   val instruction = Instruction(config)
   val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
   val instructionId = UInt(config.instructionBufferBits bits)
   val maximumGrowth = UInt(16 bits)
 }
 
-case class OutputData(config: DualConfig) extends Bundle {
+case class LooperOutput(config: DualConfig) extends Bundle {
   val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
   val instructionId = UInt(config.instructionBufferBits bits)
   val maxGrowable = ConvergecastMaxGrowable(config.weightBits)

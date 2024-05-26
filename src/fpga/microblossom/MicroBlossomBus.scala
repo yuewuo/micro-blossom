@@ -15,6 +15,9 @@ package microblossom
  *
  */
 
+import io.circe._
+import io.circe.generic.extras._
+import io.circe.generic.semiauto._
 import spinal.core._
 import spinal.lib._
 import spinal.lib.bus.amba4.axi._
@@ -135,26 +138,26 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     )
   )
 
+  val ccFifoPush = StreamFifoCC(
+    dataType = LooperInput(config),
+    depth = config.instructionBufferDepth,
+    pushClock = clockDomain,
+    popClock = slowClockDomain
+  )
+  val ccFifoPop = StreamFifoCC(
+    dataType = LooperOutput(config),
+    depth = config.instructionBufferDepth,
+    pushClock = slowClockDomain,
+    popClock = clockDomain
+  )
   val slow = new ClockingArea(slowClockDomain) {
-    val io = new Bundle {
-      // only inputs need to be registered
-      val message = Reg(BroadcastMessage(config, explicitReset = false))
-      message.addTag(crossClockDomain)
-      // outputs are slow anyway
-      val maxGrowable = ConvergecastMaxGrowable(config.weightBits)
-      maxGrowable.addTag(crossClockDomain)
-      val conflict = ConvergecastConflict(config.vertexBits)
-      conflict.addTag(crossClockDomain)
-
-    }
-
-    val microBlossom = DistributedDual(config, config)
-    // val microBlossom = MicroBlossomMocker(config, config)
-    microBlossom.io.message := io.message
-    io.maxGrowable := microBlossom.io.maxGrowable
-    io.conflict := microBlossom.io.conflict
+    val microBlossom = MicroBlossomLooper(config)
+    microBlossom.io.push << ccFifoPush.io.pop
+    microBlossom.io.pop >> ccFifoPop.io.push
   }
   def microBlossom = slow.microBlossom
+
+  // create the control registers
 
   def getSimDriver(): TypedDriver = {
     if (io.s0.isInstanceOf[AxiLite4]) {
@@ -165,6 +168,10 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       throw new Exception("simulator driver not implemented")
     }
   }
+
+  def simMakePublicSnapshot() = microBlossom.simMakePublicSnapshot()
+  def simSnapshot(abbrev: Boolean = true): Json = microBlossom.simSnapshot(abbrev)
+  def simPreMatchings(): Seq[DataPreMatching] = microBlossom.simPreMatchings()
 }
 
 // sbt 'testOnly *MicroBlossomBusTest'

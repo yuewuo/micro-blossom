@@ -8,6 +8,7 @@ package microblossom
  *
  */
 
+import io.circe.syntax._
 import java.io._
 import java.net._
 import java.util.concurrent.atomic._
@@ -48,7 +49,7 @@ object MicroBlossomHost extends SimulationTcpHost("MicroBlossomHost") {
         require(component.isInstanceOf[MicroBlossomBus[_, _]])
         val dut = component.asInstanceOf[MicroBlossomBus[IMasterSlave, BusSlaveFactoryDelayed]]
         if (emuConfig.withWaveform || emuConfig.supportOffloading) {
-          dut.microBlossom.simMakePublicSnapshot()
+          dut.simMakePublicSnapshot()
         }
         dut
       })
@@ -95,12 +96,12 @@ object MicroBlossomHost extends SimulationTcpHost("MicroBlossomHost") {
               val data = BigInt(parameters(2))
               driver.writeBytes(address, data, numBytes)
             } else if (command.startsWith("snapshot(")) {
-              dut.clockDomain.waitSampling()
-              sleep(1)
               val parameters = command.substring("snapshot(".length, command.length - 1).split(", ")
               assert(parameters.length == 1)
               val abbrev = parameters(0).toBoolean
-              outStream.println(dut.microBlossom.simSnapshot(abbrev).noSpacesSortKeys)
+              outStream.println(dut.simSnapshot(abbrev).noSpacesSortKeys)
+            } else if (command == "pre_matchings()") {
+              outStream.println(dut.simPreMatchings().asJson.noSpacesSortKeys)
             } else {
               throw new Exception(s"[error] unknown command: $command")
             }
