@@ -47,9 +47,8 @@ impl SolverTrackedDual for DualModuleAxi4Driver {
         self.execute_instruction(Instruction32::load_syndrome_external(ni!(layer_id)), self.context_id)
             .unwrap();
     }
-    fn get_pre_matchings(&self, _belonging: DualModuleInterfaceWeak) -> PerfectMatching {
-        // TODO: implement pre matching fetching
-        PerfectMatching::default()
+    fn get_pre_matchings(&self, belonging: DualModuleInterfaceWeak) -> PerfectMatching {
+        self.client.get_pre_matchings(belonging)
     }
 }
 
@@ -108,13 +107,17 @@ impl DualModuleAxi4Driver {
             let data = (instruction.0 as u64) | ((context_id as u64) << 32);
             self.memory_write_64(4096, data)
         } else {
-            self.memory_write_32(64 * 1024 + 4 * context_id as usize, instruction.0)
+            assert!(context_id < 1024);
+            self.memory_write_32(8192 + 4 * context_id as usize, instruction.0)
         }
     }
 
     pub fn get_hardware_info(&mut self) -> std::io::Result<MicroBlossomHardwareInfo> {
+        println!("before get");
         let raw_1 = self.memory_read_64(8)?;
+        println!("after get 1");
         let raw_2 = self.memory_read_32(16)?;
+        println!("after get");
         Ok(MicroBlossomHardwareInfo {
             version: raw_1 as u32,
             context_depth: (raw_1 >> 32) as u32,
@@ -125,10 +128,10 @@ impl DualModuleAxi4Driver {
         })
     }
 
-    pub const READOUT_BASE: usize = 4 * 1024 * 1024;
+    pub const READOUT_BASE: usize = 128 * 1024;
 
     pub fn get_conflicts(&mut self, context_id: u16) -> std::io::Result<()> {
-        let base = Self::READOUT_BASE + 1024 * context_id as usize;
+        let base = Self::READOUT_BASE + 128 * context_id as usize;
         self.execute_instruction(Instruction32::find_obstacle(), context_id)?;
         let raw_head = self.memory_read_64(base)?;
         self.conflicts_store.head.maximum_growth = raw_head as u16;
@@ -153,7 +156,7 @@ impl DualModuleAxi4Driver {
     }
 
     pub fn set_maximum_growth(&mut self, maximum_growth: u16, context_id: u16) -> std::io::Result<()> {
-        let base = Self::READOUT_BASE + 1024 * context_id as usize;
+        let base = Self::READOUT_BASE + 128 * context_id as usize + 16;
         self.memory_write_16(base, maximum_growth)
     }
 }
@@ -240,11 +243,12 @@ mod tests {
     fn dual_module_axi4_get_hardware_info() {
         // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_get_hardware_info -- --nocapture
         let code = CodeCapacityPlanarCode::new(3, 0.1, 500);
-        let mut solver = SolverEmbeddedAxi4::new(
+        let mut driver = DualModuleAxi4Driver::new(
             MicroBlossomSingle::new(&code.get_initializer(), &code.get_positions()),
-            json!({ "dual": { "name": "axi4_get_hardware_info" } }),
-        );
-        let hardware_info = solver.dual_module.driver.driver.get_hardware_info().unwrap();
+            serde_json::from_value(json!({ "name": "axi4_get_hardware_info" })).unwrap(),
+        )
+        .unwrap();
+        let hardware_info = driver.get_hardware_info().unwrap();
         println!("{hardware_info:?}");
     }
 

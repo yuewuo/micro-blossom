@@ -7,11 +7,11 @@ package microblossom
  *
  *
  * Note:
- *     1. Always set maximumGrowth to 0 before executing the commands, otherwise there might be data races
- *       (It happens because writing command only checks for executeLatency cycles of data race, however, the primal
- *        offloaded grow unit may issue command when the data comes back)
- *        When designing drivers, set maximumGrowth only when you are trying to read obstacles and set it to 0 once done
- *        to make sure there is no spontaneous grow
+ *     1. When you issue instructions, by default we set maximumGrowth to 0 to avoid any spontaneous growth
+ *        between the execution of your instructions. However, if you explicitly issue a `FindObstacle` instruction,
+ *        we will use the `maximumGrowth` value you set last time. This is useful when you have context switching
+ *        because you can issue `FindObstacle` and then the readout value will be cached so that it will be fast the
+ *        the next time you actually read the obstacle.
  *
  */
 
@@ -20,6 +20,7 @@ import io.circe.generic.extras._
 import io.circe.generic.semiauto._
 import spinal.core._
 import spinal.lib._
+import spinal.lib.fsm._
 import spinal.lib.bus.amba4.axi._
 import spinal.lib.bus.amba4.axilite._
 import spinal.lib.bus.amba4.axilite.sim._
@@ -47,19 +48,24 @@ import org.rogach.scallop._
 //    18: (RO) 8 bits dualConfig.weightBits
 //    24: (RW) 32 bits instruction counter
 //    32: (RW) 32 bits readout counter
+//    40: (RW) 32 bits transaction counter
+//    48: (RW) 32 bits error counter
 //  - (64 bits only) the following 4KB section is designed to allow burst writes (e.g. use xsdb "mwr -bin -file" command)
 //    0x1000: (WO) (32 bits instruction, 16 bits context id)
 //    0x1008: (WO) (32 bits instruction, 16 bits context id)
 //    0x1010: ... repeat for 512: in total 4KB space
+//    0x1FFC
 //  - (32 bits only) the following 4KB section is designed for 32 bit bus where context id is encoded in the address
 //    0x2000: 32 bits instruction for context 0
 //    0x2004: 32 bits instruction for context 1
 //    0x2008: ... repeat for 1024: in total 4KB space
+//    0x2FFC
 // 2. 128KB context readouts at [0x2_0000, 0x4_0000), each context takes 128 byte space, assuming no more than 1024 contexts
 //    [context 0]
 //      0: (RW) 64 bits timestamp of receiving the last ``load obstacles'' instruction
 //      8: (RW) 64 bits timestamp of receiving the last ``growable = infinity'' response
-//      16: (RW) head + conflict (max_growth: u16, accumulated: u16, growable: u16, conflict_valid: u8, conflict: 96 bits)
+//      16: (W) 16 bits maximum growth write
+//      16: (R) head + conflict (max_growth: u16, accumulated: u16, growable: u16, conflict_valid: u8, conflict: 96 bits)
 //            16 bits maximum growth (offloaded primal), when 0, disable offloaded primal,
 //                  write to this field will automatically clear accumulated grown value
 //            16 bits accumulated grown value (for primal offloading)
@@ -126,6 +132,18 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
         address = 32,
         documentation = "readout counter"
       ) init (0)
+    val transactionCounter =
+      factory.createWriteAndReadMultiWord(
+        UInt(32 bits),
+        address = 40,
+        documentation = "number of AXI4 transactions"
+      ) init (0)
+    val errorCounter =
+      factory.createWriteAndReadMultiWord(
+        UInt(32 bits),
+        address = 48,
+        documentation = "error counter"
+      ) init (0)
   }
 
   val slowClockDomain = ClockDomain(
@@ -176,6 +194,76 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       Axi4TypedDriver(io.s0.asInstanceOf[Axi4], clockDomain)
     } else {
       throw new Exception("simulator driver not implemented")
+    }
+  }
+
+  // define memory mappings for control registers
+  // write: factory.writeAddress()
+  val writeInstruction = Instruction(DualConfig())
+  val writeContextId = UInt(10 bits)
+  val (instructionMapping, instructionDocumentation) = if (is64bus) {
+    factory.nonStopWrite(writeInstruction, bitOffset = 0)
+    factory.nonStopWrite(writeContextId, bitOffset = 32)
+    (SizeMapping(base = 4 KiB, size = 4 KiB), "instruction array (64 bits)")
+  } else {
+    factory.nonStopWrite(writeInstruction, bitOffset = 0)
+    writeContextId := factory.writeAddress().resize(16)
+    (SizeMapping(base = 64 KiB, size = 64 KiB), "instruction array (32 bits)")
+  }
+  // read: factory.readAddress()
+  val readoutValue = Bits(factory.busDataWidth bits).assignDontCare()
+  val readoutMapping = SizeMapping(base = 128 KiB, size = 128 KiB)
+  val readoutDocumentation = "readout array (128 bytes each, 1024 of them at most)"
+  factory.readPrimitive(readoutValue, readoutMapping, 0, "readouts")
+
+  // define bus behavior when reading or writing the control registers
+  val isWriteHalt = Bool.setAll()
+  val isWriteAsk = Bool.clearAll()
+  val isWriteDo = Bool.clearAll()
+  val isReadHalt = Bool.setAll()
+  val isReadAsk = Bool.clearAll()
+  val isReadDo = Bool.clearAll()
+  def onAskWrite() = {
+    isWriteAsk := True
+    when(isWriteHalt) {
+      factory.writeHalt()
+    }
+  }
+  def onDoWrite() = {
+    hardwareInfo.transactionCounter := hardwareInfo.transactionCounter + 1
+    isWriteDo := True
+  }
+  def onAskRead() = {
+    isReadAsk := True
+    when(isReadHalt) {
+      factory.readHalt()
+    }
+  }
+  def onDoRead() = {
+    hardwareInfo.transactionCounter := hardwareInfo.transactionCounter + 1
+    isReadDo := True
+  }
+  factory.onWritePrimitive(instructionMapping, haltSensitive = false, instructionDocumentation)(onAskWrite)
+  factory.onWritePrimitive(instructionMapping, haltSensitive = true, instructionDocumentation)(onDoWrite)
+  factory.onWritePrimitive(readoutMapping, haltSensitive = false, readoutDocumentation)(onAskWrite)
+  factory.onWritePrimitive(readoutMapping, haltSensitive = true, readoutDocumentation)(onDoWrite)
+  factory.onReadPrimitive(readoutMapping, haltSensitive = false, readoutDocumentation)(onAskRead)
+  factory.onReadPrimitive(readoutMapping, haltSensitive = true, readoutDocumentation)(onDoRead)
+
+  // use state machine to handle read and write transactions; write has higher priority
+  val fsm = new StateMachine {
+    setEncoding(binaryOneHot)
+
+    val stateIdle: State = new State with EntryPoint {
+      whenIsActive {
+        goto(stateWrite)
+      }
+    }
+
+    val stateWrite: State = new State {
+      whenIsActive {
+        goto(stateIdle)
+      }
     }
   }
 
