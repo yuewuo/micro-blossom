@@ -209,9 +209,7 @@ impl DualStacklessDriver for DualModuleAxi4Driver {
 impl DualTrackedDriver for DualModuleAxi4Driver {
     fn find_conflict(&mut self, maximum_growth: CompactWeight) -> (CompactObstacle, CompactWeight) {
         self.set_maximum_growth(maximum_growth as u16, self.context_id).unwrap();
-        let result = self.find_obstacle();
-        self.set_maximum_growth(0, self.context_id).unwrap(); // clear maximum growth to avoid any spontaneous growth
-        result
+        self.find_obstacle()
     }
 }
 

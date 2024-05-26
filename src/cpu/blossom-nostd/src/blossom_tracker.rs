@@ -72,6 +72,7 @@ impl<const N: usize> BlossomTracker<N> {
         self.grow_states.clear();
     }
 
+    #[inline(always)]
     pub fn advance_time(&mut self, delta: CompactTimestamp) {
         self.timestamp += delta;
         debug_assert!(
@@ -171,6 +172,7 @@ impl<const N: usize> BlossomTracker<N> {
         false
     }
 
+    #[inline(always)]
     fn remove_outdated_events(&mut self) {
         while !self.hit_zero_events.is_empty() {
             if self.is_valid_event(self.hit_zero_events.peek().unwrap()) {
@@ -180,6 +182,7 @@ impl<const N: usize> BlossomTracker<N> {
         }
     }
 
+    #[inline(always)]
     pub fn get_maximum_growth(&mut self) -> Option<(CompactWeight, CompactNodeIndex)> {
         self.remove_outdated_events();
         self.hit_zero_events.peek().map(|event| {
