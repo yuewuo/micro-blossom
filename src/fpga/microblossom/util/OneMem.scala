@@ -18,7 +18,8 @@ object OneMem {
   }
 }
 
-class OneMem[T <: Data](val wordType: HardType[T], val wordCount: Int, val assertDualPort: Boolean = true) {
+class OneMem[T <: Data](val wordType: HardType[T], val wordCount: Int, val assertDualPort: Boolean = true)
+    extends Bundle {
   var mem: Mem[T] = null
   var register: T = Reg(cloneOf(wordType)).allowPruning()
   var portCount = 0
@@ -124,6 +125,7 @@ class ReadWriteSyncChannel[T <: Data](val wordType: HardType[T], val addressWidt
   val enable = Bool
   val write = Bool
   val rData = cloneOf(wordType)
+
   enable := False
   write := False
   address.assignDontCare()

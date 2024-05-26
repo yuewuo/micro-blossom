@@ -62,8 +62,8 @@ import org.rogach.scallop._
 //    0x2FFC
 // 2. 128KB context readouts at [0x2_0000, 0x4_0000), each context takes 128 byte space, assuming no more than 1024 contexts
 //    [context 0]
-//      0: (RW) 64 bits timestamp of receiving the last ``load obstacles'' instruction
-//      8: (RW) 64 bits timestamp of receiving the last ``growable = infinity'' response
+//      0: (R) 64 bits timestamp of receiving the last ``load obstacles'' instruction
+//      8: (R) 64 bits timestamp of receiving the last ``growable = infinity'' response
 //      16: (W) 16 bits maximum growth write
 //      16: (R) head + conflict (max_growth: u16, accumulated: u16, growable: u16, conflict_valid: u8, conflict: 96 bits)
 //            16 bits maximum growth (offloaded primal), when 0, disable offloaded primal,
@@ -222,7 +222,15 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   val readoutValue = Bits(factory.busDataWidth bits).assignDontCare()
   val readoutMapping = SizeMapping(base = 128 KiB, size = 128 KiB)
   val readoutDocumentation = "readout array (128 bytes each, 1024 of them at most)"
+  val readoutContextId = UInt(config.contextBits bits)
+  readoutContextId := (factory.readAddress().resize(log2Up(128 KiB)) >> log2Up(128)).resize(config.contextBits)
+  val readoutWriteContextId = UInt(config.contextBits bits)
+  readoutWriteContextId := (factory.writeAddress().resize(log2Up(128 KiB)) >> log2Up(128)).resize(config.contextBits)
+  val readoutWriteSubAddress = UInt(7 bits)
+  val readoutWriteValue = UInt(16 bits)
+  readoutWriteSubAddress := factory.writeAddress().resize(log2Up(128))
   factory.readPrimitive(readoutValue, readoutMapping, 0, "readouts")
+  factory.nonStopWrite(readoutWriteValue, bitOffset = 0)
 
   // define bus behavior when reading or writing the control registers
   val isWriteHalt = Bool.setAll()
@@ -262,6 +270,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   val resizedInstruction = Instruction(config)
   val resizeInstructionHasError = resizedInstruction.resizedFrom(writeInstruction)
   val fsmPushId = pushId.constructReadWriteSyncChannel()
+  val fsmMaximumGrowth = maximumGrowth.constructReadWriteSyncChannel()
   // data that are used to communicate between states
   val dataWaitFiFoPushLooperInput = Reg(LooperInput(config))
   val fsm = new StateMachine {
@@ -276,9 +285,17 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
           when(instructionMapping.hit(factory.writeAddress())) {
             fsmPushId.readNext(writeContextId)
             goto(stateWriteInstruction)
-          } elsewhen (readoutMapping.hit(factory.writeAddress())) {} otherwise {
+          } elsewhen (readoutMapping.hit(factory.writeAddress())) {
+            when(readoutWriteSubAddress === U(16)) {
+              fsmMaximumGrowth.writeNext(readoutWriteContextId, readoutWriteValue)
+              isWriteHalt := False
+            } otherwise {
+              hasError := True
+              isWriteHalt := False
+            }
+          } otherwise {
             hasError := True
-            isWriteHalt := False // return immediately
+            isWriteHalt := False
           }
         }
       }
