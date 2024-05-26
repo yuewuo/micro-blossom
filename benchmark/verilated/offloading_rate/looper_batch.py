@@ -3,7 +3,7 @@ from prepare import *
 
 if __name__ == "__main__":
     run(
-        name="looper_fusion",
+        name="looper_batch",
         primal_dual_type="embedded-looper",
         primal_dual_config={
             "dual": {
