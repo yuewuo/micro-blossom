@@ -114,14 +114,14 @@ impl DualModuleAxi4Driver {
 
     pub fn get_hardware_info(&mut self) -> std::io::Result<MicroBlossomHardwareInfo> {
         let raw_1 = self.memory_read_64(8)?;
-        let raw_2 = self.memory_read_32(16)?;
+        let raw_2 = self.memory_read_64(16)?;
         Ok(MicroBlossomHardwareInfo {
             version: raw_1 as u32,
             context_depth: (raw_1 >> 32) as u32,
             conflict_channels: raw_2 as u8,
             vertex_bits: (raw_2 >> 8) as u8,
             weight_bits: (raw_2 >> 16) as u8,
-            grown_bits: (raw_2 >> 24) as u8,
+            instruction_buffer_depth: (raw_2 >> 24) as u8,
         })
     }
 
@@ -247,6 +247,51 @@ mod tests {
         .unwrap();
         let hardware_info = driver.get_hardware_info().unwrap();
         println!("{hardware_info:?}");
+        assert_eq!(hardware_info.context_depth, 1);
+        assert_eq!(hardware_info.conflict_channels, 1);
+        assert_eq!(hardware_info.vertex_bits, 7);
+        assert_eq!(hardware_info.weight_bits, 10); // maximum weight = 1000 < 1024
+        assert_eq!(hardware_info.instruction_buffer_depth, 10);
+    }
+
+    #[test]
+    fn dual_module_axi4_register_test_1() {
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_register_tests -- --nocapture
+        let code = CodeCapacityPlanarCode::new(3, 0.1, 1);
+        let mut driver = DualModuleAxi4Driver::new(
+            MicroBlossomSingle::new(&code.get_initializer(), &code.get_positions()),
+            serde_json::from_value(json!({ "name": "axi4_register_test_1" })).unwrap(),
+        )
+        .unwrap();
+        let hardware_info = driver.get_hardware_info().unwrap();
+        println!("{hardware_info:?}");
+        assert_eq!(hardware_info.context_depth, 1);
+        assert_eq!(hardware_info.conflict_channels, 1);
+        assert_eq!(hardware_info.vertex_bits, 7);
+        assert_eq!(hardware_info.weight_bits, 10); // maximum weight = 1000 < 1024
+        assert_eq!(hardware_info.instruction_buffer_depth, 10);
+    }
+
+    #[test]
+    fn dual_module_axi4_build_various_configurations() {
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_build_various_configurations -- --nocapture
+        let sim_configurations = vec![
+            json!({}),
+            // test variable bus interface
+            json!({ "bus_type": "AxiLite4", "use_64_bus": true }), // 64 bit AxiLite4
+            json!({ "bus_type": "AxiLite4", "use_64_bus": false }), // 32 bit AxiLite4
+            json!({ "bus_type": "Axi4", "use_64_bus": false }),    // 64 bit Axi4
+        ];
+        let code = CodeCapacityPlanarCode::new(3, 0.1, 1);
+        for (index, sim_config) in sim_configurations.iter().enumerate() {
+            let mut driver = DualModuleAxi4Driver::new(
+                MicroBlossomSingle::new(&code.get_initializer(), &code.get_positions()),
+                serde_json::from_value(json!({ "name": format!("axi4_build_{index}"), "sim_config": sim_config })).unwrap(),
+            )
+            .unwrap();
+            let hardware_info = driver.get_hardware_info().unwrap();
+            println!("[{index}] {hardware_info:?}");
+        }
     }
 
     #[test]

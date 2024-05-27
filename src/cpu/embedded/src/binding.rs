@@ -51,7 +51,7 @@ pub mod extern_c {
         pub conflict_channels: uint8_t,
         pub vertex_bits: uint8_t,
         pub weight_bits: uint8_t,
-        pub grown_bits: uint8_t,
+        pub instruction_buffer_depth: uint8_t,
     }
 
     extern "C" {

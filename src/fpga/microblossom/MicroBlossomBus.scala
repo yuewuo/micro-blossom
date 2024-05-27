@@ -48,6 +48,10 @@ import org.rogach.scallop._
 //    16: (RO) 8 bits number of conflict channels (no more than 6 is supported)
 //    17: (RO) 8 bits dualConfig.vertexBits
 //    18: (RO) 8 bits dualConfig.weightBits
+//    19: (RO) 8 bits dualConfig.instructionBufferDepth
+//    20: (RO) 16 bits configuration bits: (..., supportContextSwitching:4
+//                    hardCodeWeights:3, supportLayerFusion:2, supportOffloading:1, supportAddDefectVertex:0)
+//
 //    24: (RW) 32 bits instruction counter
 //    32: (RW) 32 bits readout counter
 //    40: (RW) 32 bits transaction counter
@@ -112,6 +116,12 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   // 8: (RO) 32 bits version register
   // 12: (RO) 32 bits context depth
   // 16: (RO) 8 bits number of conflict channels (we're not using 100+ conflict channels...)
+  val configurationBits = B(0, 16 bits)
+  configurationBits(0) := Bool(config.supportAddDefectVertex)
+  configurationBits(1) := Bool(config.supportOffloading)
+  configurationBits(2) := Bool(config.supportLayerFusion)
+  configurationBits(3) := Bool(config.hardCodeWeights)
+  configurationBits(4) := Bool(config.supportContextSwitching)
   val hardwareInfo = new Area {
     factory.readMultiWord(
       U(config.contextDepth, 32 bits) ## U(DualConfig.version, 32 bits),
@@ -119,7 +129,9 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       documentation = "micro-blossom version and context depth"
     )
     factory.readMultiWord(
-      U(config.weightBits, 8 bits) ## U(config.vertexBits, 8 bits) ## U(config.conflictChannels, 8 bits),
+      configurationBits ##
+        U(config.instructionBufferDepth, 8 bits) ## U(config.weightBits, 8 bits) ##
+        U(config.vertexBits, 8 bits) ## U(config.conflictChannels, 8 bits),
       address = 16,
       documentation = "the number of conflict channels"
     )

@@ -39,6 +39,7 @@ case class DualConfig(
   def instructionBufferBits = log2Up(instructionBufferDepth + 1) // the dual module may be processing an instruction
   def IndexNone = (1 << vertexBits) - 1
   def LengthNone = (1 << weightBits) - 1
+  def supportContextSwitching = contextBits > 0
   def executeLatency = { // from sending the command to the time it's safe to write to the same context again
     // when context switching, 2 cycles delay due to memory fetch and write
     val contextDelay = 2 * (contextDepth != 1).toInt
