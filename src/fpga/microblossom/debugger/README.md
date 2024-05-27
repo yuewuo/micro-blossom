@@ -45,7 +45,7 @@ but I haven't found it now.
 Another configuration bug... The Rust program doesn't support offloading, so it just remove the offloading completely using
 
 ```rust
-// TODO: later on support offloading
+// later on support offloading
 micro_blossom.offloading.0.clear();
 ```
 

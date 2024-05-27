@@ -66,14 +66,14 @@ import org.rogach.scallop._
 //    [context 0]
 //      0: (R) 64 bits timestamp of receiving the last ``load obstacles'' instruction
 //      8: (R) 64 bits timestamp of receiving the last ``growable = infinity'' response
-//      16: (W) 16 bits maximum growth write
-//      16: (R) head + conflict (max_growth: u16, accumulated: u16, growable: u16, conflict_valid: u8, conflict: 96 bits)
-//            16 bits maximum growth (offloaded primal), when 0, disable offloaded primal,
+//      16: (RW) 16 bits maximum growth write (offloaded primal), when 0, disable offloaded primal,
 //                  write to this field will automatically clear accumulated grown value
-//            16 bits accumulated grown value (for primal offloading)
-//            16 bits growable value (writing to this position has no effect)
-//      (at most 7 concurrent conflict report, large enough)
-//      32: next obstacle, the head remains the same
+//      18: (R) 16 bits growable value (writing to this position has no effect)
+//      32: (R) head + conflict (conflict_fields: 96 bits, conflict_valid: u8, growable: u8, accumulated_grown: u16)
+//               conflict_fields: (node1, node2, touch1, touch2, vertex1, vertex2, each 16 bits)
+//               here we use u8 sized growable because it
+//      (at most 6 concurrent conflict report, large enough)
+//      48: next obstacle, the head remains the same
 //        ...
 //    [context 1]
 //      128: ...
@@ -292,7 +292,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   val resizedInstruction = Instruction(config)
   val resizeInstructionHasError = resizedInstruction.resizedFrom(instruction.value)
   // Mem channels that are used by this fsm
-  val fsmAccumulatedGrown = accumulatedGrown.constructReadSyncChannel()
+  val fsmAccumulatedGrown = accumulatedGrown.constructReadWriteSyncChannel()
   val fsmMaxGrowable = maxGrowable.constructReadSyncChannel()
   val fsmConflict = conflict.constructReadSyncChannel()
   val fsmPushId = pushId.constructReadWriteSyncChannel()
@@ -307,6 +307,26 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     val upper = timeFinish.upper.constructReadSyncChannel()
   }
   val fsmIsLastFindObstacle = isLastFindObstacle.constructReadWriteSyncChannel()
+  val fsmConflictB16 = ConvergecastConflict(16) // 96 bits data + 1 bit valid
+  fsmConflictB16.resizedFrom(fsmConflict.data)
+  val fsmMaxGrowableU8 = UInt(8 bits)
+  if (config.weightBits >= 8) {
+    // shrinking the bit width
+    when(fsmMaxGrowable.data.length === BigIntToUInt(fsmMaxGrowable.data.length.maxValue)) {
+      fsmMaxGrowableU8 := fsmMaxGrowableU8.maxValue
+    } elsewhen (fsmMaxGrowable.data.length > BigIntToUInt(fsmMaxGrowableU8.maxValue)) {
+      fsmMaxGrowableU8 := fsmMaxGrowableU8.maxValue - 1
+    } otherwise {
+      fsmMaxGrowableU8 := fsmMaxGrowable.data.length.resized
+    }
+  } else {
+    // expanding the bit width
+    when(fsmMaxGrowable.data.length === BigIntToUInt(fsmMaxGrowable.data.length.maxValue)) {
+      fsmMaxGrowableU8 := fsmMaxGrowableU8.maxValue
+    } otherwise {
+      fsmMaxGrowableU8 := fsmMaxGrowable.data.length.resized
+    }
+  }
   // data that are used to communicate between states
   val dataWaitFiFoPushLooperInput = Reg(LooperInput(config))
   val fsm = new StateMachine {
@@ -319,40 +339,25 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       goto(stateIdle)
     }
 
-    // these states are watched until conditions are met and output the obstacle result
-    def watchObstacleFields() = {
-      fsmPopId.readNext(readout.contextId)
-      fsmMaximumGrowth.readNext(readout.contextId)
-      fsmAccumulatedGrown.readNext(readout.contextId)
-      fsmMaxGrowable.readNext(readout.contextId)
-      fsmConflict.readNext(readout.contextId)
-      fsmPushId.readNext(readout.contextId)
-      fsmIsLastFindObstacle.readNext(readout.contextId)
-    }
-
     val stateIdle: State = new State with EntryPoint {
       whenIsActive {
         when(isReadAsk) {
           when(readout.mapping.hit(factory.writeAddress())) {
             when(readout.subAddress === U(0)) {
-              fsmTimeLoad.upper.readNext(readout.contextId)
-              fsmTimeLoad.lower.readNext(readout.contextId)
               goto(stateReadLoadTime)
             } elsewhen (readout.subAddress === U(8)) {
-              fsmTimeFinish.upper.readNext(readout.contextId)
-              fsmTimeFinish.lower.readNext(readout.contextId)
               goto(stateReadFinishTime)
-            } elsewhen (readout.subAddress >= U(16) && readout.subAddress < U(32)) {
+            } elsewhen (readout.subAddress === U(16)) {
+              // TODO: maximum growth + growable
+            } elsewhen (readout.subAddress >= U(32) && readout.subAddress < U(48)) {
               goto(stateReadObstacle)
             } otherwise {
               if (is64bus) {
                 readErrorReset()
               } else {
                 when(readout.subAddress === U(4)) {
-                  fsmTimeLoad.upper.readNext(readout.contextId)
                   goto(stateReadLoadTimeUpper)
                 } elsewhen (readout.subAddress === U(12)) {
-                  fsmTimeFinish.upper.readNext(readout.contextId)
                   goto(stateReadFinishTimeUpper)
                 } otherwise {
                   readErrorReset()
@@ -364,19 +369,11 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
           }
         } elsewhen (isWriteAsk) {
           when(instruction.mapping.hit(factory.writeAddress())) {
-            // check what type of the instruction and record timestamp if necessary
-            when(instruction.value.isChangingSyndrome) {
-              fsmTimeLoad.upper.writeNext(instruction.contextId, counter.value(63 downto 32))
-              fsmTimeLoad.lower.writeNext(instruction.contextId, counter.value(31 downto 0))
-            }
-            when(instruction.value.isFindObstacle) {
-              fsmIsLastFindObstacle.writeNext(instruction.contextId, True)
-            }
-            // read push ID and move to the next state
-            fsmPushId.readNext(instruction.contextId)
             goto(stateWriteInstruction)
           } elsewhen (readout.mapping.hit(factory.writeAddress())) {
             when(readout.writeSubAddress === U(16)) {
+              // check for overflow error
+              when(readout.writeValue > fsmMaximumGrowth.data.maxValue) { hasError := True }
               fsmMaximumGrowth.writeNext(readout.writeContextId, readout.writeValue.resize(16))
               isWriteHalt := False
             } otherwise {
@@ -391,49 +388,105 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       }
     }
 
-    // call this function when the data has been prepared
-    def outputObstacleData() = {
-      val addr = readout.obstacleAddress
-      when(addr === U(0)) {
-        // TODO
-      } elsewhen (addr === U(8)) {
-        // TODO
-      } otherwise {
-        if (is64bus) {
-          readErrorReset()
-        } else {
-          when(addr === U(4)) {
-            // TODO
-          } elsewhen (addr === U(12)) {
-            // TODO
-          } otherwise {
-            readErrorReset()
-          }
-        }
-      }
-    }
-
     // note: whenever entering this state, must not conflict with the fields in watchObstacleFields
     // if conflict occurs, wait for another state before entering this state
     val stateReadObstacle: State = new State {
       whenIsNext {
-        watchObstacleFields()
+        fsmPopId.readNext(readout.contextId)
+        fsmMaximumGrowth.readNext(readout.contextId)
+        fsmAccumulatedGrown.readNext(readout.contextId)
+        fsmMaxGrowable.readNext(readout.contextId)
+        fsmConflict.readNext(readout.contextId)
+        fsmPushId.readNext(readout.contextId)
+        fsmIsLastFindObstacle.readNext(readout.contextId)
       }
       whenIsActive {
         when(fsmIsLastFindObstacle.data) {
           when(fsmPushId.data === fsmPopId.data) {
-            outputObstacleData()
+            // data is ready, output and then return to idle
+            val value0 = fsmConflictB16.node2 ## fsmConflictB16.node1
+            val value4 = fsmConflictB16.touch2 ## fsmConflictB16.touch1
+            val value8 = fsmConflictB16.vertex2 ## fsmConflictB16.vertex1
+            val value12 = fsmAccumulatedGrown.data ## fsmMaxGrowableU8.asBits ## fsmConflictB16.valid.asBits(8 bits)
+            when(readout.obstacleAddress === U(0)) {
+              if (is64bus) { readout.value := value4 ## value0 }
+              else { readout.value := value0 }
+            } elsewhen (readout.obstacleAddress === U(8)) {
+              if (is64bus) { readout.value := value12 ## value8 }
+              else { readout.value := value8 }
+            } otherwise {
+              if (is64bus) { readErrorReset() }
+              else {
+                when(readout.obstacleAddress === U(4)) {
+                  readout.value := value4
+                } elsewhen (readout.obstacleAddress === U(12)) {
+                  readout.value := value12
+                } otherwise {
+                  readErrorReset()
+                }
+              }
+            }
+            fsmAccumulatedGrown.writeNext(readout.contextId, UInt(16 bits).setAll()) // should never be observed
             goto(stateIdle)
-          } otherwise {
-            // has issued a FindObstacle instruction, just wait until the command
           }
+          // otherwise just wait until the command (has issued a FindObstacle instruction)
         } otherwise {
-          // TODO: issue a FindObstacle instruction and then return to this state to wait for the result
+          // issue a FindObstacle instruction and then return to this state to wait for the result
+          goto(stateReadIssueFindObstacle)
+        }
+      }
+    }
+
+    val stateReadIssueFindObstacle: State = new State {
+      whenIsNext {
+        fsmPushId.readNext(readout.contextId)
+        fsmMaximumGrowth.readNext(readout.contextId)
+      }
+      whenIsActive {
+        // prepare the looper input
+        val looperInput = LooperInput(config)
+        looperInput.instruction.assignFindObstacle()
+        if (config.contextBits > 0) { looperInput.contextId := readout.contextId }
+        looperInput.instructionId := fsmPushId.data
+        looperInput.maximumGrowth := fsmMaximumGrowth.data
+        // prepare the data into the push FIFO
+        ccFifoPush.io.push.valid := True
+        ccFifoPush.io.push.payload := looperInput
+        // increment push ID
+        fsmPushId.writeNext(instruction.contextId, fsmPushId.data + 1)
+        // update state machine
+        when(ccFifoPush.io.push.ready) {
+          goto(stateReadIssueFindObstaclePause)
+        } otherwise {
+          dataWaitFiFoPushLooperInput := looperInput
+          goto(stateReadIssueFindObstacleWaitFiFoPush)
+        }
+      }
+    }
+
+    // since fsmPushId is already used for writing, we need to wait for a clock cycle before
+    // returning to the stateReadObstacle state
+    val stateReadIssueFindObstaclePause: State = new State {
+      whenIsActive {
+        goto(stateReadObstacle)
+      }
+    }
+
+    val stateReadIssueFindObstacleWaitFiFoPush: State = new State {
+      whenIsActive {
+        ccFifoPush.io.push.valid := True
+        ccFifoPush.io.push.payload := dataWaitFiFoPushLooperInput
+        when(ccFifoPush.io.push.ready) {
+          goto(stateReadObstacle)
         }
       }
     }
 
     val stateReadLoadTime: State = new State {
+      whenIsNext {
+        fsmTimeLoad.upper.readNext(readout.contextId)
+        fsmTimeLoad.lower.readNext(readout.contextId)
+      }
       whenIsActive {
         if (is64bus) { readout.value := fsmTimeLoad.upper.data.asBits ## fsmTimeLoad.lower.data.asBits }
         else { readout.value := fsmTimeLoad.lower.data.asBits }
@@ -446,6 +499,9 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     var stateReadLoadTimeUpper: State = null
     if (!is64bus) {
       stateReadLoadTimeUpper = new State {
+        whenIsNext {
+          fsmTimeLoad.upper.readNext(readout.contextId)
+        }
         whenIsActive {
           readout.value := fsmTimeLoad.upper.data.asBits
           isReadHalt := False
@@ -455,6 +511,10 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     }
 
     val stateReadFinishTime: State = new State {
+      whenIsNext {
+        fsmTimeFinish.upper.readNext(readout.contextId)
+        fsmTimeFinish.lower.readNext(readout.contextId)
+      }
       whenIsActive {
         if (is64bus) { readout.value := fsmTimeFinish.upper.data.asBits ## fsmTimeFinish.lower.data.asBits }
         else { readout.value := fsmTimeFinish.lower.data.asBits }
@@ -467,6 +527,9 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     var stateReadFinishTimeUpper: State = null
     if (!is64bus) {
       stateReadFinishTimeUpper = new State {
+        whenIsNext {
+          fsmTimeFinish.upper.readNext(readout.contextId)
+        }
         whenIsActive {
           readout.value := fsmTimeFinish.upper.data.asBits
           isReadHalt := False
@@ -484,6 +547,18 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     }
 
     val stateWriteInstruction: State = new State {
+      whenIsNext {
+        // check what type of the instruction and record timestamp if necessary
+        when(instruction.value.isChangingSyndrome) {
+          fsmTimeLoad.upper.writeNext(instruction.contextId, counter.value(63 downto 32))
+          fsmTimeLoad.lower.writeNext(instruction.contextId, counter.value(31 downto 0))
+        }
+        when(instruction.value.isFindObstacle) {
+          fsmIsLastFindObstacle.writeNext(instruction.contextId, True)
+        }
+        // read push ID and move to the next state
+        fsmPushId.readNext(instruction.contextId)
+      }
       whenIsActive {
         // prepare the looper input
         val looperInput = LooperInput(config)

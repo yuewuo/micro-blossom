@@ -28,6 +28,21 @@ pub mod extern_c {
         pub valid: uint8_t,
     }
 
+    /// SingleReadout allows one to query all information about FindObstacle within single 128 bit read
+    #[derive(Debug, Clone)]
+    #[repr(C)]
+    pub struct SingleReadout {
+        pub node_1: uint16_t,
+        pub node_2: uint16_t,
+        pub touch_1: uint16_t,
+        pub touch_2: uint16_t,
+        pub vertex_1: uint16_t,
+        pub vertex_2: uint16_t,
+        pub valid: uint8_t,
+        pub max_growable: uint8_t,
+        pub accumulated_grown: uint16_t,
+    }
+
     #[derive(Debug, Clone)]
     #[repr(C)]
     pub struct MicroBlossomHardwareInfo {

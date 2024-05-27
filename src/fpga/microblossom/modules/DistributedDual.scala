@@ -370,9 +370,9 @@ class DistributedDualTest extends AnyFunSuite {
         assert(grown3 == 1)
         assert(conflict3.valid == true)
         assert(conflict3.node1 == 0)
-        assert(conflict3.node2 == Some(ioConfig.IndexNone))
+        assert(conflict3.node2 == ioConfig.IndexNone)
         assert(conflict3.touch1 == 0)
-        assert(conflict3.touch2 == Some(ioConfig.IndexNone))
+        assert(conflict3.touch2 == ioConfig.IndexNone)
         assert(conflict3.vertex1 == 0)
         assert(conflict3.vertex2 == 3)
 
