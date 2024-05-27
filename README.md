@@ -44,6 +44,7 @@ git clone https://github.com/verilator/verilator   # Only first time
 cd verilator
 git pull
 git checkout v5.014      # pin to this specific version
+ccache -M 50G  # increase cache size
 
 autoconf         # Create ./configure script
 ./configure      # Configure and create Makefile

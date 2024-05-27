@@ -26,6 +26,8 @@ test-involves-scala:
 	cargo run --release -- test embedded-looper --print-syndrome-pattern --print-command
 	SUPPORT_OFFLOADING=1 SMALL_TEST_ONLY=1 cargo run --release -- test embedded-looper --print-syndrome-pattern --print-command
 	cargo run --release -- test embedded-axi4 --print-syndrome-pattern --print-command
+	SUPPORT_OFFLOADING=1 cargo run --release -- test embedded-axi4 --print-syndrome-pattern --print-command
+	SUPPORT_OFFLOADING=1 SUPPORT_LAYER_FUSION=1 cargo run --release -- test embedded-axi4 --print-syndrome-pattern --print-command
 
 # make test-parallel
 # DISABLE_PROGRESS_BAR=1 make test-parallel -j8
