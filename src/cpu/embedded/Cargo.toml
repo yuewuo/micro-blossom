@@ -55,6 +55,7 @@ cty = "0.2.2"
 automod = "1.0"
 cfg-if = "0.1"
 include-bytes-plus = "1.1.0"
+bitflags = "2.5.0"
 # lazy_static = { version = "1.4.0", features = ["spin_no_std"] }
 # spin = "0.9.8"
 

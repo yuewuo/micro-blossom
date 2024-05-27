@@ -51,7 +51,7 @@ import org.rogach.scallop._
 //    17: (RO) 8 bits dualConfig.vertexBits
 //    18: (RO) 8 bits dualConfig.weightBits
 //    19: (RO) 8 bits dualConfig.instructionBufferDepth
-//    20: (RO) 16 bits configuration bits: (..., supportContextSwitching:4
+//    20: (RO) 16 bits configuration bits: (..., is64bus:5, supportContextSwitching:4
 //                    hardCodeWeights:3, supportLayerFusion:2, supportOffloading:1, supportAddDefectVertex:0)
 //
 //    24: (RW) 32 bits instruction counter
@@ -131,6 +131,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   configurationBits(2) := Bool(config.supportLayerFusion)
   configurationBits(3) := Bool(config.hardCodeWeights)
   configurationBits(4) := Bool(config.supportContextSwitching)
+  configurationBits(5) := Bool(is64bus)
   val hardwareInfo = new Area {
     factory.readMultiWord(
       U(config.contextDepth, 32 bits) ## U(DualConfig.version, 32 bits),

@@ -2,6 +2,7 @@ use core::arch::asm;
 pub use core::fmt::Write;
 
 pub mod extern_c {
+    use bitflags::bitflags;
     use cty::*;
     use micro_blossom_nostd::interface::*;
     use micro_blossom_nostd::util::*;
@@ -50,7 +51,7 @@ pub mod extern_c {
         pub raw: [uint64_t; 2],
     }
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, Copy)]
     #[repr(C)]
     pub struct MicroBlossomHardwareInfo {
         pub version: uint32_t,
@@ -59,7 +60,28 @@ pub mod extern_c {
         pub vertex_bits: uint8_t,
         pub weight_bits: uint8_t,
         pub instruction_buffer_depth: uint8_t,
-        // TODO: add bitflag
+        pub flags: MicroBlossomHardwareFlags,
+        pub reserved: uint16_t,
+    }
+
+    #[derive(Clone, Copy)]
+    #[repr(C)]
+    pub union MicroBlossomHardwareInfoUnion {
+        pub info: MicroBlossomHardwareInfo,
+        pub raw: [uint64_t; 2],
+    }
+
+    bitflags! {
+        #[derive(Debug, Clone, Copy)]
+        #[repr(C)]
+        pub struct MicroBlossomHardwareFlags: uint16_t {
+            const SUPPORT_ADD_DEFECT_VERTEX = 1 << 0;
+            const SUPPORT_OFFLOADING = 1 << 1;
+            const SUPPORT_LAYER_FUSION = 1 << 2;
+            const HARD_CODE_WEIGHTS = 1 << 3;
+            const SUPPORT_CONTEXT_SWITCHING = 1 << 4;
+            const IS_64_BUS = 1 << 5;
+        }
     }
 
     #[derive(Debug, Clone)]

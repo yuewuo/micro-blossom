@@ -104,16 +104,12 @@ impl DualModuleAxi4Driver {
     }
 
     pub fn get_hardware_info(&mut self) -> std::io::Result<MicroBlossomHardwareInfo> {
-        let raw_1 = self.memory_read_64(8)?;
-        let raw_2 = self.memory_read_64(16)?;
-        Ok(MicroBlossomHardwareInfo {
-            version: raw_1 as u32,
-            context_depth: (raw_1 >> 32) as u32,
-            conflict_channels: raw_2 as u8,
-            vertex_bits: (raw_2 >> 8) as u8,
-            weight_bits: (raw_2 >> 16) as u8,
-            instruction_buffer_depth: (raw_2 >> 24) as u8,
-        })
+        unsafe {
+            let mut info_union = MicroBlossomHardwareInfoUnion { raw: [0, 0] };
+            info_union.raw[0] = self.memory_read_64(8)?;
+            info_union.raw[1] = self.memory_read_64(16)?;
+            Ok(info_union.info)
+        }
     }
 
     pub const READOUT_BASE: usize = 128 * 1024;
