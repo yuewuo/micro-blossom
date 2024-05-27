@@ -22,24 +22,25 @@ import scala.util.control.Breaks._
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.Map
 
-case class MicroBlossomLooper(config: DualConfig) extends Component {
+// one can attach a tag to the input: it will be returned alongside the message
+case class MicroBlossomLooper[T <: Data](config: DualConfig, tagType: HardType[T] = EmptyTag()) extends Component {
   require(
     config.readLatency > 0,
     "consider adding broadcast delay; looper does not accept pure combinatorial implementation"
   )
 
   val io = new Bundle {
-    val push = slave Stream (LooperInput(config))
-    val pop = master Stream (LooperOutput(config))
+    val push = slave Stream (LooperInput(config, tagType))
+    val pop = master Stream (LooperOutput(config, tagType))
     val dataLoss = out(Bool())
   }
 
   // define variables
   val immediateLoopback = Bool()
   val inputInstruction = Instruction(config)
-  val inputEntry = PipelineEntry(config)
+  val inputEntry = PipelineEntry(config, tagType)
   val pipelineLength = config.readLatency
-  val pipelineEntries = Vec.fill(pipelineLength)(Reg(PipelineEntry(config)).initDefault())
+  val pipelineEntries = Vec.fill(pipelineLength)(Reg(PipelineEntry(config, tagType)).initDefault())
   val responseEntry = pipelineEntries(pipelineLength - 1)
   val dataLoss = Reg(Bool()) init False
   val growLength = UInt(16 bits)
@@ -68,7 +69,7 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
   when(immediateLoopback) {
     inputEntry.valid := True
     if (config.contextBits > 0) { inputEntry.contextId := responseEntry.contextId }
-    inputEntry.instructionId := responseEntry.instructionId
+    if (tagType != null) inputEntry.tag := responseEntry.tag
     inputEntry.maximumGrowth := responseEntry.maximumGrowth
     when(responseEntry.isLoopBackGrow) {
       inputEntry.grown := responseEntry.grown
@@ -82,7 +83,7 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
   } otherwise {
     inputEntry.valid := io.push.valid
     if (config.contextBits > 0) { inputEntry.contextId := io.push.payload.contextId }
-    inputEntry.instructionId := io.push.payload.instructionId
+    if (tagType != null) inputEntry.tag := io.push.payload.tag
     inputEntry.maximumGrowth := io.push.payload.maximumGrowth
     inputEntry.grown := 0
     inputEntry.isLoopBackGrow := False
@@ -121,7 +122,7 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
     }
     io.pop.valid := True
     if (config.contextBits > 0) { io.pop.payload.contextId := responseEntry.contextId }
-    io.pop.payload.instructionId := responseEntry.instructionId
+    if (tagType != null) io.pop.payload.tag := responseEntry.tag
     io.pop.payload.maxGrowable := microBlossom.io.maxGrowable
     io.pop.payload.conflict.assignReordered(microBlossom.io.conflict)
     io.pop.payload.grown := responseEntry.grown
@@ -136,7 +137,7 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
   def simExecute(input: LooperInputData): LooperOutputData = {
     io.push.valid #= true
     io.push.payload.instruction #= input.instruction
-    io.push.payload.instructionId #= input.instructionId
+    if (tagType != null) io.push.payload.tag.assignDontCare()
     if (config.contextBits > 0) {
       io.push.payload.contextId #= input.contextId
     }
@@ -169,7 +170,6 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
       } else {
         0
       },
-      instructionId = io.pop.payload.instructionId.toInt,
       maxGrowable = io.pop.payload.maxGrowable.length.toInt,
       conflict = DataConflict(valid, node1, option_node2, touch1, option_touch2, vertex1, vertex2),
       grown = io.pop.payload.grown.toInt
@@ -182,34 +182,36 @@ case class MicroBlossomLooper(config: DualConfig) extends Component {
 
 }
 
-case class LooperInput(config: DualConfig) extends Bundle {
+case class EmptyTag() extends Bundle {}
+
+case class LooperInput[T <: Data](config: DualConfig, tagType: HardType[T] = EmptyTag()) extends Bundle {
   val instruction = Instruction(config)
   val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
-  val instructionId = UInt(config.instructionBufferBits bits)
   val maximumGrowth = UInt(16 bits)
+  val tag = (tagType != null) generate cloneOf(tagType)
 }
 
-case class LooperOutput(config: DualConfig) extends Bundle {
+case class LooperOutput[T <: Data](config: DualConfig, tagType: HardType[T] = EmptyTag()) extends Bundle {
   val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
-  val instructionId = UInt(config.instructionBufferBits bits)
   val maxGrowable = ConvergecastMaxGrowable(config.weightBits)
   val conflict = ConvergecastConflict(config.vertexBits)
   val grown = UInt(16 bits)
+  val tag = (tagType != null) generate cloneOf(tagType)
 }
 
-case class PipelineEntry(config: DualConfig) extends Bundle {
+case class PipelineEntry[T <: Data](config: DualConfig, tagType: HardType[T] = EmptyTag()) extends Bundle {
   val valid = Bool
   val contextId = (config.contextBits > 0) generate UInt(config.contextBits bits)
-  val instructionId = UInt(config.instructionBufferBits bits)
   val maximumGrowth = UInt(16 bits)
   val grown = UInt(16 bits)
   // bug 2024.5.25: the conflict reported after a loopback Grow instruction is not trustworthy:
   // the offloading module has not taken effect. The fix is to always issue a FindObstacle
   // instruction after the loopback Grow instruction (isLoopBackGrow := True)
   val isLoopBackGrow = Bool
+  val tag = (tagType != null) generate cloneOf(tagType)
 
-  def initDefault(): PipelineEntry = {
-    val defaultEntry = PipelineEntry(config)
+  def initDefault(): PipelineEntry[T] = {
+    val defaultEntry = PipelineEntry(config, tagType)
     defaultEntry.valid := False
     defaultEntry.assignDontCareToUnasigned()
     this.init(defaultEntry)
@@ -221,7 +223,6 @@ case class PipelineEntry(config: DualConfig) extends Bundle {
 case class LooperInputData(
     var instruction: Long,
     var contextId: Int,
-    var instructionId: Int,
     var maximumGrowth: Int
 )
 
@@ -232,7 +233,6 @@ object LooperInputData {
 @ConfiguredJsonCodec
 case class LooperOutputData(
     var contextId: Int,
-    var instructionId: Int,
     var maxGrowable: Int,
     var conflict: DataConflict,
     var grown: Int

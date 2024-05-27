@@ -86,6 +86,12 @@ import org.rogach.scallop._
 //      128: ...
 //
 
+case class InstructionTag(config: DualConfig) extends Bundle {
+  val instructionId = UInt(config.instructionBufferBits bits)
+  val isFindObstacle = Bool
+  val accumulatedGrown = UInt(16 bits)
+}
+
 case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     config: DualConfig,
     clockDivideBy: Int = 2, // divided clock at io.dividedClock; note the clock must be synchronous and 0 phase aligned
@@ -180,19 +186,19 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   )
 
   val ccFifoPush = StreamFifoCC(
-    dataType = LooperInput(config),
+    dataType = LooperInput(config, InstructionTag(config)),
     depth = config.instructionBufferDepth,
     pushClock = clockDomain,
     popClock = slowClockDomain
   )
   val ccFifoPop = StreamFifoCC(
-    dataType = LooperOutput(config),
+    dataType = LooperOutput(config, InstructionTag(config)),
     depth = config.instructionBufferDepth,
     pushClock = slowClockDomain,
     popClock = clockDomain
   )
   val slow = new ClockingArea(slowClockDomain) {
-    val microBlossom = MicroBlossomLooper(config)
+    val microBlossom = MicroBlossomLooper(config, InstructionTag(config))
     microBlossom.io.push << ccFifoPush.io.pop
     microBlossom.io.pop >> ccFifoPop.io.push
   }
@@ -219,6 +225,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     val upper = OneMem(UInt(32 bits), config.contextDepth) init List.fill(config.contextDepth)(U(0, 32 bits))
   }
   val isLastFindObstacle = OneMem(Bool, config.contextDepth) init List.fill(config.contextDepth)(False)
+  val hasPendingFindObstacle = OneMem(Bool, config.contextDepth) init List.fill(config.contextDepth)(False)
 
   def getSimDriver(): TypedDriver = {
     if (io.s0.isInstanceOf[AxiLite4]) {
@@ -319,11 +326,12 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     val upper = timeFinish.upper.constructReadWriteSyncChannel()
   }
   val fsmIsLastFindObstacle = isLastFindObstacle.constructReadWriteSyncChannel()
+  val fsmHasPendingFindObstacle = hasPendingFindObstacle.constructReadWriteSyncChannel()
   val fsmConflictB16 = ConvergecastConflict(16).resizedFrom(fsmConflict.data)
   val fsmMaxGrowableU8 = ConvergecastMaxGrowable(8).resizedFrom(fsmMaxGrowable.data)
   val fsmMaxGrowableU16 = ConvergecastMaxGrowable(16).resizedFrom(fsmMaxGrowable.data)
   // data that are used to communicate between states
-  val dataWaitFiFoPushLooperInput = Reg(LooperInput(config))
+  val dataWaitFiFoPushLooperInput = Reg(LooperInput(config, InstructionTag(config)))
   val fsm = new StateMachine {
     setEncoding(binaryOneHot)
 
@@ -463,6 +471,20 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
           // otherwise just wait until the command (has issued a FindObstacle instruction)
         } otherwise {
           // issue a FindObstacle instruction and then return to this state to wait for the result
+          goto(stateReadIssueFindObstacleWaitPending)
+        }
+      }
+    }
+
+    // must entre this state before issuing an obstacle: issuing multiple FindObstacle instruction
+    // in the queue causes data races, because the maximumGrowth value is not updated according to the last
+    // accumulatedGrown value
+    val stateReadIssueFindObstacleWaitPending: State = new State {
+      whenIsNext {
+        fsmHasPendingFindObstacle.readNext(readout.contextId)
+      }
+      whenIsActive {
+        when(!fsmHasPendingFindObstacle.data) {
           goto(stateReadIssueFindObstacle)
         }
       }
@@ -472,21 +494,25 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       whenIsNext {
         fsmPushId.readNext(readout.contextId)
         fsmMaximumGrowth.readNext(readout.contextId)
+        fsmAccumulatedGrown.readNext(readout.contextId)
       }
       whenIsActive {
         val instructionId = fsmPushId.data + 1
         // prepare the looper input
-        val looperInput = LooperInput(config)
+        val looperInput = LooperInput(config, InstructionTag(config))
         looperInput.instruction.assignFindObstacle()
         if (config.contextBits > 0) { looperInput.contextId := readout.contextId }
-        looperInput.instructionId := instructionId
-        looperInput.maximumGrowth := fsmMaximumGrowth.data
+        looperInput.tag.instructionId := instructionId
+        looperInput.tag.isFindObstacle := True
+        looperInput.tag.accumulatedGrown := fsmAccumulatedGrown.data
+        looperInput.maximumGrowth := fsmMaximumGrowth.data - fsmAccumulatedGrown.data
         // prepare the data into the push FIFO
         ccFifoPush.io.push.valid := True
         ccFifoPush.io.push.payload := looperInput
         // increment push ID
         fsmPushId.writeNext(instruction.contextId, instructionId)
         fsmIsLastFindObstacle.writeNext(instruction.contextId, True)
+        fsmHasPendingFindObstacle.writeNext(instruction.contextId, True)
         // update state machine
         when(ccFifoPush.io.push.ready) {
           goto(stateReadIssueFindObstaclePause)
@@ -580,7 +606,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     }
 
     val stateWriteInstruction: State = new State {
-      whenIsNext {
+      onEntry {
         // check what type of the instruction and record timestamp if necessary
         when(instruction.value.isChangingSyndrome) {
           fsmTimeLoad.upper.writeNext(instruction.contextId, counter.value(63 downto 32))
@@ -589,32 +615,45 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
           fsmTimeFinish.upper.writeNext(instruction.contextId, ~U(0, 32 bits))
           fsmTimeFinish.lower.writeNext(instruction.contextId, ~U(0, 32 bits))
         }
-        fsmIsLastFindObstacle.writeNext(instruction.contextId, instruction.value.isFindObstacle)
-        // read push ID and move to the next state
-        fsmPushId.readNext(instruction.contextId)
+        fsmHasPendingFindObstacle.readNext(instruction.contextId)
+        fsmMaximumGrowth.readNext(instruction.contextId)
+        fsmAccumulatedGrown.readNext(instruction.contextId)
       }
       whenIsActive {
-        val instructionId = fsmPushId.data + 1
-        // prepare the looper input
-        val looperInput = LooperInput(config)
-        looperInput.instruction := resizedInstruction
-        if (config.contextBits > 0) { looperInput.contextId := instruction.contextId }
-        looperInput.instructionId := instructionId
-        looperInput.maximumGrowth.clearAll()
-        // prepare the data into the push FIFO
-        ccFifoPush.io.push.valid := True
-        ccFifoPush.io.push.payload := looperInput
-        // check for error
-        when(resizeInstructionHasError) { hasError := True }
-        // increment push ID
-        fsmPushId.writeNext(instruction.contextId, instructionId)
-        // update state machine
-        when(ccFifoPush.io.push.ready) {
-          isWriteHalt := False
-          goto(stateIdle)
-        } otherwise {
-          dataWaitFiFoPushLooperInput := looperInput
-          goto(stateWriteWaitFiFoPush)
+        val isFindObstacle = instruction.value.isFindObstacle
+        when(!fsmHasPendingFindObstacle.data || !isFindObstacle) {
+          val instructionId = fsmPushId.data + 1
+          // prepare the looper input
+          val looperInput = LooperInput(config, InstructionTag(config))
+          looperInput.instruction := resizedInstruction
+          if (config.contextBits > 0) { looperInput.contextId := instruction.contextId }
+          looperInput.tag.instructionId := instructionId
+          looperInput.tag.isFindObstacle := isFindObstacle
+          looperInput.tag.accumulatedGrown := fsmAccumulatedGrown.data
+          when(isFindObstacle) {
+            looperInput.maximumGrowth := fsmMaximumGrowth.data - fsmAccumulatedGrown.data
+          } otherwise {
+            looperInput.maximumGrowth.clearAll()
+          }
+          // prepare the data into the push FIFO
+          ccFifoPush.io.push.valid := True
+          ccFifoPush.io.push.payload := looperInput
+          // check for error
+          when(resizeInstructionHasError) { hasError := True }
+          // increment push ID
+          fsmPushId.writeNext(instruction.contextId, instructionId)
+          fsmIsLastFindObstacle.writeNext(instruction.contextId, isFindObstacle)
+          when(isFindObstacle) {
+            fsmHasPendingFindObstacle.writeNext(instruction.contextId, True)
+          }
+          // update state machine
+          when(ccFifoPush.io.push.ready) {
+            isWriteHalt := False
+            goto(stateIdle)
+          } otherwise {
+            dataWaitFiFoPushLooperInput := looperInput
+            goto(stateWriteWaitFiFoPush)
+          }
         }
       }
     }
@@ -640,6 +679,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     val upper = timeFinish.upper.constructReadWriteSyncChannel()
     val lower = timeFinish.lower.constructReadWriteSyncChannel()
   }
+  val rspHasPendingFindObstacle = hasPendingFindObstacle.constructReadWriteSyncChannel()
   val rsp = new StateMachine {
     setEncoding(binaryOneHot)
 
@@ -655,10 +695,14 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
             rspTimeFinish.upper.writeNext(contextId, counter.value(63 downto 32))
             rspTimeFinish.lower.writeNext(contextId, counter.value(31 downto 0))
           }
-          rspPopId.writeNext(contextId, output.instructionId)
+          rspPopId.writeNext(contextId, output.tag.instructionId)
           rspMaxGrowable.writeNext(contextId, output.maxGrowable)
           rspConflict.writeNext(contextId, output.conflict)
-          rspAccumulatedGrown.writeNext(contextId, output.grown)
+          rspAccumulatedGrown.writeNext(contextId, output.grown + output.tag.accumulatedGrown)
+          // if the instruction is FindObstacle, unset pending instruction
+          when(output.tag.isFindObstacle) {
+            rspHasPendingFindObstacle.writeNext(contextId, False)
+          }
         }
       }
     }

@@ -59,6 +59,7 @@ pub mod extern_c {
         pub vertex_bits: uint8_t,
         pub weight_bits: uint8_t,
         pub instruction_buffer_depth: uint8_t,
+        // TODO: add bitflag
     }
 
     #[derive(Debug, Clone)]

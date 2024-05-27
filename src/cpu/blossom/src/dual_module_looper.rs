@@ -54,7 +54,6 @@ impl SolverTrackedDual for DualModuleLooperDriver {
 pub struct InputData {
     pub instruction: u32, // use Instruction32
     pub context_id: u16,
-    pub instruction_id: u16,
     pub maximum_growth: u16,
 }
 
@@ -62,7 +61,6 @@ pub struct InputData {
 #[serde(deny_unknown_fields)]
 pub struct OutputData {
     pub context_id: u16,
-    pub instruction_id: u16,
     pub max_growable: u16,
     pub conflict: ConvergecastConflict,
     pub grown: u16,
@@ -102,7 +100,6 @@ impl DualModuleLooperDriver {
         self.execute(InputData {
             instruction: instruction.into(),
             context_id,
-            instruction_id: self.instruction_count as u16,
             maximum_growth: 0,
         })
     }
@@ -112,14 +109,11 @@ impl DualModuleLooperDriver {
         context_id: u16,
         maximum_growth: u16,
     ) -> std::io::Result<(CompactObstacle, CompactWeight)> {
-        let instruction_id = self.instruction_count as u16;
         let output = self.execute(InputData {
             instruction: Instruction32::find_obstacle().into(),
             context_id,
-            instruction_id,
             maximum_growth,
         })?;
-        assert_eq!(output.instruction_id, instruction_id);
         let grown = CompactWeight::from(output.grown);
         if output.max_growable == u16::MAX {
             assert!(!output.conflict.valid, "growable must be finite when conflict is detected");

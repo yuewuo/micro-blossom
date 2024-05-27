@@ -9,7 +9,6 @@ use crate::resources::*;
 use crate::simulation_tcp_client::*;
 use crate::util::*;
 use embedded_blossom::extern_c::*;
-use embedded_blossom::util::*;
 use fusion_blossom::dual_module::*;
 use fusion_blossom::primal_module::*;
 use fusion_blossom::visualize::*;
@@ -119,6 +118,10 @@ impl DualModuleAxi4Driver {
 
     pub const READOUT_BASE: usize = 128 * 1024;
 
+    pub fn context_base_address(&mut self, context_id: u16) -> usize {
+        Self::READOUT_BASE + 128 * context_id as usize
+    }
+
     /// this function issues a FindObstacle instruction; to let the accelerator calculate the results
     /// while the CPU doing other things. If the data is prefetched, then the read will be very fast;
     /// if not pre-fetched, or if new instructions are written to this context, then reading the conflicts
@@ -127,9 +130,13 @@ impl DualModuleAxi4Driver {
         self.execute_instruction(Instruction32::find_obstacle(), context_id)
     }
 
+    pub fn clear_grown(&mut self, context_id: u16) -> std::io::Result<()> {
+        let base_address = self.context_base_address(context_id);
+        self.memory_write_16(base_address, context_id)
+    }
+
     pub fn get_conflicts(&mut self, context_id: u16) -> std::io::Result<SingleReadout> {
-        let base_address = Self::READOUT_BASE + 128 * context_id as usize;
-        let readout_address = base_address + 32;
+        let readout_address = self.context_base_address(context_id) + 32;
         // self.pre_fetch_conflicts(context_id)?; // optional
         let readout = unsafe {
             let mut readout_union = SingleReadoutUnion { raw: [0, 0] };
@@ -137,7 +144,7 @@ impl DualModuleAxi4Driver {
             readout_union.raw[1] = self.memory_read_64(readout_address + 8)?;
             readout_union.readout
         };
-        self.memory_write_16(base_address, 0)?;
+        self.clear_grown(context_id)?;
         Ok(readout)
     }
 
@@ -172,8 +179,9 @@ impl DualModuleAxi4Driver {
 
 impl DualStacklessDriver for DualModuleAxi4Driver {
     fn reset(&mut self) {
-        self.execute_instruction(Instruction32::reset(), self.context_id).unwrap();
         self.set_maximum_growth(0, self.context_id).unwrap();
+        self.find_obstacle(); // make sure there is no other pending instructions and clear the grown value
+        self.execute_instruction(Instruction32::reset(), self.context_id).unwrap();
     }
     fn set_speed(&mut self, _is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState) {
         self.execute_instruction(Instruction32::set_speed(node, speed), self.context_id)
@@ -277,18 +285,20 @@ mod tests {
     }
 
     fn dual_module_axi4_register_test(graph: MicroBlossomSingle, config: DualAxi4Config) -> DualModuleAxi4Driver {
-        let mut driver = DualModuleAxi4Driver::new(graph.clone(), config.clone()).unwrap();
+        let check = |driver: &mut DualModuleAxi4Driver| driver.sanity_check().unwrap();
+        let mut driver_owned = DualModuleAxi4Driver::new(graph.clone(), config.clone()).unwrap();
+        let driver = &mut driver_owned;
         let hardware_info = driver.get_hardware_info().unwrap();
         println!("hardware_info: {hardware_info:?}");
         assert_eq!(hardware_info.conflict_channels, 1);
         assert_eq!(hardware_info.context_depth as usize, config.sim_config.context_depth);
-        driver.sanity_check().unwrap();
+        check(driver);
         // test maximum growth value set and read
         assert_eq!(driver.get_maximum_growth(0).unwrap(), 0, "the default should be 0");
         for value in [100, 0, 65535, 0, 200, 300, 0] {
             driver.set_maximum_growth(value, 0).unwrap();
             assert_eq!(driver.get_maximum_growth(0).unwrap(), value);
-            driver.sanity_check().unwrap();
+            check(driver);
         }
         // test maximum growth value of different context
         if config.sim_config.context_depth > 1 {
@@ -296,7 +306,7 @@ mod tests {
                 driver.set_maximum_growth(value, 1).unwrap();
                 assert_eq!(driver.get_maximum_growth(1).unwrap(), value);
                 assert_eq!(driver.get_maximum_growth(0).unwrap(), 0, "should not affect context 0");
-                driver.sanity_check().unwrap();
+                check(driver);
             }
         }
         // writing to an out-of-bound context should result in error
@@ -312,28 +322,70 @@ mod tests {
         println!("use example vertex {example_vertex}");
         let vertex = ni!(example_vertex);
         let node = ni!(0);
+        // test manual growth
         driver.reset();
-        driver.sanity_check().unwrap();
+        driver.set_maximum_growth(0, 0).unwrap(); // disable spontaneous growth
+        check(driver);
         let (obstacle, grown) = driver.find_obstacle();
         assert_eq!(obstacle, CompactObstacle::None);
         assert_eq!(grown, 0);
-        driver.sanity_check().unwrap();
+        check(driver);
         driver.add_defect(vertex, node);
-        driver.sanity_check().unwrap();
-        driver
+        check(driver);
+        let (obstacle, grown) = driver.find_obstacle();
+        check(driver);
+        assert_eq!(grown, 0); // because spontaneous growth is disabled
+        let count = |e: &WeightedEdge| e.l == example_vertex || e.r == example_vertex;
+        let min_incident_weight = graph.weighted_edges.iter().filter(|e| count(e)).map(|e| e.w).min().unwrap();
+        let length = min_incident_weight as CompactWeight;
+        assert_eq!(obstacle, CompactObstacle::GrowLength { length });
+        // grow
+        driver.execute_instruction(Instruction32::grow(1), 0).unwrap();
+        let (obstacle, grown) = driver.find_obstacle();
+        check(driver);
+        assert_eq!(grown, 0);
+        assert_eq!(obstacle, CompactObstacle::GrowLength { length: length - 1 });
+        // test spontaneous growth
+        driver.reset();
+        driver.add_defect(vertex, node);
+        driver.set_maximum_growth(u16::try_from(length).unwrap(), 0).unwrap();
+        check(driver);
+        let (_obstacle, grown) = driver.find_obstacle();
+        check(driver);
+        assert_eq!(grown, length);
+        let (_obstacle, grown) = driver.find_obstacle();
+        check(driver);
+        assert_eq!(grown, 0);
+        // test accumulated spontaneous growth: first set maximum growth to 1, do not grow it, and then
+        assert!(length >= 2, "edge weight should be even number");
+        driver.reset();
+        driver.add_defect(vertex, node);
+        driver.set_maximum_growth(1, 0).unwrap();
+        check(driver);
+        driver.pre_fetch_conflicts(0).unwrap(); // prefetch will grow it to 1
+        check(driver);
+        driver.set_maximum_growth(2, 0).unwrap();
+        check(driver);
+        let (obstacle, grown) = driver.find_obstacle();
+        check(driver);
+        assert_eq!(grown, 2);
+        if length >= 2 {
+            assert_eq!(obstacle, CompactObstacle::GrowLength { length: length - 2 });
+        }
+        driver_owned
     }
 
     #[test]
     fn dual_module_axi4_build_test_1() {
         // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_build_test_1 -- --nocapture
-        let code = CodeCapacityPlanarCode::new(3, 0.1, 1);
+        let code = CodeCapacityPlanarCode::new(3, 0.1, 7);
         let mut driver = dual_module_axi4_register_test(
             MicroBlossomSingle::new(&code.get_initializer(), &code.get_positions()),
             serde_json::from_value(json!({ "name": "axi4_build_test_1" })).unwrap(),
         );
         let hardware_info = driver.get_hardware_info().unwrap();
         assert_eq!(hardware_info.vertex_bits, 5);
-        assert_eq!(hardware_info.weight_bits, 2);
+        assert_eq!(hardware_info.weight_bits, 4);
     }
 
     #[test]
@@ -346,7 +398,7 @@ mod tests {
             json!({ "bus_type": "AxiLite4", "use_64_bus": false }), // 32 bit AxiLite4
             json!({ "bus_type": "Axi4", "use_64_bus": true, "dump_debugger_files": false }), // 64 bit Axi4
         ];
-        let code = CodeCapacityPlanarCode::new(3, 0.1, 1);
+        let code = CodeCapacityPlanarCode::new(3, 0.1, 7);
         for (index, sim_config) in sim_configurations.iter().enumerate() {
             println!("------------------- configuration [{index}]: {sim_config}");
             dual_module_axi4_register_test(
