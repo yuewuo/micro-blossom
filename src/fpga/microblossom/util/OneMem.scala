@@ -113,7 +113,13 @@ class OneMem[T <: Data](val wordType: HardType[T], val wordCount: Int, val asser
 
   def constructReadWriteSyncChannel(): ReadWriteSyncChannel[T] = {
     val channel = new ReadWriteSyncChannel(wordType, addressWidth)
-    channel.rData := readWriteSync(channel.address, channel.wData, channel.enable, channel.write)
+    channel.data := readWriteSync(channel.address, channel.writeData, channel.enable, channel.write)
+    channel
+  }
+
+  def constructReadSyncChannel(): ReadSyncChannel[T] = {
+    val channel = new ReadSyncChannel(wordType, addressWidth)
+    channel.data := readSync(channel.address, channel.enable)
     channel
   }
 
@@ -121,15 +127,15 @@ class OneMem[T <: Data](val wordType: HardType[T], val wordCount: Int, val asser
 
 class ReadWriteSyncChannel[T <: Data](val wordType: HardType[T], val addressWidth: Int) extends Bundle {
   val address = UInt(addressWidth bits)
-  val wData = cloneOf(wordType)
+  val writeData = cloneOf(wordType)
   val enable = Bool
   val write = Bool
-  val rData = cloneOf(wordType)
+  val data = cloneOf(wordType)
 
   enable := False
   write := False
   address.assignDontCare()
-  wData.assignDontCare()
+  writeData.assignDontCare()
 
   def readNext(address: UInt) = {
     enable := True
@@ -141,6 +147,20 @@ class ReadWriteSyncChannel[T <: Data](val wordType: HardType[T], val addressWidt
     enable := True
     write := True
     this.address := address
-    wData := data
+    writeData := data
+  }
+}
+
+class ReadSyncChannel[T <: Data](val wordType: HardType[T], val addressWidth: Int) extends Bundle {
+  val address = UInt(addressWidth bits)
+  val enable = Bool
+  val data = cloneOf(wordType)
+
+  enable := False
+  address.assignDontCare()
+
+  def readNext(address: UInt) = {
+    enable := True
+    this.address := address
   }
 }

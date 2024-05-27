@@ -92,6 +92,8 @@ case class Instruction(config: DualConfig = DualConfig()) extends Bits {
   def isReset(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.Reset)
   def isLoadDefectsExternal(): Bool = isExtended && (extendedOpCode === ExtendedOpCode.LoadDefectsExternal)
 
+  def isChangingSyndrome(): Bool = isAddDefect || isReset || isLoadDefectsExternal
+
   def assignExtendedOpCode(code: Int) = {
     opCode := OpCode.SetSpeed
     extensionIndicator := True.asBits
