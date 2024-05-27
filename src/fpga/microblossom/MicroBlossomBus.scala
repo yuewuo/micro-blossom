@@ -184,7 +184,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   def microBlossom = slow.microBlossom
   ccFifoPush.io.push.valid := False
   ccFifoPush.io.push.payload.assignDontCare()
-  ccFifoPop.io.pop.ready := True
+  ccFifoPop.io.pop.ready := False
 
   // create the control registers
   val maximumGrowth = OneMem(UInt(16 bits), config.contextDepth) init List.fill(config.contextDepth)(U(0, 16 bits))
@@ -303,8 +303,8 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     val upper = timeLoad.upper.constructReadWriteSyncChannel()
   }
   val fsmTimeFinish = new Area {
-    val lower = timeFinish.lower.constructReadSyncChannel()
-    val upper = timeFinish.upper.constructReadSyncChannel()
+    val lower = timeFinish.lower.constructReadWriteSyncChannel()
+    val upper = timeFinish.upper.constructReadWriteSyncChannel()
   }
   val fsmIsLastFindObstacle = isLastFindObstacle.constructReadWriteSyncChannel()
   val fsmConflictB16 = ConvergecastConflict(16) // 96 bits data + 1 bit valid
@@ -552,6 +552,9 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
         when(instruction.value.isChangingSyndrome) {
           fsmTimeLoad.upper.writeNext(instruction.contextId, counter.value(63 downto 32))
           fsmTimeLoad.lower.writeNext(instruction.contextId, counter.value(31 downto 0))
+          // also mark it as not finished
+          fsmTimeFinish.upper.writeNext(instruction.contextId, UInt(32 bits).setAll())
+          fsmTimeFinish.lower.writeNext(instruction.contextId, UInt(32 bits).setAll())
         }
         when(instruction.value.isFindObstacle) {
           fsmIsLastFindObstacle.writeNext(instruction.contextId, True)
@@ -591,6 +594,39 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
         when(ccFifoPush.io.push.ready) {
           isWriteHalt := False
           goto(stateIdle)
+        }
+      }
+    }
+  }
+
+  // handle the response from the Micro Blossom Looper module
+  val rspPopId = popId.constructReadWriteSyncChannel()
+  val rspMaxGrowable = maxGrowable.constructReadWriteSyncChannel()
+  val rspConflict = conflict.constructReadWriteSyncChannel()
+  val rspAccumulatedGrown = accumulatedGrown.constructReadWriteSyncChannel()
+  val rspTimeFinish = new Area {
+    val upper = timeFinish.upper.constructReadWriteSyncChannel()
+    val lower = timeFinish.lower.constructReadWriteSyncChannel()
+  }
+  val rsp = new StateMachine {
+    setEncoding(binaryOneHot)
+
+    val stateIdle: State = new State with EntryPoint {
+      whenIsActive {
+        ccFifoPop.io.pop.ready := True
+        when(ccFifoPop.io.pop.valid) {
+          val output = ccFifoPop.io.pop.payload
+          val contextId: UInt = if (config.contextBits > 0) { output.contextId }
+          else { UInt(0 bits) }
+          // record the last time it sees `maxGrowable = _.maxValue`: marking the finish of decoding
+          when(output.maxGrowable.length === output.maxGrowable.length.maxValue) {
+            rspTimeFinish.upper.writeNext(contextId, counter.value(63 downto 32))
+            rspTimeFinish.lower.writeNext(contextId, counter.value(31 downto 0))
+          }
+          rspPopId.writeNext(contextId, output.instructionId)
+          rspMaxGrowable.writeNext(contextId, output.maxGrowable)
+          rspConflict.writeNext(contextId, output.conflict)
+          rspAccumulatedGrown.writeNext(contextId, output.grown)
         }
       }
     }
