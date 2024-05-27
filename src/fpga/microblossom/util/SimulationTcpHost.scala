@@ -47,6 +47,7 @@ class SimulationTcpHost(val simulationName: String, val cleanFileOnDisconnect: B
   // must call this function after the simulator is compiled
   def simulationStarted() = {
     outStream.println("simulation started")
+    println("Simulation started")
   }
 }
 

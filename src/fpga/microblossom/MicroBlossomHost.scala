@@ -48,9 +48,10 @@ object MicroBlossomHost extends SimulationTcpHost("MicroBlossomHost") {
         val component: Component = MicroBlossomBusType.generateByName(busTypeFull, config, emuConfig.clockDivideBy)
         require(component.isInstanceOf[MicroBlossomBus[_, _]])
         val dut = component.asInstanceOf[MicroBlossomBus[IMasterSlave, BusSlaveFactoryDelayed]]
-        if (emuConfig.withWaveform || emuConfig.supportOffloading) {
+        if (emuConfig.withWaveform) {
           dut.simMakePublicSnapshot()
         }
+        dut.simMakePublicPreMatching()
         dut
       })
       .doSim("hosted") { dut =>

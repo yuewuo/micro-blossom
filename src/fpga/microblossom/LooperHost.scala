@@ -31,9 +31,10 @@ object LooperHost extends SimulationTcpHost("LooperHost") {
     simConfig
       .compile({
         val dut = MicroBlossomLooper(config)
-        if (emuConfig.withWaveform || emuConfig.supportOffloading) {
+        if (emuConfig.withWaveform) {
           dut.simMakePublicSnapshot()
         }
+        dut.simMakePublicPreMatching()
         dut
       })
       .doSim("hosted") { dut =>

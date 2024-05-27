@@ -59,37 +59,37 @@ impl DualModuleAxi4Driver {
         Ok(value)
     }
 
-    fn memory_write(&mut self, num_bytes: usize, address: usize, data: usize) -> std::io::Result<()> {
+    fn memory_write(&self, num_bytes: usize, address: usize, data: usize) -> std::io::Result<()> {
         self.client.write_line(format!("write({num_bytes}, {address}, {data})"))
     }
-    pub fn memory_write_64(&mut self, address: usize, data: u64) -> std::io::Result<()> {
+    pub fn memory_write_64(&self, address: usize, data: u64) -> std::io::Result<()> {
         self.memory_write(8, address, data as usize)
     }
-    pub fn memory_write_32(&mut self, address: usize, data: u32) -> std::io::Result<()> {
+    pub fn memory_write_32(&self, address: usize, data: u32) -> std::io::Result<()> {
         self.memory_write(4, address, data as usize)
     }
-    pub fn memory_write_16(&mut self, address: usize, data: u16) -> std::io::Result<()> {
+    pub fn memory_write_16(&self, address: usize, data: u16) -> std::io::Result<()> {
         self.memory_write(2, address, data as usize)
     }
-    pub fn memory_write_8(&mut self, address: usize, data: u8) -> std::io::Result<()> {
+    pub fn memory_write_8(&self, address: usize, data: u8) -> std::io::Result<()> {
         self.memory_write(1, address, data as usize)
     }
 
-    fn memory_read(&mut self, num_bytes: usize, address: usize) -> std::io::Result<usize> {
+    fn memory_read(&self, num_bytes: usize, address: usize) -> std::io::Result<usize> {
         let line = self.client.read_line(format!("read({num_bytes}, {address})"))?;
         let value = scan_fmt!(&line, "{d}", usize).unwrap();
         Ok(value)
     }
-    pub fn memory_read_64(&mut self, address: usize) -> std::io::Result<u64> {
+    pub fn memory_read_64(&self, address: usize) -> std::io::Result<u64> {
         self.memory_read(8, address).map(|v| v as u64)
     }
-    pub fn memory_read_32(&mut self, address: usize) -> std::io::Result<u32> {
+    pub fn memory_read_32(&self, address: usize) -> std::io::Result<u32> {
         self.memory_read(4, address).map(|v| v as u32)
     }
-    pub fn memory_read_16(&mut self, address: usize) -> std::io::Result<u16> {
+    pub fn memory_read_16(&self, address: usize) -> std::io::Result<u16> {
         self.memory_read(2, address).map(|v| v as u16)
     }
-    pub fn memory_read_8(&mut self, address: usize) -> std::io::Result<u8> {
+    pub fn memory_read_8(&self, address: usize) -> std::io::Result<u8> {
         self.memory_read(1, address).map(|v| v as u8)
     }
 
@@ -241,6 +241,7 @@ impl DualTrackedDriver for DualModuleAxi4Driver {
 impl FusionVisualizer for DualModuleAxi4Driver {
     #[allow(clippy::unnecessary_cast)]
     fn snapshot(&self, abbrev: bool) -> serde_json::Value {
+        self.memory_read_32(Self::READOUT_BASE).unwrap(); // make sure all the transactions are completed
         assert_eq!(
             self.client.sim_config.context_depth, 1,
             "context snapshot is not yet supported"
@@ -254,6 +255,7 @@ impl FusionVisualizer for DualModuleAxi4Driver {
 mod tests {
     use super::*;
     use crate::dual_module_adaptor::tests::*;
+    use crate::dual_module_comb::tests::*;
     use fusion_blossom::example_codes::*;
     use fusion_blossom::util::*;
     use serde_json::json;
@@ -412,59 +414,80 @@ mod tests {
         dual_module_axi4_basic_standard_syndrome(3, visualize_filename, defect_vertices, json!({}));
     }
 
-    //     #[test]
-    //     fn dual_module_axi4_basic_2() {
-    //         // cargo test dual_module_axi4_basic_2 -- --nocapture
-    //         let visualize_filename = "dual_module_axi4_basic_2.json".to_string();
-    //         let defect_vertices = vec![18, 26, 34];
-    //         dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    //     }
+    #[test]
+    fn dual_module_axi4_basic_2() {
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_basic_2 -- --nocapture
+        let visualize_filename = "dual_module_axi4_basic_2.json".to_string();
+        let defect_vertices = vec![18, 26, 34];
+        dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices, json!({}));
+    }
 
-    //     #[test]
-    //     fn dual_module_axi4_basic_3() {
-    //         // cargo test dual_module_axi4_basic_3 -- --nocapture
-    //         let visualize_filename = "dual_module_axi4_basic_3.json".to_string();
-    //         let defect_vertices = vec![16, 26];
-    //         dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    //     }
+    #[test]
+    fn dual_module_axi4_basic_3() {
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_basic_3 -- --nocapture
+        let visualize_filename = "dual_module_axi4_basic_3.json".to_string();
+        let defect_vertices = vec![16, 26];
+        dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices, json!({}));
+    }
 
-    //     /// debug infinite loop
-    //     /// reason: the write stage logic is implemented wrongly: only when the overall speed is positive
-    //     ///   should it report an obstacle; otherwise just report whatever the maxGrowth value is
-    //     #[test]
-    //     fn dual_module_axi4_debug_1() {
-    //         // cargo test dual_module_axi4_debug_1 -- --nocapture
-    //         let visualize_filename = "dual_module_axi4_debug_1.json".to_string();
-    //         let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
-    //         dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    //     }
+    /// debug infinite loop
+    /// reason: the write stage logic is implemented wrongly: only when the overall speed is positive
+    ///   should it report an obstacle; otherwise just report whatever the maxGrowth value is
+    #[test]
+    fn dual_module_axi4_debug_1() {
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_debug_1 -- --nocapture
+        let visualize_filename = "dual_module_axi4_debug_1.json".to_string();
+        let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
+        dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices, json!({}));
+    }
 
-    //     #[test]
-    //     fn dual_module_axi4_debug_compare_1() {
-    //         // cargo test dual_module_axi4_debug_compare_1 -- --nocapture
-    //         let visualize_filename = "dual_module_axi4_debug_compare_1.json".to_string();
-    //         let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
-    //         dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices, false, false);
-    //     }
+    #[test]
+    fn dual_module_axi4_debug_compare_1() {
+        // cargo test dual_module_axi4_debug_compare_1 -- --nocapture
+        let visualize_filename = "dual_module_axi4_debug_compare_1.json".to_string();
+        let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
+        dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices, false, false);
+    }
 
-    //     /// debug timing error
-    //     /// the primal offloaded grow unit will issue a grow command automatically and retrieve the conflict information
-    //     /// however, this is different from
-    //     #[test]
-    //     fn dual_module_axi4_debug_2() {
-    //         // cargo test dual_module_axi4_debug_2 -- --nocapture
-    //         let visualize_filename = "dual_module_axi4_debug_2.json".to_string();
-    //         let defect_vertices = vec![12, 13, 17, 25, 28, 48, 49];
-    //         dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    //     }
+    /// debug timing error
+    /// the primal offloaded grow unit will issue a grow command automatically and retrieve the conflict information
+    /// however, this is different from
+    #[test]
+    fn dual_module_axi4_debug_2() {
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_debug_2 -- --nocapture
+        let visualize_filename = "dual_module_axi4_debug_2.json".to_string();
+        let defect_vertices = vec![12, 13, 17, 25, 28, 48, 49];
+        dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices, json!({}));
+    }
 
-    //     #[test]
-    //     fn dual_module_axi4_debug_compare_2() {
-    //         // cargo test dual_module_axi4_debug_compare_2 -- --nocapture
-    //         let visualize_filename = "dual_module_axi4_debug_compare_2.json".to_string();
-    //         let defect_vertices = vec![12, 13, 17, 25, 28, 48, 49];
-    //         dual_module_scala_basic_standard_syndrome(7, visualize_filename, defect_vertices);
-    //     }
+    #[test]
+    fn dual_module_axi4_debug_compare_2() {
+        // cargo test dual_module_axi4_debug_compare_2 -- --nocapture
+        let visualize_filename = "dual_module_axi4_debug_compare_2.json".to_string();
+        let defect_vertices = vec![12, 13, 17, 25, 28, 48, 49];
+        dual_module_comb_basic_standard_syndrome(7, visualize_filename, defect_vertices, false, false);
+    }
+
+    #[test]
+    fn dual_module_axi4_no_visualizer_only_pre_matching() {
+        // KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_no_visualizer_only_pre_matching -- --nocapture
+        let defect_vertices = vec![0, 4];
+        let func = |initializer: &SolverInitializer, positions: &Vec<VisualizePosition>| -> SolverEmbeddedAxi4 {
+            SolverEmbeddedAxi4::new(
+                MicroBlossomSingle::new(initializer, positions),
+                json!({
+                    "dual": {
+                        "name": "dual_module_axi4_no_visualizer_only_pre_matching",
+                        "sim_config": {
+                            "with_waveform": false,
+                            "support_offloading": true
+                        },
+                    }
+                }),
+            )
+        };
+        dual_module_standard_optional_viz(3, None, defect_vertices, func);
+    }
 
     pub fn dual_module_axi4_basic_standard_syndrome(
         d: VertexNum,

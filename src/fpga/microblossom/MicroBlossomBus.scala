@@ -71,6 +71,7 @@ import org.rogach.scallop._
 // 2. 128KB context readouts at [0x2_0000, 0x4_0000), each context takes 128 byte space, assuming no more than 1024 contexts
 //    [context 0]
 //      0: (R) 64 bits timestamp of receiving the last ``load obstacles'' instruction
+//             (reading this address will also waiting for all the transactions of this context to be completed)
 //      0: (W:clear) clear the 16 bits accumulated_grown value
 //      8: (R) 64 bits timestamp of receiving the last ``growable = infinity'' response
 //      16: (RW) 16 bits maximum growth write (offloaded primal), when 0, disable offloaded primal,
@@ -546,12 +547,16 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       whenIsNext {
         fsmTimeLoad.upper.readNext(readout.contextId)
         fsmTimeLoad.lower.readNext(readout.contextId)
+        fsmPushId.readNext(readout.contextId)
+        fsmPopId.readNext(readout.contextId)
       }
       whenIsActive {
-        if (is64bus) { readout.value := fsmTimeLoad.upper.data.asBits ## fsmTimeLoad.lower.data.asBits }
-        else { readout.value := fsmTimeLoad.lower.data.asBits }
-        isReadHalt := False
-        goto(stateIdle)
+        when(fsmPushId.data === fsmPopId.data) {
+          if (is64bus) { readout.value := fsmTimeLoad.upper.data.asBits ## fsmTimeLoad.lower.data.asBits }
+          else { readout.value := fsmTimeLoad.lower.data.asBits }
+          isReadHalt := False
+          goto(stateIdle)
+        }
       }
     }
 
@@ -711,6 +716,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
 
   def simMakePublicSnapshot() = microBlossom.simMakePublicSnapshot()
   def simSnapshot(abbrev: Boolean = true): Json = microBlossom.simSnapshot(abbrev)
+  def simMakePublicPreMatching() = microBlossom.simMakePublicPreMatching()
   def simPreMatchings(): Seq[DataPreMatching] = microBlossom.simPreMatchings()
 }
 

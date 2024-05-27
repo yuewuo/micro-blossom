@@ -289,6 +289,16 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig) extends Com
     )
   }
 
+  def simMakePublicPreMatching() = {
+    vertices.foreach(vertex => {
+      vertex.register.node.simPublic()
+      vertex.register.root.simPublic()
+    })
+    offloaders.foreach(offloader => {
+      offloader.io.stageOutputs.offloadGet4.condition.simPublic()
+    })
+  }
+
   def simPreMatchings(): Seq[DataPreMatching] = {
     var preMatchings = ArrayBuffer[DataPreMatching]()
     for ((offloader, offloaderIndex) <- offloaders.zipWithIndex) {

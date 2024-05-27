@@ -178,6 +178,7 @@ case class MicroBlossomLooper[T <: Data](config: DualConfig, tagType: HardType[T
 
   def simMakePublicSnapshot() = microBlossom.simMakePublicSnapshot()
   def simSnapshot(abbrev: Boolean = true): Json = microBlossom.simSnapshot(abbrev)
+  def simMakePublicPreMatching() = microBlossom.simMakePublicPreMatching()
   def simPreMatchings(): Seq[DataPreMatching] = microBlossom.simPreMatchings()
 
 }
