@@ -249,22 +249,19 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   val readout = new Area {
     val value = Bits(factory.busDataWidth bits).assignDontCare()
     val writeValue = UInt(factory.busDataWidth bits)
-    val contextId = UInt(config.contextBits bits)
-    val subAddress = UInt(7 bits)
-    val obstacleAddress = UInt(4 bits) // each obstacle entry is 16 bytes = 128 bits
-    val writeContextId = UInt(config.contextBits bits)
-    val writeSubAddress = UInt(7 bits)
+    val contextIdRaw = (factory.readAddress().resize(log2Up(128 KiB)) >> log2Up(128)).resize(10)
+    val contextId = contextIdRaw.resize(config.contextBits)
+    val subAddress = factory.readAddress().resize(7)
+    val obstacleAddress = subAddress.resize(4) // each obstacle entry is 16 bytes = 128 bits
+    val writeContextIdRaw = (factory.writeAddress().resize(log2Up(128 KiB)) >> log2Up(128))
+    val writeContextId = writeContextIdRaw.resize(config.contextBits bits)
+    val writeSubAddress = factory.writeAddress().resize(log2Up(128))
     val mapping = SizeMapping(base = 128 KiB, size = 128 KiB)
     val documentation = "readout array (128 bytes each, 1024 of them at most)"
   }
   // set the values
   factory.readPrimitive(readout.value, readout.mapping, 0, "readouts")
   factory.nonStopWrite(readout.writeValue, bitOffset = 0)
-  readout.contextId := (factory.readAddress().resize(log2Up(128 KiB)) >> log2Up(128)).resize(config.contextBits)
-  readout.subAddress := factory.readAddress().resize(log2Up(128))
-  readout.obstacleAddress := factory.readAddress().resize(4)
-  readout.writeContextId := (factory.writeAddress().resize(log2Up(128 KiB)) >> log2Up(128)).resize(config.contextBits)
-  readout.writeSubAddress := factory.writeAddress().resize(log2Up(128))
 
   // define bus behavior when reading or writing the control registers
   val isWriteHalt = Bool.setAll()
@@ -337,7 +334,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     val stateIdle: State = new State with EntryPoint {
       whenIsActive {
         when(isReadAsk) {
-          when(readout.mapping.hit(factory.writeAddress())) {
+          when(readout.mapping.hit(factory.readAddress())) {
             when(readout.subAddress === U(0)) {
               goto(stateReadLoadTime)
             } elsewhen (readout.subAddress === U(8)) {
@@ -345,6 +342,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
             } elsewhen (readout.subAddress === U(16)) {
               goto(stateReadMaximumGrowth)
             } elsewhen (readout.subAddress >= U(32) && readout.subAddress < U(48)) {
+              hardwareInfo.readoutCounter := hardwareInfo.readoutCounter + 1
               goto(stateReadObstacle)
             } otherwise {
               if (is64bus) {
@@ -369,6 +367,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
             when(readout.writeSubAddress === U(16)) {
               // check for overflow error
               when(readout.writeValue > fsmMaximumGrowth.data.maxValue) { hasError := True }
+              when(readout.writeContextIdRaw > readout.writeContextId.maxValue) { hasError := True }
               fsmMaximumGrowth.writeNext(readout.writeContextId, readout.writeValue.resize(16))
               isWriteHalt := False
             } otherwise {
@@ -385,6 +384,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
 
     val stateReadMaximumGrowth: State = new State {
       whenIsNext {
+        when(readout.contextIdRaw > readout.contextId.maxValue) { hasError := True }
         fsmMaximumGrowth.readNext(readout.contextId)
         fsmMaxGrowable.readNext(readout.contextId)
       }

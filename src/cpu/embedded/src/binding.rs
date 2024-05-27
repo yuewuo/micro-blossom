@@ -54,6 +54,15 @@ pub mod extern_c {
         pub instruction_buffer_depth: uint8_t,
     }
 
+    #[derive(Debug, Clone)]
+    #[repr(C)]
+    pub struct MicroBlossomCounters {
+        pub instruction_counter: uint32_t,
+        pub readout_counter: uint32_t,
+        pub transaction_counter: uint32_t,
+        pub error_counter: uint32_t,
+    }
+
     extern "C" {
         pub fn print_char(c: c_char);
         pub fn test_write32(bias: uint32_t, value: uint32_t);
@@ -67,8 +76,6 @@ pub mod extern_c {
         pub fn diff_native_time(start: uint64_t, end: uint64_t) -> c_float;
 
         pub fn get_hardware_info() -> MicroBlossomHardwareInfo;
-        pub fn clear_instruction_counter();
-        pub fn get_instruction_counter() -> uint32_t;
         pub fn execute_instruction(instruction: uint32_t, context_id: uint16_t);
         pub fn get_conflicts(
             head: *mut ReadoutHead,
@@ -77,6 +84,15 @@ pub mod extern_c {
             context_id: uint16_t,
         );
         pub fn set_maximum_growth(length: uint16_t, context_id: uint16_t);
+
+        pub fn clear_instruction_counter();
+        pub fn get_instruction_counter() -> uint32_t;
+        pub fn clear_readout_counter();
+        pub fn get_readout_counter() -> uint32_t;
+        pub fn clear_transaction_counter();
+        pub fn get_transaction_counter() -> uint32_t;
+        pub fn clear_error_counter();
+        pub fn get_error_counter() -> uint32_t;
     }
 
     impl Default for ReadoutConflict {

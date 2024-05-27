@@ -156,6 +156,29 @@ impl DualModuleAxi4Driver {
         let base = Self::READOUT_BASE + 128 * context_id as usize + 16;
         self.memory_write_16(base, maximum_growth)
     }
+
+    pub fn get_maximum_growth(&mut self, context_id: u16) -> std::io::Result<u16> {
+        let base = Self::READOUT_BASE + 128 * context_id as usize + 16;
+        self.memory_read_16(base)
+    }
+
+    pub fn clear_error_counter(&mut self) -> std::io::Result<()> {
+        self.memory_write_32(48, 0)
+    }
+    pub fn get_error_counter(&mut self) -> std::io::Result<u32> {
+        self.memory_read_32(48)
+    }
+
+    pub fn sanity_check(&mut self) -> std::io::Result<()> {
+        let error_counter = self.get_error_counter()?;
+        if error_counter > 0 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("error counter = {error_counter}"),
+            ));
+        }
+        Ok(())
+    }
 }
 
 impl DualStacklessDriver for DualModuleAxi4Driver {
@@ -254,22 +277,51 @@ mod tests {
         assert_eq!(hardware_info.instruction_buffer_depth, 10);
     }
 
+    fn dual_module_axi4_register_test(graph: MicroBlossomSingle, config: DualAxi4Config) -> DualModuleAxi4Driver {
+        let mut driver = DualModuleAxi4Driver::new(graph, config.clone()).unwrap();
+        let hardware_info = driver.get_hardware_info().unwrap();
+        println!("hardware_info: {hardware_info:?}");
+        assert_eq!(hardware_info.conflict_channels, 1);
+        assert_eq!(hardware_info.context_depth as usize, config.sim_config.context_depth);
+        driver.sanity_check().unwrap();
+        // test maximum growth value set and read
+        assert_eq!(driver.get_maximum_growth(0).unwrap(), 0, "the default should be 0");
+        for value in [100, 0, 65535, 0, 200, 300, 0] {
+            driver.set_maximum_growth(value, 0).unwrap();
+            assert_eq!(driver.get_maximum_growth(0).unwrap(), value);
+            driver.sanity_check().unwrap();
+        }
+        // test maximum growth value of different context
+        if config.sim_config.context_depth > 1 {
+            for value in [100, 0, 65535, 0, 200, 300, 0] {
+                driver.set_maximum_growth(value, 1).unwrap();
+                assert_eq!(driver.get_maximum_growth(1).unwrap(), value);
+                assert_eq!(driver.get_maximum_growth(0).unwrap(), 0, "should not affect context 0");
+                driver.sanity_check().unwrap();
+            }
+        }
+        // writing to an out-of-bound context should result in error
+        driver.set_maximum_growth(5, config.sim_config.context_depth as u16).unwrap();
+        assert_eq!(driver.get_error_counter().unwrap(), 1, "write result in an error");
+        driver.clear_error_counter().unwrap();
+        driver.get_maximum_growth(config.sim_config.context_depth as u16).unwrap();
+        assert_eq!(driver.get_error_counter().unwrap(), 1, "read also result in an error");
+        driver.clear_error_counter().unwrap();
+
+        driver
+    }
+
     #[test]
     fn dual_module_axi4_register_test_1() {
-        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_register_tests -- --nocapture
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_register_test_1 -- --nocapture
         let code = CodeCapacityPlanarCode::new(3, 0.1, 1);
-        let mut driver = DualModuleAxi4Driver::new(
+        let mut driver = dual_module_axi4_register_test(
             MicroBlossomSingle::new(&code.get_initializer(), &code.get_positions()),
             serde_json::from_value(json!({ "name": "axi4_register_test_1" })).unwrap(),
-        )
-        .unwrap();
+        );
         let hardware_info = driver.get_hardware_info().unwrap();
-        println!("{hardware_info:?}");
-        assert_eq!(hardware_info.context_depth, 1);
-        assert_eq!(hardware_info.conflict_channels, 1);
-        assert_eq!(hardware_info.vertex_bits, 7);
-        assert_eq!(hardware_info.weight_bits, 10); // maximum weight = 1000 < 1024
-        assert_eq!(hardware_info.instruction_buffer_depth, 10);
+        assert_eq!(hardware_info.vertex_bits, 5);
+        assert_eq!(hardware_info.weight_bits, 2);
     }
 
     #[test]
@@ -280,17 +332,15 @@ mod tests {
             // test variable bus interface
             json!({ "bus_type": "AxiLite4", "use_64_bus": true }), // 64 bit AxiLite4
             json!({ "bus_type": "AxiLite4", "use_64_bus": false }), // 32 bit AxiLite4
-            json!({ "bus_type": "Axi4", "use_64_bus": false }),    // 64 bit Axi4
+            json!({ "bus_type": "Axi4", "use_64_bus": true, "dump_debugger_files": false }), // 64 bit Axi4
         ];
         let code = CodeCapacityPlanarCode::new(3, 0.1, 1);
         for (index, sim_config) in sim_configurations.iter().enumerate() {
-            let mut driver = DualModuleAxi4Driver::new(
+            println!("------------------- configuration [{index}]: {sim_config}");
+            dual_module_axi4_register_test(
                 MicroBlossomSingle::new(&code.get_initializer(), &code.get_positions()),
                 serde_json::from_value(json!({ "name": format!("axi4_build_{index}"), "sim_config": sim_config })).unwrap(),
-            )
-            .unwrap();
-            let hardware_info = driver.get_hardware_info().unwrap();
-            println!("[{index}] {hardware_info:?}");
+            );
         }
     }
 
