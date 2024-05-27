@@ -132,7 +132,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig) extends Com
     Delay(conflictConvergecastTree(config.graph.edge_binary_tree.nodes.length - 1), config.convergecastDelay)
   io.conflict.resizedFrom(convergecastedConflict)
 
-  def simExecute(instruction: Long): (DataMaxGrowable, DataConflict) = {
+  def simExecute(instruction: Long): (DataMaxGrowable, DataConflictRaw) = {
     io.message.valid #= true
     io.message.instruction #= instruction
     clockDomain.waitSampling()
@@ -142,12 +142,12 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig) extends Com
     (
       DataMaxGrowable(io.maxGrowable.length.toInt),
       // the distributed dual does not do node reordering, so leave the original index here
-      DataConflict(
+      DataConflictRaw(
         io.conflict.valid.toBoolean,
         io.conflict.node1.toInt,
-        Some(io.conflict.node2.toInt),
+        io.conflict.node2.toInt,
         io.conflict.touch1.toInt,
-        Some(io.conflict.touch2.toInt),
+        io.conflict.touch2.toInt,
         io.conflict.vertex1.toInt,
         io.conflict.vertex2.toInt
       )
@@ -172,7 +172,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig) extends Com
   }
 
   // a temporary solution without primal offloading
-  def simFindObstacle(maxGrowth: Long): (DataMaxGrowable, DataConflict, Long) = {
+  def simFindObstacle(maxGrowth: Long): (DataMaxGrowable, DataConflictRaw, Long) = {
     var (maxGrowable, conflict) = simExecute(ioConfig.instructionSpec.generateFindObstacle())
     var grown = 0.toLong
     breakable {

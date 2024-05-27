@@ -88,6 +88,21 @@ object DataConflict {
 }
 
 @ConfiguredJsonCodec
+case class DataConflictRaw(
+    var valid: Boolean,
+    var node1: Int,
+    var node2: Int,
+    var touch1: Int,
+    var touch2: Int,
+    var vertex1: Int,
+    var vertex2: Int
+)
+
+object DataConflictRaw {
+  implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
+}
+
+@ConfiguredJsonCodec
 case class DataPreMatching(
     var edgeIndex: Int,
     var node1: Int,
