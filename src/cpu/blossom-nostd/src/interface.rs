@@ -8,7 +8,7 @@
 
 use crate::util::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CompactObstacle {
     /// nothing to do
     None,

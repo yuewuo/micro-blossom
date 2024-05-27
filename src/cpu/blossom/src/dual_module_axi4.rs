@@ -24,8 +24,6 @@ use serde::*;
 pub struct DualModuleAxi4Driver {
     pub client: SimulationTcpClient,
     pub context_id: u16,
-    pub maximum_growth: Vec<u16>,
-    pub conflicts_store: ConflictsStore<MAX_CONFLICT_CHANNELS>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,15 +52,9 @@ impl SolverTrackedDual for DualModuleAxi4Driver {
 
 impl DualModuleAxi4Driver {
     pub fn new(micro_blossom: MicroBlossomSingle, config: DualAxi4Config) -> std::io::Result<Self> {
-        let conflict_channels = config.sim_config.conflict_channels;
-        let mut conflicts_store = ConflictsStore::new();
-        conflicts_store.reconfigure(conflict_channels as u8);
-        let maximum_growth = vec![0; config.sim_config.context_depth];
         let mut value = Self {
             client: SimulationTcpClient::new("MicroBlossomHost", micro_blossom, config.name, config.sim_config)?,
             context_id: 0,
-            maximum_growth,
-            conflicts_store,
         };
         value.reset();
         Ok(value)
@@ -127,29 +119,26 @@ impl DualModuleAxi4Driver {
 
     pub const READOUT_BASE: usize = 128 * 1024;
 
-    pub fn get_conflicts(&mut self, context_id: u16) -> std::io::Result<()> {
-        let base = Self::READOUT_BASE + 128 * context_id as usize;
-        self.execute_instruction(Instruction32::find_obstacle(), context_id)?;
-        let raw_head = self.memory_read_64(base)?;
-        self.conflicts_store.head.maximum_growth = raw_head as u16;
-        self.conflicts_store.head.accumulated_grown = (raw_head >> 16) as u16;
-        self.conflicts_store.head.growable = (raw_head >> 32) as u16;
-        if self.conflicts_store.head.growable == 0 {
-            for i in 0..self.conflicts_store.channels as usize {
-                let conflict_base = base + 32 + i * 16;
-                let raw_1 = self.memory_read_64(conflict_base)?;
-                let raw_2 = self.memory_read_64(conflict_base + 8)?;
-                let conflict = self.conflicts_store.maybe_uninit_conflict(i);
-                conflict.node_1 = raw_1 as u16;
-                conflict.node_2 = (raw_1 >> 16) as u16;
-                conflict.touch_1 = (raw_1 >> 32) as u16;
-                conflict.touch_2 = (raw_1 >> 48) as u16;
-                conflict.vertex_1 = raw_2 as u16;
-                conflict.vertex_2 = (raw_2 >> 16) as u16;
-                conflict.valid = (raw_2 >> 32) as u8;
-            }
-        }
-        Ok(())
+    /// this function issues a FindObstacle instruction; to let the accelerator calculate the results
+    /// while the CPU doing other things. If the data is prefetched, then the read will be very fast;
+    /// if not pre-fetched, or if new instructions are written to this context, then reading the conflicts
+    /// will automatically issue a FindObstacle instruction inside the hardware
+    pub fn pre_fetch_conflicts(&mut self, context_id: u16) -> std::io::Result<()> {
+        self.execute_instruction(Instruction32::find_obstacle(), context_id)
+    }
+
+    pub fn get_conflicts(&mut self, context_id: u16) -> std::io::Result<SingleReadout> {
+        let base_address = Self::READOUT_BASE + 128 * context_id as usize;
+        let readout_address = base_address + 32;
+        // self.pre_fetch_conflicts(context_id)?; // optional
+        let readout = unsafe {
+            let mut readout_union = SingleReadoutUnion { raw: [0, 0] };
+            readout_union.raw[0] = self.memory_read_64(readout_address)?;
+            readout_union.raw[1] = self.memory_read_64(readout_address + 8)?;
+            readout_union.readout
+        };
+        self.memory_write_16(base_address, 0)?;
+        Ok(readout)
     }
 
     pub fn set_maximum_growth(&mut self, maximum_growth: u16, context_id: u16) -> std::io::Result<()> {
@@ -195,16 +184,11 @@ impl DualStacklessDriver for DualModuleAxi4Driver {
             .unwrap();
     }
     fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
-        // first check whether there are some unhandled conflicts in the store
-        if let Some(conflict) = self.conflicts_store.pop() {
-            return (conflict.get_obstacle(), 0);
-        }
-        // then query the hardware
-        self.get_conflicts(self.context_id).unwrap();
+        let readout = self.get_conflicts(self.context_id).unwrap();
         // check again
-        let grown = self.conflicts_store.head.accumulated_grown as CompactWeight;
-        let growable = self.conflicts_store.head.growable;
-        if growable == u16::MAX {
+        let grown = readout.accumulated_grown as CompactWeight;
+        let growable = readout.max_growable;
+        if growable == u8::MAX {
             (CompactObstacle::None, grown)
         } else if growable != 0 {
             (
@@ -213,11 +197,25 @@ impl DualStacklessDriver for DualModuleAxi4Driver {
                 },
                 grown,
             )
+        } else if readout.conflict_valid != 0 {
+            let conflict = CompactObstacle::Conflict {
+                node_1: ni!(readout.node_1).option(),
+                node_2: if readout.node_2 == u16::MAX {
+                    None.into()
+                } else {
+                    ni!(readout.node_2).option()
+                },
+                touch_1: ni!(readout.touch_1).option(),
+                touch_2: if readout.touch_2 == u16::MAX {
+                    None.into()
+                } else {
+                    ni!(readout.touch_2).option()
+                },
+                vertex_1: ni!(readout.vertex_1),
+                vertex_2: ni!(readout.vertex_2),
+            };
+            (conflict, grown)
         } else {
-            // find a single obstacle from the list of obstacles
-            if let Some(conflict) = self.conflicts_store.pop() {
-                return (conflict.get_obstacle(), grown);
-            }
             // when this happens, the DualDriverTracked should check for BlossomNeedExpand event
             // this is usually triggered by reaching maximum growth set by the DualDriverTracked
             (CompactObstacle::GrowLength { length: 0 }, grown)
@@ -255,6 +253,7 @@ mod tests {
     use fusion_blossom::example_codes::*;
     use fusion_blossom::util::*;
     use serde_json::json;
+    use std::collections::BTreeSet;
 
     // to use visualization, we need the folder of fusion-blossom repo
     // e.g. export FUSION_DIR=/Users/wuyue/Documents/GitHub/fusion-blossom
@@ -278,7 +277,7 @@ mod tests {
     }
 
     fn dual_module_axi4_register_test(graph: MicroBlossomSingle, config: DualAxi4Config) -> DualModuleAxi4Driver {
-        let mut driver = DualModuleAxi4Driver::new(graph, config.clone()).unwrap();
+        let mut driver = DualModuleAxi4Driver::new(graph.clone(), config.clone()).unwrap();
         let hardware_info = driver.get_hardware_info().unwrap();
         println!("hardware_info: {hardware_info:?}");
         assert_eq!(hardware_info.conflict_channels, 1);
@@ -307,17 +306,30 @@ mod tests {
         driver.get_maximum_growth(config.sim_config.context_depth as u16).unwrap();
         assert_eq!(driver.get_error_counter().unwrap(), 1, "read also result in an error");
         driver.clear_error_counter().unwrap();
-
+        // find any real vertex
+        let virtual_vertices: BTreeSet<VertexIndex> = graph.virtual_vertices.iter().cloned().collect();
+        let example_vertex = (0..graph.vertex_num).find(|v| !virtual_vertices.contains(v)).unwrap();
+        println!("use example vertex {example_vertex}");
+        let vertex = ni!(example_vertex);
+        let node = ni!(0);
+        driver.reset();
+        driver.sanity_check().unwrap();
+        let (obstacle, grown) = driver.find_obstacle();
+        assert_eq!(obstacle, CompactObstacle::None);
+        assert_eq!(grown, 0);
+        driver.sanity_check().unwrap();
+        driver.add_defect(vertex, node);
+        driver.sanity_check().unwrap();
         driver
     }
 
     #[test]
-    fn dual_module_axi4_register_test_1() {
-        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_register_test_1 -- --nocapture
+    fn dual_module_axi4_build_test_1() {
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_build_test_1 -- --nocapture
         let code = CodeCapacityPlanarCode::new(3, 0.1, 1);
         let mut driver = dual_module_axi4_register_test(
             MicroBlossomSingle::new(&code.get_initializer(), &code.get_positions()),
-            serde_json::from_value(json!({ "name": "axi4_register_test_1" })).unwrap(),
+            serde_json::from_value(json!({ "name": "axi4_build_test_1" })).unwrap(),
         );
         let hardware_info = driver.get_hardware_info().unwrap();
         assert_eq!(hardware_info.vertex_bits, 5);

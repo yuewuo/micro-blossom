@@ -29,7 +29,7 @@ pub mod extern_c {
     }
 
     /// SingleReadout allows one to query all information about FindObstacle within single 128 bit read
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, Copy)]
     #[repr(C)]
     pub struct SingleReadout {
         pub node_1: uint16_t,
@@ -38,9 +38,16 @@ pub mod extern_c {
         pub touch_2: uint16_t,
         pub vertex_1: uint16_t,
         pub vertex_2: uint16_t,
-        pub valid: uint8_t,
+        pub conflict_valid: uint8_t,
         pub max_growable: uint8_t,
         pub accumulated_grown: uint16_t,
+    }
+
+    #[derive(Clone, Copy)]
+    #[repr(C)]
+    pub union SingleReadoutUnion {
+        pub readout: SingleReadout,
+        pub raw: [uint64_t; 2],
     }
 
     #[derive(Debug, Clone)]

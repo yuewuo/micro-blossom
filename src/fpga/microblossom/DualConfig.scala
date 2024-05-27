@@ -36,7 +36,7 @@ case class DualConfig(
   def offloaderNum = activeOffloading.length.toInt
   def instructionSpec = InstructionSpec(this)
   def contextBits = log2Up(contextDepth)
-  def instructionBufferBits = log2Up(instructionBufferDepth + 1) // the dual module may be processing an instruction
+  def instructionBufferBits = log2Up(2 * instructionBufferDepth + 2) // the dual module may be processing an instruction
   def IndexNone = (1 << vertexBits) - 1
   def LengthNone = (1 << weightBits) - 1
   def supportContextSwitching = contextBits > 0
