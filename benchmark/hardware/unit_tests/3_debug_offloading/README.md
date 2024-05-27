@@ -21,8 +21,8 @@ Let me first check if the parameter is successfully passed in.
 ```sh
 # under git root folder
 sbt assembly
-java -Xmx32G -cp target/scala-2.12/microblossom.jar microblossom.MicroBlossomGenerator --support-offloading --output-dir benchmark/hardware/unit_tests/3_debug_offloading/hardware/offloaded_true/offloaded_true_verilog --graph benchmark/hardware/unit_tests/3_debug_offloading/hardware/prepare.json
-java -Xmx32G -cp target/scala-2.12/microblossom.jar microblossom.MicroBlossomGenerator --output-dir benchmark/hardware/unit_tests/3_debug_offloading/hardware/offloaded_false/offloaded_false_verilog --graph benchmark/hardware/unit_tests/3_debug_offloading/hardware/prepare.json
+java -Xmx32G -cp target/scala-2.12/microblossom.jar microblossom.MicroBlossomBusGenerator --support-offloading --output-dir benchmark/hardware/unit_tests/3_debug_offloading/hardware/offloaded_true/offloaded_true_verilog --graph benchmark/hardware/unit_tests/3_debug_offloading/hardware/prepare.json
+java -Xmx32G -cp target/scala-2.12/microblossom.jar microblossom.MicroBlossomBusGenerator --output-dir benchmark/hardware/unit_tests/3_debug_offloading/hardware/offloaded_false/offloaded_false_verilog --graph benchmark/hardware/unit_tests/3_debug_offloading/hardware/prepare.json
 ```
 
 Yes it is.

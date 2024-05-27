@@ -194,7 +194,7 @@ object ReplayAxiLite4Generator extends App {
     }
     val debuggerPath = args(0)
     val debuggerFile = DebuggerFileAxiLite4(debuggerPath)
-    val conf = new MicroBlossomGeneratorConf(args.tail)
+    val conf = new MicroBlossomBusGeneratorConf(args.tail)
     val config = conf.dualConfig
     val genConfig = Config.argFolderPath(conf.outputDir())
     // note: deliberately not creating `component` here, otherwise it encounters null pointer error of GlobalData.get()....

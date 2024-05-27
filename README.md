@@ -196,7 +196,7 @@ Note: you need to install proper version of scala.
 # build a single package with all dependencies at target/scala-2.12/microblossom.jar
 sbt assembly
 # run some main functino
-scala -classpath target/scala-2.12/microblossom.jar microblossom.MicroBlossomGenerator --help
+scala -classpath target/scala-2.12/microblossom.jar microblossom.MicroBlossomBusGenerator --help
 ```
 
 ### Download SpinalHDL library for development

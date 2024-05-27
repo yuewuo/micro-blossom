@@ -50,7 +50,7 @@ def run_verilog_generator(parameters):
         "-Xmx32G",
         "-cp",
         os.path.join(git_root_dir, "target/scala-2.12/microblossom.jar"),
-        "microblossom.MicroBlossomGenerator",
+        "microblossom.MicroBlossomBusGenerator",
     ] + parameters
     process = subprocess.Popen(
         command,
@@ -84,7 +84,7 @@ def main(args=None):
         "-g",
         "--graph",
         required=True,
-        help="the graph passed as the argument --graph in MicroBlossomGenerator; it also searches in /resources/graphs/",
+        help="the graph passed as the argument --graph in MicroBlossomBusGenerator; it also searches in /resources/graphs/",
     )
     parser.add_argument(
         "--overwrite",
@@ -121,7 +121,7 @@ def main(args=None):
         os.makedirs(verilog_path)
     parameters += ["--output-dir", verilog_path, "--graph", graph]
     print(
-        "the following parameters will be passed to the Scala main function (microblossom.MicroBlossomGenerator):"
+        "the following parameters will be passed to the Scala main function (microblossom.MicroBlossomBusGenerator):"
     )
     print(f"    {' '.join([shlex.quote(para) for para in parameters])}")
 

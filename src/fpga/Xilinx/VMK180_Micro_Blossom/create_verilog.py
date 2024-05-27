@@ -23,5 +23,8 @@ if not os.path.exists(target_path):
     os.makedirs(target_path)
 
 # call sbt to generate the verilog at `target_path`
-subprocess.Popen(f'sbt "runMain microblossom.MicroBlossomGenerator --graph {dual_config_filepath} --output-dir {target_path}"'
-                 , shell=True, cwd=project_path).wait()
+subprocess.Popen(
+    f'sbt "runMain microblossom.MicroBlossomBusGenerator --graph {dual_config_filepath} --output-dir {target_path}"',
+    shell=True,
+    cwd=project_path,
+).wait()

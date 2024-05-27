@@ -8,7 +8,7 @@ def main(args=None):
         "-g",
         "--graph",
         required=True,
-        help="the graph passed as the argument --graph in MicroBlossomGenerator; it also searches in /resources/graphs/",
+        help="the graph passed as the argument --graph in MicroBlossomBusGenerator; it also searches in /resources/graphs/",
     )
     args, parameters = parser.parse_known_args(args=args)
     graph = SingleGraph.from_file(args.graph)
