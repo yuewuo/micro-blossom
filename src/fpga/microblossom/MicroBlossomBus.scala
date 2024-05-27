@@ -307,26 +307,9 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     val upper = timeFinish.upper.constructReadWriteSyncChannel()
   }
   val fsmIsLastFindObstacle = isLastFindObstacle.constructReadWriteSyncChannel()
-  val fsmConflictB16 = ConvergecastConflict(16) // 96 bits data + 1 bit valid
-  fsmConflictB16.resizedFrom(fsmConflict.data)
-  val fsmMaxGrowableU8 = UInt(8 bits)
-  if (config.weightBits >= 8) {
-    // shrinking the bit width
-    when(fsmMaxGrowable.data.length === BigIntToUInt(fsmMaxGrowable.data.length.maxValue)) {
-      fsmMaxGrowableU8 := fsmMaxGrowableU8.maxValue
-    } elsewhen (fsmMaxGrowable.data.length > BigIntToUInt(fsmMaxGrowableU8.maxValue)) {
-      fsmMaxGrowableU8 := fsmMaxGrowableU8.maxValue - 1
-    } otherwise {
-      fsmMaxGrowableU8 := fsmMaxGrowable.data.length.resized
-    }
-  } else {
-    // expanding the bit width
-    when(fsmMaxGrowable.data.length === BigIntToUInt(fsmMaxGrowable.data.length.maxValue)) {
-      fsmMaxGrowableU8 := fsmMaxGrowableU8.maxValue
-    } otherwise {
-      fsmMaxGrowableU8 := fsmMaxGrowable.data.length.resized
-    }
-  }
+  val fsmConflictB16 = ConvergecastConflict(16).resizedFrom(fsmConflict.data)
+  val fsmMaxGrowableU8 = ConvergecastMaxGrowable(8).resizedFrom(fsmMaxGrowable.data)
+  val fsmMaxGrowableU16 = ConvergecastMaxGrowable(16).resizedFrom(fsmMaxGrowable.data)
   // data that are used to communicate between states
   val dataWaitFiFoPushLooperInput = Reg(LooperInput(config))
   val fsm = new StateMachine {
@@ -348,7 +331,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
             } elsewhen (readout.subAddress === U(8)) {
               goto(stateReadFinishTime)
             } elsewhen (readout.subAddress === U(16)) {
-              // TODO: maximum growth + growable
+              goto(stateReadMaximumGrowth)
             } elsewhen (readout.subAddress >= U(32) && readout.subAddress < U(48)) {
               goto(stateReadObstacle)
             } otherwise {
@@ -388,6 +371,20 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       }
     }
 
+    val stateReadMaximumGrowth: State = new State {
+      whenIsNext {
+        fsmMaximumGrowth.readNext(readout.contextId)
+        fsmMaxGrowable.readNext(readout.contextId)
+      }
+      whenIsActive {
+        val value = fsmMaxGrowableU16.length ## fsmMaximumGrowth.data
+        if (is64bus) { readout.value := U(0, 32 bits) ## value }
+        else { readout.value := value }
+        isReadHalt := False
+        goto(stateIdle)
+      }
+    }
+
     // note: whenever entering this state, must not conflict with the fields in watchObstacleFields
     // if conflict occurs, wait for another state before entering this state
     val stateReadObstacle: State = new State {
@@ -407,7 +404,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
             val value0 = fsmConflictB16.node2 ## fsmConflictB16.node1
             val value4 = fsmConflictB16.touch2 ## fsmConflictB16.touch1
             val value8 = fsmConflictB16.vertex2 ## fsmConflictB16.vertex1
-            val value12 = fsmAccumulatedGrown.data ## fsmMaxGrowableU8.asBits ## fsmConflictB16.valid.asBits(8 bits)
+            val value12 = fsmAccumulatedGrown.data ## fsmMaxGrowableU8.length ## fsmConflictB16.valid.asBits(8 bits)
             when(readout.obstacleAddress === U(0)) {
               if (is64bus) { readout.value := value4 ## value0 }
               else { readout.value := value0 }
@@ -426,7 +423,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
                 }
               }
             }
-            fsmAccumulatedGrown.writeNext(readout.contextId, UInt(16 bits).setAll()) // should never be observed
+            fsmAccumulatedGrown.writeNext(readout.contextId, ~U(0, 16 bits)) // should never be observed
             goto(stateIdle)
           }
           // otherwise just wait until the command (has issued a FindObstacle instruction)
@@ -553,8 +550,8 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
           fsmTimeLoad.upper.writeNext(instruction.contextId, counter.value(63 downto 32))
           fsmTimeLoad.lower.writeNext(instruction.contextId, counter.value(31 downto 0))
           // also mark it as not finished
-          fsmTimeFinish.upper.writeNext(instruction.contextId, UInt(32 bits).setAll())
-          fsmTimeFinish.lower.writeNext(instruction.contextId, UInt(32 bits).setAll())
+          fsmTimeFinish.upper.writeNext(instruction.contextId, ~U(0, 32 bits))
+          fsmTimeFinish.lower.writeNext(instruction.contextId, ~U(0, 32 bits))
         }
         when(instruction.value.isFindObstacle) {
           fsmIsLastFindObstacle.writeNext(instruction.contextId, True)

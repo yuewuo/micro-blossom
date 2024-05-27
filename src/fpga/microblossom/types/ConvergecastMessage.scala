@@ -10,13 +10,21 @@ import microblossom._
 case class ConvergecastMaxGrowable(weightBits: Int) extends Bundle {
   val length = UInt(weightBits bits)
 
-  def resizedFrom(source: ConvergecastMaxGrowable) = {
-    require(length.getBitsWidth >= source.length.getBitsWidth)
+  def resizedFrom(source: ConvergecastMaxGrowable): this.type = {
+    if (source.weightBits == weightBits) {
+      length := source.length
+      return this
+    }
+    val isOverflow = if (source.weightBits > weightBits) { source.length > length.maxValue }
+    else { False }
     when(source.length === source.length.maxValue) {
       length := length.maxValue
+    } elsewhen (isOverflow) {
+      length := length.maxValue - 1
     } otherwise {
       length := source.length.resized
     }
+    this
   }
 }
 
@@ -29,7 +37,7 @@ case class ConvergecastConflict(vertexBits: Int) extends Bundle {
   val vertex2 = Bits(vertexBits bits)
   val valid = Bool
 
-  def resizedFrom(source: ConvergecastConflict) = {
+  def resizedFrom(source: ConvergecastConflict): this.type = {
     valid := source.valid
     def resizeConnectUp(source: Bits, target: Bits) = {
       target := source.resized
@@ -45,6 +53,7 @@ case class ConvergecastConflict(vertexBits: Int) extends Bundle {
     resizeConnectUp(source.touch2, touch2)
     vertex1 := source.vertex1.resized
     vertex2 := source.vertex2.resized
+    this
   }
 
   def assignReordered(source: ConvergecastConflict) = {
