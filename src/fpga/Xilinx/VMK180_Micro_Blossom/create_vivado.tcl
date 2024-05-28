@@ -36,22 +36,28 @@ startgroup
 set_property -dict [list \
   CONFIG.PS_PMC_CONFIG { \
     PS_USE_PMCPL_CLK0 {1} \
-    PS_USE_PMCPL_CLK1 {1} \
     PS_USE_M_AXI_FPD {1} \
     PS_M_AXI_FPD_DATA_WIDTH {64} \
     PS_NUM_FABRIC_RESETS {1} \
   } \
 ] [get_bd_cells versal_cips_0]
 set_property CONFIG.PS_PMC_CONFIG "PMC_CRP_PL0_REF_CTRL_FREQMHZ $clock_frequency" [get_bd_cells versal_cips_0]
-set_property CONFIG.PS_PMC_CONFIG "PMC_CRP_PL1_REF_CTRL_FREQMHZ $clock_frequency" [get_bd_cells versal_cips_0]
 endgroup
 
+# create clock with integer division
+startgroup
+create_bd_cell -type ip -vlnv xilinx.com:ip:clk_wizard:1.0 clk_wizard_0
+connect_bd_net [get_bd_pins versal_cips_0/pl0_ref_clk] [get_bd_pins clk_wizard_0/clk_in1]
+set_property CONFIG.CLKOUT_USED "true,true" [get_bd_cells clk_wizard_0]
+set_property CONFIG.CLKOUT_REQUESTED_PHASE "0.000,0.000" [get_bd_cells clk_wizard_0]
+set_property CONFIG.CLKOUT_REQUESTED_OUT_FREQUENCY "$clock_frequency,$slow_clock_frequency" [get_bd_cells clk_wizard_0]
+endgroup
 
 # create and connect my AXI4 IP
 create_bd_cell -type ip -vlnv user.org:user:${ip_name}:1.0 ${ip_name}_0
 connect_bd_intf_net [get_bd_intf_pins ${ip_name}_0/s0] [get_bd_intf_pins versal_cips_0/M_AXI_FPD]
-connect_bd_net [get_bd_pins ${ip_name}_0/clk] [get_bd_pins versal_cips_0/pl0_ref_clk]
-connect_bd_net [get_bd_pins ${ip_name}_0/slow_clk] [get_bd_pins versal_cips_0/pl1_ref_clk]
+connect_bd_net [get_bd_pins ${ip_name}_0/clk] [get_bd_pins clk_wizard_0/clk_out1]
+connect_bd_net [get_bd_pins ${ip_name}_0/slow_clk] [get_bd_pins clk_wizard_0/clk_out2]
 connect_bd_net [get_bd_pins ${ip_name}_0/clk] [get_bd_pins versal_cips_0/m_axi_fpd_aclk]
 
 # create reset system
