@@ -110,37 +110,42 @@ class VivadoProject:
         assert match is not None
         return float(match.group(1))
 
-    def routed_timing_summery(self) -> RoutedTimingSummary:
-        report_file = os.path.join(
-            self.impl_dir, f"{self.name}_wrapper_timing_summary_routed.rpt"
-        )
-        return RoutedTimingSummary.from_file(report_file)
-
-    def default_impl_utilization_path(self) -> str:
+    def impl_utilization_path(self) -> str:
         return os.path.join(self.vivado_dir, f"impl_utilization_{self.name}.txt")
 
+    def impl_timing_summary_path(self) -> str:
+        return os.path.join(self.vivado_dir, f"impl_timing_summary_{self.name}.txt")
+
     def report_impl_utilization(
-        self, filepath: Optional[str] = None, force_regenerate: bool = True
+        self, force_regenerate: bool = True
     ) -> ImplUtilizationReport:
-        if filepath is None:
-            # use the default path
-            filepath = self.default_impl_utilization_path()
-        if os.path.exists(filepath) and not force_regenerate:
-            print(
-                f"reusing impl utilization report for {self.name} (force_regenerate=False)"
-            )
-            return ImplUtilizationReport.from_file(filepath)
-        print(f"generating impl utilization report for {self.name}")
+        self.report_impl(force_regenerate)
+        return ImplUtilizationReport.from_file(self.impl_utilization_path())
+
+    def routed_timing_summery(
+        self, force_regenerate: bool = True
+    ) -> RoutedTimingSummary:
+        self.report_impl(force_regenerate)
+        return RoutedTimingSummary.from_file(self.impl_timing_summary_path())
+
+    def report_impl(self, force_regenerate: bool = True):
+        filepaths = [self.impl_utilization_path(), self.impl_timing_summary_path()]
+        all_exists = all([os.path.exists(filepath) for filepath in filepaths])
+        if all_exists and not force_regenerate:
+            print(f"reusing impl report for {self.name} (force_regenerate=False)")
+            return
+        print(f"generating impl report for {self.name}")
         # first generate a tcl script
-        tcl_path = os.path.join(self.vivado_dir, f"impl_utilization_{self.name}.tcl")
-        log_path = os.path.join(self.vivado_dir, f"impl_utilization_{self.name}.log")
+        tcl_path = os.path.join(self.vivado_dir, f"impl_report_{self.name}.tcl")
+        log_path = os.path.join(self.vivado_dir, f"impl_report_{self.name}.log")
         xpr_path = os.path.join(self.vivado_dir, f"{self.name}.xpr")
         with open(tcl_path, "w", encoding="utf8") as f:
             f.write(
                 f"""
 open_project {xpr_path}
 open_run impl_1
-report_utilization -file {filepath}
+report_utilization -file {self.impl_utilization_path()}
+report_timing_summary -file {self.impl_timing_summary_path()}
 """
             )
         # run the tcl script to generate the report file
@@ -156,4 +161,4 @@ report_utilization -file {filepath}
             process.wait()
             assert process.returncode == 0, "synthesis error"
         # then return the report file
-        return ImplUtilizationReport.from_file(filepath)
+        return

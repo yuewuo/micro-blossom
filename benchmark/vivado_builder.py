@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.join(git_root_dir, "src", "fpga", "utils"))
 if True:
     from micro_util import *
     from build_micro_blossom import main as build_micro_blossom_main
+    from vivado_project import VivadoProject
 
     sys.path.insert(0, fusion_benchmark_dir)
     from util import run_command_get_stdout
@@ -110,6 +111,7 @@ class MicroBlossomAxi4Builder:
     clock_frequency: float = 200  # in MHz
     clock_divide_by: int = 2
     inject_registers: str = ""  # e.g. "offload", "offload,update3"
+    overwrite: bool = False
 
     def hardware_proj_dir(self) -> str:
         return os.path.join(self.project_folder, self.name)
@@ -125,9 +127,45 @@ class MicroBlossomAxi4Builder:
             parameters += ["--clock-divide-by", f"{self.clock_divide_by}"]
             parameters += ["--graph", self.graph_builder.graph_file_path()]
             parameters += ["--inject-registers"] + self.inject_registers
+            if self.overwrite:
+                parameters += ["--overwrite"]
             build_micro_blossom_main(parameters)
 
-    def build_vivado_project(self): ...
+    def build_vivado_project(self):
+        log_file_path = os.path.join(self.hardware_proj_dir(), "build.log")
+        frequency = self.clock_frequency
+        print(f"building frequency={frequency}, log output to {log_file_path}")
+        xsa_path = os.path.join(self.hardware_proj_dir(), f"{self.name}.xsa")
+        if not os.path.exist(xsa_path):
+            with open(log_file_path, "a") as log:
+                process = subprocess.Popen(
+                    ["make"],
+                    universal_newlines=True,
+                    stdout=log.fileno(),
+                    stderr=log.fileno(),
+                    cwd=self.hardware_proj_dir(),
+                )
+                process.wait()
+                assert process.returncode == 0, "synthesis error"
+
+    def create_timing_report(self):
+        vivado = VivadoProject(self.hardware_proj_dir())
+        wns = vivado.routed_timing_summery().clk_pl_0_wns
+        frequency = vivado.frequency()
+        period = 1e-6 / frequency
+        new_period = period - wns * 1e-9
+        new_frequency = 1 / new_period / 1e6
+        if wns < 0:
+            # negative slack exists, need to lower the clock frequency
+            print(f"frequency={frequency} clock frequency too high!!!")
+            print(
+                f"frequency: {frequency}MHz, wns: {wns}ns, should lower the frequency to {new_frequency}MHz"
+            )
+            sanity_check_failed = True
+        else:
+            print(
+                f"frequency={frequency} wns: {wns}ns, potential new frequency is {new_frequency}MHz"
+            )
 
     def run(self):
         self.prepare_graph()
