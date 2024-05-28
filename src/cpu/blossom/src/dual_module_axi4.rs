@@ -415,16 +415,18 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(debug_assertions))]  // only in release mode
     fn dual_module_axi4_basic_2() {
-        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_basic_2 -- --nocapture
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test --release dual_module_axi4_basic_2 -- --nocapture
         let visualize_filename = "dual_module_axi4_basic_2.json".to_string();
         let defect_vertices = vec![18, 26, 34];
         dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices, json!({}));
     }
 
     #[test]
+    #[cfg(not(debug_assertions))]  // only in release mode
     fn dual_module_axi4_basic_3() {
-        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_basic_3 -- --nocapture
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test --release dual_module_axi4_basic_3 -- --nocapture
         let visualize_filename = "dual_module_axi4_basic_3.json".to_string();
         let defect_vertices = vec![16, 26];
         dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices, json!({}));
@@ -434,8 +436,9 @@ mod tests {
     /// reason: the write stage logic is implemented wrongly: only when the overall speed is positive
     ///   should it report an obstacle; otherwise just report whatever the maxGrowth value is
     #[test]
+    #[cfg(not(debug_assertions))]  // only in release mode
     fn dual_module_axi4_debug_1() {
-        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_debug_1 -- --nocapture
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test --release dual_module_axi4_debug_1 -- --nocapture
         let visualize_filename = "dual_module_axi4_debug_1.json".to_string();
         let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
         dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices, json!({}));
@@ -453,8 +456,9 @@ mod tests {
     /// the primal offloaded grow unit will issue a grow command automatically and retrieve the conflict information
     /// however, this is different from
     #[test]
+    #[cfg(not(debug_assertions))]  // only in release mode
     fn dual_module_axi4_debug_2() {
-        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_debug_2 -- --nocapture
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test --release dual_module_axi4_debug_2 -- --nocapture
         let visualize_filename = "dual_module_axi4_debug_2.json".to_string();
         let defect_vertices = vec![12, 13, 17, 25, 28, 48, 49];
         dual_module_axi4_basic_standard_syndrome(7, visualize_filename, defect_vertices, json!({}));

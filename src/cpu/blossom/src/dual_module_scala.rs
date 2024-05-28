@@ -251,16 +251,18 @@ pub mod tests {
     }
 
     #[test]
+    #[cfg(not(debug_assertions))]  // only in release mode
     fn dual_module_scala_basic_2() {
-        // cargo test dual_module_scala_basic_2 -- --nocapture
+        // cargo test --release dual_module_scala_basic_2 -- --nocapture
         let visualize_filename = "dual_module_scala_basic_2.json".to_string();
         let defect_vertices = vec![18, 26, 34];
         dual_module_scala_basic_standard_syndrome(7, visualize_filename, defect_vertices);
     }
 
     #[test]
+    #[cfg(not(debug_assertions))]  // only in release mode
     fn dual_module_scala_basic_3() {
-        // cargo test dual_module_scala_basic_3 -- --nocapture
+        // cargo test --release dual_module_scala_basic_3 -- --nocapture
         let visualize_filename = "dual_module_scala_basic_3.json".to_string();
         let defect_vertices = vec![16, 26];
         dual_module_scala_basic_standard_syndrome(7, visualize_filename, defect_vertices);
@@ -270,8 +272,9 @@ pub mod tests {
     /// reason: the write stage logic is implemented wrongly: only when the overall speed is positive
     ///   should it report an obstacle; otherwise just report whatever the maxGrowth value is
     #[test]
+    #[cfg(not(debug_assertions))]  // only in release mode
     fn dual_module_scala_debug_1() {
-        // cargo test dual_module_scala_debug_1 -- --nocapture
+        // cargo test --release dual_module_scala_debug_1 -- --nocapture
         let visualize_filename = "dual_module_scala_debug_1.json".to_string();
         let defect_vertices = vec![3, 4, 5, 11, 12, 13, 18, 19, 21, 26, 28, 37, 44];
         dual_module_scala_basic_standard_syndrome(7, visualize_filename, defect_vertices);
