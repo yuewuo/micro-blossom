@@ -32,7 +32,6 @@ update_ip_catalog -rebuild -scan_changes
 # configure CIPS
 # expose AXI_FPD
 # expose a PL reset
-startgroup
 set_property -dict [list \
   CONFIG.PS_PMC_CONFIG { \
     PS_USE_PMCPL_CLK0 {1} \
@@ -42,16 +41,14 @@ set_property -dict [list \
   } \
 ] [get_bd_cells versal_cips_0]
 set_property CONFIG.PS_PMC_CONFIG "PMC_CRP_PL0_REF_CTRL_FREQMHZ $clock_frequency" [get_bd_cells versal_cips_0]
-endgroup
 
 # create clock with integer division
-startgroup
 create_bd_cell -type ip -vlnv xilinx.com:ip:clk_wizard:1.0 clk_wizard_0
+set_property CONFIG.PRIM_SOURCE {Global_buffer} [get_bd_cells clk_wizard_0]
 connect_bd_net [get_bd_pins versal_cips_0/pl0_ref_clk] [get_bd_pins clk_wizard_0/clk_in1]
 set_property CONFIG.CLKOUT_USED "true,true" [get_bd_cells clk_wizard_0]
 set_property CONFIG.CLKOUT_REQUESTED_PHASE "0.000,0.000" [get_bd_cells clk_wizard_0]
 set_property CONFIG.CLKOUT_REQUESTED_OUT_FREQUENCY "$clock_frequency,$slow_clock_frequency" [get_bd_cells clk_wizard_0]
-endgroup
 
 # create and connect my AXI4 IP
 create_bd_cell -type ip -vlnv user.org:user:${ip_name}:1.0 ${ip_name}_0
