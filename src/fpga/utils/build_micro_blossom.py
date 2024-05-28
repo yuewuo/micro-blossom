@@ -78,8 +78,9 @@ def main(args=None):
         "-b", "--board", default="VMK180", help="FPGA board, e.g., VMK180"
     )
     parser.add_argument(
-        "-c", "--clock-frequency", default="100", help="clock frequency in MHz"
+        "-c", "--clock-frequency", default="200", help="clock frequency in MHz"
     )
+    parser.add_argument("-d", "--clock-divide-by", default="2", help="clock divide by")
     parser.add_argument(
         "-g",
         "--graph",
@@ -97,7 +98,9 @@ def main(args=None):
     board = args.board
     print(f"board: {board}")
     clock_frequency = float(args.clock_frequency)
+    clock_divide_by = int(args.clock_divide_by)
     print(f"clock frequency: {clock_frequency}MHz")
+    print(f"clock divide by: {clock_divide_by}")
     path = args.path
     print(f"path: {path}")
     name = args.name
@@ -150,6 +153,9 @@ def main(args=None):
         )
         makefile = checked_replace(
             makefile, "CLOCK_FREQUENCY ?= 200", f"CLOCK_FREQUENCY ?= {clock_frequency}"
+        )
+        makefile = checked_replace(
+            makefile, "CLOCK_DIVIDE_BY ?= 2", f"CLOCK_DIVIDE_BY ?= {clock_divide_by}"
         )
     with open(os.path.join(project_dir, "Makefile"), "w", encoding="utf8") as f:
         f.write(makefile)

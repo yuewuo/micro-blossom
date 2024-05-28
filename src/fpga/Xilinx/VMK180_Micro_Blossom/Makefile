@@ -8,6 +8,7 @@ VITIS_DIR = $(NAME)_vitis
 
 DUAL_CONFIG_FILEPATH ?=
 CLOCK_FREQUENCY ?= 200
+CLOCK_DIVIDE_BY ?= 2
 
 all: vitis
 
@@ -50,7 +51,7 @@ $(XSA_FILE): $(VERILOG_DIR)/$(MODULE_NAME).v
 		fi \
 	fi
 # increase stack size: https://support.xilinx.com/s/article/64434?language=en_US
-	vivado -stack 2000 -mode batch -s create_vivado.tcl -tclargs $(CLOCK_FREQUENCY)
+	vivado -stack 2000 -mode batch -s create_vivado.tcl -tclargs $(CLOCK_FREQUENCY) $(CLOCK_DIVIDE_BY)
 
 vitis: $(XSA_FILE)
 	@echo creating vitis workspace at $(VITIS_DIR)
@@ -71,8 +72,8 @@ clean:
 	if [ "$$answer" = "y" ]; then \
 		echo "cleaning..."; \
 	else \
-		echo "Do nothing"; \
-		exit 0; \
+		echo "Abort cleaning"; \
+		exit 1; \
 	fi
 	@if [ -f "./create_verilog.py" ]; then \
 		rm -rf $(NAME)_verilog; \

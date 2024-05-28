@@ -3,7 +3,7 @@ import sys
 import subprocess
 import shutil
 from datetime import datetime
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 git_root_dir = (
     subprocess.run(
@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.join(git_root_dir, "benchmark"))
 sys.path.insert(0, os.path.join(git_root_dir, "src", "fpga", "utils"))
 if True:
     from micro_util import *
+    from build_micro_blossom import main as build_micro_blossom_main
 
     sys.path.insert(0, fusion_benchmark_dir)
     from util import run_command_get_stdout
@@ -102,24 +103,28 @@ class MicroBlossomGraphBuilder:
 
 @dataclass
 class MicroBlossomAxi4Builder:
-    graphBuilder: MicroBlossomGraphBuilder
+    graph_builder: MicroBlossomGraphBuilder
 
     project_folder: str
     name: str
+    clock_frequency: float = 200  # in MHz
+    clock_divide_by: int = 2
+    inject_registers: str = ""  # e.g. "offload", "offload,update3"
 
     def hardware_proj_dir(self) -> str:
-        return os.path.join(self.target_folder, f"{self.name}.json")
+        return os.path.join(self.project_folder, self.name)
 
     def prepare_graph(self):
-        self.graphBuilder.run()
+        self.graph_builder.run()
 
     def create_vivado_project(self):
-        if not os.path.exists(hardware_proj_dir(d, inj)):
+        if not os.path.exists(self.hardware_proj_dir()):
             parameters = ["--name", self.name]
-            parameters += ["--path", hardware_dir]
-            parameters += ["--clock-frequency", f"{frequency}"]
-            parameters += ["--graph", graph_file_path]
-            parameters += ["--inject-registers"] + inject_registers(inj)
+            parameters += ["--path", self.project_folder]
+            parameters += ["--clock-frequency", f"{self.clock_frequency}"]
+            parameters += ["--clock-divide-by", f"{self.clock_divide_by}"]
+            parameters += ["--graph", self.graph_builder.graph_file_path()]
+            parameters += ["--inject-registers"] + self.inject_registers
             build_micro_blossom_main(parameters)
 
     def build_vivado_project(self): ...

@@ -758,7 +758,7 @@ class MicroBlossomBusGeneratorConf(arguments: Seq[String]) extends ScallopConf(a
   val baseAddress = opt[BigInt](default = Some(0), descr = "base address of the memory-mapped module, default to 0")
   // DualConfig
   val broadcastDelay = opt[Int](default = Some(0))
-  val convergecastDelay = opt[Int](default = Some(0))
+  val convergecastDelay = opt[Int](default = Some(1))
   val contextDepth = opt[Int](default = Some(1), descr = "how many contexts supported")
   val conflictChannels = opt[Int](default = Some(1), descr = "how many conflicts are reported at once")
   val hardCodeWeights = opt[Boolean](default = Some(true), descr = "hard code the edge weights")
