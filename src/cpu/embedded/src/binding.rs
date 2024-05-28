@@ -72,7 +72,7 @@ pub mod extern_c {
     }
 
     bitflags! {
-        #[derive(Debug, Clone, Copy)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
         #[repr(C)]
         pub struct MicroBlossomHardwareFlags: uint16_t {
             const SUPPORT_ADD_DEFECT_VERTEX = 1 << 0;

@@ -279,7 +279,8 @@ mod tests {
         assert_eq!(hardware_info.conflict_channels, 1);
         assert_eq!(hardware_info.vertex_bits, 7);
         assert_eq!(hardware_info.weight_bits, 10); // maximum weight = 1000 < 1024
-        assert_eq!(hardware_info.instruction_buffer_depth, 10);
+        assert_eq!(hardware_info.instruction_buffer_depth, 4);
+        assert_eq!(hardware_info.flags, MicroBlossomHardwareFlags::SUPPORT_ADD_DEFECT_VERTEX | MicroBlossomHardwareFlags::HARD_CODE_WEIGHTS | MicroBlossomHardwareFlags::IS_64_BUS);
     }
 
     fn dual_module_axi4_register_test(graph: MicroBlossomSingle, config: DualAxi4Config) -> DualModuleAxi4Driver {
