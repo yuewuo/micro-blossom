@@ -138,6 +138,7 @@ case class BitRange(msb: Int, lsb: Int) {
 
 case class InstructionSpec(config: DualConfig) {
   def numBits = 2 * config.vertexBits + 2
+  assert(config.weightBits + 5 < numBits)
 
   def opCodeRange = BitRange(1, 0)
   def extensionIndicatorRange = BitRange(2, 2)

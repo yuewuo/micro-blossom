@@ -91,7 +91,7 @@ case class DualConfig(
       weightBits = log2Up(max_weight.toInt + 1) // weightBits could be smaller than grownBits
       assert(weightBits <= 26)
       if (weightBits > vertexBits * 2 - 4) {
-        vertexBits = (weightBits + 4) / 2 // expand vertexBits so that the instruction can hold the maximum length
+        vertexBits = (weightBits + 5) / 2 // expand vertexBits so that the instruction can hold the maximum length
       }
       if (vertexBits < 5) {
         vertexBits = 5 // at least 5 bits to support all instructions

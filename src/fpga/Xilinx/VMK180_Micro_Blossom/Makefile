@@ -1,6 +1,6 @@
 NAME = vmk180_micro_blossom
 
-MODULE_NAME = MicroBlossom
+MODULE_NAME = MicroBlossomBus
 VIVADO_DIR = $(NAME)_vivado
 VERILOG_DIR = $(NAME)_verilog
 XSA_FILE = $(NAME).xsa
