@@ -1,31 +1,12 @@
-import os
-import sys
-import subprocess
-import shutil
-from datetime import datetime
+import os, sys, git, subprocess, math
 from dataclasses import dataclass, field
 
-git_root_dir = (
-    subprocess.run(
-        "git rev-parse --show-toplevel",
-        cwd=os.path.dirname(os.path.abspath(__file__)),
-        shell=True,
-        check=True,
-        capture_output=True,
-    )
-    .stdout.decode(sys.stdout.encoding)
-    .strip(" \r\n")
-)
+git_root_dir = git.Repo(".", search_parent_directories=True).working_tree_dir
 sys.path.insert(0, os.path.join(git_root_dir, "benchmark"))
 sys.path.insert(0, os.path.join(git_root_dir, "src", "fpga", "utils"))
-if True:
-    from micro_util import *
-    from build_micro_blossom import main as build_micro_blossom_main
-    from vivado_project import VivadoProject
-
-    sys.path.insert(0, fusion_benchmark_dir)
-    from util import run_command_get_stdout
-    from get_ttyoutput import get_ttyoutput
+from micro_util import *
+from build_micro_blossom import main as build_micro_blossom_main
+from vivado_project import VivadoProject
 
 
 @dataclass
@@ -43,6 +24,8 @@ class MicroBlossomGraphBuilder:
     only_stab_z: bool = True
     use_combined_probability: bool = True
     test_syndrome_count: int = 100
+    transform_graph: bool = True
+    visualize_graph: bool = False
 
     def decoder_config(self):
         return {
@@ -58,8 +41,9 @@ class MicroBlossomGraphBuilder:
     def syndrome_file_path(self) -> str:
         return os.path.join(self.graph_folder, f"{self.name}.syndromes")
 
-    def run(self) -> None:
-        assert os.path.exists(self.graph_folder)
+    def build(self) -> None:
+        if not os.path.exists(self.graph_folder):
+            os.mkdir(self.graph_folder)
 
         # first create the syndrome file
         syndrome_file_path = self.syndrome_file_path()
@@ -90,6 +74,33 @@ class MicroBlossomGraphBuilder:
             print("\n" + stdout)
             assert returncode == 0, "command fails..."
 
+            # merge two side of the virtual vertices to reduce resource usage
+            if self.transform_graph:
+                if self.code_type == "rotated-planar-code":
+                    command = micro_blossom_command() + [
+                        "transform-syndromes",
+                        syndrome_file_path,
+                        syndrome_file_path,
+                        "qecp-rotated-planar-code",
+                        f"{self.d}",
+                    ]
+                    stdout, returncode = run_command_get_stdout(command)
+                    print("\n" + stdout)
+                    assert returncode == 0, "command fails..."
+                else:
+                    raise Exception(f"transform not implemented for ${self.code_type}")
+
+            if self.visualize_graph:
+                command = fusion_blossom_command() + [
+                    "visualize-syndromes",
+                    syndrome_file_path,
+                    "--visualizer-filename",
+                    f"micro_blossom_{self.name}.json",
+                ]
+                stdout, returncode = run_command_get_stdout(command)
+                print("\n" + stdout)
+                assert returncode == 0, "command fails..."
+
         # then generate the graph json
         graph_file_path = self.graph_file_path()
         if not os.path.exists(graph_file_path):
@@ -110,17 +121,24 @@ class MicroBlossomAxi4Builder:
     name: str
     clock_frequency: float = 200  # in MHz
     clock_divide_by: int = 2
-    inject_registers: str = ""  # e.g. "offload", "offload,update3"
+    # e.g. ["offload"], ["offload", "update3"]
+    inject_registers: list[str] = field(default_factory=lambda: [])
     overwrite: bool = False
 
     def hardware_proj_dir(self) -> str:
         return os.path.join(self.project_folder, self.name)
 
     def prepare_graph(self):
-        self.graph_builder.run()
+        self.graph_builder.build()
 
     def create_vivado_project(self):
-        if not os.path.exists(self.hardware_proj_dir()):
+        if not os.path.exists(self.project_folder):
+            os.mkdir(self.project_folder)
+        if not os.path.exists(self.hardware_proj_dir()) or not os.path.exists(
+            os.path.join(
+                self.hardware_proj_dir(), f"{self.name}_verilog", "MicroBlossomBus.v"
+            )
+        ):
             parameters = ["--name", self.name]
             parameters += ["--path", self.project_folder]
             parameters += ["--clock-frequency", f"{self.clock_frequency}"]
@@ -136,7 +154,7 @@ class MicroBlossomAxi4Builder:
         frequency = self.clock_frequency
         print(f"building frequency={frequency}, log output to {log_file_path}")
         xsa_path = os.path.join(self.hardware_proj_dir(), f"{self.name}.xsa")
-        if not os.path.exist(xsa_path):
+        if not os.path.exists(xsa_path):
             with open(log_file_path, "a") as log:
                 process = subprocess.Popen(
                     ["make"],
@@ -148,26 +166,22 @@ class MicroBlossomAxi4Builder:
                 process.wait()
                 assert process.returncode == 0, "synthesis error"
 
-    def create_timing_report(self):
+    # return current frequency if timing passed; otherwise return a maximum frequency that is achievable
+    def next_maximum_frequency(self) -> int:
         vivado = VivadoProject(self.hardware_proj_dir())
         wns = vivado.routed_timing_summery().clk_pl_0_wns
         frequency = vivado.frequency()
-        period = 1e-6 / frequency
-        new_period = period - wns * 1e-9
-        new_frequency = 1 / new_period / 1e6
         if wns < 0:
-            # negative slack exists, need to lower the clock frequency
-            print(f"frequency={frequency} clock frequency too high!!!")
-            print(
-                f"frequency: {frequency}MHz, wns: {wns}ns, should lower the frequency to {new_frequency}MHz"
-            )
-            sanity_check_failed = True
+            print(f"frequency={frequency}MHz clock frequency too high!!!")
+            period = 1e-6 / frequency
+            new_period = period - wns * 1e-9
+            new_frequency = math.floor(1 / new_period / 1e6)
+            print(f"wns: {wns}ns, should lower the frequency to {new_frequency}MHz")
+            return new_frequency
         else:
-            print(
-                f"frequency={frequency} wns: {wns}ns, potential new frequency is {new_frequency}MHz"
-            )
+            return frequency
 
-    def run(self):
+    def build(self):
         self.prepare_graph()
         self.create_vivado_project()
         self.build_vivado_project()

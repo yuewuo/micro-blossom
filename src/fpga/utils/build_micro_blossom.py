@@ -122,7 +122,14 @@ def main(args=None):
     verilog_path = os.path.abspath(os.path.join(project_dir, f"{name}_verilog"))
     if not os.path.exists(verilog_path):
         os.makedirs(verilog_path)
-    parameters += ["--output-dir", verilog_path, "--graph", graph]
+    parameters += [
+        "--output-dir",
+        verilog_path,
+        "--graph",
+        graph,
+        "--clock-divide-by",
+        f"{clock_divide_by}",
+    ]
     print(
         "the following parameters will be passed to the Scala main function (microblossom.MicroBlossomBusGenerator):"
     )
