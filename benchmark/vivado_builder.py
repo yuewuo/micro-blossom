@@ -1,4 +1,4 @@
-import os, sys, git, subprocess
+import os, sys, git, subprocess, math
 from dataclasses import dataclass, field
 
 git_root_dir = git.Repo(".", search_parent_directories=True).working_tree_dir
@@ -166,24 +166,20 @@ class MicroBlossomAxi4Builder:
                 process.wait()
                 assert process.returncode == 0, "synthesis error"
 
-    def create_timing_report(self):
+    # return current frequency if timing passed; otherwise return a maximum frequency that is achievable
+    def next_maximum_frequency(self) -> int:
         vivado = VivadoProject(self.hardware_proj_dir())
         wns = vivado.routed_timing_summery().clk_pl_0_wns
         frequency = vivado.frequency()
-        period = 1e-6 / frequency
-        new_period = period - wns * 1e-9
-        new_frequency = 1 / new_period / 1e6
         if wns < 0:
-            # negative slack exists, need to lower the clock frequency
-            print(f"frequency={frequency} clock frequency too high!!!")
-            print(
-                f"frequency: {frequency}MHz, wns: {wns}ns, should lower the frequency to {new_frequency}MHz"
-            )
-            sanity_check_failed = True
+            print(f"frequency={frequency}MHz clock frequency too high!!!")
+            period = 1e-6 / frequency
+            new_period = period - wns * 1e-9
+            new_frequency = math.floor(1 / new_period / 1e6)
+            print(f"wns: {wns}ns, should lower the frequency to {new_frequency}MHz")
+            return new_frequency
         else:
-            print(
-                f"frequency={frequency} wns: {wns}ns, potential new frequency is {new_frequency}MHz"
-            )
+            return frequency
 
     def build(self):
         self.prepare_graph()
