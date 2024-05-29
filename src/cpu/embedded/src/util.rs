@@ -1,9 +1,6 @@
-use crate::binding::extern_c::*;
 use crate::binding::*;
 use core::hint::black_box;
 use core::sync::atomic::{compiler_fence, Ordering};
-use cty::*;
-use micro_blossom_nostd::heapless::Vec;
 
 /// note that it might not be safe to sleep for a long time depending on the C implementation
 pub fn sleep(duration: f32) {
@@ -101,59 +98,5 @@ where
                 1.0e-6 / time_per_op,
             );
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ConflictsStore<const MAX_CONFLICT_CHANNELS: usize = 8> {
-    pub channels: uint8_t,
-    pub cursor: uint8_t,
-    pub head: ReadoutHead,
-    conflicts: Vec<ReadoutConflict, MAX_CONFLICT_CHANNELS>,
-}
-
-impl<const MAX_CC: usize> ConflictsStore<MAX_CC> {
-    pub const fn new() -> Self {
-        Self {
-            channels: 0,
-            cursor: 0,
-            head: ReadoutHead::new(),
-            conflicts: Vec::new(),
-        }
-    }
-
-    pub fn reconfigure(&mut self, channels: uint8_t) {
-        assert!(channels as usize <= MAX_CC);
-        self.channels = channels;
-        self.cursor = channels;
-        self.conflicts.resize_default(channels.into()).unwrap();
-    }
-
-    #[inline]
-    pub unsafe fn get_conflicts(&mut self, context_id: uint16_t) {
-        get_conflicts(&mut self.head, self.conflicts.as_mut_ptr(), self.channels, context_id);
-        if self.head.growable == 0 {
-            self.reloaded();
-        }
-    }
-
-    pub fn reloaded(&mut self) {
-        self.cursor = 0;
-    }
-
-    pub fn pop(&mut self) -> Option<&ReadoutConflict> {
-        while self.cursor < self.channels {
-            let cursor = self.cursor as usize;
-            self.cursor += 1; // always increment
-            if self.conflicts[cursor].is_valid() {
-                return Some(&self.conflicts[cursor]);
-            }
-        }
-        None
-    }
-
-    /// conflict may be uninitialized or outdated, use with care
-    pub fn maybe_uninit_conflict(&mut self, index: usize) -> &mut ReadoutConflict {
-        &mut self.conflicts[index]
     }
 }

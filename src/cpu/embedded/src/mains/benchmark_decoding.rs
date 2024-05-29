@@ -26,17 +26,15 @@ make -C ../../fpga/Xilinx/VMK180_Micro_Blossom run_a72
 pub const MAX_NODE_NUM: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("MAX_NODE_NUM"), "65536")));
 
 pub const DEFECTS: &'static [u32] = &include_bytes!("./embedded.defects" as u32le);
-pub const MAX_CONFLICT_CHANNELS: usize = 8;
 
 static mut PRIMAL_MODULE: UnsafeCell<PrimalModuleEmbedded<MAX_NODE_NUM>> = UnsafeCell::new(PrimalModuleEmbedded::new());
-static mut DUAL_MODULE: UnsafeCell<DualModuleStackless<DualDriverTracked<DualDriver<MAX_CONFLICT_CHANNELS>, MAX_NODE_NUM>>> =
+static mut DUAL_MODULE: UnsafeCell<DualModuleStackless<DualDriverTracked<DualDriver, MAX_NODE_NUM>>> =
     UnsafeCell::new(DualModuleStackless::new(DualDriverTracked::new(DualDriver::new())));
 
 pub fn main() {
     // obtain hardware information
     let hardware_info = unsafe { extern_c::get_hardware_info() };
-    assert!(hardware_info.conflict_channels as usize <= MAX_CONFLICT_CHANNELS);
-    assert!(hardware_info.conflict_channels >= 1);
+    assert!(hardware_info.conflict_channels == 1);
 
     // create primal and dual modules
     let context_id = 0;
@@ -44,10 +42,7 @@ pub fn main() {
     // adapt bit width of primal module so that node index will not overflow
     primal_module.nodes.blossom_begin = (1 << hardware_info.vertex_bits) / 2;
     let dual_module = unsafe { DUAL_MODULE.get().as_mut().unwrap() };
-    dual_module
-        .driver
-        .driver
-        .reconfigure(hardware_info.conflict_channels, context_id);
+    dual_module.driver.driver.context_id = context_id;
     let mut defects_reader = DefectsReader::new(DEFECTS);
 
     while let Some(defects) = defects_reader.next() {

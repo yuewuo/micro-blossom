@@ -114,7 +114,7 @@ impl DualModuleLooperDriver {
             context_id,
             maximum_growth,
         })?;
-        let grown = CompactWeight::from(output.grown);
+        let grown = CompactWeight::try_from(output.grown).unwrap();
         if output.max_growable == u16::MAX {
             assert!(!output.conflict.valid, "growable must be finite when conflict is detected");
             return Ok((CompactObstacle::None, grown));
@@ -134,7 +134,7 @@ impl DualModuleLooperDriver {
         }
         return Ok((
             CompactObstacle::GrowLength {
-                length: CompactWeight::from(output.max_growable),
+                length: CompactWeight::try_from(output.max_growable).unwrap(),
             },
             grown,
         ));

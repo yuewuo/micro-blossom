@@ -1,6 +1,5 @@
 use crate::binding::*;
 use crate::mains::test_get_time::sanity_check as sanity_check_get_time;
-use crate::util::*;
 use core::hint::black_box;
 use konst::{option, primitive::parse_usize, result::unwrap_ctx};
 use micro_blossom_nostd::instruction::*;
@@ -38,9 +37,6 @@ pub fn main() {
     println!("context id: {cid}, left: {left} (non-virtual), right: {EDGE_0_VIRTUAL} (virtual), edge weight: {weight}");
     println!("support_offloading: {SUPPORT_OFFLOADING}");
 
-    let mut conflicts_store = ConflictsStore::<1>::new();
-    conflicts_store.reconfigure(1);
-
     println!("\n1. Timer Sanity Check");
     sanity_check_get_time();
 
@@ -74,9 +70,9 @@ pub fn main() {
             }
         }
         println!("    get obstacle");
-        unsafe { conflicts_store.get_conflicts(cid) };
-        println!("head: {:#?}", conflicts_store.head);
-        assert_eq!(conflicts_store.head.growable, u16::MAX); // because there is no defect yet
+        let readout = unsafe { extern_c::get_single_readout(cid) };
+        println!("readout: {:#?}", readout);
+        assert_eq!(readout.max_growable, u8::MAX); // because there is no defect yet
         println!("    add defect");
         unsafe { extern_c::execute_instruction(Instruction32::add_defect_vertex(left, node).into(), cid) };
         for _ in 0..nop {
@@ -87,77 +83,77 @@ pub fn main() {
             }
         }
         println!("    get obstacle");
-        unsafe { conflicts_store.get_conflicts(cid) };
-        println!("head: {:#?}", conflicts_store.head);
+        let readout = unsafe { extern_c::get_single_readout(cid) };
+        println!("readout: {:#?}", readout);
         // println!("conflicts: {conflicts:#?}");
-        assert_eq!(conflicts_store.head.growable, EDGE_0_WEIGHT as u16);
+        assert_eq!(readout.max_growable, EDGE_0_WEIGHT as u8); // because there is no defect yet
     }
 
     println!("\n5. Test Grow and Obstacle Detection");
     unsafe { extern_c::execute_instruction(Instruction32::reset().into(), cid) };
     unsafe { extern_c::set_maximum_growth(0, cid) }; // disable primal offloading growth
     unsafe { extern_c::execute_instruction(Instruction32::add_defect_vertex(left, node).into(), cid) };
-    unsafe { conflicts_store.get_conflicts(cid) };
+    let readout = unsafe { extern_c::get_single_readout(cid) };
     // println!("head: {head:#?}, conflicts: {conflicts:#?}");
-    assert_eq!(conflicts_store.head.growable, weight);
-    assert!(conflicts_store.pop().is_none());
+    assert_eq!(readout.max_growable as u16, weight);
+    assert!(!readout.has_conflict());
     unsafe { extern_c::execute_instruction(Instruction32::grow(weight as CompactWeight).into(), cid) };
-    unsafe { conflicts_store.get_conflicts(cid) };
+    let readout = unsafe { extern_c::get_single_readout(cid) };
     // println!("head: {head:#?}, conflicts: {conflicts:#?}");
     if SUPPORT_OFFLOADING {
-        assert_eq!(conflicts_store.head.growable, u16::MAX, "should be offloaded");
-        assert!(conflicts_store.pop().is_none());
+        assert_eq!(readout.max_growable, u8::MAX, "should be offloaded");
+        assert!(!readout.has_conflict());
     } else {
-        assert_eq!(conflicts_store.head.growable, 0);
-        assert!(conflicts_store.pop().is_some());
+        assert_eq!(readout.max_growable, 0);
+        assert!(readout.has_conflict());
         unsafe { extern_c::execute_instruction(Instruction32::set_speed(node, CompactGrowState::Stay).into(), cid) };
-        unsafe { conflicts_store.get_conflicts(cid) };
+        let readout = unsafe { extern_c::get_single_readout(cid) };
         // println!("head: {head:#?}, conflicts: {conflicts:#?}");
-        assert_eq!(conflicts_store.head.growable, u16::MAX);
-        assert!(conflicts_store.pop().is_none());
+        assert_eq!(readout.max_growable, u8::MAX);
+        assert!(!readout.has_conflict());
     }
 
     println!("\n6. Test Setting Maximum Growth");
     unsafe { extern_c::execute_instruction(Instruction32::reset().into(), cid) };
     unsafe { extern_c::set_maximum_growth(100, cid) };
-    unsafe { conflicts_store.get_conflicts(cid) };
-    // println!("head: {head:#?}, conflicts: {conflicts:#?}");
-    assert_eq!(conflicts_store.head.maximum_growth, 100);
+    let readout = unsafe { extern_c::get_single_readout(cid) };
+    println!("readout: {readout:#?}");
+    assert_eq!(unsafe { extern_c::get_maximum_growth(cid) }, 100);
     unsafe { extern_c::set_maximum_growth(200, cid) };
-    unsafe { conflicts_store.get_conflicts(cid) };
-    assert_eq!(conflicts_store.head.maximum_growth, 200);
+    unsafe { extern_c::get_single_readout(cid) };
+    assert_eq!(unsafe { extern_c::get_maximum_growth(cid) }, 200);
     unsafe { extern_c::set_maximum_growth(0, cid) }; // set it back to 0 before doing other operations, to avoid data race
 
     println!("\n7. Test Primal Offloading Growth");
     unsafe { extern_c::execute_instruction(Instruction32::reset().into(), cid) };
     unsafe { extern_c::execute_instruction(Instruction32::add_defect_vertex(left, node).into(), cid) };
     unsafe { extern_c::set_maximum_growth(weight + 10, cid) };
-    unsafe { conflicts_store.get_conflicts(cid) };
-    println!("conflicts_store: {conflicts_store:#?}");
+    let readout = unsafe { extern_c::get_single_readout(cid) };
+    println!("readout: {readout:#?}");
     if SUPPORT_OFFLOADING {
-        assert_eq!(conflicts_store.head.growable, u16::MAX);
-        assert!(conflicts_store.pop().is_none());
+        assert_eq!(readout.max_growable, u8::MAX);
+        assert!(!readout.has_conflict());
         assert_eq!(
-            conflicts_store.head.accumulated_grown, weight,
+            readout.accumulated_grown, weight,
             "the primal offloading grow unit should have grown by weight"
         );
     } else {
-        assert_eq!(conflicts_store.head.growable, 0);
+        assert_eq!(readout.max_growable, 0);
         assert_eq!(
-            conflicts_store.head.accumulated_grown, weight,
+            readout.accumulated_grown, weight,
             "the primal offloading grow unit should have grown by weight"
         );
         unsafe { extern_c::set_maximum_growth(weight + 10, cid) };
-        unsafe { conflicts_store.get_conflicts(cid) };
-        assert_eq!(conflicts_store.head.accumulated_grown, 0, "should be automatically cleared");
+        let readout = unsafe { extern_c::get_single_readout(cid) };
+        assert_eq!(readout.accumulated_grown, 0, "should be automatically cleared");
         unsafe { extern_c::set_maximum_growth(0, cid) };
     }
 
     println!("\n8. Test Set Speed");
     unsafe { extern_c::execute_instruction(Instruction32::set_speed(node, CompactGrowState::Stay).into(), cid) };
-    unsafe { conflicts_store.get_conflicts(cid) };
-    println!("conflicts_store: {conflicts_store:#?}");
-    assert_eq!(conflicts_store.head.growable, u16::MAX);
+    let readout = unsafe { extern_c::get_single_readout(cid) };
+    println!("readout: {readout:#?}");
+    assert_eq!(readout.max_growable, u8::MAX);
 
     println!("\n9. Test Context Switching");
     let cid_1 = 0;
@@ -167,12 +163,12 @@ pub fn main() {
     unsafe { extern_c::set_maximum_growth(0, cid_1) };
     unsafe { extern_c::set_maximum_growth(0, cid_2) };
     unsafe { extern_c::execute_instruction(Instruction32::add_defect_vertex(left, node).into(), cid_1) };
-    unsafe { conflicts_store.get_conflicts(cid_1) };
-    assert_eq!(conflicts_store.head.growable, weight, "context 1 should detect growth");
-    unsafe { conflicts_store.get_conflicts(cid_2) };
+    let readout = unsafe { extern_c::get_single_readout(cid_1) };
+    assert_eq!(readout.max_growable as u16, weight, "context 1 should detect growth");
+    let readout = unsafe { extern_c::get_single_readout(cid_2) };
     if CONTEXT_DEPTH == 1 {
-        assert_eq!(conflicts_store.head.growable, weight, "context 2 should wrap up and see it");
+        assert_eq!(readout.max_growable as u16, weight, "context 2 should wrap up and see it");
     } else {
-        assert_eq!(conflicts_store.head.growable, u16::MAX, "context 2 should not see it");
+        assert_eq!(readout.max_growable, u8::MAX, "context 2 should not see it");
     }
 }

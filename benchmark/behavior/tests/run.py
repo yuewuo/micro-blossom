@@ -47,9 +47,9 @@ variants = [
     {"convergecast_delay": 2},
     {"convergecast_delay": 3},
     # 3x clock divided by
-    {"clock_divide_by": 2},
     {"clock_divide_by": 3},
     {"clock_divide_by": 4},
+    {"clock_divide_by": 5},
     # 5x context depth
     {"context_depth": 2},
     {"context_depth": 4},
@@ -70,23 +70,23 @@ variants = [
     {"inject_registers": "offload4,update3"},
     {"inject_registers": "offload3,execute2,update"},
     # 5x (clock divided by, inject registers)
-    {"clock_divide_by": 2, "inject_registers": "execute2"},
-    {"clock_divide_by": 2, "inject_registers": "offload4,update3"},
-    {"clock_divide_by": 2, "inject_registers": "offload3,execute2,update"},
     {"clock_divide_by": 3, "inject_registers": "execute2"},
     {"clock_divide_by": 3, "inject_registers": "offload4,update3"},
+    {"clock_divide_by": 3, "inject_registers": "offload3,execute2,update"},
+    {"clock_divide_by": 4, "inject_registers": "execute2"},
+    {"clock_divide_by": 4, "inject_registers": "offload4,update3"},
     # 4x (clock divided by, context depth)
-    {"clock_divide_by": 2, "context_depth": 2},
-    {"clock_divide_by": 2, "context_depth": 4},
     {"clock_divide_by": 3, "context_depth": 2},
     {"clock_divide_by": 3, "context_depth": 4},
+    {"clock_divide_by": 4, "context_depth": 2},
+    {"clock_divide_by": 4, "context_depth": 4},
     # 6x (clock divided by, broadcast delay, convergecast delay)
-    {"clock_divide_by": 2, "broadcast_delay": 2, "convergecast_delay": 1},
-    {"clock_divide_by": 2, "broadcast_delay": 1, "convergecast_delay": 2},
-    {"clock_divide_by": 2, "broadcast_delay": 2, "convergecast_delay": 2},
     {"clock_divide_by": 3, "broadcast_delay": 2, "convergecast_delay": 1},
     {"clock_divide_by": 3, "broadcast_delay": 1, "convergecast_delay": 2},
     {"clock_divide_by": 3, "broadcast_delay": 2, "convergecast_delay": 2},
+    {"clock_divide_by": 4, "broadcast_delay": 2, "convergecast_delay": 1},
+    {"clock_divide_by": 4, "broadcast_delay": 1, "convergecast_delay": 2},
+    {"clock_divide_by": 4, "broadcast_delay": 2, "convergecast_delay": 2},
     # 2x bus interfaces
     {"bus_type": "Axi4"},  # Axi4
     {"use_32_bus": True},  # AxiLite4Bus32
@@ -98,11 +98,11 @@ variants = [
     # 1x support offloading
     {"support_offloading": True},
     # 2x (support offloading, clock divided by)
-    {"support_offloading": True, "clock_divide_by": 2},
     {"support_offloading": True, "clock_divide_by": 3},
+    {"support_offloading": True, "clock_divide_by": 4},
     # 2x (support offloading, broadcast delay, clock divided by)
-    {"support_offloading": True, "broadcast_delay": 2, "clock_divide_by": 2},
     {"support_offloading": True, "broadcast_delay": 2, "clock_divide_by": 3},
+    {"support_offloading": True, "broadcast_delay": 2, "clock_divide_by": 4},
 ]
 
 

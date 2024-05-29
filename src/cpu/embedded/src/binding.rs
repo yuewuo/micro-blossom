@@ -7,30 +7,8 @@ pub mod extern_c {
     use micro_blossom_nostd::interface::*;
     use micro_blossom_nostd::util::*;
 
-    #[derive(Debug, Clone)]
-    #[repr(C)]
-    pub struct ReadoutHead {
-        /// write to `maximum_growth` will automatically clear `accumulated_grown`
-        pub maximum_growth: uint16_t,
-        pub accumulated_grown: uint16_t,
-        /// usually `growable` and `accumulated_grown` are read simultaneously
-        pub growable: uint16_t,
-    }
-
-    #[derive(Debug, Clone)]
-    #[repr(C)]
-    pub struct ReadoutConflict {
-        pub node_1: uint16_t,
-        pub node_2: uint16_t,
-        pub touch_1: uint16_t,
-        pub touch_2: uint16_t,
-        pub vertex_1: uint16_t,
-        pub vertex_2: uint16_t,
-        pub valid: uint8_t,
-    }
-
     /// SingleReadout allows one to query all information about FindObstacle within single 128 bit read
-    #[derive(Debug, Clone, Copy)]
+    #[derive(Debug, Clone, Copy, Default)]
     #[repr(C)]
     pub struct SingleReadout {
         pub node_1: uint16_t,
@@ -107,13 +85,9 @@ pub mod extern_c {
 
         pub fn get_hardware_info() -> MicroBlossomHardwareInfo;
         pub fn execute_instruction(instruction: uint32_t, context_id: uint16_t);
-        pub fn get_conflicts(
-            head: *mut ReadoutHead,
-            conflicts: *mut ReadoutConflict,
-            conflict_channels: uint8_t,
-            context_id: uint16_t,
-        );
+        pub fn get_single_readout(context_id: uint16_t) -> SingleReadout;
         pub fn set_maximum_growth(length: uint16_t, context_id: uint16_t);
+        pub fn get_maximum_growth(context_id: uint16_t) -> uint16_t;
 
         pub fn clear_instruction_counter();
         pub fn get_instruction_counter() -> uint32_t;
@@ -125,30 +99,21 @@ pub mod extern_c {
         pub fn get_error_counter() -> uint32_t;
     }
 
-    impl Default for ReadoutConflict {
-        fn default() -> Self {
-            Self::invalid()
-        }
-    }
-
-    impl ReadoutConflict {
-        pub fn invalid() -> Self {
-            Self {
-                node_1: 0,
-                node_2: 0,
-                touch_1: 0,
-                touch_2: 0,
-                vertex_1: 0,
-                vertex_2: 0,
-                valid: 0,
-            }
-        }
-        pub fn is_valid(&self) -> bool {
-            self.valid != 0
-        }
-        pub fn get_obstacle(&self) -> CompactObstacle {
-            if self.node_1 != u16::MAX {
-                return CompactObstacle::Conflict {
+    impl SingleReadout {
+        pub fn into_obstacle(self) -> (CompactObstacle, CompactWeight) {
+            let grown = self.accumulated_grown as CompactWeight;
+            let growable = self.max_growable;
+            if growable == u8::MAX {
+                (CompactObstacle::None, grown)
+            } else if growable != 0 {
+                (
+                    CompactObstacle::GrowLength {
+                        length: growable as CompactWeight,
+                    },
+                    grown,
+                )
+            } else if self.conflict_valid != 0 {
+                let conflict = CompactObstacle::Conflict {
                     node_1: ni!(self.node_1).option(),
                     node_2: if self.node_2 == u16::MAX {
                         None.into()
@@ -164,34 +129,15 @@ pub mod extern_c {
                     vertex_1: ni!(self.vertex_1),
                     vertex_2: ni!(self.vertex_2),
                 };
+                (conflict, grown)
             } else {
-                return CompactObstacle::Conflict {
-                    node_1: ni!(self.node_2).option(),
-                    node_2: if self.node_1 == u16::MAX {
-                        None.into()
-                    } else {
-                        ni!(self.node_1).option()
-                    },
-                    touch_1: ni!(self.touch_2).option(),
-                    touch_2: if self.touch_1 == u16::MAX {
-                        None.into()
-                    } else {
-                        ni!(self.touch_1).option()
-                    },
-                    vertex_1: ni!(self.vertex_2),
-                    vertex_2: ni!(self.vertex_1),
-                };
+                // when this happens, the DualDriverTracked should check for BlossomNeedExpand event
+                // this is usually triggered by reaching maximum growth set by the DualDriverTracked
+                (CompactObstacle::GrowLength { length: 0 }, grown)
             }
         }
-    }
-
-    impl ReadoutHead {
-        pub const fn new() -> Self {
-            Self {
-                maximum_growth: 0,
-                accumulated_grown: 0,
-                growable: 0,
-            }
+        pub fn has_conflict(&self) -> bool {
+            self.conflict_valid != 0
         }
     }
 }
