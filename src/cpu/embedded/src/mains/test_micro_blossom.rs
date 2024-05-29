@@ -1,6 +1,7 @@
 use crate::binding::*;
 use crate::mains::test_get_time::sanity_check as sanity_check_get_time;
 use core::hint::black_box;
+use extern_c::MicroBlossomHardwareFlags as Flags;
 use konst::{option, primitive::parse_usize, result::unwrap_ctx};
 use micro_blossom_nostd::instruction::*;
 use micro_blossom_nostd::util::*;
@@ -27,6 +28,7 @@ pub const EDGE_0_WEIGHT: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(opti
 
 pub const CONTEXT_DEPTH: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("CONTEXT_DEPTH"), "1")));
 pub const SUPPORT_OFFLOADING: bool = option_env!("SUPPORT_OFFLOADING").is_some();
+pub const SUPPORT_LAYER_FUSION: bool = option_env!("SUPPORT_LAYER_FUSION").is_some();
 
 pub fn main() {
     println!("Test MicroBlossom");
@@ -35,7 +37,7 @@ pub fn main() {
     let node = ni!(0);
     let weight = EDGE_0_WEIGHT as u16;
     println!("context id: {cid}, left: {left} (non-virtual), right: {EDGE_0_VIRTUAL} (virtual), edge weight: {weight}");
-    println!("support_offloading: {SUPPORT_OFFLOADING}");
+    println!("support_offloading: {SUPPORT_OFFLOADING}, support_layer_fusion: {SUPPORT_LAYER_FUSION}");
 
     println!("\n1. Timer Sanity Check");
     sanity_check_get_time();
@@ -44,6 +46,12 @@ pub fn main() {
     let hardware_info = unsafe { extern_c::get_hardware_info() };
     println!("version: {:#08x}", hardware_info.version);
     println!("{hardware_info:#?}");
+    assert_eq!(CONTEXT_DEPTH, hardware_info.context_depth as usize);
+    assert_eq!(SUPPORT_OFFLOADING, hardware_info.flags.contains(Flags::SUPPORT_OFFLOADING));
+    assert_eq!(
+        SUPPORT_LAYER_FUSION,
+        hardware_info.flags.contains(Flags::SUPPORT_LAYER_FUSION)
+    );
 
     println!("\n3. Test Instruction Counter");
     unsafe { extern_c::clear_instruction_counter() };

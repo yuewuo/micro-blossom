@@ -15,8 +15,31 @@ run_dir = os.path.join(this_dir, "run")
 
 class HardwareTest(TestVariant):
 
+    def get_graph_builder(self) -> MicroBlossomGraphBuilder:
+        config = self.embedded_main_config()
+        graph_path = config["graph"]
+        graph_folder = os.path.dirname(graph_path)
+        graph_file = os.path.basename(graph_path)
+        assert graph_file.endswith(".json")
+        graph_name = graph_file[:-5]
+
+        return MicroBlossomGraphBuilder(
+            graph_folder=graph_folder,
+            name=graph_name,
+            d=None,
+            p=None,
+            noisy_measurements=None,
+            max_half_weight=None,
+        )
+
     def run_hardware_test(self):
-        print(self.name())
+        project = MicroBlossomAxi4Builder(
+            graph_builder=self.get_graph_builder(),
+            name=self.name(),
+            clock_frequency=250,
+            clock_divide_by=10,
+            project_folder=os.path.join(this_dir, "tmp-project"),
+        )
 
 
 def main():
@@ -31,18 +54,6 @@ def main():
 
         test = HardwareTest(variant)
         test.run_hardware_test()
-
-        graph_path = test.config()["graph"]
-        print(graph_path)
-        # graph_builder = MicroBlossomGraphBuilder(
-        #     graph_folder=os.path.join(this_dir, "tmp-graph"),
-        #     name=configuration.name(),
-        #     d=None,
-        #     p=None,
-        #     noisy_measurements=configuration.d - 1,
-        #     max_half_weight=7,  # higher weights represents the case for large code distances
-        #     visualize_graph=True,
-        # )
 
 
 # def get_project(
