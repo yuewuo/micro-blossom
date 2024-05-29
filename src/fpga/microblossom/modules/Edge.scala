@@ -68,13 +68,16 @@ case class Edge(config: DualConfig, edgeIndex: Int) extends Component {
   var message = BroadcastMessage(config)
   if (config.contextBits > 0) {
     // fetch stage, delay the instruction
-    ram = Mem(EdgeState(config.weightBits), config.contextDepth)
-    ram.setTechnology(ramBlock)
-    fetchState := ram.readSync(
-      address = io.message.contextId,
-      enable = io.message.valid,
-      readUnderWrite = readFirst
-    )
+    if (config.hardCodeWeights) {
+      fetchState := EdgeState.resetValue(config, edgeIndex)
+    } else {
+      ram = Mem(EdgeState(config.weightBits), config.contextDepth)
+      ram.setTechnology(ramBlock)
+      fetchState := ram.readSync(
+        address = io.message.contextId,
+        enable = io.message.valid
+      )
+    }
     message := RegNext(io.message)
   } else {
     if (config.hardCodeWeights) {

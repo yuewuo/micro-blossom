@@ -280,7 +280,12 @@ mod tests {
         assert_eq!(hardware_info.vertex_bits, 7);
         assert_eq!(hardware_info.weight_bits, 10); // maximum weight = 1000 < 1024
         assert_eq!(hardware_info.instruction_buffer_depth, 4);
-        assert_eq!(hardware_info.flags, MicroBlossomHardwareFlags::SUPPORT_ADD_DEFECT_VERTEX | MicroBlossomHardwareFlags::HARD_CODE_WEIGHTS | MicroBlossomHardwareFlags::IS_64_BUS);
+        assert_eq!(
+            hardware_info.flags,
+            MicroBlossomHardwareFlags::SUPPORT_ADD_DEFECT_VERTEX
+                | MicroBlossomHardwareFlags::HARD_CODE_WEIGHTS
+                | MicroBlossomHardwareFlags::IS_64_BUS
+        );
     }
 
     fn dual_module_axi4_register_test(graph: MicroBlossomSingle, config: DualAxi4Config) -> DualModuleAxi4Driver {
@@ -387,6 +392,18 @@ mod tests {
         assert_eq!(hardware_info.weight_bits, 4);
     }
 
+    // test the smallest instance with context switching
+    #[test]
+    fn dual_module_axi4_build_test_2() {
+        // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_build_test_2 -- --nocapture
+        let code = CodeCapacityPlanarCode::new(3, 0.1, 7);
+        let mut driver = dual_module_axi4_register_test(
+            MicroBlossomSingle::new(&code.get_initializer(), &code.get_positions()),
+            serde_json::from_value(json!({ "name": "axi4_build_test_2", "sim_config": { "context_depth": 2 } })).unwrap(),
+        );
+        driver.get_hardware_info().unwrap();
+    }
+
     #[test]
     fn dual_module_axi4_build_various_configurations() {
         // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test dual_module_axi4_build_various_configurations -- --nocapture
@@ -396,6 +413,10 @@ mod tests {
             json!({ "bus_type": "AxiLite4", "use_64_bus": true }), // 64 bit AxiLite4
             json!({ "bus_type": "AxiLite4", "use_64_bus": false }), // 32 bit AxiLite4
             json!({ "bus_type": "Axi4", "use_64_bus": true, "dump_debugger_files": false }), // 64 bit Axi4
+            // test context switching
+            json!({ "context_depth": 2 }),
+            json!({ "context_depth": 4 }),
+            json!({ "context_depth": 8 }),
         ];
         let code = CodeCapacityPlanarCode::new(3, 0.1, 7);
         for (index, sim_config) in sim_configurations.iter().enumerate() {
@@ -416,7 +437,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(debug_assertions))]  // only in release mode
+    #[cfg(not(debug_assertions))] // only in release mode
     fn dual_module_axi4_basic_2() {
         // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test --release dual_module_axi4_basic_2 -- --nocapture
         let visualize_filename = "dual_module_axi4_basic_2.json".to_string();
@@ -425,7 +446,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(debug_assertions))]  // only in release mode
+    #[cfg(not(debug_assertions))] // only in release mode
     fn dual_module_axi4_basic_3() {
         // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test --release dual_module_axi4_basic_3 -- --nocapture
         let visualize_filename = "dual_module_axi4_basic_3.json".to_string();
@@ -437,7 +458,7 @@ mod tests {
     /// reason: the write stage logic is implemented wrongly: only when the overall speed is positive
     ///   should it report an obstacle; otherwise just report whatever the maxGrowth value is
     #[test]
-    #[cfg(not(debug_assertions))]  // only in release mode
+    #[cfg(not(debug_assertions))] // only in release mode
     fn dual_module_axi4_debug_1() {
         // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test --release dual_module_axi4_debug_1 -- --nocapture
         let visualize_filename = "dual_module_axi4_debug_1.json".to_string();
@@ -457,7 +478,7 @@ mod tests {
     /// the primal offloaded grow unit will issue a grow command automatically and retrieve the conflict information
     /// however, this is different from
     #[test]
-    #[cfg(not(debug_assertions))]  // only in release mode
+    #[cfg(not(debug_assertions))] // only in release mode
     fn dual_module_axi4_debug_2() {
         // WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 cargo test --release dual_module_axi4_debug_2 -- --nocapture
         let visualize_filename = "dual_module_axi4_debug_2.json".to_string();

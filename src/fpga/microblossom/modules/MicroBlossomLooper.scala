@@ -37,6 +37,7 @@ case class MicroBlossomLooper[T <: Data](config: DualConfig, tagType: HardType[T
 
   // define variables
   val immediateLoopback = Bool()
+  val isDataRace = Bool()
   val inputInstruction = Instruction(config)
   val inputEntry = PipelineEntry(config, tagType)
   val pipelineLength = config.readLatency
@@ -81,7 +82,7 @@ case class MicroBlossomLooper[T <: Data](config: DualConfig, tagType: HardType[T
       inputInstruction.assignGrow(growLength)
     }
   } otherwise {
-    inputEntry.valid := io.push.valid
+    inputEntry.valid := io.push.valid && !isDataRace
     if (config.contextBits > 0) { inputEntry.contextId := io.push.payload.contextId }
     if (tagType != null) inputEntry.tag := io.push.payload.tag
     inputEntry.maximumGrowth := io.push.payload.maximumGrowth
@@ -102,7 +103,7 @@ case class MicroBlossomLooper[T <: Data](config: DualConfig, tagType: HardType[T
   }
 
   // detect data races: forbid an instruction to enter until the pipeline does not have any entry of the same context ID
-  val isDataRace = if (config.contextBits > 0) {
+  if (config.contextBits > 0) {
     val dataRaces = Vec.fill(pipelineLength)(Bool())
     for (i <- (0 until pipelineLength)) {
       val entry = pipelineEntries(i)
@@ -112,8 +113,10 @@ case class MicroBlossomLooper[T <: Data](config: DualConfig, tagType: HardType[T
         dataRaces(i) := entry.valid
       }
     }
-    dataRaces.reduceBalancedTree(_ | _)
-  } else { False }
+    isDataRace := dataRaces.reduceBalancedTree(_ | _)
+  } else {
+    isDataRace := False
+  }
 
   // output safety: the host bus should be much faster; if congestion detected, must reset the whole module
   when(responseEntry.valid && !immediateLoopback) {
