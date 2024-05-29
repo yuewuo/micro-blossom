@@ -59,6 +59,7 @@ def get_project(
         clock_frequency=frequency,
         clock_divide_by=configuration.clock_divide_by,
         project_folder=os.path.join(this_dir, "tmp-project"),
+        context_depth=configuration.context_depth,
     )
 
 

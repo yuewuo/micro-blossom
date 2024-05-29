@@ -121,9 +121,16 @@ class MicroBlossomAxi4Builder:
     name: str
     clock_frequency: float = 200  # in MHz
     clock_divide_by: int = 2
+    overwrite: bool = False
+    broadcast_delay: int = 0
+    convergecast_delay: int = 1
+    context_depth: int = 1
+    hard_code_weights: bool = True
+    support_add_defect_vertex: bool = True
+    support_offloading: bool = False
+    support_layer_fusion: bool = False
     # e.g. ["offload"], ["offload", "update3"]
     inject_registers: list[str] = field(default_factory=lambda: [])
-    overwrite: bool = False
 
     def hardware_proj_dir(self) -> str:
         return os.path.join(self.project_folder, self.name)
@@ -144,6 +151,17 @@ class MicroBlossomAxi4Builder:
             parameters += ["--clock-frequency", f"{self.clock_frequency}"]
             parameters += ["--clock-divide-by", f"{self.clock_divide_by}"]
             parameters += ["--graph", self.graph_builder.graph_file_path()]
+            parameters += ["--broadcast-delay", f"{self.broadcast_delay}"]
+            parameters += ["--convergecast-delay", f"{self.convergecast_delay}"]
+            parameters += ["--context-depth", f"{self.context_depth}"]
+            if not self.hard_code_weights:
+                parameters += ["--dynamic-weights"]
+            if not self.support_add_defect_vertex:
+                parameters += ["--no-add-defect-vertex"]
+            if self.support_offloading:
+                parameters += ["--support-offloading"]
+            if self.support_layer_fusion:
+                parameters += ["--support-layer-fusion"]
             parameters += ["--inject-registers"] + self.inject_registers
             if self.overwrite:
                 parameters += ["--overwrite"]

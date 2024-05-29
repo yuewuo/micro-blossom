@@ -29,6 +29,10 @@ class FrequencyExplorer:
         with open(self.log_filepath, "r", encoding="utf8") as f:
             for line in f.readlines():
                 line = line.strip("\r\n ")
+                time_example = "[2024-05-28 22:09:03] "
+                if len(line) < len(time_example):
+                    continue
+                line = line[len(time_example) :]
                 if line.startswith(BEST_FREQUENCY_KEYWORD):
                     frequency = float(line[len(BEST_FREQUENCY_KEYWORD) :])
                     return frequency

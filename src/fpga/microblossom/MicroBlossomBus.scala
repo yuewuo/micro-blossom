@@ -761,8 +761,8 @@ class MicroBlossomBusGeneratorConf(arguments: Seq[String]) extends ScallopConf(a
   val convergecastDelay = opt[Int](default = Some(1))
   val contextDepth = opt[Int](default = Some(1), descr = "how many contexts supported")
   val conflictChannels = opt[Int](default = Some(1), descr = "how many conflicts are reported at once")
-  val hardCodeWeights = opt[Boolean](default = Some(true), descr = "hard code the edge weights")
-  val supportAddDefectVertex = opt[Boolean](default = Some(true), descr = "support AddDefectVertex instruction")
+  val dynamicWeights = opt[Boolean](default = Some(false), descr = "by default hard code the edge weights")
+  val noAddDefectVertex = opt[Boolean](default = Some(false), descr = "by default support AddDefectVertex instruction")
   val supportOffloading = opt[Boolean](default = Some(false), descr = "support offloading optimization")
   val supportLayerFusion = opt[Boolean](default = Some(false), descr = "support layer fusion")
   val injectRegisters =
@@ -778,8 +778,8 @@ class MicroBlossomBusGeneratorConf(arguments: Seq[String]) extends ScallopConf(a
     convergecastDelay = convergecastDelay(),
     contextDepth = contextDepth(),
     conflictChannels = conflictChannels(),
-    hardCodeWeights = hardCodeWeights(),
-    supportAddDefectVertex = supportAddDefectVertex(),
+    hardCodeWeights = !dynamicWeights(),
+    supportAddDefectVertex = !noAddDefectVertex(),
     supportOffloading = supportOffloading(),
     supportLayerFusion = supportLayerFusion(),
     injectRegisters = injectRegisters()
