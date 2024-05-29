@@ -167,13 +167,26 @@ class MicroBlossomAxi4Builder:
                 parameters += ["--overwrite"]
             build_micro_blossom_main(parameters)
 
+    def build_rust_binary(self, main: str = "hello_world"):
+        make_env = os.environ.copy()
+        make_env["EMBEDDED_BLOSSOM_MAIN"] = main
+        process = subprocess.Popen(
+            ["make", "Xilinx"],
+            universal_newlines=True,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            cwd=embedded_dir,
+            env=make_env,
+        )
+        process.wait()
+        assert process.returncode == 0, "compile error"
+
     def build_vivado_project(self):
         log_file_path = os.path.join(self.hardware_proj_dir(), "build.log")
         frequency = self.clock_frequency
         print(f"building frequency={frequency}, log output to {log_file_path}")
         xsa_path = os.path.join(self.hardware_proj_dir(), f"{self.name}.xsa")
         if not os.path.exists(xsa_path):
-            # TODO: build embedded binary first
             with open(log_file_path, "a") as log:
                 process = subprocess.Popen(
                     ["make"],
@@ -190,8 +203,9 @@ class MicroBlossomAxi4Builder:
         vivado = VivadoProject(self.hardware_proj_dir())
         wns = vivado.routed_timing_summery().clk_pl_0_wns
         frequency = vivado.frequency()
+        assert frequency == self.clock_frequency
         if wns < 0:
-            print(f"frequency={frequency}MHz clock frequency too high!!!")
+            print(f"frequency={frequency}MHz clock frequency too high")
             period = 1e-6 / frequency
             new_period = period - wns * 1e-9
             new_frequency = math.floor(1 / new_period / 1e6)
@@ -200,7 +214,29 @@ class MicroBlossomAxi4Builder:
         else:
             return frequency
 
+    # return current value if timing passed; otherwise return a minimum clock_divide_by that is achievable
+    def next_minimum_clock_divide_by(self) -> int:
+        vivado = VivadoProject(self.hardware_proj_dir())
+        wns = vivado.routed_timing_summery().clk_pl_0_wns
+        frequency = vivado.frequency()
+        assert frequency == self.clock_frequency
+        if wns < 0:
+            print(
+                f"frequency={frequency}MHz, clock_divide_by={self.clock_divide_by} is not achievable"
+            )
+            period = 1e-6 / frequency
+            slow_period = period * self.clock_divide_by
+            new_slow_period = slow_period - wns * 1e-9
+            new_clock_divide_by = math.ceil(new_slow_period / period)
+            print(
+                f"wns: {wns}ns, clock_divide_by should lower to {new_clock_divide_by}"
+            )
+            return new_clock_divide_by
+        else:
+            return self.clock_frequency
+
     def build(self):
         self.prepare_graph()
         self.create_vivado_project()
+        self.build_rust_binary()
         self.build_vivado_project()
