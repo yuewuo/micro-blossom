@@ -32,14 +32,40 @@ class HardwareTest(TestVariant):
             max_half_weight=None,
         )
 
-    def run_hardware_test(self):
-        project = MicroBlossomAxi4Builder(
+    def get_project(self) -> MicroBlossomAxi4Builder:
+        return MicroBlossomAxi4Builder(
             graph_builder=self.get_graph_builder(),
             name=self.name(),
             clock_frequency=250,
             clock_divide_by=10,
             project_folder=os.path.join(this_dir, "tmp-project"),
         )
+
+    def build_embedded_binary(self):
+        config = self.embedded_main_config()
+        make_env = os.environ.copy()
+        for key in config:
+            if key == "graph":
+                continue
+            value = config[key]
+            make_env[key.upper()] = str(value)
+        process = subprocess.Popen(
+            ["make", "Xilinx"],
+            universal_newlines=True,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            cwd=embedded_dir,
+            env=make_env,
+        )
+        process.wait()
+        assert process.returncode == 0, "compile error"
+
+    def run_hardware_test(self):
+        project = self.get_project()
+        project.create_vivado_project()
+        self.build_embedded_binary()
+        project.build_vivado_project()
+        # TODO: run the test on hardware
 
 
 def main():
