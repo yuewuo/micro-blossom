@@ -72,10 +72,10 @@ for configuration in configurations:
 
     explorer = FrequencyExplorer(
         compute_next_maximum_frequency=compute_next_maximum_frequency,
-        log_filepath=os.path.join(frequency_log_dir, configuration.name() + ".log"),
+        log_filepath=os.path.join(frequency_log_dir, configuration.name() + ".txt"),
     )
 
     best_frequency = explorer.optimize()
-    print(configuration.name, best_frequency)
+    print(f"{configuration.name()}: {best_frequency}MHz")
 
     project = get_project(configuration, best_frequency)

@@ -34,7 +34,7 @@ class FrequencyExplorer:
                     continue
                 line = line[len(time_example) :]
                 if line.startswith(BEST_FREQUENCY_KEYWORD):
-                    frequency = float(line[len(BEST_FREQUENCY_KEYWORD) :])
+                    frequency = int(line[len(BEST_FREQUENCY_KEYWORD) :])
                     return frequency
         return None
 
@@ -49,9 +49,7 @@ class FrequencyExplorer:
     def optimize(self) -> Optional[int]:
         log_best_frequency = self.get_log_best_frequency()
         if log_best_frequency is not None:
-            print(
-                f"best frequency {log_best_frequency}MHz found in log file {self.log_filepath}"
-            )
+            # print(f"best frequency {log_best_frequency}MHz in {self.log_filepath}")
             return log_best_frequency
 
         frequency = int(self.max_frequency)

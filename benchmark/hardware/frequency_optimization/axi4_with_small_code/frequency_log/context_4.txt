@@ -1,0 +1,7 @@
+[2024-05-28 23:23:23] optimization start
+[2024-05-28 23:23:23] iteration 0: trying frequency 300
+[2024-05-28 23:37:51] suggested achievable frequency is 285
+[2024-05-28 23:37:51] iteration 1: trying frequency 285
+[2024-05-28 23:51:29] suggested achievable frequency is 276
+[2024-05-28 23:51:29] iteration 2: trying frequency 270
+[2024-05-29 00:04:36] [found best frequency] 270
