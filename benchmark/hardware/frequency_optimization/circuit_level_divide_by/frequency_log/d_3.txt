@@ -1,0 +1,24 @@
+[2024-05-29 08:57:57] optimization start
+[2024-05-29 08:57:57] iteration 0: trying divide_by 2
+[2024-05-29 11:24:38] optimization start
+[2024-05-29 11:24:38] iteration 0: trying divide_by 2
+[2024-05-29 11:55:07] suggested achievable divide_by is 177
+[2024-05-29 13:03:00] optimization start
+[2024-05-29 13:03:00] iteration 0: trying divide_by 2
+[2024-05-29 13:03:37] optimization start
+[2024-05-29 13:03:37] iteration 0: trying divide_by 2
+[2024-05-29 13:04:18] suggested achievable divide_by is 3
+[2024-05-29 13:04:18] iteration 1: trying divide_by 3
+[2024-05-29 13:05:18] optimization start
+[2024-05-29 13:05:18] iteration 0: trying divide_by 2
+[2024-05-29 13:05:34] optimization start
+[2024-05-29 13:05:34] iteration 0: trying divide_by 2
+[2024-05-29 13:05:35] suggested achievable divide_by is 3
+[2024-05-29 13:05:35] iteration 1: trying divide_by 3
+[2024-05-29 13:18:01] suggested achievable divide_by is 250
+[2024-05-29 13:18:01] iteration 2: trying divide_by 250
+[2024-05-29 14:02:07] optimization start
+[2024-05-29 14:02:07] iteration 0: trying divide_by 2
+[2024-05-29 14:02:07] suggested achievable divide_by is 3
+[2024-05-29 14:02:07] iteration 1: trying divide_by 3
+[2024-05-29 14:02:07] [found best clock_divide_by] 3
