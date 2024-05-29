@@ -4,11 +4,12 @@
 //!
 //! ## Examples
 //!
-//! First generate the resources using `cargo run --features=compact --bin generate_example_graphs`.
+//! First generate the resources using `cargo run --bin generate_example_graphs`.
 //!
 //! ```sh
 //! cargo run --features=compact --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
-//! EMBEDDED_BLOSSOM_MAIN=test_get_time cargo run --features=compact --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json  # note: it's normal that sleep() will take almost forever
+//! # note: it's normal that sleep() will take almost forever
+//! EMBEDDED_BLOSSOM_MAIN=test_get_time cargo run --features=compact --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
 //!
 //! EMBEDDED_BLOSSOM_MAIN=benchmark_reset_speed WITH_WAVEFORM=1 cargo run --features=compact --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
 //! gtkwave ../../../simWorkspace/MicroBlossomHost/benchmark_reset_speed/hosted.fst
@@ -110,11 +111,6 @@ lazy_static! {
     static ref SIMULATOR_DRIVER: Mutex<Option<DualModuleAxi4Driver>> = Mutex::new(None);
 }
 
-// #[no_mangle]
-// extern "C" fn get_native_time() -> u64 {
-//     BEGIN_TIME.elapsed().as_nanos() as u64
-// }
-
 #[no_mangle]
 extern "C" fn get_native_time() -> u64 {
     let mut locked = SIMULATOR_DRIVER.lock();
@@ -148,23 +144,13 @@ extern "C" fn execute_instruction(instruction: u32, context_id: u16) {
 }
 
 #[no_mangle]
-extern "C" fn get_conflicts(
-    _head: *mut ReadoutHead,
-    _conflicts: *mut ReadoutConflict,
-    _conflict_channels: u8,
-    _context_id: u16,
-) {
-    unimplemented!()
-    // let head = unsafe { &mut *head };
-    // let slice = unsafe { std::slice::from_raw_parts_mut(conflicts, conflict_channels as usize) };
-    // let mut locked = SIMULATOR_DRIVER.lock();
-    // let driver = locked.as_mut().unwrap();
-    // assert_eq!(conflict_channels, driver.conflicts_store.channels);
-    // driver.get_conflicts(context_id).unwrap();
-    // *head = driver.conflicts_store.head.clone();
-    // for i in 0..conflict_channels as usize {
-    //     slice[i] = driver.conflicts_store.maybe_uninit_conflict(i).clone();
-    // }
+extern "C" fn get_single_readout(context_id: u16) -> SingleReadout {
+    SIMULATOR_DRIVER
+        .lock()
+        .as_mut()
+        .unwrap()
+        .get_single_readout(context_id)
+        .unwrap()
 }
 
 #[no_mangle]
@@ -184,5 +170,15 @@ extern "C" fn set_maximum_growth(length: u16, context_id: u16) {
         .as_mut()
         .unwrap()
         .set_maximum_growth(length, context_id)
+        .unwrap()
+}
+
+#[no_mangle]
+extern "C" fn get_maximum_growth(context_id: u16) -> u16 {
+    SIMULATOR_DRIVER
+        .lock()
+        .as_mut()
+        .unwrap()
+        .get_maximum_growth(context_id)
         .unwrap()
 }

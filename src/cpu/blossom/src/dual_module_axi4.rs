@@ -131,7 +131,7 @@ impl DualModuleAxi4Driver {
         self.memory_write_16(base_address, context_id)
     }
 
-    pub fn get_conflicts(&mut self, context_id: u16) -> std::io::Result<SingleReadout> {
+    pub fn get_single_readout(&mut self, context_id: u16) -> std::io::Result<SingleReadout> {
         let readout_address = self.context_base_address(context_id) + 32;
         // self.pre_fetch_conflicts(context_id)?; // optional
         let readout = unsafe {
@@ -188,7 +188,7 @@ impl DualStacklessDriver for DualModuleAxi4Driver {
             .unwrap();
     }
     fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
-        let readout = self.get_conflicts(self.context_id).unwrap();
+        let readout = self.get_single_readout(self.context_id).unwrap();
         // check again
         let grown = readout.accumulated_grown as CompactWeight;
         let growable = readout.max_growable;

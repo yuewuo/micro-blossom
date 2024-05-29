@@ -375,6 +375,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
           }
         } elsewhen (isWriteAsk) {
           when(instruction.mapping.hit(factory.writeAddress())) {
+            hardwareInfo.instructionCounter := hardwareInfo.instructionCounter + 1
             goto(stateWriteInstruction)
           } elsewhen (readout.mapping.hit(factory.writeAddress())) {
             when(readout.writeSubAddress === U(16)) {
