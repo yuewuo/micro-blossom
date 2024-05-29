@@ -45,30 +45,61 @@ Thus, the test should run within one hour.
 This is a first try of the test script: I haven't developed the proper test yet, so I just use `test_micro_blossom` to roughly get the idea of which one might fail.
 I'll develop more sophisticated and generic tests later on.
 
-- [x] 0. {}
-- [ ] 1. {'graph': '/Users/wuyue/Documents/GitHub/micro-blossom/resources/graphs/example_code_capacity_rotated_d3.json'}
-- [x] 2. {'graph': '/Users/wuyue/Documents/GitHub/micro-blossom/resources/graphs/example_code_capacity_planar_d3.json'}
-- [ ] 3. {'graph': '/Users/wuyue/Documents/GitHub/micro-blossom/resources/graphs/example_phenomenological_d3.json'}
-- [ ] 4. {'graph': '/Users/wuyue/Documents/GitHub/micro-blossom/resources/graphs/example_circuit_level_d3.json'}
-- [x] 5. {'broadcast_delay': 2}
-- [x] 6. {'broadcast_delay': 3}
-- [x] 7. {'convergecast_delay': 2}
-- [x] 8. {'convergecast_delay': 3}
-- [x] 9. {'clock_divide_by': 2}
-- [x] 10. {'clock_divide_by': 3}
-- [x] 11. {'clock_divide_by': 4}
-- [x] 12. {'context_depth': 2}
-- [x] 13. {'context_depth': 4}
-- [x] 14. {'context_depth': 8}
-- [x] 15. {'context_depth': 16}
-...
-- [x] 48. {'use_32_bus': True, 'clock_divide_by': 2}
-- [x] 49. {'use_32_bus': True, 'clock_divide_by': 3}
-- [ ] 50. {'support_offloading': True}
-- [ ] 51. {'support_offloading': True, 'clock_divide_by': 2}
-- [ ] 52. {'support_offloading': True, 'clock_divide_by': 3}
-- [ ] 53. {'support_offloading': True, 'broadcast_delay': 2, 'clock_divide_by': 2}
-- [ ] 54. {'support_offloading': True, 'broadcast_delay': 2, 'clock_divide_by': 3}
+- [x] {}
+- [x] {'graph': '/Users/wuyue/Documents/GitHub/micro-blossom/resources/graphs/example_code_capacity_rotated_d3.json'}
+- [x] {'graph': '/Users/wuyue/Documents/GitHub/micro-blossom/resources/graphs/example_code_capacity_planar_d3.json'}
+- [x] {'graph': '/Users/wuyue/Documents/GitHub/micro-blossom/resources/graphs/example_phenomenological_rotated_d3.json'}
+- [x] {'graph': '/Users/wuyue/Documents/GitHub/micro-blossom/resources/graphs/example_circuit_level_d3.json'}
+- [x] {'broadcast_delay': 2}
+- [x] {'broadcast_delay': 3}
+- [x] {'convergecast_delay': 2}
+- [x] {'convergecast_delay': 3}
+- [x] {'clock_divide_by': 3}
+- [x] {'clock_divide_by': 4}
+- [x] {'clock_divide_by': 5}
+- [x] {'context_depth': 2}
+- [x] {'context_depth': 4}
+- [x] {'context_depth': 8}
+- [x] {'context_depth': 16}
+- [x] {'context_depth': 32}
+- [x] {'inject_registers': 'offload'}
+- [x] {'inject_registers': 'offload2'}
+- [x] {'inject_registers': 'offload3'}
+- [x] {'inject_registers': 'offload4'}
+- [x] {'inject_registers': 'execute'}
+- [x] {'inject_registers': 'execute2'}
+- [x] {'inject_registers': 'execute3'}
+- [x] {'inject_registers': 'update'}
+- [x] {'inject_registers': 'update2'}
+- [x] {'inject_registers': 'update3'}
+- [x] {'inject_registers': 'offload4,update3'}
+- [ ] {'inject_registers': 'offload3,execute2,update'}
+- [x] {'clock_divide_by': 3, 'inject_registers': 'execute2'}
+- [ ] {'clock_divide_by': 3, 'inject_registers': 'offload4,update3'}
+- [ ] {'clock_divide_by': 3, 'inject_registers': 'offload3,execute2,update'}
+- [ ] {'clock_divide_by': 4, 'inject_registers': 'execute2'}
+- [ ] {'clock_divide_by': 4, 'inject_registers': 'offload4,update3'}
+- [ ] {'clock_divide_by': 3, 'context_depth': 2}
+- [ ] {'clock_divide_by': 3, 'context_depth': 4}
+- [x] {'clock_divide_by': 4, 'context_depth': 2}
+- [x] {'clock_divide_by': 4, 'context_depth': 4}
+- [x] {'clock_divide_by': 3, 'broadcast_delay': 2, 'convergecast_delay': 1}
+- [x] {'clock_divide_by': 3, 'broadcast_delay': 1, 'convergecast_delay': 2}
+- [x] {'clock_divide_by': 3, 'broadcast_delay': 2, 'convergecast_delay': 2}
+- [x] {'clock_divide_by': 4, 'broadcast_delay': 2, 'convergecast_delay': 1}
+- [x] {'clock_divide_by': 4, 'broadcast_delay': 1, 'convergecast_delay': 2}
+- [x] {'clock_divide_by': 4, 'broadcast_delay': 2, 'convergecast_delay': 2}
+- [x] {'bus_type': 'Axi4'}
+- [x] {'use_32_bus': True}
+- [x] {'bus_type': 'Axi4', 'clock_divide_by': 2}
+- [x] {'bus_type': 'Axi4', 'clock_divide_by': 3}
+- [x] {'use_32_bus': True, 'clock_divide_by': 2}
+- [x] {'use_32_bus': True, 'clock_divide_by': 3}
+- [x] {'support_offloading': True}
+- [x] {'support_offloading': True, 'clock_divide_by': 3}
+- [x] {'support_offloading': True, 'clock_divide_by': 4}
+- [x] {'support_offloading': True, 'broadcast_delay': 2, 'clock_divide_by': 3}
+- [x] {'support_offloading': True, 'broadcast_delay': 2, 'clock_divide_by': 4}
 
 This test takes less than 8min on a Ubuntu machine, fast enough for feedback-based debugging!
 The same tests should be run later on real hardware, which will take about 15 min * 54 = 14 hours.

@@ -103,20 +103,16 @@ case class MicroBlossomLooper[T <: Data](config: DualConfig, tagType: HardType[T
   }
 
   // detect data races: forbid an instruction to enter until the pipeline does not have any entry of the same context ID
-  if (config.contextBits > 0) {
-    val dataRaces = Vec.fill(pipelineLength)(Bool())
-    for (i <- (0 until pipelineLength)) {
-      val entry = pipelineEntries(i)
-      if (config.contextBits > 0) {
-        dataRaces(i) := entry.valid && entry.contextId === io.push.payload.contextId
-      } else {
-        dataRaces(i) := entry.valid
-      }
+  val dataRaces = Vec.fill(pipelineLength)(Bool())
+  for (i <- (0 until pipelineLength)) {
+    val entry = pipelineEntries(i)
+    if (config.contextBits > 0) {
+      dataRaces(i) := entry.valid && entry.contextId === io.push.payload.contextId
+    } else {
+      dataRaces(i) := entry.valid
     }
-    isDataRace := dataRaces.reduceBalancedTree(_ | _)
-  } else {
-    isDataRace := False
   }
+  isDataRace := dataRaces.reduceBalancedTree(_ | _)
 
   // output safety: the host bus should be much faster; if congestion detected, must reset the whole module
   when(responseEntry.valid && !immediateLoopback) {
