@@ -43,7 +43,7 @@ fn main() {
     // create c bindgen
     let crate_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let mut cbindgen_config: cbindgen::Config = Default::default();
-    cbindgen_config.macro_expansion = cbindgen::MacroExpansionConfig { bitflags: true };
+    cbindgen_config.macro_expansion.bitflags = true;
     cbindgen::Builder::new()
         .with_crate(crate_dir)
         .with_config(cbindgen_config)
