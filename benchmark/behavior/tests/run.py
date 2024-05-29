@@ -1,20 +1,15 @@
 import os
 import sys
 import subprocess
-import shutil
-from datetime import datetime
+from dataclasses import dataclass
 import git
 
 git_root_dir = git.Repo(".", search_parent_directories=True).working_tree_dir
 sys.path.insert(0, os.path.join(git_root_dir, "benchmark"))
 sys.path.insert(0, os.path.join(git_root_dir, "benchmark", "slurm_utilities"))
 sys.path.insert(0, os.path.join(git_root_dir, "src", "fpga", "utils"))
-if True:
-    from micro_util import *
+from micro_util import *
 
-    sys.path.insert(0, fusion_benchmark_dir)
-    from util import run_command_get_stdout
-    from get_ttyoutput import get_ttyoutput
 this_dir = os.path.dirname(os.path.abspath(__file__))
 run_dir = os.path.join(this_dir, "run")
 graph_dir = os.path.join(git_root_dir, "resources", "graphs")
@@ -97,41 +92,53 @@ variants = [
 ]
 
 
-def main():
-    compile_code_if_necessary()
+@dataclass
+class TestVariant:
+    variant: dict[str, any]
 
-    if not os.path.exists(run_dir):
-        os.mkdir(run_dir)
+    def config(self) -> dict[str, any]:
+        return {"graph": default_graph, **self.variant}
 
-    print(f"There are {len(variants)} variants...")
-
-    for var_idx, variant in enumerate(variants):
-        config = {"graph": default_graph, **variant}
-
+    def name(self) -> str:
+        config = self.config()
         name = ""
         for key in config:
             value = config[key]
             if key == "graph":
                 if value != default_graph:
-                    name += "-graph_" + os.path.basename(config["graph"]).split(".")[0]
+                    name += "_graph_" + os.path.basename(config["graph"]).split(".")[0]
             else:
-                name += f"_{key}_{value}".replace(",", "-")
-
+                name += f"_{key}_{value}".replace(",", "_")
         if name == "":
-            name = "default"
+            name = "default_config"
         else:
             name = name[1:]  # remove leading _
+        return name
 
-        filename = f"{name}.log"
-        # print(f"generating {filename}")
+    # find the edge 0 for testing in the graph file, see `src/cpu/embedded/src/mains/test_micro_blossom.rs`
+    def find_edge_0(self) -> tuple[int, int, int]:
+        graph = SingleGraph.from_file(self.config()["graph"])
+        for edge_index in range(len(graph.weighted_edges)):
+            edge = graph.weighted_edges[edge_index]
+            for left, right in [(edge.l, edge.r), (edge.r, edge.l)]:
+                if (
+                    right in graph.virtual_vertices
+                    and left not in graph.virtual_vertices
+                ):
+                    return left, right, edge.w
 
-        left, virtual, weight = find_edge_0(config["graph"])
+    def embedded_main_config(self) -> dict[str, any]:
+        config = self.config()
+        left, virtual, weight = self.find_edge_0()
         config["EDGE_0_LEFT"] = left
         config["EDGE_0_VIRTUAL"] = virtual
         config["EDGE_0_WEIGHT"] = weight
-
         config["EMBEDDED_BLOSSOM_MAIN"] = test_main
-        with open(os.path.join(run_dir, filename), "w") as log:
+        return config
+
+    def run_embedded_simulator(self):
+        config = self.embedded_main_config()
+        with open(os.path.join(run_dir, f"{self.name()}.log"), "w") as log:
             run_env = os.environ.copy()
             default_command = "cargo run --release --bin embedded_simulator --"
             # for running single failed case, printed to the head of the log file
@@ -155,17 +162,20 @@ def main():
             )
             process.wait()
             succeeded = process.returncode == 0
-            print(f"- [{'x' if succeeded else ' '}] {var_idx}. {variant}")
+            print(f"- [{'x' if succeeded else ' '}] {self.variant}")
 
 
-# find the edge 0 for testing in the graph file, see `src/cpu/embedded/src/mains/test_micro_blossom.rs`
-def find_edge_0(graph_filepath):
-    graph = SingleGraph.from_file(graph_filepath)
-    for edge_index in range(len(graph.weighted_edges)):
-        edge = graph.weighted_edges[edge_index]
-        for left, right in [(edge.l, edge.r), (edge.r, edge.l)]:
-            if right in graph.virtual_vertices and left not in graph.virtual_vertices:
-                return left, right, edge.w
+def main():
+    compile_code_if_necessary()
+
+    if not os.path.exists(run_dir):
+        os.mkdir(run_dir)
+
+    print(f"There are {len(variants)} variants...")
+
+    for variant in variants:
+        test = TestVariant(variant)
+        test.run_embedded_simulator()
 
 
 if __name__ == "__main__":

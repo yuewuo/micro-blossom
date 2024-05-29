@@ -513,9 +513,9 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
         ccFifoPush.io.push.valid := True
         ccFifoPush.io.push.payload := looperInput
         // increment push ID
-        fsmPushId.writeNext(instruction.contextId, instructionId)
-        fsmIsLastFindObstacle.writeNext(instruction.contextId, True)
-        fsmHasPendingFindObstacle.writeNext(instruction.contextId, True)
+        fsmPushId.writeNext(readout.contextId, instructionId)
+        fsmIsLastFindObstacle.writeNext(readout.contextId, True)
+        fsmHasPendingFindObstacle.writeNext(readout.contextId, True)
         // update state machine
         when(ccFifoPush.io.push.ready) {
           goto(stateReadIssueFindObstaclePause)

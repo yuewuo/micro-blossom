@@ -68,7 +68,6 @@ pub fn main() {
     println!("get obstacle");
     let readout = unsafe { extern_c::get_single_readout(cid) };
     println!("readout: {:#?}", readout);
-    // println!("conflicts: {conflicts:#?}");
     assert_eq!(readout.max_growable, EDGE_0_WEIGHT as u8); // because there is no defect yet
 
     println!("\n5. Test Grow and Obstacle Detection");

@@ -41,7 +41,7 @@ impl SolverTrackedDual for DualModuleAxi4Driver {
         Self::new(graph, serde_json::from_value(config).unwrap()).unwrap()
     }
     fn fuse_layer(&mut self, layer_id: usize) {
-        self.execute_instruction(Instruction32::load_syndrome_external(ni!(layer_id)), self.context_id)
+        self.execute_instruction(Instruction32::load_syndrome_external(ni!(layer_id)))
             .unwrap();
     }
     fn get_pre_matchings(&self, belonging: DualModuleInterfaceWeak) -> PerfectMatching {
@@ -93,13 +93,13 @@ impl DualModuleAxi4Driver {
         self.memory_read(1, address).map(|v| v as u8)
     }
 
-    pub fn execute_instruction(&mut self, instruction: Instruction32, context_id: u16) -> std::io::Result<()> {
+    pub fn execute_instruction(&mut self, instruction: Instruction32) -> std::io::Result<()> {
         if self.client.sim_config.use_64_bus {
-            let data = (instruction.0 as u64) | ((context_id as u64) << 32);
+            let data = (instruction.0 as u64) | ((self.context_id as u64) << 32);
             self.memory_write_64(4096, data)
         } else {
-            assert!(context_id < 1024);
-            self.memory_write_32(8192 + 4 * context_id as usize, instruction.0)
+            assert!(self.context_id < 1024);
+            self.memory_write_32(8192 + 4 * self.context_id as usize, instruction.0)
         }
     }
 
@@ -114,43 +114,43 @@ impl DualModuleAxi4Driver {
 
     pub const READOUT_BASE: usize = 128 * 1024;
 
-    pub fn context_base_address(&mut self, context_id: u16) -> usize {
-        Self::READOUT_BASE + 128 * context_id as usize
+    pub fn context_base_address(&mut self) -> usize {
+        Self::READOUT_BASE + 128 * self.context_id as usize
     }
 
     /// this function issues a FindObstacle instruction; to let the accelerator calculate the results
     /// while the CPU doing other things. If the data is prefetched, then the read will be very fast;
     /// if not pre-fetched, or if new instructions are written to this context, then reading the conflicts
     /// will automatically issue a FindObstacle instruction inside the hardware
-    pub fn pre_fetch_conflicts(&mut self, context_id: u16) -> std::io::Result<()> {
-        self.execute_instruction(Instruction32::find_obstacle(), context_id)
+    pub fn pre_fetch_conflicts(&mut self) -> std::io::Result<()> {
+        self.execute_instruction(Instruction32::find_obstacle())
     }
 
-    pub fn clear_grown(&mut self, context_id: u16) -> std::io::Result<()> {
-        let base_address = self.context_base_address(context_id);
-        self.memory_write_16(base_address, context_id)
+    pub fn clear_grown(&mut self) -> std::io::Result<()> {
+        let base_address = self.context_base_address();
+        self.memory_write_16(base_address, 0)
     }
 
-    pub fn get_single_readout(&mut self, context_id: u16) -> std::io::Result<SingleReadout> {
-        let readout_address = self.context_base_address(context_id) + 32;
-        // self.pre_fetch_conflicts(context_id)?; // optional
+    pub fn get_single_readout(&mut self) -> std::io::Result<SingleReadout> {
+        let readout_address = self.context_base_address() + 32;
+        // self.pre_fetch_conflicts()?; // optional
         let readout = unsafe {
             let mut readout_union = SingleReadoutUnion { raw: [0, 0] };
             readout_union.raw[0] = self.memory_read_64(readout_address)?;
             readout_union.raw[1] = self.memory_read_64(readout_address + 8)?;
             readout_union.readout
         };
-        self.clear_grown(context_id)?;
+        self.clear_grown()?;
         Ok(readout)
     }
 
-    pub fn set_maximum_growth(&mut self, maximum_growth: u16, context_id: u16) -> std::io::Result<()> {
-        let base = Self::READOUT_BASE + 128 * context_id as usize + 16;
+    pub fn set_maximum_growth(&mut self, maximum_growth: u16) -> std::io::Result<()> {
+        let base = Self::READOUT_BASE + 128 * self.context_id as usize + 16;
         self.memory_write_16(base, maximum_growth)
     }
 
-    pub fn get_maximum_growth(&mut self, context_id: u16) -> std::io::Result<u16> {
-        let base = Self::READOUT_BASE + 128 * context_id as usize + 16;
+    pub fn get_maximum_growth(&mut self) -> std::io::Result<u16> {
+        let base = Self::READOUT_BASE + 128 * self.context_id as usize + 16;
         self.memory_read_16(base)
     }
 
@@ -175,20 +175,18 @@ impl DualModuleAxi4Driver {
 
 impl DualStacklessDriver for DualModuleAxi4Driver {
     fn reset(&mut self) {
-        self.set_maximum_growth(0, self.context_id).unwrap();
+        self.set_maximum_growth(0).unwrap();
         self.find_obstacle(); // make sure there is no other pending instructions and clear the grown value
-        self.execute_instruction(Instruction32::reset(), self.context_id).unwrap();
+        self.execute_instruction(Instruction32::reset()).unwrap();
     }
     fn set_speed(&mut self, _is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState) {
-        self.execute_instruction(Instruction32::set_speed(node, speed), self.context_id)
-            .unwrap();
+        self.execute_instruction(Instruction32::set_speed(node, speed)).unwrap();
     }
     fn set_blossom(&mut self, node: CompactNodeIndex, blossom: CompactNodeIndex) {
-        self.execute_instruction(Instruction32::set_blossom(node, blossom), self.context_id)
-            .unwrap();
+        self.execute_instruction(Instruction32::set_blossom(node, blossom)).unwrap();
     }
     fn find_obstacle(&mut self) -> (CompactObstacle, CompactWeight) {
-        let readout = self.get_single_readout(self.context_id).unwrap();
+        let readout = self.get_single_readout().unwrap();
         // check again
         let grown = readout.accumulated_grown as CompactWeight;
         let growable = readout.max_growable;
@@ -226,14 +224,14 @@ impl DualStacklessDriver for DualModuleAxi4Driver {
         }
     }
     fn add_defect(&mut self, vertex: CompactVertexIndex, node: CompactNodeIndex) {
-        self.execute_instruction(Instruction32::add_defect_vertex(vertex, node), self.context_id)
+        self.execute_instruction(Instruction32::add_defect_vertex(vertex, node))
             .unwrap();
     }
 }
 
 impl DualTrackedDriver for DualModuleAxi4Driver {
     fn find_conflict(&mut self, maximum_growth: CompactWeight) -> (CompactObstacle, CompactWeight) {
-        self.set_maximum_growth(maximum_growth as u16, self.context_id).unwrap();
+        self.set_maximum_growth(maximum_growth as u16).unwrap();
         self.find_obstacle()
     }
 }
@@ -298,26 +296,29 @@ mod tests {
         assert_eq!(hardware_info.context_depth as usize, config.sim_config.context_depth);
         check(driver);
         // test maximum growth value set and read
-        assert_eq!(driver.get_maximum_growth(0).unwrap(), 0, "the default should be 0");
+        assert_eq!(driver.get_maximum_growth().unwrap(), 0, "the default should be 0");
         for value in [100, 0, 65535, 0, 200, 300, 0] {
-            driver.set_maximum_growth(value, 0).unwrap();
-            assert_eq!(driver.get_maximum_growth(0).unwrap(), value);
+            driver.set_maximum_growth(value).unwrap();
+            assert_eq!(driver.get_maximum_growth().unwrap(), value);
             check(driver);
         }
         // test maximum growth value of different context
         if config.sim_config.context_depth > 1 {
             for value in [100, 0, 65535, 0, 200, 300, 0] {
-                driver.set_maximum_growth(value, 1).unwrap();
-                assert_eq!(driver.get_maximum_growth(1).unwrap(), value);
-                assert_eq!(driver.get_maximum_growth(0).unwrap(), 0, "should not affect context 0");
+                driver.context_id = 1;
+                driver.set_maximum_growth(value).unwrap();
+                assert_eq!(driver.get_maximum_growth().unwrap(), value);
+                driver.context_id = 0;
+                assert_eq!(driver.get_maximum_growth().unwrap(), 0, "should not affect context 0");
                 check(driver);
             }
         }
         // writing to an out-of-bound context should result in error
-        driver.set_maximum_growth(5, config.sim_config.context_depth as u16).unwrap();
+        driver.context_id = config.sim_config.context_depth as u16;
+        driver.set_maximum_growth(5).unwrap();
         assert_eq!(driver.get_error_counter().unwrap(), 1, "write result in an error");
         driver.clear_error_counter().unwrap();
-        driver.get_maximum_growth(config.sim_config.context_depth as u16).unwrap();
+        driver.get_maximum_growth().unwrap();
         assert_eq!(driver.get_error_counter().unwrap(), 1, "read also result in an error");
         driver.clear_error_counter().unwrap();
         // find any real vertex
@@ -326,9 +327,11 @@ mod tests {
         println!("use example vertex {example_vertex}");
         let vertex = ni!(example_vertex);
         let node = ni!(0);
+        // driver.context_id = 0;
+        driver.context_id = (config.sim_config.context_depth - 1) as u16;
         // test manual growth
         driver.reset();
-        driver.set_maximum_growth(0, 0).unwrap(); // disable spontaneous growth
+        driver.set_maximum_growth(0).unwrap(); // disable spontaneous growth
         check(driver);
         let (obstacle, grown) = driver.find_obstacle();
         assert_eq!(obstacle, CompactObstacle::None);
@@ -344,7 +347,7 @@ mod tests {
         let length = min_incident_weight as CompactWeight;
         assert_eq!(obstacle, CompactObstacle::GrowLength { length });
         // grow
-        driver.execute_instruction(Instruction32::grow(1), 0).unwrap();
+        driver.execute_instruction(Instruction32::grow(1)).unwrap();
         let (obstacle, grown) = driver.find_obstacle();
         check(driver);
         assert_eq!(grown, 0);
@@ -352,7 +355,7 @@ mod tests {
         // test spontaneous growth
         driver.reset();
         driver.add_defect(vertex, node);
-        driver.set_maximum_growth(u16::try_from(length).unwrap(), 0).unwrap();
+        driver.set_maximum_growth(u16::try_from(length).unwrap()).unwrap();
         check(driver);
         let (_obstacle, grown) = driver.find_obstacle();
         check(driver);
@@ -364,11 +367,11 @@ mod tests {
         assert!(length >= 2, "edge weight should be even number");
         driver.reset();
         driver.add_defect(vertex, node);
-        driver.set_maximum_growth(1, 0).unwrap();
+        driver.set_maximum_growth(1).unwrap();
         check(driver);
-        driver.pre_fetch_conflicts(0).unwrap(); // prefetch will grow it to 1
+        driver.pre_fetch_conflicts().unwrap(); // prefetch will grow it to 1
         check(driver);
-        driver.set_maximum_growth(2, 0).unwrap();
+        driver.set_maximum_growth(2).unwrap();
         check(driver);
         let (obstacle, grown) = driver.find_obstacle();
         check(driver);

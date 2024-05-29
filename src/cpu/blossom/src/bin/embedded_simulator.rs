@@ -135,22 +135,18 @@ extern "C" fn get_hardware_info() -> MicroBlossomHardwareInfo {
 
 #[no_mangle]
 extern "C" fn execute_instruction(instruction: u32, context_id: u16) {
-    SIMULATOR_DRIVER
-        .lock()
-        .as_mut()
-        .unwrap()
-        .execute_instruction(Instruction32(instruction), context_id)
-        .unwrap();
+    let mut simulator = SIMULATOR_DRIVER.lock();
+    let driver = simulator.as_mut().unwrap();
+    driver.context_id = context_id;
+    driver.execute_instruction(Instruction32(instruction)).unwrap();
 }
 
 #[no_mangle]
 extern "C" fn get_single_readout(context_id: u16) -> SingleReadout {
-    SIMULATOR_DRIVER
-        .lock()
-        .as_mut()
-        .unwrap()
-        .get_single_readout(context_id)
-        .unwrap()
+    let mut simulator = SIMULATOR_DRIVER.lock();
+    let driver = simulator.as_mut().unwrap();
+    driver.context_id = context_id;
+    driver.get_single_readout().unwrap()
 }
 
 #[no_mangle]
@@ -165,20 +161,16 @@ extern "C" fn get_instruction_counter() -> u32 {
 
 #[no_mangle]
 extern "C" fn set_maximum_growth(length: u16, context_id: u16) {
-    SIMULATOR_DRIVER
-        .lock()
-        .as_mut()
-        .unwrap()
-        .set_maximum_growth(length, context_id)
-        .unwrap()
+    let mut simulator = SIMULATOR_DRIVER.lock();
+    let driver = simulator.as_mut().unwrap();
+    driver.context_id = context_id;
+    driver.set_maximum_growth(length).unwrap()
 }
 
 #[no_mangle]
 extern "C" fn get_maximum_growth(context_id: u16) -> u16 {
-    SIMULATOR_DRIVER
-        .lock()
-        .as_mut()
-        .unwrap()
-        .get_maximum_growth(context_id)
-        .unwrap()
+    let mut simulator = SIMULATOR_DRIVER.lock();
+    let driver = simulator.as_mut().unwrap();
+    driver.context_id = context_id;
+    driver.get_maximum_growth().unwrap()
 }

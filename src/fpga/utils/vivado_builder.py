@@ -42,6 +42,10 @@ class MicroBlossomGraphBuilder:
         return os.path.join(self.graph_folder, f"{self.name}.syndromes")
 
     def build(self) -> None:
+        graph_file_path = self.graph_file_path()
+        if os.path.exists(graph_file_path):
+            return
+
         if not os.path.exists(self.graph_folder):
             os.mkdir(self.graph_folder)
 
@@ -102,7 +106,6 @@ class MicroBlossomGraphBuilder:
                 assert returncode == 0, "command fails..."
 
         # then generate the graph json
-        graph_file_path = self.graph_file_path()
         if not os.path.exists(graph_file_path):
             command = micro_blossom_command() + ["parser"]
             command += [syndrome_file_path]
