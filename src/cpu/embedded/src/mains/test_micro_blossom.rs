@@ -57,37 +57,19 @@ pub fn main() {
     assert_eq!(instruction_counter, test_count);
 
     println!("\n4. Test Max Growable Fetch");
-    for nop in [0, 30] {
-        println!("  [nop = {nop}]");
-        // nop to reduce the read halt of same context
-        println!("    reset");
-        unsafe { extern_c::execute_instruction(Instruction32::reset().into(), cid) };
-        for _ in 0..nop {
-            if cfg!(feature = "tiny_benchmark_time") {
-                unsafe { extern_c::execute_instruction(Instruction32::find_obstacle().into(), cid) };
-            } else {
-                nop_delay(10);
-            }
-        }
-        println!("    get obstacle");
-        let readout = unsafe { extern_c::get_single_readout(cid) };
-        println!("readout: {:#?}", readout);
-        assert_eq!(readout.max_growable, u8::MAX); // because there is no defect yet
-        println!("    add defect");
-        unsafe { extern_c::execute_instruction(Instruction32::add_defect_vertex(left, node).into(), cid) };
-        for _ in 0..nop {
-            if cfg!(feature = "tiny_benchmark_time") {
-                unsafe { extern_c::execute_instruction(Instruction32::find_obstacle().into(), cid) };
-            } else {
-                nop_delay(10);
-            }
-        }
-        println!("    get obstacle");
-        let readout = unsafe { extern_c::get_single_readout(cid) };
-        println!("readout: {:#?}", readout);
-        // println!("conflicts: {conflicts:#?}");
-        assert_eq!(readout.max_growable, EDGE_0_WEIGHT as u8); // because there is no defect yet
-    }
+    println!("reset");
+    unsafe { extern_c::execute_instruction(Instruction32::reset().into(), cid) };
+    println!("get obstacle");
+    let readout = unsafe { extern_c::get_single_readout(cid) };
+    println!("readout: {:#?}", readout);
+    assert_eq!(readout.max_growable, u8::MAX); // because there is no defect yet
+    println!("add defect");
+    unsafe { extern_c::execute_instruction(Instruction32::add_defect_vertex(left, node).into(), cid) };
+    println!("get obstacle");
+    let readout = unsafe { extern_c::get_single_readout(cid) };
+    println!("readout: {:#?}", readout);
+    // println!("conflicts: {conflicts:#?}");
+    assert_eq!(readout.max_growable, EDGE_0_WEIGHT as u8); // because there is no defect yet
 
     println!("\n5. Test Grow and Obstacle Detection");
     unsafe { extern_c::execute_instruction(Instruction32::reset().into(), cid) };

@@ -4,11 +4,12 @@
 //!
 //! ## Examples
 //!
-//! First generate the resources using `cargo run --features=compact --bin generate_example_graphs`.
+//! First generate the resources using `cargo run --bin generate_example_graphs`.
 //!
 //! ```sh
 //! cargo run --features=compact --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
-//! EMBEDDED_BLOSSOM_MAIN=test_get_time cargo run --features=compact --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json  # note: it's normal that sleep() will take almost forever
+//! # note: it's normal that sleep() will take almost forever
+//! EMBEDDED_BLOSSOM_MAIN=test_get_time cargo run --features=compact --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
 //!
 //! EMBEDDED_BLOSSOM_MAIN=benchmark_reset_speed WITH_WAVEFORM=1 cargo run --features=compact --release --bin embedded_simulator -- ../../../resources/graphs/example_code_capacity_planar_d3.json
 //! gtkwave ../../../simWorkspace/MicroBlossomHost/benchmark_reset_speed/hosted.fst
@@ -109,11 +110,6 @@ lazy_static! {
     static ref BEGIN_TIME: Instant = Instant::now();
     static ref SIMULATOR_DRIVER: Mutex<Option<DualModuleAxi4Driver>> = Mutex::new(None);
 }
-
-// #[no_mangle]
-// extern "C" fn get_native_time() -> u64 {
-//     BEGIN_TIME.elapsed().as_nanos() as u64
-// }
 
 #[no_mangle]
 extern "C" fn get_native_time() -> u64 {
