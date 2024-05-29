@@ -1,6 +1,8 @@
 obj_dir
 logs
 tmp
+tmp-*
+tmp_*
 .metals
 .scala-build
 .bsp

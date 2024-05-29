@@ -25,6 +25,9 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 # Scala
 sudo apt install default-jdk
 # https://www.scala-sbt.org/1.x/docs/Installing-sbt-on-Linux.html
+
+# Python
+pip install -r benchmark/requirements.txt
 ```
 
 ### Install Verilator
