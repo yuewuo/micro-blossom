@@ -237,7 +237,7 @@ class MicroBlossomAxi4Builder:
                 )  # if failed, at least increase the divide number
             return new_clock_divide_by
         else:
-            return self.clock_frequency
+            return self.clock_divide_by
 
     def build(self):
         self.prepare_graph()
