@@ -5,22 +5,13 @@ import sys
 import tempfile
 import math
 import scipy
+import git
 from dataclasses import dataclass
 from dataclasses_json import dataclass_json
 from typing import Optional
 
 
-git_root_dir = (
-    subprocess.run(
-        "git rev-parse --show-toplevel",
-        cwd=os.path.dirname(os.path.abspath(__file__)),
-        shell=True,
-        check=True,
-        capture_output=True,
-    )
-    .stdout.decode(sys.stdout.encoding)
-    .strip(" \r\n")
-)
+git_root_dir = git.Repo(".", search_parent_directories=True).working_tree_dir
 rust_dir = os.path.join(git_root_dir, "src", "cpu", "blossom")
 embedded_dir = os.path.join(git_root_dir, "src", "cpu", "embedded")
 benchmark_dir = os.path.join(git_root_dir, "benchmark")

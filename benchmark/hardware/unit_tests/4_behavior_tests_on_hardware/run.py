@@ -1,21 +1,9 @@
 import os
 import sys
-import subprocess
-import shutil
-from datetime import datetime
 import importlib.util
+import git
 
-git_root_dir = (
-    subprocess.run(
-        "git rev-parse --show-toplevel",
-        cwd=os.path.dirname(os.path.abspath(__file__)),
-        shell=True,
-        check=True,
-        capture_output=True,
-    )
-    .stdout.decode(sys.stdout.encoding)
-    .strip(" \r\n")
-)
+git_root_dir = git.Repo(".", search_parent_directories=True).working_tree_dir
 sys.path.insert(0, os.path.join(git_root_dir, "benchmark"))
 sys.path.insert(0, os.path.join(git_root_dir, "benchmark", "slurm_utilities"))
 sys.path.insert(0, os.path.join(git_root_dir, "src", "fpga", "utils"))

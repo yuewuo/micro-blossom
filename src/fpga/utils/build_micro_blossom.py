@@ -5,19 +5,10 @@ import sys
 import os
 import re
 import shutil
+import git
 
 
-git_root_dir = (
-    subprocess.run(
-        "git rev-parse --show-toplevel",
-        cwd=os.path.dirname(os.path.abspath(__file__)),
-        shell=True,
-        check=True,
-        capture_output=True,
-    )
-    .stdout.decode(sys.stdout.encoding)
-    .strip(" \r\n")
-)
+git_root_dir = git.Repo(".", search_parent_directories=True).working_tree_dir
 template_dir = os.path.join(
     git_root_dir, "src", "fpga", "Xilinx", "VMK180_Micro_Blossom"
 )
