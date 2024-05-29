@@ -417,6 +417,9 @@ mod tests {
             json!({ "context_depth": 2 }),
             json!({ "context_depth": 4 }),
             json!({ "context_depth": 8 }),
+            // test clock divide by
+            json!({ "clock_divide_by": 3 }),
+            json!({ "clock_divide_by": 4 }),
         ];
         let code = CodeCapacityPlanarCode::new(3, 0.1, 7);
         for (index, sim_config) in sim_configurations.iter().enumerate() {
