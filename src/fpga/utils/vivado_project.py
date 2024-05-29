@@ -117,18 +117,18 @@ class VivadoProject:
         return os.path.join(self.vivado_dir, f"impl_timing_summary_{self.name}.txt")
 
     def report_impl_utilization(
-        self, force_regenerate: bool = True
+        self, force_regenerate: bool = False
     ) -> ImplUtilizationReport:
         self.report_impl(force_regenerate)
         return ImplUtilizationReport.from_file(self.impl_utilization_path())
 
     def routed_timing_summery(
-        self, force_regenerate: bool = True
+        self, force_regenerate: bool = False
     ) -> RoutedTimingSummary:
         self.report_impl(force_regenerate)
         return RoutedTimingSummary.from_file(self.impl_timing_summary_path())
 
-    def report_impl(self, force_regenerate: bool = True):
+    def report_impl(self, force_regenerate: bool = False):
         filepaths = [self.impl_utilization_path(), self.impl_timing_summary_path()]
         all_exists = all([os.path.exists(filepath) for filepath in filepaths])
         if all_exists and not force_regenerate:

@@ -116,7 +116,5 @@ class ClockDivideByExplorer:
                 return divide_by
             # if not achievable, use the new divide_by
             self.log(f"suggested achievable divide_by is {new_divide_by}")
-            if new_divide_by > divide_by * (1 - self.min_decrease):
-                new_divide_by = math.floor(divide_by * (1 - self.min_decrease))
             divide_by = new_divide_by
         return None

@@ -62,7 +62,7 @@ for configuration in configurations:
     def compute_next_minimum_divide_by(frequency: int) -> int:
         project = get_project(configuration, frequency)
         project.build()
-        return project.next_maximum_frequency()
+        return project.next_minimum_clock_divide_by()
 
     explorer = ClockDivideByExplorer(
         compute_next_minimum_divide_by=compute_next_minimum_divide_by,
