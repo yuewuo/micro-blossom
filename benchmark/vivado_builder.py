@@ -155,6 +155,7 @@ class MicroBlossomAxi4Builder:
         print(f"building frequency={frequency}, log output to {log_file_path}")
         xsa_path = os.path.join(self.hardware_proj_dir(), f"{self.name}.xsa")
         if not os.path.exists(xsa_path):
+            # TODO: build embedded binary first
             with open(log_file_path, "a") as log:
                 process = subprocess.Popen(
                     ["make"],

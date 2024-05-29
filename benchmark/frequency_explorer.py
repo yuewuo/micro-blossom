@@ -21,7 +21,7 @@ class FrequencyExplorer:
     log_filepath: str
     max_frequency: int = 300
     max_iteration: int = 5
-    min_decrease: float = 0.1  # at least decrease the frequency by 10% each iteration
+    min_decrease: float = 0.05  # at least decrease the frequency by 10% each iteration
 
     def get_log_best_frequency(self) -> Optional[int]:
         if not os.path.exists(self.log_filepath):
@@ -51,8 +51,8 @@ class FrequencyExplorer:
             return log_best_frequency
 
         frequency = int(self.max_frequency)
+        self.log("optimization start")
         for iteration in range(self.max_iteration):
-            self.log("optimization start")
             self.log(f"iteration {iteration}: trying frequency {frequency}")
             new_frequency = int(self.compute_next_maximum_frequency(frequency))
             if new_frequency >= frequency:
