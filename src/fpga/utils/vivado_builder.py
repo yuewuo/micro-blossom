@@ -142,6 +142,8 @@ class MicroBlossomAxi4Builder:
         self.graph_builder.build()
 
     def create_vivado_project(self):
+        # vitis panic when containing upper letter
+        assert self.name.lower() == self.name
         if not os.path.exists(self.project_folder):
             os.mkdir(self.project_folder)
         if not os.path.exists(self.hardware_proj_dir()) or not os.path.exists(

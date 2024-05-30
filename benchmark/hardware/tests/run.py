@@ -21,7 +21,7 @@ class HardwareTest(TestVariant):
         graph_folder = os.path.dirname(graph_path)
         graph_file = os.path.basename(graph_path)
         assert graph_file.endswith(".json")
-        graph_name = graph_file[:-5]
+        graph_name = graph_file[:-5].lower()
 
         return MicroBlossomGraphBuilder(
             graph_folder=graph_folder,
@@ -36,7 +36,7 @@ class HardwareTest(TestVariant):
         config = self.config()
         return MicroBlossomAxi4Builder(
             graph_builder=self.get_graph_builder(),
-            name=self.name(),
+            name=self.name().lower(),
             project_folder=os.path.join(this_dir, "tmp-project"),
             clock_frequency=100,
             clock_divide_by=config.get("clock_divide_by", 2),
