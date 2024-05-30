@@ -175,6 +175,7 @@ def main(args=None):
         action="store_true",
         help="terminate the program when failure, useful for debugging",
     )
+    args = parser.parse_args(args=args)
 
     compile_code_if_necessary()
 
@@ -186,7 +187,7 @@ def main(args=None):
     for variant in variants:
         test = TestVariant(variant)
         succeeded = test.run_embedded_simulator()
-        if parser.panic_on_failure and not succeeded:
+        if args.panic_on_failure and not succeeded:
             exit(1)
 
 
