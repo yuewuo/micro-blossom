@@ -253,6 +253,7 @@ class MicroBlossomAxi4Builder:
             log.write(command_output + "\n")
             return tty_output
 
+    # this function assumes the bottleneck is the fast clock domain (self.frequency)
     # return current frequency if timing passed; otherwise return a maximum frequency that is achievable
     def next_maximum_frequency(self) -> int:
         vivado = VivadoProject(self.hardware_proj_dir())
@@ -268,6 +269,26 @@ class MicroBlossomAxi4Builder:
             return new_frequency
         else:
             return frequency
+
+    # this function assumes the bottleneck is the slow clock domain (self.frequency / self.clock_divide_by)
+    # return current value if timing passed; otherwise return a minimum clock_divide_by that is achievable
+    def next_minimum_clock_divide_by(self) -> float:
+        vivado = VivadoProject(self.hardware_proj_dir())
+        wns = vivado.routed_timing_summery().clk_pl_0_wns
+        frequency = vivado.frequency()
+        assert frequency == self.clock_frequency
+        if wns < 0:
+            print(
+                f"frequency={frequency}MHz, clock_divide_by={self.clock_divide_by} is not achievable"
+            )
+            period = 1e-6 / frequency
+            slow_period = period * self.clock_divide_by
+            new_slow_period = slow_period - wns * 1e-9
+            new_clock_divide_by = new_slow_period / period
+            print(f"wns: {wns}ns, clock_divide_by lower to {new_clock_divide_by}")
+            return new_clock_divide_by
+        else:
+            return self.clock_divide_by
 
     def build_embedded_binary(self, make_env: dict | None):
         if make_env is None:
