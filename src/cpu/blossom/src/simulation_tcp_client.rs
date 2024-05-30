@@ -60,7 +60,7 @@ pub struct SimulationConfig {
     pub inject_registers: Vec<String>,
     #[derivative(Default(value = "simulation_config_default::clock_divide_by()"))]
     #[serde(default = "simulation_config_default::clock_divide_by")]
-    pub clock_divide_by: usize,
+    pub clock_divide_by: f64,
 }
 
 pub struct SimulationTcpClient {
@@ -309,8 +309,8 @@ pub mod simulation_config_default {
     pub fn conflict_channels() -> usize {
         env_usize("CONFLICT_CHANNELS", 1)
     }
-    pub fn clock_divide_by() -> usize {
-        env_usize("CLOCK_DIVIDE_BY", 2)
+    pub fn clock_divide_by() -> f64 {
+        env_f64("CLOCK_DIVIDE_BY", 2.0)
     }
 }
 

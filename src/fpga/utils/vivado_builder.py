@@ -125,7 +125,7 @@ class MicroBlossomAxi4Builder:
     project_folder: str
     name: str
     clock_frequency: float = 200  # in MHz
-    clock_divide_by: int = 2
+    clock_divide_by: float = 2
     overwrite: bool = True
     broadcast_delay: int = 0
     convergecast_delay: int = 1
@@ -268,31 +268,6 @@ class MicroBlossomAxi4Builder:
             return new_frequency
         else:
             return frequency
-
-    # return current value if timing passed; otherwise return a minimum clock_divide_by that is achievable
-    def next_minimum_clock_divide_by(self) -> int:
-        vivado = VivadoProject(self.hardware_proj_dir())
-        wns = vivado.routed_timing_summery().clk_pl_0_wns
-        frequency = vivado.frequency()
-        assert frequency == self.clock_frequency
-        if wns < 0:
-            print(
-                f"frequency={frequency}MHz, clock_divide_by={self.clock_divide_by} is not achievable"
-            )
-            period = 1e-6 / frequency
-            slow_period = period * self.clock_divide_by
-            new_slow_period = slow_period - wns * 1e-9
-            new_clock_divide_by = math.ceil(new_slow_period / period)
-            print(
-                f"wns: {wns}ns, clock_divide_by should lower to {new_clock_divide_by}"
-            )
-            if new_clock_divide_by == self.clock_divide_by:
-                new_clock_divide_by = (
-                    self.clock_divide_by + 1
-                )  # if failed, at least increase the divide number
-            return new_clock_divide_by
-        else:
-            return self.clock_divide_by
 
     def build_embedded_binary(self, make_env: dict | None):
         if make_env is None:

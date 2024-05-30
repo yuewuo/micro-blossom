@@ -98,6 +98,13 @@ pub fn env_usize(name: &str, default: usize) -> usize {
     }
 }
 
+pub fn env_f64(name: &str, default: f64) -> f64 {
+    match env::var(name) {
+        Ok(value) => value.parse().unwrap(),
+        Err(_) => default,
+    }
+}
+
 pub fn random_name_16() -> String {
     rand::thread_rng()
         .sample_iter(&Alphanumeric)

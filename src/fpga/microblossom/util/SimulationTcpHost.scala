@@ -66,7 +66,7 @@ case class SimulationConfig(
     val supportOffloading: Boolean,
     val supportLayerFusion: Boolean,
     val injectRegisters: Seq[String],
-    val clockDivideBy: Int
+    val clockDivideBy: Double
 ) {
   def dualConfig = {
     val config = DualConfig(
@@ -135,7 +135,7 @@ object SimulationConfig {
       case Right(value) => value
       case Left(ex)     => throw ex
     }
-    val clockDivideBy = readNamedValue("clock_divide_by").toInt
+    val clockDivideBy = readNamedValue("clock_divide_by").toDouble
     SimulationConfig(
       graph,
       withWaveform,

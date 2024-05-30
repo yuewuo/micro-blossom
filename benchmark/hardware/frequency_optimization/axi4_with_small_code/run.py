@@ -12,7 +12,7 @@ from frequency_explorer import *
 class Configuration:
     context_depth: int
     f: float = 300  # start frequency: searching from this frequency
-    clock_divide_by: int = 4  # to minimize the timing effect on the axi4 bus
+    clock_divide_by: float = 4  # to minimize the timing effect on the axi4 bus
 
     def name(self) -> str:
         return f"context_{self.context_depth}"

@@ -115,7 +115,7 @@ case class TestSignals() extends Bundle {
 case class ReplayAxiLite4(
     debuggerFile: DebuggerFileAxiLite4,
     dualConfig: DualConfig,
-    clockDivideBy: Int = 1, // divided clock at io.dividedClock; note the clock must be synchronous and 0 phase aligned
+    clockDivideBy: Double = 1,
     baseAddress: BigInt = 0
 ) extends Component {
   val indexBits = log2Up(debuggerFile.length)

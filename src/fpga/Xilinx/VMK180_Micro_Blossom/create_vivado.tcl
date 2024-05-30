@@ -7,7 +7,7 @@ if { $argc != 2 } {
     exit 1
 } else {
     scan [lindex $argv 0] %f clock_frequency
-    scan [lindex $argv 1] %d clock_divide_by
+    scan [lindex $argv 1] %f clock_divide_by
 }
 set slow_clock_frequency [expr {$clock_frequency / $clock_divide_by}]
 

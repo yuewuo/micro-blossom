@@ -95,7 +95,7 @@ case class InstructionTag(config: DualConfig) extends Bundle {
 
 case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     config: DualConfig,
-    clockDivideBy: Int = 2, // divided clock at io.dividedClock; note the clock must be synchronous and 0 phase aligned
+    clockDivideBy: Double = 2, // the slow clock domain has a frequency of `frequency/clockDivideBy`
     baseAddress: BigInt = 0,
     interfaceBuilder: () => T,
     slaveFactory: (T) => F
@@ -112,7 +112,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   val factory = rawFactory.withOffset(baseAddress)
 
   require(config.conflictChannels == 1, "not implemented: multiple conflict channels")
-  require(clockDivideBy >= 2)
+  require(clockDivideBy >= 1, "the bus must run at higher frequency, otherwise data loss might occur")
   require(factory.busDataWidth == 64 || factory.busDataWidth == 32, "only 64 bits or 32 bits bus is supported")
   val is64bus = factory.busDataWidth == 64
 
@@ -771,7 +771,7 @@ class MicroBlossomBusGeneratorConf(arguments: Seq[String]) extends ScallopConf(a
       default = Some(List()),
       descr = s"insert register at select stages: ${Stages().stageNames.mkString(", ")}"
     )
-  val clockDivideBy = opt[Int](default = Some(2))
+  val clockDivideBy = opt[Double](default = Some(2))
   verify()
   def dualConfig = DualConfig(
     filename = graph(),

@@ -57,7 +57,7 @@ def run_verilog_generator(parameters):
 @dataclass
 class MicroBlossomProjectBuilder:
     clock_frequency: float
-    clock_divide_by: int
+    clock_divide_by: float
     path: str
     name: str
     graph: str
@@ -226,9 +226,11 @@ class MicroBlossomProjectBuilder:
         board = args.board
         print(f"board: {board}")
         clock_frequency = float(args.clock_frequency)
-        clock_divide_by = int(args.clock_divide_by)
+        clock_divide_by = float(args.clock_divide_by)
         print(f"clock frequency: {clock_frequency}MHz")
-        print(f"clock divide by: {clock_divide_by}")
+        print(
+            f"clock divide by: {clock_divide_by}, slow clock: {clock_frequency/clock_divide_by}/MHz"
+        )
         path = args.path
         print(f"path: {path}")
         name = args.name
