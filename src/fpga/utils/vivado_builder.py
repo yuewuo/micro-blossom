@@ -133,7 +133,7 @@ class MicroBlossomAxi4Builder:
     support_offloading: bool = False
     support_layer_fusion: bool = False
     # e.g. ["offload"], ["offload", "update3"]
-    inject_registers: list[str] = field(default_factory=lambda: [])
+    inject_registers: list[str] | str = field(default_factory=lambda: [])
 
     def hardware_proj_dir(self) -> str:
         return os.path.join(self.project_folder, self.name)
@@ -165,7 +165,12 @@ class MicroBlossomAxi4Builder:
                 parameters += ["--support-offloading"]
             if self.support_layer_fusion:
                 parameters += ["--support-layer-fusion"]
-            parameters += ["--inject-registers"] + self.inject_registers
+            inject_registers = self.inject_registers
+            if isinstance(inject_registers, str):
+                inject_registers = [
+                    e for e in self.inject_registers.split(",") if e != ""
+                ]
+            parameters += ["--inject-registers"] + inject_registers
             if self.overwrite:
                 parameters += ["--overwrite"]
             build_micro_blossom_main(parameters)

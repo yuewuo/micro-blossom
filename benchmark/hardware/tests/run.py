@@ -33,12 +33,18 @@ class HardwareTest(TestVariant):
         )
 
     def get_project(self) -> MicroBlossomAxi4Builder:
+        config = self.config()
         return MicroBlossomAxi4Builder(
             graph_builder=self.get_graph_builder(),
             name=self.name(),
-            clock_frequency=250,
-            clock_divide_by=10,
             project_folder=os.path.join(this_dir, "tmp-project"),
+            clock_frequency=100,
+            clock_divide_by=config.get("clock_divide_by", 2),
+            broadcast_delay=config.get("broadcast_delay", 0),
+            convergecast_delay=config.get("convergecast_delay", 1),
+            context_depth=config.get("context_depth", 1),
+            inject_registers=config.get("inject_registers", ""),
+            # ignore bus_type and use_32_bus because the hardware project does not support it
         )
 
     def build_embedded_binary(self):
@@ -74,51 +80,19 @@ def main():
     if not os.path.exists(run_dir):
         os.mkdir(run_dir)
 
-    print(f"There are {len(variants)} variants...")
+    filtered_variants = [
+        variant
+        for variant in variants
+        if "bus_type" not in variant and "use_32_bus" not in variant
+    ]
 
-    for variant in variants:
+    print(f"There are {len(filtered_variants)} variants...")
+
+    for variant in filtered_variants:
 
         test = HardwareTest(variant)
         test.run_hardware_test()
 
-
-# def get_project(
-#     configuration: Configuration, divide_by: int
-# ) -> MicroBlossomAxi4Builder:
-#     graph_builder = MicroBlossomGraphBuilder(
-#         graph_folder=os.path.join(this_dir, "tmp-graph"),
-#         name=configuration.name(),
-#         d=configuration.d,
-#         p=0.001,
-#         noisy_measurements=configuration.d - 1,
-#         max_half_weight=7,  # higher weights represents the case for large code distances
-#         visualize_graph=True,
-#     )
-#     return MicroBlossomAxi4Builder(
-#         graph_builder=graph_builder,
-#         name=configuration.name() + f"_c{divide_by}",
-#         clock_frequency=configuration.f,
-#         clock_divide_by=divide_by,
-#         project_folder=os.path.join(this_dir, "tmp-project"),
-#     )
-
-
-# for configuration in configurations:
-
-#     def compute_next_minimum_divide_by(frequency: int) -> int:
-#         project = get_project(configuration, frequency)
-#         project.build()
-#         return project.next_minimum_clock_divide_by()
-
-#     explorer = ClockDivideByExplorer(
-#         compute_next_minimum_divide_by=compute_next_minimum_divide_by,
-#         log_filepath=os.path.join(frequency_log_dir, configuration.name() + ".txt"),
-#     )
-
-#     best_divide_by = explorer.optimize()
-#     print(f"{configuration.name()}: {best_divide_by}")
-
-#     project = get_project(configuration, best_divide_by)
 
 if __name__ == "__main__":
     main()
