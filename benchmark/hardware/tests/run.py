@@ -44,6 +44,8 @@ class HardwareTest(TestVariant):
             convergecast_delay=config.get("convergecast_delay", 1),
             context_depth=config.get("context_depth", 1),
             inject_registers=config.get("inject_registers", ""),
+            support_offloading=(config.get("support_offloading") != None),
+            support_layer_fusion=(config.get("support_layer_fusion") != None),
             # ignore bus_type and use_32_bus because the hardware project does not support it
         )
 
@@ -57,15 +59,18 @@ class HardwareTest(TestVariant):
             make_env[key.upper()] = str(value)
         return make_env
 
-    def run_hardware_test(self):
+    def run_hardware_test(self) -> bool:
         project = self.get_project()
-        project.create_vivado_project()
+        project.create_vivado_project(update=True)
         make_env = self.get_make_env()
         project.build_embedded_binary(make_env)
         project.build_vivado_project(force_recompile_binary=True)
         if project.timing_sanity_check_failed():
             exit(1)
         tty_output = project.run_application()
+        with open(os.path.join(run_dir, f"{self.name()}.log"), "w") as log:
+            log.write(tty_output)
+        return "[exit]" in tty_output
 
 
 def main():
@@ -82,12 +87,12 @@ def main():
 
     print(f"There are {len(filtered_variants)} variants...")
 
+    results = []
     for variant in filtered_variants:
-
         test = HardwareTest(variant)
-        test.run_hardware_test()
-
-        exit(0)
+        success = test.run_hardware_test()
+        results.append(f"- [{'x' if success else ' '}] {variant}")
+        print("\n".join(results))
 
 
 if __name__ == "__main__":

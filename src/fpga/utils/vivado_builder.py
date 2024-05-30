@@ -146,7 +146,8 @@ class MicroBlossomAxi4Builder:
     def prepare_graph(self):
         self.graph_builder.build()
 
-    def create_vivado_project(self):
+    # when update, the files are re-sync with the template folder
+    def create_vivado_project(self, update=False):
         # vitis panic when containing upper letter
         assert self.name.lower() == self.name
         if not os.path.exists(self.project_folder):
@@ -180,7 +181,9 @@ class MicroBlossomAxi4Builder:
         parameters += ["--inject-registers"] + inject_registers
         if self.overwrite:
             parameters += ["--overwrite"]
-        self.project_builder = MicroBlossomProjectBuilder.from_args(parameters, run=run)
+        self.project_builder = MicroBlossomProjectBuilder.from_args(
+            parameters, run=run, update=update
+        )
 
     def build_rust_binary(self, main: str = "hello_world"):
         make_env = os.environ.copy()

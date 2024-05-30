@@ -96,6 +96,7 @@ class MicroBlossomProjectBuilder:
         self.copy_makefile()
         self.copy_vitis_py()
         self.copy_tcl()
+        self.copy_c_source()
 
     def copy_common_py(self):
         with open(os.path.join(template_dir, "common.py"), "r", encoding="utf8") as f:
@@ -153,8 +154,6 @@ class MicroBlossomProjectBuilder:
                 os.path.join(self.project_dir(), tcl_filename), "w", encoding="utf8"
             ) as f:
                 f.write(vivado_tcl)
-
-    def copy_run_xsdb_tcl(self):
         with open(
             os.path.join(template_dir, "run_xsdb.tcl"), "r", encoding="utf8"
         ) as f:
@@ -190,7 +189,7 @@ class MicroBlossomProjectBuilder:
             f.write(binding_c)
 
     @staticmethod
-    def from_args(args=None, run=True) -> "MicroBlossomProjectBuilder":
+    def from_args(args=None, run=True, update=True) -> "MicroBlossomProjectBuilder":
         parser = argparse.ArgumentParser(description="Build Micro Blossom")
         parser.add_argument(
             "-n", "--name", required=True, help="the name of the Vivado project"
@@ -249,6 +248,8 @@ class MicroBlossomProjectBuilder:
             parameters=parameters,
             overwrite=args.overwrite,
         )
+        if update:
+            project_builder.copy_project_files()
         if run:
             if not args.overwrite:
                 project_dir = project_builder.project_dir()
@@ -258,7 +259,6 @@ class MicroBlossomProjectBuilder:
                     )
                     exit(1)
             project_builder.generate_verilog()
-            project_builder.copy_project_files()
         return project_builder
 
 
