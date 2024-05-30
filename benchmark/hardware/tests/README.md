@@ -40,16 +40,16 @@ The same as benchmark/behavior/tests, but on actual hardware.
 - [x] {'clock_divide_by': 3, 'context_depth': 2}
 - [x] {'clock_divide_by': 3, 'context_depth': 4}
 - [x] {'clock_divide_by': 4, 'context_depth': 2}
-- [ ] {'clock_divide_by': 4, 'context_depth': 4}
+- [x] {'clock_divide_by': 4, 'context_depth': 4}
 - [x] {'clock_divide_by': 3, 'broadcast_delay': 2, 'convergecast_delay': 1}
 - [x] {'clock_divide_by': 3, 'broadcast_delay': 1, 'convergecast_delay': 2}
 - [x] {'clock_divide_by': 3, 'broadcast_delay': 2, 'convergecast_delay': 2}
 - [x] {'clock_divide_by': 4, 'broadcast_delay': 2, 'convergecast_delay': 1}
 - [x] {'clock_divide_by': 4, 'broadcast_delay': 1, 'convergecast_delay': 2}
 - [x] {'clock_divide_by': 4, 'broadcast_delay': 2, 'convergecast_delay': 2}
-- [ ] {'support_offloading': True}
-- [ ] {'support_offloading': True, 'clock_divide_by': 3}
-- [ ] {'support_offloading': True, 'clock_divide_by': 4}
-- [ ] {'support_offloading': True, 'broadcast_delay': 2, 'clock_divide_by': 3}
-- [ ] {'support_offloading': True, 'broadcast_delay': 2, 'clock_divide_by': 4}
+- [x] {'support_offloading': True}
+- [x] {'support_offloading': True, 'clock_divide_by': 3}
+- [x] {'support_offloading': True, 'clock_divide_by': 4}
+- [x] {'support_offloading': True, 'broadcast_delay': 2, 'clock_divide_by': 3}
+- [x] {'support_offloading': True, 'broadcast_delay': 2, 'clock_divide_by': 4}
 ```
