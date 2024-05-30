@@ -25,14 +25,14 @@ if not os.path.exists(frequency_log_dir):
 
 
 configurations = [
-    Configuration(d=3),
-    Configuration(d=5),
-    Configuration(d=7),
-    Configuration(d=9),
-    Configuration(d=11),
-    Configuration(d=13),
-    Configuration(d=15),
-    Configuration(d=17),
+    Configuration(d=3, clock_divide_by=3),
+    Configuration(d=5, clock_divide_by=4),
+    Configuration(d=7, clock_divide_by=5),
+    Configuration(d=9, clock_divide_by=6),
+    Configuration(d=11, clock_divide_by=7),
+    Configuration(d=13, clock_divide_by=8),
+    Configuration(d=15, clock_divide_by=9),
+    Configuration(d=17, clock_divide_by=10),
 ]
 
 
@@ -66,6 +66,7 @@ for configuration in configurations:
 
     explorer = ClockDivideByExplorer(
         compute_next_minimum_divide_by=compute_next_minimum_divide_by,
+        min_divide_by=configuration.clock_divide_by,
         log_filepath=os.path.join(frequency_log_dir, configuration.name() + ".txt"),
     )
 

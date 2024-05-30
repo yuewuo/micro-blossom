@@ -63,6 +63,7 @@ def get_project(
     )
 
 
+results = ["# <context depth> <best frequency/MHz>"]
 for configuration in configurations:
 
     def compute_next_maximum_frequency(frequency: int) -> int:
@@ -77,5 +78,9 @@ for configuration in configurations:
 
     best_frequency = explorer.optimize()
     print(f"{configuration.name()}: {best_frequency}MHz")
+    results.append(f"{configuration.context_depth} {best_frequency}")
 
-    project = get_project(configuration, best_frequency)
+    # project = get_project(configuration, best_frequency)
+
+with open("best_frequencies.txt", "w", encoding="utf8") as f:
+    f.write("\n".join(results))
