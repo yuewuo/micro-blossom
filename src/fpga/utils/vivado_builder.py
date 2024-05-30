@@ -1,11 +1,13 @@
 import os, sys, git, subprocess, math
+from datetime import datetime
 from dataclasses import dataclass, field
 
 git_root_dir = git.Repo(".", search_parent_directories=True).working_tree_dir
 sys.path.insert(0, os.path.join(git_root_dir, "benchmark"))
 sys.path.insert(0, os.path.join(git_root_dir, "src", "fpga", "utils"))
 from micro_util import *
-from build_micro_blossom import main as build_micro_blossom_main
+from get_ttyoutput import get_ttyoutput
+from build_micro_blossom import *
 from vivado_project import VivadoProject
 
 
@@ -124,7 +126,7 @@ class MicroBlossomAxi4Builder:
     name: str
     clock_frequency: float = 200  # in MHz
     clock_divide_by: int = 2
-    overwrite: bool = False
+    overwrite: bool = True
     broadcast_delay: int = 0
     convergecast_delay: int = 1
     context_depth: int = 1
@@ -135,45 +137,53 @@ class MicroBlossomAxi4Builder:
     # e.g. ["offload"], ["offload", "update3"]
     inject_registers: list[str] | str = field(default_factory=lambda: [])
 
+    # not none after
+    project_builder: MicroBlossomProjectBuilder | None = None
+
     def hardware_proj_dir(self) -> str:
         return os.path.join(self.project_folder, self.name)
 
     def prepare_graph(self):
         self.graph_builder.build()
 
-    def create_vivado_project(self):
+    # when update, the files are re-sync with the template folder
+    def create_vivado_project(self, update=False):
+        # vitis panic when containing upper letter
+        assert self.name.lower() == self.name
         if not os.path.exists(self.project_folder):
             os.mkdir(self.project_folder)
-        if not os.path.exists(self.hardware_proj_dir()) or not os.path.exists(
+        run_for_files = [
+            self.hardware_proj_dir(),
             os.path.join(
                 self.hardware_proj_dir(), f"{self.name}_verilog", "MicroBlossomBus.v"
-            )
-        ):
-            parameters = ["--name", self.name]
-            parameters += ["--path", self.project_folder]
-            parameters += ["--clock-frequency", f"{self.clock_frequency}"]
-            parameters += ["--clock-divide-by", f"{self.clock_divide_by}"]
-            parameters += ["--graph", self.graph_builder.graph_file_path()]
-            parameters += ["--broadcast-delay", f"{self.broadcast_delay}"]
-            parameters += ["--convergecast-delay", f"{self.convergecast_delay}"]
-            parameters += ["--context-depth", f"{self.context_depth}"]
-            if not self.hard_code_weights:
-                parameters += ["--dynamic-weights"]
-            if not self.support_add_defect_vertex:
-                parameters += ["--no-add-defect-vertex"]
-            if self.support_offloading:
-                parameters += ["--support-offloading"]
-            if self.support_layer_fusion:
-                parameters += ["--support-layer-fusion"]
-            inject_registers = self.inject_registers
-            if isinstance(inject_registers, str):
-                inject_registers = [
-                    e for e in self.inject_registers.split(",") if e != ""
-                ]
-            parameters += ["--inject-registers"] + inject_registers
-            if self.overwrite:
-                parameters += ["--overwrite"]
-            build_micro_blossom_main(parameters)
+            ),
+        ]
+        run = any([not os.path.exists(filename) for filename in run_for_files])
+        parameters = ["--name", self.name]
+        parameters += ["--path", self.project_folder]
+        parameters += ["--clock-frequency", f"{self.clock_frequency}"]
+        parameters += ["--clock-divide-by", f"{self.clock_divide_by}"]
+        parameters += ["--graph", self.graph_builder.graph_file_path()]
+        parameters += ["--broadcast-delay", f"{self.broadcast_delay}"]
+        parameters += ["--convergecast-delay", f"{self.convergecast_delay}"]
+        parameters += ["--context-depth", f"{self.context_depth}"]
+        if not self.hard_code_weights:
+            parameters += ["--dynamic-weights"]
+        if not self.support_add_defect_vertex:
+            parameters += ["--no-add-defect-vertex"]
+        if self.support_offloading:
+            parameters += ["--support-offloading"]
+        if self.support_layer_fusion:
+            parameters += ["--support-layer-fusion"]
+        inject_registers = self.inject_registers
+        if isinstance(inject_registers, str):
+            inject_registers = [e for e in self.inject_registers.split(",") if e != ""]
+        parameters += ["--inject-registers"] + inject_registers
+        if self.overwrite:
+            parameters += ["--overwrite"]
+        self.project_builder = MicroBlossomProjectBuilder.from_args(
+            parameters, run=run, update=update
+        )
 
     def build_rust_binary(self, main: str = "hello_world"):
         make_env = os.environ.copy()
@@ -189,12 +199,12 @@ class MicroBlossomAxi4Builder:
         process.wait()
         assert process.returncode == 0, "compile error"
 
-    def build_vivado_project(self):
+    def build_vivado_project(self, force_recompile_binary: bool = False):
         log_file_path = os.path.join(self.hardware_proj_dir(), "build.log")
         frequency = self.clock_frequency
         print(f"building frequency={frequency}, log output to {log_file_path}")
         xsa_path = os.path.join(self.hardware_proj_dir(), f"{self.name}.xsa")
-        if not os.path.exists(xsa_path):
+        if not os.path.exists(xsa_path) or force_recompile_binary:
             with open(log_file_path, "a") as log:
                 process = subprocess.Popen(
                     ["make"],
@@ -205,6 +215,43 @@ class MicroBlossomAxi4Builder:
                 )
                 process.wait()
                 assert process.returncode == 0, "synthesis error"
+
+    # check timing reports to make sure there are no negative slacks
+    def timing_sanity_check_failed(self) -> bool:
+        print("start timing sanity check")
+        vivado = VivadoProject(self.hardware_proj_dir())
+        wns = vivado.routed_timing_summery().clk_pl_0_wns
+        frequency = vivado.frequency()
+        period = 1e-6 / frequency
+        new_period = period - wns * 1e-9
+        new_frequency = 1 / new_period / 1e6
+        if wns < 0:
+            # negative slack exists, need to lower the clock frequency
+            print(f"clock frequency too high!!!")
+            print(f"frequency: {frequency}MHz, wns: {wns}ns, new {new_frequency}MHz")
+            return True
+        else:
+            print(f"wns: {wns}ns, potential new frequency is {new_frequency}MHz")
+            return False
+
+    def run_application(self, silent: bool = True) -> str:
+        log_file_path = os.path.join(self.hardware_proj_dir(), "make.log")
+        print(f"testing, log output to {log_file_path}")
+        with open(log_file_path, "a", encoding="utf8") as log:
+            log.write(
+                f"[host_event] [make run_a72 start] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            )
+            tty_output, command_output = get_ttyoutput(
+                command=["make", "run_a72"], cwd=self.hardware_proj_dir(), silent=silent
+            )
+            log.write(
+                f"[host_event] [make run_a72 finish] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+            )
+            log.write(f"[host_event] [tty_output]\n")
+            log.write(tty_output + "\n")
+            log.write(f"[host_event] [command_output]\n")
+            log.write(command_output + "\n")
+            return tty_output
 
     # return current frequency if timing passed; otherwise return a maximum frequency that is achievable
     def next_maximum_frequency(self) -> int:
@@ -246,6 +293,23 @@ class MicroBlossomAxi4Builder:
             return new_clock_divide_by
         else:
             return self.clock_divide_by
+
+    def build_embedded_binary(self, make_env: dict | None):
+        if make_env is None:
+            make_env = os.environ.copy()
+        if "EMBEDDED_BLOSSOM_MAIN" not in make_env:
+            print("[warning] no EMBEDDED_BLOSSOM_MAIN, default to hello_world")
+            make_env["EMBEDDED_BLOSSOM_MAIN"] = "hello_world"
+        process = subprocess.Popen(
+            ["make", "Xilinx"],
+            universal_newlines=True,
+            stdout=sys.stdout,
+            stderr=sys.stderr,
+            cwd=embedded_dir,
+            env=make_env,
+        )
+        process.wait()
+        assert process.returncode == 0, "compile error"
 
     def build(self):
         self.prepare_graph()

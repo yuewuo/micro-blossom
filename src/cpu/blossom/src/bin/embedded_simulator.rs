@@ -30,6 +30,7 @@ use lazy_static::lazy_static;
 use micro_blossom::dual_module_axi4::*;
 use micro_blossom::mwpm_solver::*;
 use micro_blossom::resources::MicroBlossomSingle;
+use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::instruction::Instruction32;
 use parking_lot::Mutex;
 use serde_json::json;
@@ -173,4 +174,19 @@ extern "C" fn get_maximum_growth(context_id: u16) -> u16 {
     let driver = simulator.as_mut().unwrap();
     driver.context_id = context_id;
     driver.get_maximum_growth().unwrap()
+}
+
+#[no_mangle]
+extern "C" fn reset_context(context_id: u16) {
+    let mut simulator = SIMULATOR_DRIVER.lock();
+    let driver = simulator.as_mut().unwrap();
+    driver.context_id = context_id;
+    driver.reset();
+}
+
+#[no_mangle]
+extern "C" fn reset_all(context_depth: u16) {
+    let mut simulator = SIMULATOR_DRIVER.lock();
+    let driver = simulator.as_mut().unwrap();
+    driver.reset_all(context_depth).unwrap();
 }

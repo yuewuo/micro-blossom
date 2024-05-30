@@ -171,11 +171,22 @@ impl DualModuleAxi4Driver {
         }
         Ok(())
     }
+
+    pub fn reset_all(&mut self, context_depth: u16) -> std::io::Result<()> {
+        let original_context_id = self.context_id;
+        for context_id in 0..context_depth {
+            self.context_id = context_id;
+            self.reset();
+        }
+        self.context_id = original_context_id;
+        Ok(())
+    }
 }
 
 impl DualStacklessDriver for DualModuleAxi4Driver {
     fn reset(&mut self) {
         self.set_maximum_growth(0).unwrap();
+        self.execute_instruction(Instruction32::reset()).unwrap();
         self.find_obstacle(); // make sure there is no other pending instructions and clear the grown value
         self.execute_instruction(Instruction32::reset()).unwrap();
     }

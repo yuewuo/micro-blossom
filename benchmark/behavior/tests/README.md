@@ -73,14 +73,14 @@ I'll develop more sophisticated and generic tests later on.
 - [x] {'inject_registers': 'update2'}
 - [x] {'inject_registers': 'update3'}
 - [x] {'inject_registers': 'offload4,update3'}
-- [ ] {'inject_registers': 'offload3,execute2,update'}
+- [x] {'inject_registers': 'offload3,execute2,update'}
 - [x] {'clock_divide_by': 3, 'inject_registers': 'execute2'}
-- [ ] {'clock_divide_by': 3, 'inject_registers': 'offload4,update3'}
-- [ ] {'clock_divide_by': 3, 'inject_registers': 'offload3,execute2,update'}
-- [ ] {'clock_divide_by': 4, 'inject_registers': 'execute2'}
-- [ ] {'clock_divide_by': 4, 'inject_registers': 'offload4,update3'}
-- [ ] {'clock_divide_by': 3, 'context_depth': 2}
-- [ ] {'clock_divide_by': 3, 'context_depth': 4}
+- [x] {'clock_divide_by': 3, 'inject_registers': 'offload4,update3'}
+- [x] {'clock_divide_by': 3, 'inject_registers': 'offload3,execute2,update'}
+- [x] {'clock_divide_by': 4, 'inject_registers': 'execute2'}
+- [x] {'clock_divide_by': 4, 'inject_registers': 'offload4,update3'}
+- [x] {'clock_divide_by': 3, 'context_depth': 2}
+- [x] {'clock_divide_by': 3, 'context_depth': 4}
 - [x] {'clock_divide_by': 4, 'context_depth': 2}
 - [x] {'clock_divide_by': 4, 'context_depth': 4}
 - [x] {'clock_divide_by': 3, 'broadcast_delay': 2, 'convergecast_delay': 1}

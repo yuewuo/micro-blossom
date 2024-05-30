@@ -101,7 +101,7 @@ impl SimulationTcpClient {
         )?;
         let (socket, _addr) = listener.accept()?;
         let mut reader = BufReader::new(socket.try_clone()?);
-        let mut writer = LineWriter::new(socket);
+        let mut writer = LineWriter::new(socket.try_clone()?);
         let mut line = String::new();
         reader.read_line(&mut line)?;
         assert_eq!(
@@ -120,6 +120,8 @@ impl SimulationTcpClient {
             drop(simulation_lock);
             compile_begin.elapsed()
         };
+        // read operation should not take more than 30s; if failed, it's probably infinite loop in the verilog code
+        socket.set_read_timeout(Some(std::time::Duration::from_secs(30))).unwrap();
         Ok(Self {
             simulation_name: simulation_name.to_string(),
             name,

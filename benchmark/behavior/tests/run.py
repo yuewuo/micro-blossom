@@ -2,7 +2,7 @@ import os
 import sys
 import subprocess
 from dataclasses import dataclass
-import git
+import git, argparse
 
 git_root_dir = git.Repo(".", search_parent_directories=True).working_tree_dir
 sys.path.insert(0, os.path.join(git_root_dir, "benchmark"))
@@ -136,7 +136,7 @@ class TestVariant:
         config["EMBEDDED_BLOSSOM_MAIN"] = test_main
         return config
 
-    def run_embedded_simulator(self):
+    def run_embedded_simulator(self) -> bool:
         config = self.embedded_main_config()
         with open(os.path.join(run_dir, f"{self.name()}.log"), "w") as log:
             run_env = os.environ.copy()
@@ -163,9 +163,20 @@ class TestVariant:
             process.wait()
             succeeded = process.returncode == 0
             print(f"- [{'x' if succeeded else ' '}] {self.variant}")
+            return succeeded
 
 
-def main():
+# python3 run.py
+# WITH_WAVEFORM=1 KEEP_RTL_FOLDER=1 python3 run.py --panic-on-failure
+def main(args=None):
+    parser = argparse.ArgumentParser(description="Run Behavior Test")
+    parser.add_argument(
+        "--panic-on-failure",
+        action="store_true",
+        help="terminate the program when failure, useful for debugging",
+    )
+    args = parser.parse_args(args=args)
+
     compile_code_if_necessary()
 
     if not os.path.exists(run_dir):
@@ -175,7 +186,9 @@ def main():
 
     for variant in variants:
         test = TestVariant(variant)
-        test.run_embedded_simulator()
+        succeeded = test.run_embedded_simulator()
+        if args.panic_on_failure and not succeeded:
+            exit(1)
 
 
 if __name__ == "__main__":

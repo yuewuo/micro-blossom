@@ -21,7 +21,7 @@ class HardwareTest(TestVariant):
         graph_folder = os.path.dirname(graph_path)
         graph_file = os.path.basename(graph_path)
         assert graph_file.endswith(".json")
-        graph_name = graph_file[:-5]
+        graph_name = graph_file[:-5].lower()
 
         return MicroBlossomGraphBuilder(
             graph_folder=graph_folder,
@@ -36,7 +36,7 @@ class HardwareTest(TestVariant):
         config = self.config()
         return MicroBlossomAxi4Builder(
             graph_builder=self.get_graph_builder(),
-            name=self.name(),
+            name=self.name().lower(),
             project_folder=os.path.join(this_dir, "tmp-project"),
             clock_frequency=100,
             clock_divide_by=config.get("clock_divide_by", 2),
@@ -44,10 +44,12 @@ class HardwareTest(TestVariant):
             convergecast_delay=config.get("convergecast_delay", 1),
             context_depth=config.get("context_depth", 1),
             inject_registers=config.get("inject_registers", ""),
+            support_offloading=(config.get("support_offloading") != None),
+            support_layer_fusion=(config.get("support_layer_fusion") != None),
             # ignore bus_type and use_32_bus because the hardware project does not support it
         )
 
-    def build_embedded_binary(self):
+    def get_make_env(self):
         config = self.embedded_main_config()
         make_env = os.environ.copy()
         for key in config:
@@ -55,23 +57,20 @@ class HardwareTest(TestVariant):
                 continue
             value = config[key]
             make_env[key.upper()] = str(value)
-        process = subprocess.Popen(
-            ["make", "Xilinx"],
-            universal_newlines=True,
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-            cwd=embedded_dir,
-            env=make_env,
-        )
-        process.wait()
-        assert process.returncode == 0, "compile error"
+        return make_env
 
-    def run_hardware_test(self):
+    def run_hardware_test(self) -> bool:
         project = self.get_project()
-        project.create_vivado_project()
-        self.build_embedded_binary()
-        project.build_vivado_project()
-        # TODO: run the test on hardware
+        project.create_vivado_project(update=True)
+        make_env = self.get_make_env()
+        project.build_embedded_binary(make_env)
+        project.build_vivado_project(force_recompile_binary=True)
+        if project.timing_sanity_check_failed():
+            exit(1)
+        tty_output = project.run_application()
+        with open(os.path.join(run_dir, f"{self.name()}.log"), "w") as log:
+            log.write(tty_output)
+        return "[exit]" in tty_output
 
 
 def main():
@@ -88,10 +87,12 @@ def main():
 
     print(f"There are {len(filtered_variants)} variants...")
 
+    results = []
     for variant in filtered_variants:
-
         test = HardwareTest(variant)
-        test.run_hardware_test()
+        success = test.run_hardware_test()
+        results.append(f"- [{'x' if success else ' '}] {variant}")
+        print("\n".join(results))
 
 
 if __name__ == "__main__":
