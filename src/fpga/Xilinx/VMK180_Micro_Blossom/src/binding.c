@@ -33,7 +33,7 @@ float diff_native_time(uint64_t start, uint64_t end)
 MicroBlossomHardwareInfo get_hardware_info()
 {
     MicroBlossomHardwareInfo hardware_info;
-    memcpy((void *)&hardware_info, (const void *)(UB_BASE + 8), 8);
+    memcpy((void *)&hardware_info, (const void *)(UB_BASE + 8), 16);
     return hardware_info;
 }
 
@@ -80,7 +80,7 @@ uint16_t get_maximum_growth(uint16_t context_id)
 SingleReadout get_single_readout(uint16_t context_id)
 {
     SingleReadout readout;
-    memcpy((void *)&readout, (const void *)(UB_CONTEXT(context_id) + 32), 8);
+    memcpy((void *)&readout, (const void *)(UB_CONTEXT(context_id) + 32), 16);
     Xil_Out16(UB_CONTEXT(context_id), 0); // clear grown
     return readout;
 }

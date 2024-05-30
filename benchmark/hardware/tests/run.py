@@ -47,7 +47,7 @@ class HardwareTest(TestVariant):
             # ignore bus_type and use_32_bus because the hardware project does not support it
         )
 
-    def build_embedded_binary(self):
+    def get_make_env(self):
         config = self.embedded_main_config()
         make_env = os.environ.copy()
         for key in config:
@@ -55,23 +55,17 @@ class HardwareTest(TestVariant):
                 continue
             value = config[key]
             make_env[key.upper()] = str(value)
-        process = subprocess.Popen(
-            ["make", "Xilinx"],
-            universal_newlines=True,
-            stdout=sys.stdout,
-            stderr=sys.stderr,
-            cwd=embedded_dir,
-            env=make_env,
-        )
-        process.wait()
-        assert process.returncode == 0, "compile error"
+        return make_env
 
     def run_hardware_test(self):
         project = self.get_project()
         project.create_vivado_project()
-        self.build_embedded_binary()
-        project.build_vivado_project()
-        # TODO: run the test on hardware
+        make_env = self.get_make_env()
+        project.build_embedded_binary(make_env)
+        project.build_vivado_project(force_recompile_binary=True)
+        if project.timing_sanity_check_failed():
+            exit(1)
+        tty_output = project.run_application()
 
 
 def main():
@@ -92,6 +86,8 @@ def main():
 
         test = HardwareTest(variant)
         test.run_hardware_test()
+
+        exit(0)
 
 
 if __name__ == "__main__":
