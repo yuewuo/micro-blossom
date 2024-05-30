@@ -15,6 +15,7 @@ void print_char(char c)
 const uintptr_t UB_BASE = 0x400000000;
 const uintptr_t UB_BASE_READOUT = UB_BASE + 128 * 1024;
 #define UB_CONTEXT(context_id) (UB_BASE_READOUT + 128 * (context_id))
+#define RESET_INSTRUCTION (0x24)
 
 const float TIMER_FREQUENCY = 200e6; // 200MHz
 
@@ -82,4 +83,20 @@ SingleReadout get_single_readout(uint16_t context_id)
     memcpy((void *)&readout, (const void *)(UB_CONTEXT(context_id) + 32), 8);
     Xil_Out16(UB_CONTEXT(context_id), 0); // clear grown
     return readout;
+}
+
+void reset_context(uint16_t context_id)
+{
+    set_maximum_growth(0, context_id);
+    execute_instruction(RESET_INSTRUCTION, context_id);
+    get_single_readout(context_id); // make sure there is no other pending instructions and clear the grown value
+    execute_instruction(RESET_INSTRUCTION, context_id);
+}
+
+void reset_all(uint16_t context_depth)
+{
+    for (uint16_t context_id = 0; context_id < context_depth; ++context_id)
+    {
+        reset_context(context_id);
+    }
 }

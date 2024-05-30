@@ -33,6 +33,7 @@ pub fn main() {
     let hardware_info = unsafe { extern_c::get_hardware_info() };
     println!("version: {:#08x}", hardware_info.version);
     println!("{hardware_info:#?}");
+    unsafe { hardware_info.reset_all() };
 
     // println!("\n3. Benchmark Single Context Reset");
     // let mut instruction_benchmarker = Benchmarker::new(|| {

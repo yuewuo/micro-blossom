@@ -52,6 +52,7 @@ pub fn main() {
         SUPPORT_LAYER_FUSION,
         hardware_info.flags.contains(Flags::SUPPORT_LAYER_FUSION)
     );
+    unsafe { hardware_info.reset_all() };
 
     println!("\n3. Test Instruction Counter");
     unsafe { extern_c::clear_instruction_counter() };

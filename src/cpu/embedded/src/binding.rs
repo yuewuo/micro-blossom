@@ -88,6 +88,8 @@ pub mod extern_c {
         pub fn get_single_readout(context_id: uint16_t) -> SingleReadout;
         pub fn set_maximum_growth(length: uint16_t, context_id: uint16_t);
         pub fn get_maximum_growth(context_id: uint16_t) -> uint16_t;
+        pub fn reset_context(context_id: uint16_t);
+        pub fn reset_all(context_depth: uint16_t);
 
         pub fn clear_instruction_counter();
         pub fn get_instruction_counter() -> uint32_t;
@@ -138,6 +140,12 @@ pub mod extern_c {
         }
         pub fn has_conflict(&self) -> bool {
             self.conflict_valid != 0
+        }
+    }
+
+    impl MicroBlossomHardwareInfo {
+        pub unsafe fn reset_all(&self) {
+            reset_all(self.context_depth as u16);
         }
     }
 }

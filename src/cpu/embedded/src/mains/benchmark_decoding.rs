@@ -35,6 +35,7 @@ pub fn main() {
     // obtain hardware information
     let hardware_info = unsafe { extern_c::get_hardware_info() };
     assert!(hardware_info.conflict_channels == 1);
+    unsafe { hardware_info.reset_all() };
 
     // create primal and dual modules
     let context_id = 0;
