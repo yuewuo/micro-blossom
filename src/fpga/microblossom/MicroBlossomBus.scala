@@ -790,6 +790,9 @@ class MicroBlossomBusGeneratorConf(arguments: Seq[String]) extends ScallopConf(a
 // sbt "runMain microblossom.MicroBlossomBusGenerator --help"
 // (e.g.) sbt "runMain microblossom.MicroBlossomBusGenerator --graph ./resources/graphs/example_code_capacity_d3.json"
 object MicroBlossomBusGenerator extends App {
+  print("sbt \"runMain microblossom.MicroBlossomBusGenerator")
+  args.foreach(printf(" %s", _))
+  println("\"")
   val conf = new MicroBlossomBusGeneratorConf(args)
   val dualConfig = conf.dualConfig
   val genConfig = Config.argFolderPath(conf.outputDir())

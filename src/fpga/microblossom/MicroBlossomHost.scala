@@ -64,7 +64,7 @@ object MicroBlossomHost extends SimulationTcpHost("MicroBlossomHost") {
         driver.reset()
 
         dut.clockDomain.forkStimulus(period = 10)
-        dut.slowClockDomain.forkStimulus(period = 10 * emuConfig.clockDivideBy)
+        dut.slowClockDomain.forkStimulus(period = (10 * emuConfig.clockDivideBy).toInt)
 
         debuggerDump(dut)
 

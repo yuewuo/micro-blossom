@@ -91,14 +91,15 @@ class MicroBlossomProjectBuilder:
         print("Generating Verilog")
         run_verilog_generator(parameters)
 
-    def copy_project_files(self):
-        self.copy_common_py()
-        self.copy_makefile()
-        self.copy_vitis_py()
-        self.copy_tcl()
-        self.copy_c_source()
+    # if file exists, `update` determines whether to regenerate the file
+    def copy_project_files(self, update: bool = False):
+        self.copy_common_py(update)
+        self.copy_makefile(update)
+        self.copy_vitis_py(update)
+        self.copy_tcl(update)
+        self.copy_c_source(update)
 
-    def copy_common_py(self):
+    def copy_common_py(self, update: bool = False):
         with open(os.path.join(template_dir, "common.py"), "r", encoding="utf8") as f:
             common_py = f.read()
             common_py = checked_replace(
@@ -109,12 +110,13 @@ class MicroBlossomProjectBuilder:
                 'rust_project = "../../../cpu/embedded"',
                 f'rust_project = "{embedded_dir}"',
             )
-        with open(
-            os.path.join(self.project_dir(), "common.py"), "w", encoding="utf8"
-        ) as f:
-            f.write(common_py)
+        if not os.path.exists(os.path.join(self.project_dir(), "common.py")) or update:
+            with open(
+                os.path.join(self.project_dir(), "common.py"), "w", encoding="utf8"
+            ) as f:
+                f.write(common_py)
 
-    def copy_makefile(self):
+    def copy_makefile(self, update: bool = False):
         with open(os.path.join(template_dir, "Makefile"), "r", encoding="utf8") as f:
             makefile = f.read()
             makefile = checked_replace(
@@ -130,18 +132,23 @@ class MicroBlossomProjectBuilder:
                 "CLOCK_DIVIDE_BY ?= 2",
                 f"CLOCK_DIVIDE_BY ?= {self.clock_divide_by}",
             )
-        with open(
-            os.path.join(self.project_dir(), "Makefile"), "w", encoding="utf8"
-        ) as f:
-            f.write(makefile)
+        if not os.path.exists(os.path.join(self.project_dir(), "Makefile")) or update:
+            with open(
+                os.path.join(self.project_dir(), "Makefile"), "w", encoding="utf8"
+            ) as f:
+                f.write(makefile)
 
-    def copy_vitis_py(self):
-        shutil.copy2(
-            os.path.join(template_dir, "create_vitis.py"),
-            os.path.join(self.project_dir(), "create_vitis.py"),
-        )
+    def copy_vitis_py(self, update: bool = False):
+        if (
+            not os.path.exists(os.path.join(self.project_dir(), "create_vitis.py"))
+            or update
+        ):
+            shutil.copy2(
+                os.path.join(template_dir, "create_vitis.py"),
+                os.path.join(self.project_dir(), "create_vitis.py"),
+            )
 
-    def copy_tcl(self):
+    def copy_tcl(self, update: bool = False):
         for tcl_filename in ["create_vivado.tcl", "reimpl_vivado.tcl"]:
             with open(
                 os.path.join(template_dir, tcl_filename), "r", encoding="utf8"
@@ -150,29 +157,43 @@ class MicroBlossomProjectBuilder:
                 vivado_tcl = checked_replace(
                     vivado_tcl, "set name vmk180_micro_blossom", f"set name {self.name}"
                 )
-            with open(
-                os.path.join(self.project_dir(), tcl_filename), "w", encoding="utf8"
-            ) as f:
-                f.write(vivado_tcl)
+            if (
+                not os.path.exists(os.path.join(self.project_dir(), tcl_filename))
+                or update
+            ):
+                with open(
+                    os.path.join(self.project_dir(), tcl_filename), "w", encoding="utf8"
+                ) as f:
+                    f.write(vivado_tcl)
         with open(
             os.path.join(template_dir, "run_xsdb.tcl"), "r", encoding="utf8"
         ) as f:
             run_xsdb_tcl = f.read()
             run_xsdb_tcl = checked_replace(
-                run_xsdb_tcl, "set name vmk180_micro_blossom", f"set name {self.name}"
+                run_xsdb_tcl,
+                "set name vmk180_micro_blossom",
+                f"set name {self.name}",
             )
-        with open(
-            os.path.join(self.project_dir(), "run_xsdb.tcl"), "w", encoding="utf8"
-        ) as f:
-            f.write(run_xsdb_tcl)
+        if (
+            not os.path.exists(os.path.join(self.project_dir(), "run_xsdb.tcl"))
+            or update
+        ):
+            with open(
+                os.path.join(self.project_dir(), "run_xsdb.tcl"), "w", encoding="utf8"
+            ) as f:
+                f.write(run_xsdb_tcl)
 
-    def copy_c_source(self):
+    def copy_c_source(self, update: bool = False):
         if not os.path.exists(os.path.join(self.project_dir(), "src")):
             os.makedirs(os.path.join(self.project_dir(), "src"))
-        shutil.copy2(
-            os.path.join(template_dir, "src", "main.c"),
-            os.path.join(self.project_dir(), "src", "main.c"),
-        )
+        if (
+            not os.path.exists(os.path.join(self.project_dir(), "src", "main.c"))
+            or update
+        ):
+            shutil.copy2(
+                os.path.join(template_dir, "src", "main.c"),
+                os.path.join(self.project_dir(), "src", "main.c"),
+            )
         # src/binding.c
         with open(
             os.path.join(template_dir, "src", "binding.c"), "r", encoding="utf8"
@@ -183,10 +204,16 @@ class MicroBlossomProjectBuilder:
                 "const float TIMER_FREQUENCY = 200e6; // 200MHz",
                 f"const float TIMER_FREQUENCY = {self.clock_frequency}e6; // {self.clock_frequency}MHz",
             )
-        with open(
-            os.path.join(self.project_dir(), "src", "binding.c"), "w", encoding="utf8"
-        ) as f:
-            f.write(binding_c)
+        if (
+            not os.path.exists(os.path.join(self.project_dir(), "src", "binding.c"))
+            or update
+        ):
+            with open(
+                os.path.join(self.project_dir(), "src", "binding.c"),
+                "w",
+                encoding="utf8",
+            ) as f:
+                f.write(binding_c)
 
     @staticmethod
     def from_args(args=None, run=True, update=True) -> "MicroBlossomProjectBuilder":
@@ -235,7 +262,8 @@ class MicroBlossomProjectBuilder:
         print(f"path: {path}")
         name = args.name
         print(f"project name: {name}")
-        assert re.match(r"^[a-zA-Z0-9_-]+$", name), f"invalid project name {name}"
+        assert re.match(r"^[a-zA-Z0-9_]+$", name), f"invalid project name {name}"
+        assert "__" not in name, f"invalid project name {name}"  # requires by Vivado
         graph = args.graph
         if not os.path.exists(graph):
             graph = os.path.join(git_root_dir, "resources", "graphs", graph)
@@ -250,8 +278,7 @@ class MicroBlossomProjectBuilder:
             parameters=parameters,
             overwrite=args.overwrite,
         )
-        if update:
-            project_builder.copy_project_files()
+        project_builder.copy_project_files(update)
         if run:
             if not args.overwrite:
                 project_dir = project_builder.project_dir()

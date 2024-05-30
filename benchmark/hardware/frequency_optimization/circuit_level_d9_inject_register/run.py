@@ -17,7 +17,10 @@ class Configuration:
     clock_divide_by: float = 1  # start with 250MHz slow clock
 
     def name(self) -> str:
-        return f"registers_{'_'.join(self.inject_registers)}_b{self.broadcast_delay}"
+        registers = "_".join(self.inject_registers)
+        if registers == "":
+            registers = "none"
+        return f"r_{registers}_b{self.broadcast_delay}"
 
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -37,12 +40,12 @@ graph_builder = MicroBlossomGraphBuilder(
 )
 
 configurations = [
-    # Configuration(inject_registers=[]),
-    # Configuration(inject_registers=[], broadcast_delay=1),
-    # Configuration(inject_registers=["execute"]),
-    # Configuration(inject_registers=["execute"], broadcast_delay=1),
-    # Configuration(inject_registers=["execute,update"]),
-    Configuration(inject_registers=["execute,update"], broadcast_delay=1),
+    Configuration(inject_registers=[]),
+    Configuration(inject_registers=[], broadcast_delay=1),
+    Configuration(inject_registers=["execute"]),
+    Configuration(inject_registers=["execute"], broadcast_delay=1),
+    Configuration(inject_registers=["execute", "update"]),
+    Configuration(inject_registers=["execute", "update"], broadcast_delay=1),
 ]
 
 
@@ -72,6 +75,7 @@ for configuration in configurations:
     explorer = FrequencyExplorer(
         compute_next_maximum_frequency=compute_next_maximum_slow_frequency,
         log_filepath=os.path.join(frequency_log_dir, configuration.name() + ".txt"),
+        max_frequency=configuration.frequency / configuration.clock_divide_by,
     )
 
     best_slow_frequency = explorer.optimize()
