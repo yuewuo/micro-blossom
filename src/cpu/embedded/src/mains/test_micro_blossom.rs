@@ -148,8 +148,8 @@ pub fn main() {
     println!("\n9. Test Context Switching");
     let cid_1 = 0;
     let cid_2 = CONTEXT_DEPTH as u16 - 1;
-    unsafe { extern_c::reset(cid_1) };
-    unsafe { extern_c::reset(cid_2) };
+    unsafe { extern_c::reset_context(cid_1) };
+    unsafe { extern_c::reset_context(cid_2) };
     unsafe { extern_c::execute_instruction(Instruction32::add_defect_vertex(left, node).into(), cid_1) };
     let readout = unsafe { extern_c::get_single_readout(cid_1) };
     println!("readout 1: {readout:#?}");
