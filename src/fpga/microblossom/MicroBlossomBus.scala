@@ -198,19 +198,19 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       var pop: Stream[LooperInput[InstructionTag]] = null
     }
     if (isSyncClk) {
+      val fifo = StreamFifo(
+        dataType = LooperInput(config, InstructionTag(config)),
+        depth = config.instructionBufferDepth,
+        latency = 1
+      )
+      io.push = fifo.io.push
+      io.pop = fifo.io.pop
+    } else {
       val fifo = StreamFifoCC(
         dataType = LooperInput(config, InstructionTag(config)),
         depth = config.instructionBufferDepth,
         pushClock = clockDomain,
         popClock = slowClockDomain
-      )
-      io.push = fifo.io.push
-      io.pop = fifo.io.pop
-    } else {
-      val fifo = StreamFifo(
-        dataType = LooperInput(config, InstructionTag(config)),
-        depth = config.instructionBufferDepth,
-        latency = 1
       )
       io.push = fifo.io.push
       io.pop = fifo.io.pop
@@ -222,19 +222,19 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       var pop: Stream[LooperOutput[InstructionTag]] = null
     }
     if (isSyncClk) {
+      val fifo = StreamFifo(
+        dataType = LooperOutput(config, InstructionTag(config)),
+        depth = config.instructionBufferDepth,
+        latency = 1
+      )
+      io.push = fifo.io.push
+      io.pop = fifo.io.pop
+    } else {
       val fifo = StreamFifoCC(
         dataType = LooperOutput(config, InstructionTag(config)),
         depth = config.instructionBufferDepth,
         pushClock = slowClockDomain,
         popClock = clockDomain
-      )
-      io.push = fifo.io.push
-      io.pop = fifo.io.pop
-    } else {
-      val fifo = StreamFifo(
-        dataType = LooperOutput(config, InstructionTag(config)),
-        depth = config.instructionBufferDepth,
-        latency = 1
       )
       io.push = fifo.io.push
       io.pop = fifo.io.pop
