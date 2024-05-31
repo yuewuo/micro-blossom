@@ -57,12 +57,12 @@ def run_verilog_generator(parameters):
 @dataclass
 class MicroBlossomProjectBuilder:
     clock_frequency: float
-    clock_divide_by: float = 1.0
     path: str
     name: str
     graph: str
     parameters: list[str]
     overwrite: bool
+    clock_divide_by: float = 1.0
 
     def project_dir(self) -> str:
         project_dir = os.path.join(self.path, self.name)

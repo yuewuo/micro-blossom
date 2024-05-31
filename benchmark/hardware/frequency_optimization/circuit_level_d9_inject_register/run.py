@@ -13,8 +13,7 @@ class Configuration:
     inject_registers: list[str]
     broadcast_delay: int = 0
 
-    frequency: float = 250  # Axi4 bus
-    clock_divide_by: float = 1  # start with 250MHz slow clock
+    frequency: float = 150
 
     def name(self) -> str:
         registers = "_".join(self.inject_registers)
@@ -40,25 +39,22 @@ graph_builder = MicroBlossomGraphBuilder(
 )
 
 configurations = [
-    Configuration(inject_registers=[], clock_divide_by=4.5),  # -13ns WNS, (13+4)/4
-    Configuration(inject_registers=[], broadcast_delay=1, clock_divide_by=3),
-    Configuration(inject_registers=["execute"], clock_divide_by=3),
-    Configuration(inject_registers=["execute"], broadcast_delay=1, clock_divide_by=2),
-    Configuration(inject_registers=["execute", "update"], clock_divide_by=2),
-    Configuration(
-        inject_registers=["execute", "update"], broadcast_delay=1, clock_divide_by=1.5
-    ),
+    Configuration(inject_registers=[]),
+    Configuration(inject_registers=[], broadcast_delay=1),
+    Configuration(inject_registers=["execute"]),
+    Configuration(inject_registers=["execute"], broadcast_delay=1),
+    Configuration(inject_registers=["execute", "update"]),
+    Configuration(inject_registers=["execute", "update"], broadcast_delay=1),
 ]
 
 
 def get_project(
-    configuration: Configuration, slow_frequency: int
+    configuration: Configuration, frequency: int
 ) -> MicroBlossomAxi4Builder:
     return MicroBlossomAxi4Builder(
         graph_builder=graph_builder,
-        name=configuration.name() + f"_sf{slow_frequency}",
+        name=configuration.name() + f"_sf{frequency}",
         clock_frequency=configuration.frequency,
-        clock_divide_by=configuration.frequency / slow_frequency,
         project_folder=os.path.join(this_dir, "tmp-project"),
         broadcast_delay=configuration.broadcast_delay,
         inject_registers=configuration.inject_registers,
@@ -68,21 +64,20 @@ def get_project(
 results = ["# <name> <best frequency/MHz>"]
 for configuration in configurations:
 
-    def compute_next_maximum_slow_frequency(slow_frequency: int) -> int:
-        project = get_project(configuration, slow_frequency)
+    def compute_next_maximum_frequency(frequency: int) -> int:
+        project = get_project(configuration, frequency)
         project.build()
-        new_clock_divide_by = project.next_minimum_clock_divide_by()
-        return math.floor(project.clock_frequency / new_clock_divide_by) - 1
+        return project.next_maximum_frequency() - 1
 
     explorer = FrequencyExplorer(
-        compute_next_maximum_frequency=compute_next_maximum_slow_frequency,
+        compute_next_maximum_frequency=compute_next_maximum_frequency,
         log_filepath=os.path.join(frequency_log_dir, configuration.name() + ".txt"),
-        max_frequency=configuration.frequency / configuration.clock_divide_by,
+        max_frequency=configuration.frequency,
     )
 
-    best_slow_frequency = explorer.optimize()
-    print(f"{configuration.name()}: {best_slow_frequency}MHz")
-    results.append(f"{configuration.name()} {best_slow_frequency}")
+    best_frequency = explorer.optimize()
+    print(f"{configuration.name()}: {best_frequency}MHz")
+    results.append(f"{configuration.name()} {best_frequency}")
 
     # project = get_project(configuration, best_frequency)
 
