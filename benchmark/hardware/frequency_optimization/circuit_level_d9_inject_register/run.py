@@ -1,4 +1,4 @@
-import os, sys, git
+import os, sys, git, math
 from dataclasses import dataclass
 
 git_root_dir = git.Repo(".", search_parent_directories=True).working_tree_dir
@@ -40,12 +40,14 @@ graph_builder = MicroBlossomGraphBuilder(
 )
 
 configurations = [
-    Configuration(inject_registers=[]),
-    Configuration(inject_registers=[], broadcast_delay=1),
-    Configuration(inject_registers=["execute"]),
-    Configuration(inject_registers=["execute"], broadcast_delay=1),
-    Configuration(inject_registers=["execute", "update"]),
-    Configuration(inject_registers=["execute", "update"], broadcast_delay=1),
+    Configuration(inject_registers=[], clock_divide_by=4.5),  # -13ns WNS, (13+4)/4
+    Configuration(inject_registers=[], broadcast_delay=1, clock_divide_by=3),
+    Configuration(inject_registers=["execute"], clock_divide_by=3),
+    Configuration(inject_registers=["execute"], broadcast_delay=1, clock_divide_by=2),
+    Configuration(inject_registers=["execute", "update"], clock_divide_by=2),
+    Configuration(
+        inject_registers=["execute", "update"], broadcast_delay=1, clock_divide_by=1.5
+    ),
 ]
 
 
@@ -63,14 +65,14 @@ def get_project(
     )
 
 
-results = ["# <context depth> <best frequency/MHz>"]
+results = ["# <name> <best frequency/MHz>"]
 for configuration in configurations:
 
     def compute_next_maximum_slow_frequency(slow_frequency: int) -> int:
         project = get_project(configuration, slow_frequency)
         project.build()
         new_clock_divide_by = project.next_minimum_clock_divide_by()
-        return project.clock_frequency / new_clock_divide_by
+        return math.floor(project.clock_frequency / new_clock_divide_by) - 1
 
     explorer = FrequencyExplorer(
         compute_next_maximum_frequency=compute_next_maximum_slow_frequency,
@@ -80,7 +82,7 @@ for configuration in configurations:
 
     best_slow_frequency = explorer.optimize()
     print(f"{configuration.name()}: {best_slow_frequency}MHz")
-    results.append(f"{configuration.context_depth} {best_slow_frequency}")
+    results.append(f"{configuration.name()} {best_slow_frequency}")
 
     # project = get_project(configuration, best_frequency)
 
