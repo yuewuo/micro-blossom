@@ -77,6 +77,7 @@ import org.rogach.scallop._
 //      16: (RW) 16 bits maximum growth write (offloaded primal), when 0, disable offloaded primal,
 //                  write to this field will automatically clear accumulated grown value
 //      18: (R) 16 bits growable value (writing to this position has no effect)
+//      24: (R) 64 bits parity reports
 //      32: (R) head + conflict (conflict_fields: 96 bits, conflict_valid: u8, growable: u8, accumulated_grown: u16)
 //               conflict_fields: (node1, node2, touch1, touch2, vertex1, vertex2, each 16 bits)
 //               here we use u8 sized growable because it
@@ -214,6 +215,9 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   val accumulatedGrown = OneMem(UInt(16 bits), config.contextDepth) init List.fill(config.contextDepth)(U(0, 16 bits))
   val maxGrowable = OneMem(ConvergecastMaxGrowable(config.weightBits), config.contextDepth)
   val conflict = OneMem(ConvergecastConflict(config.vertexBits), config.contextDepth)
+  val parityReports = OneMem(Bits(config.parityReportersNum bits), config.contextDepth) init List.fill(
+    config.contextDepth
+  )(B(0, config.parityReportersNum bits))
   val pushId = OneMem(UInt(config.instructionBufferBits bits), config.contextDepth) init
     List.fill(config.contextDepth)(U(0, config.instructionBufferBits bits))
   val popId = OneMem(UInt(config.instructionBufferBits bits), config.contextDepth) init
@@ -316,6 +320,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   val fsmAccumulatedGrown = accumulatedGrown.constructReadWriteSyncChannel()
   val fsmMaxGrowable = maxGrowable.constructReadSyncChannel()
   val fsmConflict = conflict.constructReadSyncChannel()
+  val fsmParityReports = parityReports.constructReadSyncChannel()
   val fsmPushId = pushId.constructReadWriteSyncChannel()
   val fsmPopId = popId.constructReadSyncChannel()
   val fsmMaximumGrowth = maximumGrowth.constructReadWriteSyncChannel()
@@ -354,6 +359,8 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
               goto(stateReadFinishTime)
             } elsewhen (readout.subAddress === U(16)) {
               goto(stateReadMaximumGrowth)
+            } elsewhen (readout.subAddress === U(24)) {
+              goto(stateReadParityReports)
             } elsewhen (readout.subAddress >= U(32) && readout.subAddress < U(48)) {
               hardwareInfo.readoutCounter := hardwareInfo.readoutCounter + 1
               goto(stateReadObstacle)
@@ -411,6 +418,20 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
         }
         fsmMaximumGrowth.writeNext(readout.writeContextId, newMaximumGrowth)
         isWriteHalt := False
+        goto(stateIdle)
+      }
+    }
+
+    val stateReadParityReports: State = new State {
+      whenIsNext {
+        when(readout.contextIdRaw > readout.contextId.maxValue) { hasError := True }
+        fsmParityReports.readNext(readout.contextId)
+      }
+      whenIsActive {
+        val value = fsmParityReports.data
+        if (is64bus) { readout.value := value.resized }
+        else { readout.value := value.resized }
+        isReadHalt := False
         goto(stateIdle)
       }
     }
@@ -681,6 +702,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   val rspPopId = popId.constructReadWriteSyncChannel()
   val rspMaxGrowable = maxGrowable.constructReadWriteSyncChannel()
   val rspConflict = conflict.constructReadWriteSyncChannel()
+  val rspParityReports = parityReports.constructReadWriteSyncChannel()
   val rspAccumulatedGrown = accumulatedGrown.constructReadWriteSyncChannel()
   val rspTimeFinish = new Area {
     val upper = timeFinish.upper.constructReadWriteSyncChannel()
@@ -705,6 +727,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
           rspPopId.writeNext(contextId, output.tag.instructionId)
           rspMaxGrowable.writeNext(contextId, output.maxGrowable)
           rspConflict.writeNext(contextId, output.conflict)
+          rspParityReports.writeNext(contextId, output.parityReports)
           rspAccumulatedGrown.writeNext(contextId, output.grown + output.tag.accumulatedGrown)
           // if the instruction is FindObstacle, unset pending instruction
           when(output.tag.isFindObstacle) {

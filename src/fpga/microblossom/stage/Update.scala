@@ -48,6 +48,29 @@ case class StageUpdateVertex3(config: DualConfig, vertexIndex: Int) extends Bund
 }
 
 /*
+ * Offloader
+ */
+
+case class StageUpdateOffloader(config: DualConfig, offloaderIndex: Int) extends Bundle {
+  val condition = Bool
+  def connect(last: StageExecuteOffloader3) = {
+    condition := last.condition
+  }
+}
+case class StageUpdateOffloader2(config: DualConfig, offloaderIndex: Int) extends Bundle {
+  val condition = Bool
+  def connect(last: StageUpdateOffloader) = {
+    condition := last.condition
+  }
+}
+case class StageUpdateOffloader3(config: DualConfig, offloaderIndex: Int) extends Bundle {
+  val condition = Bool
+  def connect(last: StageUpdateOffloader2) = {
+    condition := last.condition
+  }
+}
+
+/*
  * Edge
  */
 

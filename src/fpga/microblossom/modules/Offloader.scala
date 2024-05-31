@@ -13,9 +13,26 @@ object Offloader {
   def getStages(
       config: DualConfig,
       offloaderIndex: Int
-  ): Stages[Bundle, Bundle, Bundle, StageOffloadOffloader4, Bundle, Bundle, Bundle, Bundle, Bundle, Bundle] = {
+  ): Stages[
+    Bundle,
+    Bundle,
+    Bundle,
+    StageOffloadOffloader4,
+    StageExecuteOffloader,
+    StageExecuteOffloader2,
+    StageExecuteOffloader3,
+    StageUpdateOffloader,
+    StageUpdateOffloader2,
+    StageUpdateOffloader3
+  ] = {
     Stages(
-      offload4 = () => StageOffloadOffloader4(config, offloaderIndex)
+      offload4 = () => StageOffloadOffloader4(config, offloaderIndex),
+      execute = () => StageExecuteOffloader(config, offloaderIndex),
+      execute2 = () => StageExecuteOffloader2(config, offloaderIndex),
+      execute3 = () => StageExecuteOffloader3(config, offloaderIndex),
+      update = () => StageUpdateOffloader(config, offloaderIndex),
+      update2 = () => StageUpdateOffloader2(config, offloaderIndex),
+      update3 = () => StageUpdateOffloader3(config, offloaderIndex)
     )
   }
 }
@@ -36,6 +53,8 @@ case class Offloader(config: DualConfig, offloaderIndex: Int) extends Component 
       )
     )
     val edgeInputOffloadGet3 = in(Edge.getStages(config).getStageOutput.offloadGet3)
+    // final outputs
+    val condition = out(Bool)
   }
 
   val stages = Offloader.getStages(config, offloaderIndex)
@@ -108,6 +127,17 @@ case class Offloader(config: DualConfig, offloaderIndex: Int) extends Component 
     throw new Exception("unrecognized definition of offloader")
   }
   connectLogic()
+
+  stages.executeSet.connect(stages.offloadGet4)
+  stages.executeSet2.connect(stages.executeGet)
+  stages.executeSet3.connect(stages.executeGet2)
+  stages.updateSet.connect(stages.executeGet3)
+  stages.updateSet2.connect(stages.updateGet)
+  stages.updateSet3.connect(stages.updateGet2)
+
+  // 1 cycle delay when context is used (to ensure read latency >= execute latency)
+  val outDelay = (config.contextDepth != 1).toInt
+  io.condition := Delay(stages.updateGet3.condition, outDelay)
 
   // inject registers
   for (stageName <- config.injectRegisters) {

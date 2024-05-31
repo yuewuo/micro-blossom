@@ -18,7 +18,7 @@ case class SingleGraph(
     var vertex_max_growth: Seq[Long],
     var offloading: Seq[Offloading],
     var layer_fusion: Option[LayerFusion],
-    var parity_reporter: Option[ParityReporter]
+    var parity_reporters: Option[ParityReporters]
 )
 
 @ConfiguredJsonCodec
@@ -80,6 +80,11 @@ case class LayerFusion(
     var unique_tight_conditions: Map[Long, Seq[Long]]
 )
 
+@ConfiguredJsonCodec
+case class ParityReporters(
+    var reporters: Seq[Seq[Long]]
+)
+
 object SingleGraph {
   implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
 }
@@ -108,5 +113,8 @@ object FusionMatch {
   implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
 }
 object LayerFusion {
+  implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
+}
+object ParityReporters {
   implicit val config: Configuration = Configuration.default.withSnakeCaseMemberNames
 }

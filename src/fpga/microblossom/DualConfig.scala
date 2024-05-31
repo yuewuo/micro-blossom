@@ -54,6 +54,13 @@ case class DualConfig(
       case None               => LayerFusion(0, Seq(), Map(), Map(), Map())
     }
   }
+  def parityReporters = {
+    graph.parity_reporters match {
+      case Some(parity_reporters) => parity_reporters.reporters
+      case None                   => Seq()
+    }
+  }
+  def parityReportersNum = parityReporters.length.toInt
 
   private val virtualVertices = collection.mutable.Set[Int]()
   private val incidentEdges = collection.mutable.Map[Int, ArrayBuffer[Int]]() // vertexIndex -> Seq[edgeIndex]

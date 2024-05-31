@@ -23,6 +23,7 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig) extends Com
 
     val maxGrowable = out(ConvergecastMaxGrowable(ioConfig.weightBits))
     val conflict = out(ConvergecastConflict(ioConfig.vertexBits))
+    val parityReports = out(Bits(config.parityReportersNum bits))
   }
 
   // width conversion
@@ -131,6 +132,20 @@ case class DistributedDual(config: DualConfig, ioConfig: DualConfig) extends Com
   val convergecastedConflict =
     Delay(conflictConvergecastTree(config.graph.edge_binary_tree.nodes.length - 1), config.convergecastDelay)
   io.conflict.resizedFrom(convergecastedConflict)
+
+  // build convergecast tree of parity reporter
+  for ((parityReporter, index) <- config.parityReporters.zipWithIndex) {
+    val parities = Vec.fill(parityReporter.length)(Bool)
+    for ((offloaderIndex, reportIndex) <- parityReporter.zipWithIndex) {
+      if (offloaderIndex < offloaders.length) {
+        parities(reportIndex) := offloaders(offloaderIndex.toInt).io.condition
+      } else {
+        parities(reportIndex) := False
+      }
+    }
+    val parityReport = parities.reduceBalancedTree(_ ^ _) // XOR
+    io.parityReports(index) := Delay(parityReport, config.convergecastDelay)
+  }
 
   def simExecute(instruction: Long): (DataMaxGrowable, DataConflictRaw) = {
     io.message.valid #= true

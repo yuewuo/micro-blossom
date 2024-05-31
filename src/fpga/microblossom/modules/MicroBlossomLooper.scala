@@ -124,6 +124,7 @@ case class MicroBlossomLooper[T <: Data](config: DualConfig, tagType: HardType[T
     if (tagType != null) io.pop.payload.tag := responseEntry.tag
     io.pop.payload.maxGrowable := microBlossom.io.maxGrowable
     io.pop.payload.conflict.assignReordered(microBlossom.io.conflict)
+    io.pop.payload.parityReports := microBlossom.io.parityReports
     io.pop.payload.grown := responseEntry.grown
   } otherwise {
     io.pop.valid := False
@@ -196,6 +197,7 @@ case class LooperOutput[T <: Data](config: DualConfig, tagType: HardType[T] = Em
   val maxGrowable = ConvergecastMaxGrowable(config.weightBits)
   val conflict = ConvergecastConflict(config.vertexBits)
   val grown = UInt(16 bits)
+  val parityReports = Bits(config.parityReportersNum bits)
   val tag = (tagType != null) generate cloneOf(tagType)
 }
 
