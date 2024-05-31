@@ -96,7 +96,7 @@ case class InstructionTag(config: DualConfig) extends Bundle {
 
 case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     config: DualConfig,
-    clockDivideBy: Double = 2, // the slow clock domain has a frequency of `frequency/clockDivideBy`
+    clockDivideBy: Double = 1, // the slow clock domain has a frequency of `frequency/clockDivideBy`
     baseAddress: BigInt = 0,
     interfaceBuilder: () => T,
     slaveFactory: (T) => F
@@ -116,6 +116,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   require(clockDivideBy >= 1, "the bus must run at higher frequency, otherwise data loss might occur")
   require(factory.busDataWidth == 64 || factory.busDataWidth == 32, "only 64 bits or 32 bits bus is supported")
   val is64bus = factory.busDataWidth == 64
+  val isSyncClk = clockDivideBy == 1
 
   // 0: (RO) 64 bits timer counter
   val counter = new Area {
@@ -178,28 +179,67 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     hardwareInfo.errorCounter := hardwareInfo.errorCounter + 1
   }
 
-  val slowClockDomain = ClockDomain(
-    clock = slowClk,
-    reset = ClockDomain.current.readResetWire,
-    config = ClockDomainConfig(
-      clockEdge = RISING,
-      resetKind = SYNC,
-      resetActiveLevel = HIGH
+  val slowClockDomain: ClockDomain = if (isSyncClk) { clockDomain }
+  else {
+    ClockDomain(
+      clock = slowClk,
+      reset = ClockDomain.current.readResetWire,
+      config = ClockDomainConfig(
+        clockEdge = RISING,
+        resetKind = SYNC,
+        resetActiveLevel = HIGH
+      )
     )
-  )
+  }
 
-  val ccFifoPush = StreamFifoCC(
-    dataType = LooperInput(config, InstructionTag(config)),
-    depth = config.instructionBufferDepth,
-    pushClock = clockDomain,
-    popClock = slowClockDomain
-  )
-  val ccFifoPop = StreamFifoCC(
-    dataType = LooperOutput(config, InstructionTag(config)),
-    depth = config.instructionBufferDepth,
-    pushClock = slowClockDomain,
-    popClock = clockDomain
-  )
+  val ccFifoPush = new Area {
+    val io = new Area {
+      var push: Stream[LooperInput[InstructionTag]] = null
+      var pop: Stream[LooperInput[InstructionTag]] = null
+    }
+    if (isSyncClk) {
+      val fifo = StreamFifoCC(
+        dataType = LooperInput(config, InstructionTag(config)),
+        depth = config.instructionBufferDepth,
+        pushClock = clockDomain,
+        popClock = slowClockDomain
+      )
+      io.push = fifo.io.push
+      io.pop = fifo.io.pop
+    } else {
+      val fifo = StreamFifo(
+        dataType = LooperInput(config, InstructionTag(config)),
+        depth = config.instructionBufferDepth,
+        latency = 1
+      )
+      io.push = fifo.io.push
+      io.pop = fifo.io.pop
+    }
+  }
+  val ccFifoPop = new Area {
+    val io = new Area {
+      var push: Stream[LooperOutput[InstructionTag]] = null
+      var pop: Stream[LooperOutput[InstructionTag]] = null
+    }
+    if (isSyncClk) {
+      val fifo = StreamFifoCC(
+        dataType = LooperOutput(config, InstructionTag(config)),
+        depth = config.instructionBufferDepth,
+        pushClock = slowClockDomain,
+        popClock = clockDomain
+      )
+      io.push = fifo.io.push
+      io.pop = fifo.io.pop
+    } else {
+      val fifo = StreamFifo(
+        dataType = LooperOutput(config, InstructionTag(config)),
+        depth = config.instructionBufferDepth,
+        latency = 1
+      )
+      io.push = fifo.io.push
+      io.pop = fifo.io.pop
+    }
+  }
   val slow = new ClockingArea(slowClockDomain) {
     val microBlossom = MicroBlossomLooper(config, InstructionTag(config))
     microBlossom.io.push << ccFifoPush.io.pop

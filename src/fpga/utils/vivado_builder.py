@@ -131,7 +131,7 @@ class MicroBlossomAxi4Builder:
     project_folder: str
     name: str
     clock_frequency: float = 200  # in MHz
-    clock_divide_by: float = 2
+    clock_divide_by: float = 1.0
     overwrite: bool = True
     broadcast_delay: int = 0
     convergecast_delay: int = 1

@@ -8,7 +8,7 @@ import spinal.lib.bus.wishbone._
 import microblossom._
 
 trait MicroBlossomBusType {
-  def generate(config: DualConfig, clockDivideBy: Double = 2, baseAddress: BigInt = 0): Component
+  def generate(config: DualConfig, clockDivideBy: Double = 1, baseAddress: BigInt = 0): Component
 }
 
 object MicroBlossomBusType {
@@ -22,7 +22,7 @@ object MicroBlossomBusType {
   def generateByName(
       busTypeName: String,
       config: DualConfig,
-      clockDivideBy: Double = 2,
+      clockDivideBy: Double = 1,
       baseAddress: BigInt = 0
   ): Component = {
     busTypes.get(busTypeName) match {
@@ -33,7 +33,7 @@ object MicroBlossomBusType {
 }
 
 object MicroBlossomAxi4 extends MicroBlossomBusType {
-  def generate(config: DualConfig, clockDivideBy: Double = 2, baseAddress: BigInt = 0): Component =
+  def generate(config: DualConfig, clockDivideBy: Double = 1, baseAddress: BigInt = 0): Component =
     apply(config = config, clockDivideBy, baseAddress = baseAddress)
   def renamedAxi4(config: Axi4Config) = {
     val axi4 = Axi4(config)
@@ -42,7 +42,7 @@ object MicroBlossomAxi4 extends MicroBlossomBusType {
   }
   def apply(
       config: DualConfig,
-      clockDivideBy: Double = 2,
+      clockDivideBy: Double = 1,
       baseAddress: BigInt = 0,
       axi4Config: Axi4Config = VersalAxi4Config(addressWidth = log2Up(8 MiB))
   ) = {
@@ -57,7 +57,7 @@ object MicroBlossomAxi4 extends MicroBlossomBusType {
 }
 
 object MicroBlossomAxiLite4 extends MicroBlossomBusType {
-  def generate(config: DualConfig, clockDivideBy: Double = 2, baseAddress: BigInt = 0): Component =
+  def generate(config: DualConfig, clockDivideBy: Double = 1, baseAddress: BigInt = 0): Component =
     apply(config = config, clockDivideBy, baseAddress = baseAddress)
   def renamedAxiLite4(config: AxiLite4Config) = {
     val axiLite4 = AxiLite4(config)
@@ -66,7 +66,7 @@ object MicroBlossomAxiLite4 extends MicroBlossomBusType {
   }
   def apply(
       config: DualConfig,
-      clockDivideBy: Double = 2,
+      clockDivideBy: Double = 1,
       baseAddress: BigInt = 0,
       axiLite4Config: AxiLite4Config = AxiLite4Config(addressWidth = log2Up(8 MiB), dataWidth = 64)
   ) = {
@@ -83,11 +83,11 @@ object MicroBlossomAxiLite4 extends MicroBlossomBusType {
 }
 
 object MicroBlossomAxiLite4Bus32 extends MicroBlossomBusType {
-  def generate(config: DualConfig, clockDivideBy: Double = 2, baseAddress: BigInt = 0): Component =
+  def generate(config: DualConfig, clockDivideBy: Double = 1, baseAddress: BigInt = 0): Component =
     apply(config = config, clockDivideBy, baseAddress = baseAddress)
   def apply(
       config: DualConfig,
-      clockDivideBy: Double = 2,
+      clockDivideBy: Double = 1,
       baseAddress: BigInt = 0,
       axiLite4Config: AxiLite4Config = AxiLite4Config(addressWidth = log2Up(8 MiB), dataWidth = 32),
       addressWidth: Int = log2Up(8 MiB)
@@ -106,11 +106,11 @@ object MicroBlossomAxiLite4Bus32 extends MicroBlossomBusType {
 // https://caravel-harness.readthedocs.io/en/latest/
 // https://caravel-mgmt-soc-litex.readthedocs.io/en/latest/
 object MicroBlossomWishboneBus32 extends MicroBlossomBusType {
-  def generate(config: DualConfig, clockDivideBy: Double = 2, baseAddress: BigInt = 0): Component =
+  def generate(config: DualConfig, clockDivideBy: Double = 1, baseAddress: BigInt = 0): Component =
     apply(config = config, clockDivideBy, baseAddress = baseAddress)
   def apply(
       config: DualConfig,
-      clockDivideBy: Double = 2,
+      clockDivideBy: Double = 1,
       baseAddress: BigInt = 0,
       wishboneConfig: WishboneConfig = WishboneConfig(addressWidth = log2Up(8 MiB), dataWidth = 32),
       addressWidth: Int = log2Up(8 MiB)

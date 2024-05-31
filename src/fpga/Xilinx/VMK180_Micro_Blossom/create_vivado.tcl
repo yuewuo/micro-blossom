@@ -42,20 +42,27 @@ set_property -dict [list \
 ] [get_bd_cells versal_cips_0]
 set_property CONFIG.PS_PMC_CONFIG "PMC_CRP_PL0_REF_CTRL_FREQMHZ $clock_frequency" [get_bd_cells versal_cips_0]
 
-# create clock with integer division
-create_bd_cell -type ip -vlnv xilinx.com:ip:clk_wizard:1.0 clk_wizard_0
-set_property CONFIG.PRIM_SOURCE {Global_buffer} [get_bd_cells clk_wizard_0]
-connect_bd_net [get_bd_pins versal_cips_0/pl0_ref_clk] [get_bd_pins clk_wizard_0/clk_in1]
-set_property CONFIG.CLKOUT_USED "true,true" [get_bd_cells clk_wizard_0]
-set_property CONFIG.CLKOUT_REQUESTED_PHASE "0.000,0.000" [get_bd_cells clk_wizard_0]
-set_property CONFIG.CLKOUT_REQUESTED_OUT_FREQUENCY "$clock_frequency,$slow_clock_frequency" [get_bd_cells clk_wizard_0]
+# create slow and fast
+if {$slow_clock_frequency != 1 } {
+  create_bd_cell -type ip -vlnv xilinx.com:ip:clk_wizard:1.0 clk_wizard_0
+  set_property CONFIG.PRIM_SOURCE {Global_buffer} [get_bd_cells clk_wizard_0]
+  connect_bd_net [get_bd_pins versal_cips_0/pl0_ref_clk] [get_bd_pins clk_wizard_0/clk_in1]
+  set_property CONFIG.CLKOUT_USED "true,true" [get_bd_cells clk_wizard_0]
+  set_property CONFIG.CLKOUT_REQUESTED_PHASE "0.000,0.000" [get_bd_cells clk_wizard_0]
+  set_property CONFIG.CLKOUT_REQUESTED_OUT_FREQUENCY "$clock_frequency,$slow_clock_frequency" [get_bd_cells clk_wizard_0]
+}
 
 # create and connect my AXI4 IP
 create_bd_cell -type ip -vlnv user.org:user:${ip_name}:1.0 ${ip_name}_0
 connect_bd_intf_net [get_bd_intf_pins ${ip_name}_0/s0] [get_bd_intf_pins versal_cips_0/M_AXI_FPD]
-connect_bd_net [get_bd_pins ${ip_name}_0/clk] [get_bd_pins clk_wizard_0/clk_out1]
-connect_bd_net [get_bd_pins ${ip_name}_0/slow_clk] [get_bd_pins clk_wizard_0/clk_out2]
 connect_bd_net [get_bd_pins ${ip_name}_0/clk] [get_bd_pins versal_cips_0/m_axi_fpd_aclk]
+if {$slow_clock_frequency != 1 } {
+  connect_bd_net [get_bd_pins ${ip_name}_0/clk] [get_bd_pins clk_wizard_0/clk_out1]
+  connect_bd_net [get_bd_pins ${ip_name}_0/slow_clk] [get_bd_pins clk_wizard_0/clk_out2]
+} else {
+  connect_bd_net [get_bd_pins ${ip_name}_0/clk] [get_bd_pins versal_cips_0/pl0_ref_clk]
+  connect_bd_net [get_bd_pins ${ip_name}_0/slow_clk] [get_bd_pins versal_cips_0/pl0_ref_clk]
+}
 
 # create reset system
 create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 proc_sys_reset_0

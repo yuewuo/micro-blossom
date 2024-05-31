@@ -310,7 +310,7 @@ pub mod simulation_config_default {
         env_usize("CONFLICT_CHANNELS", 1)
     }
     pub fn clock_divide_by() -> f64 {
-        env_f64("CLOCK_DIVIDE_BY", 2.0)
+        env_f64("CLOCK_DIVIDE_BY", 1.0)
     }
 }
 
