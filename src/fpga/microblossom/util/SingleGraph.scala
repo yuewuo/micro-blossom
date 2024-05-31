@@ -17,7 +17,8 @@ case class SingleGraph(
     var vertex_edge_binary_tree: BinaryTree,
     var vertex_max_growth: Seq[Long],
     var offloading: Seq[Offloading],
-    var layer_fusion: Option[LayerFusion]
+    var layer_fusion: Option[LayerFusion],
+    var parity_reporter: Option[ParityReporter]
 )
 
 @ConfiguredJsonCodec

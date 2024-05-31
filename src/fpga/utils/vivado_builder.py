@@ -112,6 +112,12 @@ class MicroBlossomGraphBuilder:
             command = micro_blossom_command() + ["parser"]
             command += [syndrome_file_path]
             command += ["--graph-file", graph_file_path]
+            # at the end of the file, transform the graph that is automatically generated
+            if self.transform_graph:
+                if self.code_type == "rotated-planar-code":
+                    command += ["qecp-rotated-planar-code", f"{self.d}"]
+                else:
+                    raise Exception(f"transform not implemented for ${self.code_type}")
             print(command)
             stdout, returncode = run_command_get_stdout(command)
             print("\n" + stdout)

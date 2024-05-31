@@ -24,6 +24,8 @@ pub struct MicroBlossomSingle {
     pub offloading: OffloadingFinder,
     /// microscopic fusion
     pub layer_fusion: Option<LayerFusion>,
+    /// parity tracker allows the hardware to report the pre-matched result
+    pub parity_reporters: Option<ParityReporters>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -128,6 +130,7 @@ impl MicroBlossomSingle {
             vertex_max_growth,
             offloading,
             layer_fusion: None,
+            parity_reporters: None,
         };
         result.layer_fusion = Some(LayerFusion::new(&result));
         result
@@ -155,6 +158,13 @@ impl MicroBlossomSingle {
             self.weighted_edges.iter().map(|edge| (edge.l, edge.r, edge.w)).collect(),
             self.virtual_vertices.clone(),
         )
+    }
+
+    pub fn get_positions(&self) -> Vec<VisualizePosition> {
+        self.positions
+            .iter()
+            .map(|position| VisualizePosition::new(position.i, position.j, position.t))
+            .collect()
     }
 }
 
@@ -429,6 +439,22 @@ impl LayerFusion {
             fusion_edges,
             unique_tight_conditions,
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ParityReporters {
+    /// a reporter the XOR of multiple offloader; there could be multiple reporters
+    pub reporters: Vec<Vec<usize>>,
+}
+
+impl ParityReporters {
+    pub fn new() -> Self {
+        Self { reporters: vec![] }
+    }
+
+    pub fn add_parity_reporter(&mut self, offloaders: Vec<usize>) {
+        self.reporters.push(offloaders);
     }
 }
 

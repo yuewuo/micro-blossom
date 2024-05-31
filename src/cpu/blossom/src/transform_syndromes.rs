@@ -1,3 +1,4 @@
+use crate::resources::*;
 use clap::Subcommand;
 use fusion_blossom::example_codes::*;
 use fusion_blossom::mwpm_solver::*;
@@ -18,12 +19,7 @@ pub enum TransformSyndromesType {
 }
 
 impl TransformSyndromesType {
-    pub fn run(&self, input_file: String, output_file: String) {
-        let mut reader = ErrorPatternReader::new(json!({
-            "filename": input_file,
-        }));
-        let initializer = reader.get_initializer();
-        let positions = reader.get_positions();
+    pub fn sanity_check(&self, initializer: &SolverInitializer, positions: &Vec<VisualizePosition>) {
         match self {
             Self::QecpRotatedPlanarCode { d } => {
                 let d = *d as isize;
@@ -49,6 +45,28 @@ impl TransformSyndromesType {
                     assert!(i + j <= 3 * d);
                     let is_virtual = j - i == d || i - j == d;
                     assert_eq!(virtual_vertices.contains(&vertex_index), is_virtual);
+                }
+            }
+        }
+    }
+
+    pub fn run(&self, input_file: String, output_file: String) {
+        let mut reader = ErrorPatternReader::new(json!({
+            "filename": input_file,
+        }));
+        let initializer = reader.get_initializer();
+        let positions = reader.get_positions();
+        match self {
+            Self::QecpRotatedPlanarCode { d } => {
+                // first verify the graph structure is as expected
+                self.sanity_check(&initializer, &positions);
+                let d = *d as isize;
+                let mut max_t = isize::MIN;
+                let mut min_t = isize::MAX;
+                for position in positions.iter() {
+                    let t = position.t as isize;
+                    max_t = std::cmp::max(max_t, t);
+                    min_t = std::cmp::min(min_t, t);
                 }
                 // then collect the two boundaries
                 let is_left_boundary = |position: &VisualizePosition| (position.i as isize) - (position.j as isize) == d;
@@ -92,6 +110,42 @@ impl TransformSyndromesType {
                     }
                     logger.solve_visualizer(&syndrome_pattern, None);
                 }
+            }
+        }
+    }
+
+    /// modify the graph
+    pub fn parse(&self, mut graph: MicroBlossomSingle) -> MicroBlossomSingle {
+        match self {
+            Self::QecpRotatedPlanarCode { d } => {
+                let initializer = graph.get_initializer();
+                let positions = graph.get_positions();
+                self.sanity_check(&initializer, &positions);
+                let d = *d as isize;
+                // first identify the edges that connects the left boundary
+                let is_left_boundary = |position: &VisualizePosition| (position.i as isize) - (position.j as isize) == d;
+                let mut left_edges = BTreeSet::new();
+                for (edge_index, (a, b, _w)) in initializer.weighted_edges.iter().enumerate() {
+                    if is_left_boundary(&positions[*a]) || is_left_boundary(&positions[*b]) {
+                        left_edges.insert(edge_index);
+                    }
+                }
+                // then find the offloaders associated with the edge
+                let mut left_offloaders = vec![];
+                for (offloader_index, offloader) in graph.offloading.0.iter().enumerate() {
+                    let edge_index = match offloader {
+                        OffloadingType::DefectMatch { edge_index } => *edge_index,
+                        OffloadingType::VirtualMatch { edge_index, .. } => *edge_index,
+                        _ => usize::MAX,
+                    };
+                    if left_edges.contains(&edge_index) {
+                        left_offloaders.push(offloader_index);
+                    }
+                }
+                let mut parity_reporters = ParityReporters::new();
+                parity_reporters.add_parity_reporter(left_offloaders);
+                graph.parity_reporters = Some(parity_reporters);
+                graph
             }
         }
     }

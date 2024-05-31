@@ -130,6 +130,9 @@ pub struct MicroBlossomParserParameters {
     /// the u32 array binary syndrome defects for embedding into the memory
     #[clap(long)]
     defects_file: Option<String>,
+    /// for some known code, transform can modify the generated graph
+    #[clap(subcommand)]
+    transform_type: Option<TransformSyndromesType>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Debug)]
@@ -448,7 +451,10 @@ impl Cli {
                 }));
                 // generate graph configuration
                 if let Some(graph_file) = parameters.graph_file {
-                    let micro_blossom = MicroBlossomSingle::new_code(&code);
+                    let mut micro_blossom = MicroBlossomSingle::new_code(&code);
+                    if let Some(transform_type) = parameters.transform_type {
+                        micro_blossom = transform_type.parse(micro_blossom);
+                    }
                     let json_str = serde_json::to_string(&micro_blossom).unwrap();
                     std::fs::write(graph_file, json_str).unwrap();
                 }
