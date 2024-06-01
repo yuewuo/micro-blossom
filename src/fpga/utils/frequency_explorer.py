@@ -1,6 +1,7 @@
 from typing import Callable, Optional
 from datetime import datetime
 import math, os
+import traceback
 from dataclasses import dataclass
 
 """
@@ -46,6 +47,7 @@ class FrequencyExplorer:
     max_frequency: int = 300
     max_iteration: int = 5
     extra_decrease: float = 0.1  # set 90% of the next frequency
+    on_failure_decrease: float = 0.3  # set 70% of the frequency if synthesis failed
 
     def get_log_best_frequency(self) -> Optional[int]:
         value = get_log_best_value(self.log_filepath, BEST_FREQUENCY_KEYWORD)
@@ -64,11 +66,16 @@ class FrequencyExplorer:
         self.log("optimization start")
         for iteration in range(self.max_iteration):
             self.log(f"iteration {iteration}: trying frequency {frequency}")
-            new_frequency = self.compute_next_maximum_frequency(frequency)
-            if new_frequency is None:
-                self.log(f"{BEST_FREQUENCY_KEYWORD}{frequency}")
-                return frequency
-            self.log(f"suggested achievable frequency is {new_frequency}MHz")
-            new_frequency = math.floor((1 - self.extra_decrease) * new_frequency)
+            try:
+                new_frequency = self.compute_next_maximum_frequency(frequency)
+                self.log(f"suggested achievable frequency is {new_frequency}MHz")
+                if new_frequency is None:
+                    self.log(f"{BEST_FREQUENCY_KEYWORD}{frequency}")
+                    return frequency
+                new_frequency = math.floor((1 - self.extra_decrease) * new_frequency)
+            except Exception:
+                print(traceback.format_exc())
+                new_frequency = math.floor((1 - self.on_failure_decrease) * frequency)
+                self.log(f"synthesis failed, try next frequency {new_frequency}MHz")
             frequency = new_frequency
         return None

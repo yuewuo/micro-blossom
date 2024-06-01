@@ -40,11 +40,13 @@ graph_builder = MicroBlossomGraphBuilder(
 
 configurations = [
     Configuration(inject_registers=[]),
-    Configuration(inject_registers=[], broadcast_delay=1),
-    Configuration(inject_registers=["execute"]),
-    Configuration(inject_registers=["execute"], broadcast_delay=1),
-    Configuration(inject_registers=["execute", "update"]),
-    Configuration(inject_registers=["execute", "update"], broadcast_delay=1),
+    Configuration(inject_registers=[], broadcast_delay=1, frequency=90),
+    Configuration(inject_registers=["execute"], frequency=90),
+    Configuration(inject_registers=["execute"], broadcast_delay=1, frequency=120),
+    Configuration(inject_registers=["execute", "update"], frequency=120),
+    Configuration(
+        inject_registers=["execute", "update"], broadcast_delay=1, frequency=150
+    ),
 ]
 
 
