@@ -261,7 +261,7 @@ class MicroBlossomAxi4Builder:
 
     # this function assumes the bottleneck is the fast clock domain (self.frequency)
     # return current frequency if timing passed; otherwise return a maximum frequency that is achievable
-    def next_maximum_frequency(self) -> int:
+    def next_maximum_frequency(self) -> int | None:
         vivado = VivadoProject(self.hardware_proj_dir())
         wns = vivado.routed_timing_summery().clk_pl_0_wns
         frequency = vivado.frequency()
@@ -274,7 +274,8 @@ class MicroBlossomAxi4Builder:
             print(f"wns: {wns}ns, should lower the frequency to {new_frequency}MHz")
             return new_frequency
         else:
-            return frequency
+            print(f"frequency={frequency}MHz satisfies the timing constraint, passed")
+            return None
 
     # this function assumes the bottleneck is the slow clock domain (self.frequency / self.clock_divide_by)
     # return current value if timing passed; otherwise return a minimum clock_divide_by that is achievable

@@ -54,7 +54,7 @@ def get_project(
     return MicroBlossomAxi4Builder(
         graph_builder=graph_builder,
         name=configuration.name() + f"_sf{frequency}",
-        clock_frequency=configuration.frequency,
+        clock_frequency=frequency,
         project_folder=os.path.join(this_dir, "tmp-project"),
         broadcast_delay=configuration.broadcast_delay,
         inject_registers=configuration.inject_registers,
@@ -64,10 +64,10 @@ def get_project(
 results = ["# <name> <best frequency/MHz>"]
 for configuration in configurations:
 
-    def compute_next_maximum_frequency(frequency: int) -> int:
+    def compute_next_maximum_frequency(frequency: int) -> int | None:
         project = get_project(configuration, frequency)
         project.build()
-        return project.next_maximum_frequency() - 1
+        return project.next_maximum_frequency()
 
     explorer = FrequencyExplorer(
         compute_next_maximum_frequency=compute_next_maximum_frequency,

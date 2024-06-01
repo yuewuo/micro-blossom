@@ -66,7 +66,7 @@ def get_project(
 results = ["# <context depth> <best frequency/MHz>"]
 for configuration in configurations:
 
-    def compute_next_maximum_frequency(frequency: int) -> int:
+    def compute_next_maximum_frequency(frequency: int) -> int | None:
         project = get_project(configuration, frequency)
         project.build()
         return project.next_maximum_frequency()
