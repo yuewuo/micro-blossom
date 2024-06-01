@@ -9,7 +9,6 @@ if { $argc != 2 } {
     scan [lindex $argv 0] %f clock_frequency
     scan [lindex $argv 1] %f clock_divide_by
 }
-set slow_clock_frequency [expr {$clock_frequency / $clock_divide_by}]
 
 create_project ${name} ./${name}_vivado -part xcvm1802-vsva2197-2MP-e-S
 set_property board_part xilinx.com:vmk180:part0:3.2 [current_project]
@@ -43,7 +42,8 @@ set_property -dict [list \
 set_property CONFIG.PS_PMC_CONFIG "PMC_CRP_PL0_REF_CTRL_FREQMHZ $clock_frequency" [get_bd_cells versal_cips_0]
 
 # create slow and fast
-if {$slow_clock_frequency != 1 } {
+if {$clock_divide_by != 1 } {
+  set slow_clock_frequency [expr {$clock_frequency / $clock_divide_by}]
   create_bd_cell -type ip -vlnv xilinx.com:ip:clk_wizard:1.0 clk_wizard_0
   set_property CONFIG.PRIM_SOURCE {Global_buffer} [get_bd_cells clk_wizard_0]
   connect_bd_net [get_bd_pins versal_cips_0/pl0_ref_clk] [get_bd_pins clk_wizard_0/clk_in1]
@@ -56,7 +56,7 @@ if {$slow_clock_frequency != 1 } {
 create_bd_cell -type ip -vlnv user.org:user:${ip_name}:1.0 ${ip_name}_0
 connect_bd_intf_net [get_bd_intf_pins ${ip_name}_0/s0] [get_bd_intf_pins versal_cips_0/M_AXI_FPD]
 connect_bd_net [get_bd_pins ${ip_name}_0/clk] [get_bd_pins versal_cips_0/m_axi_fpd_aclk]
-if {$slow_clock_frequency != 1 } {
+if {$clock_divide_by != 1 } {
   connect_bd_net [get_bd_pins ${ip_name}_0/clk] [get_bd_pins clk_wizard_0/clk_out1]
   connect_bd_net [get_bd_pins ${ip_name}_0/slow_clk] [get_bd_pins clk_wizard_0/clk_out2]
 } else {
