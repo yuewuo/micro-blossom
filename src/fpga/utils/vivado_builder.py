@@ -205,12 +205,15 @@ class MicroBlossomAxi4Builder:
         process.wait()
         assert process.returncode == 0, "compile error"
 
+    def has_xsa(self) -> bool:
+        xsa_path = os.path.join(self.hardware_proj_dir(), f"{self.name}.xsa")
+        return os.path.exists(xsa_path)
+
     def build_vivado_project(self, force_recompile_binary: bool = False):
         log_file_path = os.path.join(self.hardware_proj_dir(), "build.log")
         frequency = self.clock_frequency
         print(f"building frequency={frequency}, log output to {log_file_path}")
-        xsa_path = os.path.join(self.hardware_proj_dir(), f"{self.name}.xsa")
-        if not os.path.exists(xsa_path) or force_recompile_binary:
+        if not self.has_xsa() or force_recompile_binary:
             with open(log_file_path, "a") as log:
                 process = subprocess.Popen(
                     ["make"],
@@ -233,11 +236,12 @@ class MicroBlossomAxi4Builder:
         new_frequency = 1 / new_period / 1e6
         if wns < 0:
             # negative slack exists, need to lower the clock frequency
-            print(f"clock frequency too high!!!")
-            print(f"frequency: {frequency}MHz, wns: {wns}ns, new {new_frequency}MHz")
+            print(f"[failed] frequency={frequency}MHz clock frequency too high")
+            print(f"wns: {wns}ns, should lower the frequency to {new_frequency}MHz")
             return True
         else:
-            print(f"wns: {wns}ns, potential new frequency is {new_frequency}MHz")
+            print(f"[passed] frequency={frequency}MHz satisfies the timing constraint")
+            print(f"    thought it could potentially run at {new_frequency}MHz")
             return False
 
     def run_application(self, silent: bool = True) -> str:
