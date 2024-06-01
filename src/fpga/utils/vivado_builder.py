@@ -266,15 +266,16 @@ class MicroBlossomAxi4Builder:
         wns = vivado.routed_timing_summery().clk_pl_0_wns
         frequency = vivado.frequency()
         assert frequency == self.clock_frequency
+        period = 1e-6 / frequency
+        new_period = period - wns * 1e-9
+        new_frequency = math.floor(1 / new_period / 1e6)
         if wns < 0:
-            print(f"frequency={frequency}MHz clock frequency too high")
-            period = 1e-6 / frequency
-            new_period = period - wns * 1e-9
-            new_frequency = math.floor(1 / new_period / 1e6)
+            print(f"[failed] frequency={frequency}MHz clock frequency too high")
             print(f"wns: {wns}ns, should lower the frequency to {new_frequency}MHz")
             return new_frequency
         else:
-            print(f"frequency={frequency}MHz satisfies the timing constraint, passed")
+            print(f"[passed] frequency={frequency}MHz satisfies the timing constraint")
+            print(f"    thought it could potentially run at {new_frequency}MHz")
             return None
 
     # this function assumes the bottleneck is the slow clock domain (self.frequency / self.clock_divide_by)
