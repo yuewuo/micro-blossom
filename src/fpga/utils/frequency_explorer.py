@@ -41,11 +41,11 @@ class FrequencyExplorer:
     and try again, until a frequency is achieved.
     """
 
-    compute_next_maximum_frequency: Callable[[int], int]
+    compute_next_maximum_frequency: Callable[[int], int | None]
     log_filepath: str
     max_frequency: int = 300
     max_iteration: int = 5
-    min_decrease: float = 0.03  # at least decrease the frequency by 3% each iteration
+    extra_decrease: float = 0.1  # set 90% of the next frequency
 
     def get_log_best_frequency(self) -> Optional[int]:
         value = get_log_best_value(self.log_filepath, BEST_FREQUENCY_KEYWORD)
@@ -64,13 +64,11 @@ class FrequencyExplorer:
         self.log("optimization start")
         for iteration in range(self.max_iteration):
             self.log(f"iteration {iteration}: trying frequency {frequency}")
-            new_frequency = int(self.compute_next_maximum_frequency(frequency))
-            if new_frequency >= frequency:
+            new_frequency = self.compute_next_maximum_frequency(frequency)
+            if new_frequency is None:
                 self.log(f"{BEST_FREQUENCY_KEYWORD}{frequency}")
                 return frequency
-            # if not achievable, use the new frequency
-            self.log(f"suggested achievable frequency is {new_frequency}")
-            if new_frequency > frequency * (1 - self.min_decrease):
-                new_frequency = math.floor(frequency * (1 - self.min_decrease))
+            self.log(f"suggested achievable frequency is {new_frequency}MHz")
+            new_frequency = math.floor((1 - self.extra_decrease) * new_frequency)
             frequency = new_frequency
         return None
