@@ -1,0 +1,2 @@
+[2024-06-01 08:42:49] optimization start
+[2024-06-01 08:42:49] iteration 0: trying frequency 200
