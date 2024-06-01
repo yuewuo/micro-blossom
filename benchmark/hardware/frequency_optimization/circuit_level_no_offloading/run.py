@@ -1,5 +1,5 @@
 import os, sys, git, math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 git_root_dir = git.Repo(".", search_parent_directories=True).working_tree_dir
 sys.path.insert(0, os.path.join(git_root_dir, "benchmark"))
@@ -10,56 +10,46 @@ from frequency_explorer import *
 
 @dataclass
 class Configuration:
-    inject_registers: list[str]
-    broadcast_delay: int = 0
+    d: int
+    frequency: float = 200
 
-    frequency: float = 150
+    other_configs: dict[str, any] = field(
+        default_factory=lambda: {
+            "inject_registers": ["execute", "update"],
+            "broadcast_delay": 1,
+            "convergecast_delay": 1,
+        }
+    )
 
     def name(self) -> str:
-        registers = "_".join(self.inject_registers)
-        if registers == "":
-            registers = "none"
-        return f"r_{registers}_b{self.broadcast_delay}"
+        return f"d_{self.d}"
 
     def get_project(self, frequency: int | None) -> MicroBlossomAxi4Builder:
         if frequency is None:
             frequency = self.frequency
+        graph_builder = MicroBlossomGraphBuilder(
+            graph_folder=os.path.join(this_dir, "tmp-graph"),
+            name=f"d_{self.d}",
+            d=self.d,
+            p=0.001,
+            noisy_measurements=self.d - 1,
+            max_half_weight=7,
+        )
         return MicroBlossomAxi4Builder(
             graph_builder=graph_builder,
-            name=self.name() + f"_sf{frequency}",
+            name=self.name() + f"_f{frequency}",
             clock_frequency=frequency,
             project_folder=os.path.join(this_dir, "tmp-project"),
-            broadcast_delay=self.broadcast_delay,
-            inject_registers=self.inject_registers,
+            **self.other_configs,
         )
 
+
+configurations = [Configuration(d=d) for d in range(3, 16, 1)]
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 frequency_log_dir = os.path.join(this_dir, "frequency_log")
 if not os.path.exists(frequency_log_dir):
     os.mkdir(frequency_log_dir)
-
-
-graph_builder = MicroBlossomGraphBuilder(
-    graph_folder=os.path.join(this_dir, "tmp-graph"),
-    name="d_9_circuit_level_full",
-    d=9,
-    p=0.001,
-    noisy_measurements=9 - 1,
-    max_half_weight=7,
-    visualize_graph=True,
-)
-
-configurations = [
-    Configuration(inject_registers=[]),
-    Configuration(inject_registers=[], broadcast_delay=1, frequency=90),
-    Configuration(inject_registers=["execute"], frequency=90),
-    Configuration(inject_registers=["execute"], broadcast_delay=1, frequency=120),
-    Configuration(inject_registers=["execute", "update"], frequency=120),
-    Configuration(
-        inject_registers=["execute", "update"], broadcast_delay=1, frequency=150
-    ),
-]
 
 
 def main() -> list[Configuration]:

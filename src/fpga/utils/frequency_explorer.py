@@ -50,7 +50,7 @@ class FrequencyExplorer:
     on_failure_decrease: float = 0.3  # set 70% of the frequency if synthesis failed
 
     def get_log_best_frequency(self) -> Optional[int]:
-        value = get_log_best_value(self.log_filepath, BEST_FREQUENCY_KEYWORD)
+        return get_log_best_value(self.log_filepath, BEST_FREQUENCY_KEYWORD)
 
     def log(self, message):
         log_to_file(self.log_filepath, message)
