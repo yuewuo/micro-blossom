@@ -21,6 +21,18 @@ class Configuration:
             registers = "none"
         return f"r_{registers}_b{self.broadcast_delay}"
 
+    def get_project(self, frequency: int | None) -> MicroBlossomAxi4Builder:
+        if frequency is None:
+            frequency = self.frequency
+        return MicroBlossomAxi4Builder(
+            graph_builder=graph_builder,
+            name=self.name() + f"_sf{frequency}",
+            clock_frequency=frequency,
+            project_folder=os.path.join(this_dir, "tmp-project"),
+            broadcast_delay=self.broadcast_delay,
+            inject_registers=self.inject_registers,
+        )
+
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 frequency_log_dir = os.path.join(this_dir, "frequency_log")
@@ -50,38 +62,36 @@ configurations = [
 ]
 
 
-def get_project(
-    configuration: Configuration, frequency: int
-) -> MicroBlossomAxi4Builder:
-    return MicroBlossomAxi4Builder(
-        graph_builder=graph_builder,
-        name=configuration.name() + f"_sf{frequency}",
-        clock_frequency=frequency,
-        project_folder=os.path.join(this_dir, "tmp-project"),
-        broadcast_delay=configuration.broadcast_delay,
-        inject_registers=configuration.inject_registers,
-    )
+def main() -> list[Configuration]:
+    results = ["# <name> <best frequency/MHz>"]
+    optimized_configurations = []
+
+    for configuration in configurations:
+
+        def compute_next_maximum_frequency(frequency: int) -> int | None:
+            project = configuration.get_project(frequency)
+            project.build()
+            return project.next_maximum_frequency()
+
+        explorer = FrequencyExplorer(
+            compute_next_maximum_frequency=compute_next_maximum_frequency,
+            log_filepath=os.path.join(frequency_log_dir, configuration.name() + ".txt"),
+            max_frequency=configuration.frequency,
+        )
+
+        best_frequency = explorer.optimize()
+        print(f"{configuration.name()}: {best_frequency}MHz")
+        results.append(f"{configuration.name()} {best_frequency}")
+
+        optimized = Configuration(**configuration.__dict__)
+        optimized.frequency = best_frequency
+        optimized_configurations.append(optimized)
+
+    with open("best_slow_frequencies.txt", "w", encoding="utf8") as f:
+        f.write("\n".join(results))
+
+    return optimized_configurations
 
 
-results = ["# <name> <best frequency/MHz>"]
-for configuration in configurations:
-
-    def compute_next_maximum_frequency(frequency: int) -> int | None:
-        project = get_project(configuration, frequency)
-        project.build()
-        return project.next_maximum_frequency()
-
-    explorer = FrequencyExplorer(
-        compute_next_maximum_frequency=compute_next_maximum_frequency,
-        log_filepath=os.path.join(frequency_log_dir, configuration.name() + ".txt"),
-        max_frequency=configuration.frequency,
-    )
-
-    best_frequency = explorer.optimize()
-    print(f"{configuration.name()}: {best_frequency}MHz")
-    results.append(f"{configuration.name()} {best_frequency}")
-
-    # project = get_project(configuration, best_frequency)
-
-with open("best_slow_frequencies.txt", "w", encoding="utf8") as f:
-    f.write("\n".join(results))
+if __name__ == "__main__":
+    main()
