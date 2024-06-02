@@ -1,2 +1,7 @@
 # <name> <best frequency/MHz>
 r_none_b0 46
+r_none_b1 62
+r_execute_b0 62
+r_execute_b1 58
+r_execute_update_b0 91
+r_execute_update_b1 89
