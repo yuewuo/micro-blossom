@@ -225,10 +225,13 @@ class MicroBlossomAxi4Builder:
                 process.wait()
                 assert process.returncode == 0, "synthesis error"
 
+    def get_vivado(self) -> VivadoProject:
+        return VivadoProject(self.hardware_proj_dir())
+
     # check timing reports to make sure there are no negative slacks
     def timing_sanity_check_failed(self) -> bool:
         print("start timing sanity check")
-        vivado = VivadoProject(self.hardware_proj_dir())
+        vivado = self.get_vivado()
         wns = vivado.routed_timing_summery().clk_pl_0_wns
         frequency = vivado.frequency()
         period = 1e-6 / frequency
@@ -266,7 +269,7 @@ class MicroBlossomAxi4Builder:
     # this function assumes the bottleneck is the fast clock domain (self.frequency)
     # return current frequency if timing passed; otherwise return a maximum frequency that is achievable
     def next_maximum_frequency(self) -> int | None:
-        vivado = VivadoProject(self.hardware_proj_dir())
+        vivado = self.get_vivado()
         wns = vivado.routed_timing_summery().clk_pl_0_wns
         frequency = vivado.frequency()
         assert frequency == self.clock_frequency
@@ -285,7 +288,7 @@ class MicroBlossomAxi4Builder:
     # this function assumes the bottleneck is the slow clock domain (self.frequency / self.clock_divide_by)
     # return current value if timing passed; otherwise return a minimum clock_divide_by that is achievable
     def next_minimum_clock_divide_by(self) -> float:
-        vivado = VivadoProject(self.hardware_proj_dir())
+        vivado = self.get_vivado()
         wns = vivado.routed_timing_summery().clk_pl_0_wns
         frequency = vivado.frequency()
         assert frequency == self.clock_frequency
@@ -302,7 +305,7 @@ class MicroBlossomAxi4Builder:
         else:
             return self.clock_divide_by
 
-    def build_embedded_binary(self, make_env: dict | None):
+    def build_embedded_binary(self, make_env: dict | None = None):
         if make_env is None:
             make_env = os.environ.copy()
         if "EMBEDDED_BLOSSOM_MAIN" not in make_env:

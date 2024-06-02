@@ -418,6 +418,12 @@ class LayerFusion:
 
 @dataclass_json
 @dataclass
+class ParityReporters:
+    reporters: list[list[int]]
+
+
+@dataclass_json
+@dataclass
 class SingleGraph:
     positions: list[Position]
     vertex_num: int
@@ -429,6 +435,7 @@ class SingleGraph:
     vertex_max_growth: list[int]
     offloading: list[Offloading]
     layer_fusion: Optional[LayerFusion]
+    parity_reporters: Optional[ParityReporters]
 
     @staticmethod
     def from_file(filename):
