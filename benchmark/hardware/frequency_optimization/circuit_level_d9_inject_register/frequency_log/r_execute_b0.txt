@@ -1,0 +1,6 @@
+[2024-06-01 11:40:10] optimization start
+[2024-06-01 11:40:10] iteration 0: trying frequency 90
+[2024-06-01 14:32:26] synthesis failed, try next frequency 62MHz
+[2024-06-01 14:32:26] iteration 1: trying frequency 62
+[2024-06-01 16:05:28] suggested achievable frequency is NoneMHz
+[2024-06-01 16:05:28] [found best frequency] 62
