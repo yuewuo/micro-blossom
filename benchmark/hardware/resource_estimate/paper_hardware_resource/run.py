@@ -39,7 +39,7 @@ class Configuration:
     def get_project(self) -> MicroBlossomAxi4Builder:
         graph_builder = MicroBlossomGraphBuilder(
             graph_folder=os.path.join(this_dir, "tmp-graph"),
-            name=f"d_{self.d}",
+            name=self.name(),
             d=self.d,
             p=self.p,
             noise_model=self.noise_model,
@@ -105,21 +105,16 @@ def main(config: Configuration):
     for d in config.d_vec:
         configuration = config.config_of(d)
         project = configuration.get_project()
-        report = project.report_impl_utilization(force_regenerate=False)
+        vivado = project.get_vivado()
+        report = vivado.report_impl_utilization()
         clb_luts = report.netlist_logic.clb_luts
         registers = report.netlist_logic.registers
         # also read the number of vertices in the graph and the number of edges
         graph_file_path = project.graph_builder.graph_file_path()
         graph = SingleGraph.from_file(graph_file_path)
         pre_match_num = graph.effective_offloader_num(
-            support_offloading=(
-                config.scala_parameters is not None
-                and "--support-offloading" in config.scala_parameters
-            ),
-            support_layer_fusion=(
-                config.scala_parameters is not None
-                and "--support-layer-fusion" in config.scala_parameters
-            ),
+            support_offloading=config.support_offloading,
+            support_layer_fusion=config.support_layer_fusion,
         )
         results.append(
             f"{d} {clb_luts.used} {clb_luts.util_percent} {registers.used} {registers.util_percent}"
