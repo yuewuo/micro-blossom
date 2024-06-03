@@ -59,6 +59,14 @@ configurations = [
     Configuration(
         inject_registers=["execute", "update"], broadcast_delay=1, frequency=150
     ),
+    Configuration(inject_registers=["offload", "execute", "update"], frequency=150),
+    Configuration(
+        inject_registers=["offload", "execute", "update", "update3"], frequency=150
+    ),
+    Configuration(
+        inject_registers=["offload", "offload3", "execute", "update", "update3"],
+        frequency=150,
+    ),
 ]
 
 

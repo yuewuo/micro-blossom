@@ -324,3 +324,20 @@ class MicroBlossomAxi4Builder:
         self.create_vivado_project()
         self.build_rust_binary()
         self.build_vivado_project()
+
+
+class HeuristicFrequencyCircuitLevel:
+    """
+    Heuristic from benchmark/hardware/frequency_optimization/circuit_level_offloading_layer_fusion
+    """
+
+    @staticmethod
+    def of(d: int) -> int:
+        assert d % 2 == 1
+        assert d >= 3
+        if d == 3:
+            return 180
+        if d == 5:
+            return 141
+        cycle = 3.69e-3 * (d**3) + 8.16
+        return math.ceil(1000 / cycle)

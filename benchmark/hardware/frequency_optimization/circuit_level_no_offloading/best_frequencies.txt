@@ -1,0 +1,8 @@
+# <name> <best frequency/MHz>
+d_3 200
+d_5 126
+d_7 100
+d_9 90
+d_11 77
+d_13 68
+d_15 60

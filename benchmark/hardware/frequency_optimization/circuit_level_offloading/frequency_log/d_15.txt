@@ -1,2 +1,8 @@
 [2024-06-02 07:37:29] optimization start
 [2024-06-02 07:37:29] iteration 0: trying frequency 200
+[2024-06-02 19:11:07] synthesis failed, try next frequency 140MHz
+[2024-06-02 19:11:07] iteration 1: trying frequency 140
+[2024-06-03 06:02:07] synthesis failed, try next frequency 98MHz
+[2024-06-03 06:02:07] iteration 2: trying frequency 98
+[2024-06-03 16:54:04] synthesis failed, try next frequency 68MHz
+[2024-06-03 16:54:04] iteration 3: trying frequency 68
