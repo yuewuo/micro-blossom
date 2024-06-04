@@ -140,6 +140,7 @@ class MicroBlossomAxi4Builder:
     support_add_defect_vertex: bool = True
     support_offloading: bool = False
     support_layer_fusion: bool = False
+    support_load_stall_emulator: bool = False
     # e.g. ["offload"], ["offload", "update3"]
     inject_registers: list[str] | str = field(default_factory=lambda: [])
 
@@ -181,6 +182,8 @@ class MicroBlossomAxi4Builder:
             parameters += ["--support-offloading"]
         if self.support_layer_fusion:
             parameters += ["--support-layer-fusion"]
+        if self.support_load_stall_emulator:
+            parameters += ["--support-load-stall-emulator"]
         inject_registers = self.inject_registers
         if isinstance(inject_registers, str):
             inject_registers = [e for e in self.inject_registers.split(",") if e != ""]
