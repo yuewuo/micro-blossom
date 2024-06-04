@@ -13,7 +13,7 @@ class Configuration:
     d: int
 
     def init_frequency(self) -> int:
-        return HeuristicFrequencyCircuitLevel.of(self.d)
+        return 250  # TODO: add heuristic frequency
 
     def name(self) -> str:
         return f"d_{self.d}"
@@ -26,8 +26,8 @@ class Configuration:
             name=f"d_{self.d}",
             noise_model="phenomenological",
             d=self.d,
-            p=0.001,
-            noisy_measurements=self.d - 1,
+            p=0.01,
+            noisy_measurements=0,
             max_half_weight=1,
         )
         return MicroBlossomAxi4Builder(
@@ -37,12 +37,11 @@ class Configuration:
             project_folder=os.path.join(this_dir, "tmp-project"),
             inject_registers=["execute", "update"],
             support_offloading=True,
-            support_layer_fusion=True,
-            support_load_stall_emulator=True,
         )
 
 
-configurations = [Configuration(d=d) for d in range(3, 20, 2)]
+d_vec = [3, 5, 7, 9, 11, 15, 21, 27] + [35, 51, 69, 81]
+configurations = [Configuration(d=d) for d in d_vec]
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 frequency_log_dir = os.path.join(this_dir, "frequency_log")

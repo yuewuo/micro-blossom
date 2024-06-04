@@ -472,8 +472,8 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
                   isWriteHalt := False
                 }
               }
-              builder.elsewhen(readout.writeSubAddress === U(116)) {
-                fsmLoadStall.interval.writeNext(readout.writeContextId, readout.writeValue)
+              builder.elsewhen(readout.writeSubAddress === U(120)) {
+                fsmLoadStall.interval.writeNext(readout.writeContextId, readout.writeValue(31 downto 0))
                 isWriteHalt := False
               }
             }
@@ -737,7 +737,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
         fsmLoadStall.interval.readNext(readout.contextId)
       }
       whenIsActive {
-        readout.value := fsmLoadStall.interval.data.asBits
+        readout.value := fsmLoadStall.interval.data.asBits.resized
         isReadHalt := False
         goto(stateIdle)
       }

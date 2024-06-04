@@ -12,7 +12,7 @@ from frequency_explorer import *
 class Configuration:
     d: int
 
-    def frequency(self) -> int:
+    def init_frequency(self) -> int:
         return HeuristicFrequencyCircuitLevel.of(self.d)
 
     def name(self) -> str:
@@ -63,7 +63,7 @@ def main() -> list[Configuration]:
         explorer = FrequencyExplorer(
             compute_next_maximum_frequency=compute_next_maximum_frequency,
             log_filepath=os.path.join(frequency_log_dir, configuration.name() + ".txt"),
-            max_frequency=configuration.frequency,
+            max_frequency=configuration.init_frequency(),
         )
 
         best_frequency = explorer.optimize()
