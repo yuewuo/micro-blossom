@@ -84,6 +84,8 @@ import org.rogach.scallop._
 //      (at most 6 concurrent conflict report, large enough)
 //      48: next obstacle, the head remains the same
 //        ...
+//     112: (RW) 64 bit start time of load-stall emulator (if enabled)
+//     120: (RW) 32 bit interval of load-stall emulator (if enabled)
 //    [context 1]
 //      128: ...
 //
@@ -221,15 +223,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       var push: Stream[LooperOutput[InstructionTag]] = null
       var pop: Stream[LooperOutput[InstructionTag]] = null
     }
-    if (isSyncClk) {
-      val fifo = StreamFifo(
-        dataType = LooperOutput(config, InstructionTag(config)),
-        depth = config.instructionBufferDepth,
-        latency = 1
-      )
-      io.push = fifo.io.push
-      io.pop = fifo.io.pop
-    } else {
+    if (!isSyncClk) {
       val fifo = StreamFifoCC(
         dataType = LooperOutput(config, InstructionTag(config)),
         depth = config.instructionBufferDepth,
@@ -243,7 +237,13 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   val slow = new ClockingArea(slowClockDomain) {
     val microBlossom = MicroBlossomLooper(config, InstructionTag(config))
     microBlossom.io.push << ccFifoPush.io.pop
-    microBlossom.io.pop >> ccFifoPop.io.push
+    if (isSyncClk) {
+      // direct connect, but cut by a single register (1 clock cycle delay) to easy timing constraint
+      ccFifoPop.io.pop = microBlossom.io.pop.m2sPipe()
+    } else {
+      // use fifo
+      microBlossom.io.pop >> ccFifoPop.io.push
+    }
   }
   def microBlossom = slow.microBlossom
   ccFifoPush.io.push.valid := False
@@ -272,6 +272,14 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   }
   val isLastFindObstacle = OneMem(Bool, config.contextDepth) init List.fill(config.contextDepth)(False)
   val hasPendingFindObstacle = OneMem(Bool, config.contextDepth) init List.fill(config.contextDepth)(False)
+  // state for the emulate load stall module
+  var loadStall = (config.supportLoadStallEmulator) generate new Area {
+    val startTime = new Area {
+      val lower = OneMem(UInt(32 bits), config.contextDepth) init List.fill(config.contextDepth)(U(0))
+      val upper = OneMem(UInt(32 bits), config.contextDepth) init List.fill(config.contextDepth)(U(0))
+    }
+    val interval = OneMem(UInt(32 bits), config.contextDepth) init List.fill(config.contextDepth)(U(0))
+  }
 
   def getSimDriver(): TypedDriver = {
     if (io.s0.isInstanceOf[AxiLite4]) {
@@ -377,8 +385,26 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   val fsmConflictB16 = ConvergecastConflict(16).resizedFrom(fsmConflict.data)
   val fsmMaxGrowableU8 = ConvergecastMaxGrowable(8).resizedFrom(fsmMaxGrowable.data)
   val fsmMaxGrowableU16 = ConvergecastMaxGrowable(16).resizedFrom(fsmMaxGrowable.data)
+  var fsmLoadStall = (config.supportLoadStallEmulator) generate new Area {
+    val startTime = new Area {
+      val lower = loadStall.startTime.lower.constructReadWriteSyncChannel()
+      val upper = loadStall.startTime.upper.constructReadWriteSyncChannel()
+    }
+    val interval = loadStall.interval.constructReadWriteSyncChannel()
+  }
+  var loadStallEmulator = (config.supportLoadStallEmulator) generate LoadStallEmulator(config)
+  if (config.supportLoadStallEmulator) {
+    loadStallEmulator.io.currentTime := counter.value
+    loadStallEmulator.io.startTime := (fsmLoadStall.startTime.upper.data ## fsmLoadStall.startTime.lower.data).asUInt
+    loadStallEmulator.io.interval := fsmLoadStall.interval.data
+    loadStallEmulator.io.layerId := 0
+  }
   // data that are used to communicate between states
   val dataWaitFiFoPushLooperInput = Reg(LooperInput(config, InstructionTag(config)))
+  val fsmWriteStallPendingFindObstacle = Bool
+  fsmWriteStallPendingFindObstacle := False
+  val fsmWriteStallLoadStall = Bool
+  fsmWriteStallLoadStall := False
   val fsm = new StateMachine {
     setEncoding(binaryOneHot)
 
@@ -393,30 +419,27 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       whenIsActive {
         when(isReadAsk) {
           when(readout.mapping.hit(factory.readAddress())) {
-            when(readout.subAddress === U(0)) {
-              goto(stateReadLoadTime)
-            } elsewhen (readout.subAddress === U(8)) {
-              goto(stateReadFinishTime)
-            } elsewhen (readout.subAddress === U(16)) {
-              goto(stateReadMaximumGrowth)
-            } elsewhen (readout.subAddress === U(24)) {
-              goto(stateReadParityReports)
-            } elsewhen (readout.subAddress >= U(32) && readout.subAddress < U(48)) {
+            val builder = WhenBuilder()
+            builder.when(readout.subAddress === U(0)) { goto(stateReadLoadTime) }
+            if (!is64bus) { builder.elsewhen(readout.subAddress === U(4)) { goto(stateReadLoadTimeUpper) } }
+            builder.elsewhen(readout.subAddress === U(8)) { goto(stateReadFinishTime) }
+            if (!is64bus) { builder.elsewhen(readout.subAddress === U(12)) { goto(stateReadFinishTimeUpper) } }
+            builder.elsewhen(readout.subAddress === U(16)) { goto(stateReadMaximumGrowth) }
+            builder.elsewhen(readout.subAddress === U(24)) { goto(stateReadParityReports) }
+            // readout entry
+            builder.elsewhen(readout.subAddress >= U(32) && readout.subAddress < U(48)) {
               hardwareInfo.readoutCounter := hardwareInfo.readoutCounter + 1
               goto(stateReadObstacle)
-            } otherwise {
-              if (is64bus) {
-                readErrorReset()
-              } else {
-                when(readout.subAddress === U(4)) {
-                  goto(stateReadLoadTimeUpper)
-                } elsewhen (readout.subAddress === U(12)) {
-                  goto(stateReadFinishTimeUpper)
-                } otherwise {
-                  readErrorReset()
-                }
-              }
             }
+            // emulate load stall
+            if (config.supportLoadStallEmulator) {
+              builder.elsewhen(readout.subAddress === U(112)) { goto(stateReadLoadStallStartTime) }
+              if (!is64bus) {
+                builder.elsewhen(readout.subAddress === U(116)) { goto(stateReadLoadStallStartTimeUpper) }
+              }
+              builder.elsewhen(readout.subAddress === U(120)) { goto(stateReadLoadStallInterval) }
+            }
+            builder.otherwise { readErrorReset() }
           } otherwise {
             readErrorReset()
           }
@@ -425,12 +448,36 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
             hardwareInfo.instructionCounter := hardwareInfo.instructionCounter + 1
             goto(stateWriteInstruction)
           } elsewhen (readout.mapping.hit(factory.writeAddress())) {
-            when(readout.writeSubAddress === U(16)) {
-              goto(stateUpdateMaximumGrowth)
-            } elsewhen (readout.writeSubAddress === U(0)) {
+            val builder = WhenBuilder()
+            builder.when(readout.writeSubAddress === U(16)) { goto(stateUpdateMaximumGrowth) }
+            builder.elsewhen(readout.writeSubAddress === U(0)) {
               fsmAccumulatedGrown.writeNext(readout.writeContextId, U(0))
               isWriteHalt := False
-            } otherwise {
+            }
+            // emulate load stall
+            if (config.supportLoadStallEmulator) {
+              if (is64bus) {
+                builder.elsewhen(readout.writeSubAddress === U(112)) {
+                  fsmLoadStall.startTime.upper.writeNext(readout.writeContextId, readout.writeValue(63 downto 32))
+                  fsmLoadStall.startTime.lower.writeNext(readout.writeContextId, readout.writeValue(31 downto 0))
+                  isWriteHalt := False
+                }
+              } else {
+                builder.elsewhen(readout.writeSubAddress === U(112)) {
+                  fsmLoadStall.startTime.lower.writeNext(readout.writeContextId, readout.writeValue)
+                  isWriteHalt := False
+                }
+                builder.elsewhen(readout.writeSubAddress === U(116)) {
+                  fsmLoadStall.startTime.upper.writeNext(readout.writeContextId, readout.writeValue)
+                  isWriteHalt := False
+                }
+              }
+              builder.elsewhen(readout.writeSubAddress === U(116)) {
+                fsmLoadStall.interval.writeNext(readout.writeContextId, readout.writeValue)
+                isWriteHalt := False
+              }
+            }
+            builder.otherwise {
               hasError := True
               isWriteHalt := False
             }
@@ -623,17 +670,14 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     }
 
     // exist only for 32 bit bus
-    var stateReadLoadTimeUpper: State = null
-    if (!is64bus) {
-      stateReadLoadTimeUpper = new State {
-        whenIsNext {
-          fsmTimeLoad.upper.readNext(readout.contextId)
-        }
-        whenIsActive {
-          readout.value := fsmTimeLoad.upper.data.asBits
-          isReadHalt := False
-          goto(stateIdle)
-        }
+    var stateReadLoadTimeUpper: State = (!is64bus) generate new State {
+      whenIsNext {
+        fsmTimeLoad.upper.readNext(readout.contextId)
+      }
+      whenIsActive {
+        readout.value := fsmTimeLoad.upper.data.asBits
+        isReadHalt := False
+        goto(stateIdle)
       }
     }
 
@@ -651,17 +695,51 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     }
 
     // exist only for 32 bit bus
-    var stateReadFinishTimeUpper: State = null
-    if (!is64bus) {
-      stateReadFinishTimeUpper = new State {
-        whenIsNext {
-          fsmTimeFinish.upper.readNext(readout.contextId)
-        }
-        whenIsActive {
-          readout.value := fsmTimeFinish.upper.data.asBits
-          isReadHalt := False
-          goto(stateIdle)
-        }
+    var stateReadFinishTimeUpper: State = (!is64bus) generate new State {
+      whenIsNext {
+        fsmTimeFinish.upper.readNext(readout.contextId)
+      }
+      whenIsActive {
+        readout.value := fsmTimeFinish.upper.data.asBits
+        isReadHalt := False
+        goto(stateIdle)
+      }
+    }
+
+    val stateReadLoadStallStartTime: State = (config.supportLoadStallEmulator) generate new State {
+      whenIsNext {
+        fsmLoadStall.startTime.upper.readNext(readout.contextId)
+        fsmLoadStall.startTime.lower.readNext(readout.contextId)
+      }
+      whenIsActive {
+        if (is64bus) {
+          readout.value := fsmLoadStall.startTime.upper.data.asBits ## fsmLoadStall.startTime.lower.data.asBits
+        } else { readout.value := fsmLoadStall.startTime.lower.data.asBits }
+        isReadHalt := False
+        goto(stateIdle)
+      }
+    }
+
+    // exist only for 32 bit bus
+    val stateReadLoadStallStartTimeUpper: State = (config.supportLoadStallEmulator && !is64bus) generate new State {
+      whenIsNext {
+        fsmLoadStall.startTime.upper.readNext(readout.contextId)
+      }
+      whenIsActive {
+        readout.value := fsmLoadStall.startTime.upper.data.asBits
+        isReadHalt := False
+        goto(stateIdle)
+      }
+    }
+
+    val stateReadLoadStallInterval: State = (config.supportLoadStallEmulator) generate new State {
+      whenIsNext {
+        fsmLoadStall.interval.readNext(readout.contextId)
+      }
+      whenIsActive {
+        readout.value := fsmLoadStall.interval.data.asBits
+        isReadHalt := False
+        goto(stateIdle)
       }
     }
 
@@ -674,7 +752,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
     }
 
     val stateWriteInstruction: State = new State {
-      onEntry {
+      whenIsNext {
         // check what type of the instruction and record timestamp if necessary
         when(instruction.value.isChangingSyndrome) {
           fsmTimeLoad.upper.writeNext(instruction.contextId, counter.value(63 downto 32))
@@ -686,10 +764,21 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
         fsmHasPendingFindObstacle.readNext(instruction.contextId)
         fsmMaximumGrowth.readNext(instruction.contextId)
         fsmAccumulatedGrown.readNext(instruction.contextId)
+        if (config.supportLoadStallEmulator) {
+          fsmLoadStall.startTime.upper.readNext(instruction.contextId)
+          fsmLoadStall.startTime.lower.readNext(instruction.contextId)
+          fsmLoadStall.interval.readNext(instruction.contextId)
+        }
       }
       whenIsActive {
         val isFindObstacle = instruction.value.isFindObstacle
-        when(!fsmHasPendingFindObstacle.data || !isFindObstacle) {
+        val isReset = instruction.value.isReset
+        fsmWriteStallPendingFindObstacle := (isFindObstacle || isReset) && fsmHasPendingFindObstacle.data
+        if (config.supportLoadStallEmulator) {
+          loadStallEmulator.io.layerId := instruction.value.field1.asUInt.resized
+          fsmWriteStallLoadStall := instruction.value.isLoadDefectsExternal && loadStallEmulator.io.isStall
+        }
+        when(!fsmWriteStallPendingFindObstacle && !fsmWriteStallLoadStall) {
           val instructionId = fsmPushId.data + 1
           // prepare the looper input
           val looperInput = LooperInput(config, InstructionTag(config))
@@ -713,6 +802,16 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
           fsmIsLastFindObstacle.writeNext(instruction.contextId, isFindObstacle)
           when(isFindObstacle) {
             fsmHasPendingFindObstacle.writeNext(instruction.contextId, True)
+          }
+          // if the instruction is reset, clear all the states
+          when(isReset) {
+            if (config.supportLoadStallEmulator) {
+              fsmLoadStall.startTime.upper.writeNext(instruction.contextId, U(0))
+              fsmLoadStall.startTime.lower.writeNext(instruction.contextId, U(0))
+              fsmLoadStall.interval.writeNext(instruction.contextId, U(0))
+            }
+            fsmAccumulatedGrown.writeNext(instruction.contextId, U(0))
+            fsmMaximumGrowth.writeNext(instruction.contextId, U(0))
           }
           // update state machine
           when(ccFifoPush.io.push.ready) {
@@ -829,6 +928,8 @@ class MicroBlossomBusGeneratorConf(arguments: Seq[String]) extends ScallopConf(a
   val noAddDefectVertex = opt[Boolean](default = Some(false), descr = "by default support AddDefectVertex instruction")
   val supportOffloading = opt[Boolean](default = Some(false), descr = "support offloading optimization")
   val supportLayerFusion = opt[Boolean](default = Some(false), descr = "support layer fusion")
+  val supportLoadStallEmulator =
+    opt[Boolean](default = Some(false), descr = "support emulate load stall for evaluation")
   val injectRegisters =
     opt[List[String]](
       default = Some(List()),
@@ -846,6 +947,7 @@ class MicroBlossomBusGeneratorConf(arguments: Seq[String]) extends ScallopConf(a
     supportAddDefectVertex = !noAddDefectVertex(),
     supportOffloading = supportOffloading(),
     supportLayerFusion = supportLayerFusion(),
+    supportLoadStallEmulator = supportLoadStallEmulator(),
     injectRegisters = injectRegisters()
   )
 }

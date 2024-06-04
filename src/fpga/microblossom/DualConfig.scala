@@ -23,6 +23,7 @@ case class DualConfig(
     var supportAddDefectVertex: Boolean = true,
     var supportOffloading: Boolean = false,
     var supportLayerFusion: Boolean = false,
+    var supportLoadStallEmulator: Boolean = false,
     // load graph either from parameter or from file
     var graph: SingleGraph = null,
     val filename: String = null,
@@ -30,6 +31,9 @@ case class DualConfig(
     var injectRegisters: Seq[String] = List()
 ) {
   assert(isPow2(instructionBufferDepth) & instructionBufferDepth >= 2)
+  if (supportLoadStallEmulator) {
+    assert(supportLayerFusion)
+  }
 
   def vertexNum = graph.vertex_num.toInt
   def edgeNum = graph.weighted_edges.length.toInt
@@ -68,6 +72,7 @@ case class DualConfig(
   val activeOffloading = ArrayBuffer[Offloading]()
   val edgeConditionedVertex = collection.mutable.Map[Int, Int]()
   val vertexLayerId = collection.mutable.Map[Int, Int]()
+  var layerIdBits: Int = 0
 
   if (filename != null) {
     val source = scala.io.Source.fromFile(filename)
@@ -130,6 +135,7 @@ case class DualConfig(
     activeOffloading.clear()
     edgeConditionedVertex.clear()
     vertexLayerId.clear()
+    var maxLayerId = 0
     if (supportOffloading) {
       for (offloading <- graph.offloading) {
         activeOffloading.append(offloading)
@@ -144,7 +150,9 @@ case class DualConfig(
       }
       for ((vertexIndex, layerId) <- layerFusion.vertex_layer_id) {
         vertexLayerId(vertexIndex.toInt) = layerId.toInt
+        maxLayerId = maxLayerId.max(layerId.toInt)
       }
+      layerIdBits = log2Up(maxLayerId)
     }
     for ((offloader, offloaderIndex) <- activeOffloading.zipWithIndex) {
       for (vertexIndex <- offloaderNeighborVertexIndices(offloaderIndex)) {

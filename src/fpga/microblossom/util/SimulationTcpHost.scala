@@ -65,6 +65,7 @@ case class SimulationConfig(
     val supportAddDefectVertex: Boolean,
     val supportOffloading: Boolean,
     val supportLayerFusion: Boolean,
+    val supportLoadStallEmulator: Boolean,
     val injectRegisters: Seq[String],
     val clockDivideBy: Double
 ) {
@@ -79,6 +80,7 @@ case class SimulationConfig(
       supportAddDefectVertex = supportAddDefectVertex,
       supportOffloading = supportOffloading,
       supportLayerFusion = supportLayerFusion,
+      supportLoadStallEmulator = supportLoadStallEmulator,
       injectRegisters = injectRegisters
     )
     config.sanityCheck()
@@ -130,6 +132,7 @@ object SimulationConfig {
     val supportAddDefectVertex = readNamedValue("support_add_defect_vertex").toBoolean
     val supportOffloading = readNamedValue("support_offloading").toBoolean
     val supportLayerFusion = readNamedValue("support_layer_fusion").toBoolean
+    val supportLoadStallEmulator = readNamedValue("support_load_stall_emulator").toBoolean
     val injectRegistersJson = readNamedValue("inject_registers")
     val injectRegisters = decode[Seq[String]](injectRegistersJson) match {
       case Right(value) => value
@@ -150,6 +153,7 @@ object SimulationConfig {
       supportAddDefectVertex,
       supportOffloading,
       supportLayerFusion,
+      supportLoadStallEmulator,
       injectRegisters,
       clockDivideBy
     )

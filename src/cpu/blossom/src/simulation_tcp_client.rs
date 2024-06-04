@@ -55,6 +55,9 @@ pub struct SimulationConfig {
     #[derivative(Default(value = "simulation_config_default::support_layer_fusion()"))]
     #[serde(default = "simulation_config_default::support_layer_fusion")]
     pub support_layer_fusion: bool,
+    #[derivative(Default(value = "simulation_config_default::support_load_stall_emulator()"))]
+    #[serde(default = "simulation_config_default::support_load_stall_emulator")]
+    pub support_load_stall_emulator: bool,
     #[derivative(Default(value = "simulation_config_default::inject_registers()"))]
     #[serde(default = "simulation_config_default::inject_registers")]
     pub inject_registers: Vec<String>,
@@ -290,6 +293,9 @@ pub mod simulation_config_default {
     }
     pub fn support_layer_fusion() -> bool {
         env_bool("SUPPORT_LAYER_FUSION", "NO_LAYER_FUSION", false)
+    }
+    pub fn support_load_stall_emulator() -> bool {
+        env_bool("SUPPORT_LOAD_STALL_EMULATOR", "NO_LOAD_STALL_EMULATOR", false)
     }
     pub fn inject_registers() -> Vec<String> {
         match env::var("INJECT_REGISTERS") {
