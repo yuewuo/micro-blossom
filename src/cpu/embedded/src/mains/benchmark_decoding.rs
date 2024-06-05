@@ -97,9 +97,10 @@ pub fn main() {
         let finish_time = unsafe { extern_c::get_last_finish_time(context_id) };
         let hardware_diff = unsafe { extern_c::diff_native_time(load_time, finish_time) } as f64;
         println!(
-            "[{}] time: {:.3}us, counter: {counter}",
+            "[{}] time: {:.3}us, counter: {counter}, wall: {:.3}us",
             defects_reader.count,
-            hardware_diff * 1e6
+            hardware_diff * 1e6,
+            diff * 1e6
         );
         primal_module.reset();
         dual_module.reset();

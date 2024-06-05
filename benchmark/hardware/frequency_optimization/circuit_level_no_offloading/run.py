@@ -11,15 +11,9 @@ from frequency_explorer import *
 @dataclass
 class Configuration:
     d: int
-    frequency: float = 200
 
-    other_configs: dict[str, any] = field(
-        default_factory=lambda: {
-            "inject_registers": ["execute", "update"],
-            "broadcast_delay": 1,
-            "convergecast_delay": 1,
-        }
-    )
+    def init_frequency(self) -> int:
+        return HeuristicFrequencyCircuitLevel.of(self.d)
 
     def name(self) -> str:
         return f"d_{self.d}"
@@ -40,11 +34,14 @@ class Configuration:
             name=self.name() + f"_f{frequency}",
             clock_frequency=frequency,
             project_folder=os.path.join(this_dir, "tmp-project"),
-            **self.other_configs,
+            inject_registers=["execute", "update"],
+            support_offloading=False,
+            support_layer_fusion=True,
+            support_load_stall_emulator=True,
         )
 
 
-configurations = [Configuration(d=d) for d in range(3, 16, 2)]
+configurations = [Configuration(d=d) for d in range(3, 18, 2)]
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 frequency_log_dir = os.path.join(this_dir, "frequency_log")
@@ -66,7 +63,7 @@ def main() -> list[Configuration]:
         explorer = FrequencyExplorer(
             compute_next_maximum_frequency=compute_next_maximum_frequency,
             log_filepath=os.path.join(frequency_log_dir, configuration.name() + ".txt"),
-            max_frequency=configuration.frequency,
+            max_frequency=configuration.init_frequency(),
         )
 
         best_frequency = explorer.optimize()

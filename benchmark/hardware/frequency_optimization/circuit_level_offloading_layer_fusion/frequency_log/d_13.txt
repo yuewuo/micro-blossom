@@ -1,8 +1,0 @@
-[2024-06-01 20:30:39] optimization start
-[2024-06-01 20:30:39] iteration 0: trying frequency 200
-[2024-06-02 04:19:24] suggested achievable frequency is 78MHz
-[2024-06-02 04:19:24] iteration 1: trying frequency 70
-[2024-06-02 10:00:36] suggested achievable frequency is 68MHz
-[2024-06-02 10:00:36] iteration 2: trying frequency 61
-[2024-06-02 13:48:55] suggested achievable frequency is NoneMHz
-[2024-06-02 13:48:55] [found best frequency] 61

@@ -38,7 +38,7 @@ def run_verilog_generator(parameters):
     # then run the generator
     command = [
         "java",
-        "-Xmx32G",
+        "-Xmx64G",
         "-cp",
         os.path.join(git_root_dir, "target/scala-2.12/microblossom.jar"),
         "microblossom.MicroBlossomBusGenerator",

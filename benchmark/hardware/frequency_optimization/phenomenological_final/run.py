@@ -28,7 +28,7 @@ class Configuration:
             d=self.d,
             p=0.001,
             noisy_measurements=self.d - 1,
-            max_half_weight=1,
+            max_half_weight=2,  # so that pre-match works well in layer fusion settings
         )
         return MicroBlossomAxi4Builder(
             graph_builder=graph_builder,
