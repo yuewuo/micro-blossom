@@ -176,7 +176,13 @@ impl DualModuleAxi4Driver {
         let original_context_id = self.context_id;
         for context_id in 0..context_depth {
             self.context_id = context_id;
-            self.reset();
+            self.execute_instruction(Instruction32::reset()).unwrap();
+            // prefetching: reduce the time of waiting for responses on individual context
+            self.execute_instruction(Instruction32::find_obstacle()).unwrap();
+        }
+        for context_id in 0..context_depth {
+            self.context_id = context_id;
+            self.get_single_readout().unwrap();
         }
         self.context_id = original_context_id;
         Ok(())
@@ -202,6 +208,8 @@ impl DualModuleAxi4Driver {
 impl DualStacklessDriver for DualModuleAxi4Driver {
     fn reset(&mut self) {
         self.execute_instruction(Instruction32::reset()).unwrap();
+        // find obstacle to make sure the reset instruction is flushed
+        self.get_single_readout().unwrap();
     }
     fn set_speed(&mut self, _is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState) {
         self.execute_instruction(Instruction32::set_speed(node, speed)).unwrap();
