@@ -1,0 +1,4 @@
+[2024-06-05 04:47:32] optimization start
+[2024-06-05 04:47:32] iteration 0: trying frequency 62
+[2024-06-05 08:52:01] suggested achievable frequency is NoneMHz
+[2024-06-05 08:52:01] [found best frequency] 62

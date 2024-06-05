@@ -41,7 +41,7 @@ class Configuration:
         )
 
 
-configurations = [Configuration(d=d) for d in range(3, 18, 2)]
+configurations = [Configuration(d=d) for d in range(3, 16, 2)]
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 frequency_log_dir = os.path.join(this_dir, "frequency_log")

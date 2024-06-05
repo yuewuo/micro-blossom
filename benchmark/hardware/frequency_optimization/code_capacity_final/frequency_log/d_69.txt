@@ -2,3 +2,5 @@
 [2024-06-04 13:18:20] iteration 0: trying frequency 250
 [2024-06-04 21:07:20] suggested achievable frequency is 118MHz
 [2024-06-04 21:07:20] iteration 1: trying frequency 106
+[2024-06-05 01:50:48] suggested achievable frequency is NoneMHz
+[2024-06-05 01:50:48] [found best frequency] 106
