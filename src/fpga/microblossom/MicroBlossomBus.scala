@@ -123,7 +123,8 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   // 0: (RO) 64 bits timer counter
   val counter = new Area {
     val value = Reg(UInt(64 bits)) init 0
-    value := value + 1
+    val valueNext = value + 1
+    value := valueNext
     factory.readMultiWord(value, 0, documentation = "64 bits timer")
   }
 
@@ -756,8 +757,8 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       whenIsNext {
         // check what type of the instruction and record timestamp if necessary
         when(instruction.value.isChangingSyndrome) {
-          fsmTimeLoad.upper.writeNext(instruction.contextId, counter.value(63 downto 32))
-          fsmTimeLoad.lower.writeNext(instruction.contextId, counter.value(31 downto 0))
+          fsmTimeLoad.upper.writeNext(instruction.contextId, counter.valueNext(63 downto 32))
+          fsmTimeLoad.lower.writeNext(instruction.contextId, counter.valueNext(31 downto 0))
           // also mark it as not finished
           fsmTimeFinish.upper.writeNext(instruction.contextId, ~U(0, 32 bits))
           fsmTimeFinish.lower.writeNext(instruction.contextId, ~U(0, 32 bits))

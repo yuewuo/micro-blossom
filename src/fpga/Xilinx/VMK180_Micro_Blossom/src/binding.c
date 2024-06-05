@@ -25,6 +25,11 @@ uint64_t get_native_time()
     return Xil_In64(UB_BASE);
 }
 
+float get_native_frequency()
+{
+    return TIMER_FREQUENCY;
+}
+
 float diff_native_time(uint64_t start, uint64_t end)
 {
     // it's impossible for a 64 bit timer to overflow
@@ -105,4 +110,17 @@ void reset_all(uint16_t context_depth)
     {
         get_single_readout(context_id);
     }
+}
+
+uint32_t get_fast_cpu_time()
+{
+    XTime time_val;
+    XTime_GetTime(&time_val);
+    return time_val;
+}
+
+uint32_t get_fast_cpu_duration_ns(uint32_t start)
+{
+    uint32_t now = get_fast_cpu_time();
+    return (float)(now - start) / (float)(COUNTS_PER_SECOND) * 1e9;
 }

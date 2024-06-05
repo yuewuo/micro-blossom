@@ -59,6 +59,7 @@ case class DualConfig(
     }
   }
   def numLayers = layerFusion.num_layers
+  def layerIdBits = log2Up(numLayers)
   def parityReporters = {
     graph.parity_reporters match {
       case Some(parity_reporters) => parity_reporters.reporters
@@ -73,7 +74,6 @@ case class DualConfig(
   val activeOffloading = ArrayBuffer[Offloading]()
   val edgeConditionedVertex = collection.mutable.Map[Int, Int]()
   val vertexLayerId = collection.mutable.Map[Int, Int]()
-  var layerIdBits: Int = 0
 
   if (filename != null) {
     val source = scala.io.Source.fromFile(filename)
@@ -136,7 +136,6 @@ case class DualConfig(
     activeOffloading.clear()
     edgeConditionedVertex.clear()
     vertexLayerId.clear()
-    var maxLayerId = 0
     if (supportOffloading) {
       for (offloading <- graph.offloading) {
         activeOffloading.append(offloading)
@@ -151,9 +150,7 @@ case class DualConfig(
       }
       for ((vertexIndex, layerId) <- layerFusion.vertex_layer_id) {
         vertexLayerId(vertexIndex.toInt) = layerId.toInt
-        maxLayerId = maxLayerId.max(layerId.toInt)
       }
-      layerIdBits = log2Up(maxLayerId)
     }
     for ((offloader, offloaderIndex) <- activeOffloading.zipWithIndex) {
       for (vertexIndex <- offloaderNeighborVertexIndices(offloaderIndex)) {

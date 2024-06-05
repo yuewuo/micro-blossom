@@ -35,6 +35,12 @@ pub const MEASUREMENT_CYCLE_NS: usize =
     unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("MEASUREMENT_CYCLE_NS"), "1000")));
 /// the number of layer fusion
 pub const NUM_LAYER_FUSION: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("NUM_LAYER_FUSION"), "0")));
+/// enable multiple fusion at once, by default enable
+pub const MULTIPLE_FUSION: bool = !option_env!("DISABLE_MULTIPLE_FUSION").is_some();
+pub const IGNORE_EMPTY_DEFECT: bool = option_env!("IGNORE_EMPTY_DEFECT").is_some();
+pub const MAX_ROUND: usize = unwrap_ctx!(parse_usize(option::unwrap_or!(option_env!("MAX_ROUND"), "0")));
+/// disabling the detail print will significantly speed up the process
+pub const DISABLE_DETAIL_PRINT: bool = option_env!("DISABLE_DETAIL_PRINT").is_some();
 
 static mut PRIMAL_MODULE: UnsafeCell<PrimalModuleEmbedded<MAX_NODE_NUM>> = UnsafeCell::new(PrimalModuleEmbedded::new());
 static mut DUAL_MODULE: UnsafeCell<DualModuleStackless<DualDriverTracked<DualDriver, MAX_NODE_NUM>>> =
@@ -51,6 +57,17 @@ pub fn main() {
             | extern_c::MicroBlossomHardwareFlags::SUPPORT_LOAD_STALL_EMULATOR
     ));
     assert!(NUM_LAYER_FUSION > 0, "must contain at least 1 layer fusion");
+    let native_frequency = unsafe { extern_c::get_native_frequency() };
+    println!("native_frequency: {:.3}MHz", native_frequency * 1e-6);
+    let measurement_cycle_native = ((MEASUREMENT_CYCLE_NS as f32) * 1e-9 * native_frequency) as u32;
+    let actual_measurement_cycle = unsafe { extern_c::diff_native_time(0, measurement_cycle_native as u64) };
+    println!(
+        "measurement_cycle_native: {measurement_cycle_native}, actual measurement cycle: {:.3}us",
+        actual_measurement_cycle * 1e6
+    );
+    // delay the syndrome by 1us to make sure the syndrome is stalled at the first decoding instance
+    let syndrome_start_delay_ns = 1000u32;
+    let syndrome_start_delay_cycle = ((syndrome_start_delay_ns as f32) * 1e-9 * native_frequency) as u64;
 
     // create primal and dual modules
     let context_id = 0;
@@ -62,7 +79,7 @@ pub fn main() {
     let mut defects_reader = DefectsReader::new(DEFECTS);
 
     while let Some(defects) = defects_reader.next() {
-        if defects.is_empty() {
+        if IGNORE_EMPTY_DEFECT && defects.is_empty() {
             continue;
         }
         unsafe { extern_c::clear_instruction_counter() };
@@ -70,40 +87,79 @@ pub fn main() {
         for (node_index, &vertex_index) in defects.iter().enumerate() {
             dual_module.add_defect(ni!(vertex_index), ni!(node_index));
         }
-        // start timer
-        let start = unsafe { extern_c::get_native_time() };
-        unsafe { extern_c::setup_load_stall_emulator(start + 20, 0, context_id) };
-        if USE_LAYER_FUSION {
-            unimplemented!();
+        let mut layer_id = 0;
+        let finish_delta = if USE_LAYER_FUSION {
+            (NUM_LAYER_FUSION as u64 - 1) * (measurement_cycle_native as u64)
         } else {
-            for layer_id in 0..NUM_LAYER_FUSION {
+            for layer_id in 0..NUM_LAYER_FUSION - 1 {
                 unsafe {
                     extern_c::execute_instruction(Instruction32::load_syndrome_external(ni!(layer_id)).into(), context_id)
                 };
             }
-        }
+            layer_id = NUM_LAYER_FUSION - 1;
+            0
+        };
+        // start timer and set up load stall emulator: the syndrome won't be loaded until this time has passed
+        let start = unsafe { extern_c::get_native_time() };
+        let fast_start = unsafe { extern_c::get_fast_cpu_time() };
+        let syndrome_start = start + syndrome_start_delay_cycle; // wait for setting up everything
+        let syndrome_finish = syndrome_start + finish_delta;
+        let interval = if USE_LAYER_FUSION { measurement_cycle_native } else { 0 };
+        unsafe { extern_c::setup_load_stall_emulator(syndrome_start, interval, context_id) };
         // solve it
-        let (mut obstacle, _) = dual_module.find_obstacle();
-        while !obstacle.is_none() {
-            // println!("obstacle: {obstacle:?}");
-            primal_module.resolve(dual_module, obstacle);
-            (obstacle, _) = dual_module.find_obstacle();
+        while layer_id < NUM_LAYER_FUSION {
+            unsafe {
+                extern_c::execute_instruction(Instruction32::load_syndrome_external(ni!(layer_id)).into(), context_id)
+            };
+            layer_id += 1;
+            if USE_LAYER_FUSION && MULTIPLE_FUSION {
+                // fuse multiple layers at once if it can be done without any stall
+                let duration_ns = unsafe { extern_c::get_fast_cpu_duration_ns(fast_start) } - syndrome_start_delay_ns;
+                while duration_ns > (layer_id as u32) * interval && layer_id < NUM_LAYER_FUSION {
+                    unsafe {
+                        extern_c::execute_instruction(
+                            Instruction32::load_syndrome_external(ni!(layer_id)).into(),
+                            context_id,
+                        )
+                    };
+                    layer_id += 1;
+                }
+            }
+            // solve until no obstacle is found
+            let (mut obstacle, _) = dual_module.find_obstacle();
+            while !obstacle.is_none() {
+                // println!("obstacle: {obstacle:?}");
+                primal_module.resolve(dual_module, obstacle);
+                (obstacle, _) = dual_module.find_obstacle();
+            }
         }
         let end = unsafe { extern_c::get_native_time() };
         let counter = unsafe { extern_c::get_instruction_counter() };
         let diff = unsafe { extern_c::diff_native_time(start, end) } as f64;
         // get time from hardware
         let load_time = unsafe { extern_c::get_last_load_time(context_id) };
-        let finish_time = unsafe { extern_c::get_last_finish_time(context_id) };
-        let hardware_diff = unsafe { extern_c::diff_native_time(load_time, finish_time) } as f64;
-        println!(
-            "[{}] time: {:.3}us, counter: {counter}, wall: {:.3}us",
-            defects_reader.count,
-            hardware_diff * 1e6,
-            diff * 1e6
+        assert!(
+            load_time >= syndrome_finish,
+            "load stall emulator enforces that syndrome is not loaded before it's ready"
         );
+        let finish_time = unsafe { extern_c::get_last_finish_time(context_id) };
+        let hardware_diff = unsafe { extern_c::diff_native_time(syndrome_finish, finish_time) } as f64;
+        if !DISABLE_DETAIL_PRINT {
+            println!(
+                "[{}] time: {:.3}us, counter: {counter}, wall: {:.3}us",
+                defects_reader.count,
+                hardware_diff * 1e6,
+                diff * 1e6
+            );
+        }
         primal_module.reset();
         dual_module.reset();
+        // early break if reaching the limit
+        if MAX_ROUND != usize::MAX {
+            if defects_reader.count >= MAX_ROUND {
+                break;
+            }
+        }
     }
 }
 
@@ -142,7 +198,25 @@ we evaluate the performance.
 
 Now this script assumes that layer fusion is enabled.
 
+* debugging using code capacity noise
+cp ../../../resources/syndromes/code_capacity_planar_d3_p0.05.syndromes.defects ../embedded/embedded.defects
+*     no offloading
+EMBEDDED_BLOSSOM_MAIN=benchmark_decoding WITH_WAVEFORM=1 SUPPORT_LAYER_FUSION=1 SUPPORT_LOAD_STALL_EMULATOR=1 MAX_ROUND=100 \
+    NUM_LAYER_FUSION=3 cargo run --release --bin embedded_simulator -- \
+    ../../../resources/syndromes/code_capacity_planar_d3_p0.05.syndromes.json
+*     with offloading
+EMBEDDED_BLOSSOM_MAIN=benchmark_decoding WITH_WAVEFORM=1 SUPPORT_LAYER_FUSION=1 SUPPORT_LOAD_STALL_EMULATOR=1 MAX_ROUND=100 \
+    SUPPORT_OFFLOADING=1 \
+    NUM_LAYER_FUSION=3 cargo run --release --bin embedded_simulator -- \
+    ../../../resources/syndromes/code_capacity_planar_d3_p0.05.syndromes.json
+*     layer fusion with offloading
+EMBEDDED_BLOSSOM_MAIN=benchmark_decoding WITH_WAVEFORM=1 SUPPORT_LAYER_FUSION=1 SUPPORT_LOAD_STALL_EMULATOR=1 MAX_ROUND=100 \
+    SUPPORT_OFFLOADING=1 USE_LAYER_FUSION=1 \
+    NUM_LAYER_FUSION=3 cargo run --release --bin embedded_simulator -- \
+    ../../../resources/syndromes/code_capacity_planar_d3_p0.05.syndromes.json
+
+* debugging using circuit-level noise (too slow)
 cp ../../../resources/syndromes/circuit_level_d3_p0.001.syndromes.defects ../embedded/embedded.defects
-EMBEDDED_BLOSSOM_MAIN=benchmark_decoding WITH_WAVEFORM=1 cargo run --release --bin embedded_simulator -- ../../../resources/syndromes/circuit_level_d3_p0.001.syndromes.json
+EMBEDDED_BLOSSOM_MAIN=benchmark_decoding WITH_WAVEFORM=1 SUPPORT_LAYER_FUSION=1 SUPPORT_LOAD_STALL_EMULATOR=1 NUM_LAYER_FUSION=4 cargo run --release --bin embedded_simulator -- ../../../resources/syndromes/circuit_level_d3_p0.001.syndromes.json
 
 */

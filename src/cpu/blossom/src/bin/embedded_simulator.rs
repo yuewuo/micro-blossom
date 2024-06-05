@@ -127,9 +127,24 @@ extern "C" fn get_native_time() -> u64 {
 }
 
 #[no_mangle]
+extern "C" fn get_native_frequency() -> f32 {
+    *MICRO_BLOSSOM_FREQUENCY as f32
+}
+
+#[no_mangle]
 extern "C" fn diff_native_time(start: u64, end: u64) -> f32 {
-    // assume 100 MHz
     (end - start) as f32 / (*MICRO_BLOSSOM_FREQUENCY as f32)
+}
+
+#[no_mangle]
+extern "C" fn get_fast_cpu_time() -> u32 {
+    return get_native_time() as u32;
+}
+
+#[no_mangle]
+extern "C" fn get_fast_cpu_duration_ns(start: u32) -> u32 {
+    let now = get_fast_cpu_time();
+    ((now - start) as f32 / (*MICRO_BLOSSOM_FREQUENCY as f32)) as u32
 }
 
 #[no_mangle]
