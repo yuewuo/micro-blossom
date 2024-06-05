@@ -860,7 +860,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
           val contextId: UInt = if (config.contextBits > 0) { output.contextId }
           else { UInt(0 bits) }
           // record the last time it sees `maxGrowable = _.maxValue`: marking the finish of decoding
-          when(output.maxGrowable.length === output.maxGrowable.length.maxValue) {
+          when(output.tag.isFindObstacle && output.maxGrowable.length === output.maxGrowable.length.maxValue) {
             rspTimeFinish.upper.writeNext(contextId, counter.value(63 downto 32))
             rspTimeFinish.lower.writeNext(contextId, counter.value(31 downto 0))
           }

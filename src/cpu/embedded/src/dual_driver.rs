@@ -18,9 +18,6 @@ impl DualDriver {
 
 impl DualStacklessDriver for DualDriver {
     fn reset(&mut self) {
-        unsafe { set_maximum_growth(0, self.context_id) };
-        // make sure there is no other pending instructions and clear the grown value
-        unsafe { get_single_readout(self.context_id) };
         unsafe { execute_instruction(Instruction32::reset().0, self.context_id) };
     }
     fn set_speed(&mut self, _is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState) {
