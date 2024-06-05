@@ -185,9 +185,6 @@ impl DualModuleAxi4Driver {
 
 impl DualStacklessDriver for DualModuleAxi4Driver {
     fn reset(&mut self) {
-        self.set_maximum_growth(0).unwrap();
-        self.execute_instruction(Instruction32::reset()).unwrap();
-        self.find_obstacle(); // make sure there is no other pending instructions and clear the grown value
         self.execute_instruction(Instruction32::reset()).unwrap();
     }
     fn set_speed(&mut self, _is_blossom: bool, node: CompactNodeIndex, speed: CompactGrowState) {

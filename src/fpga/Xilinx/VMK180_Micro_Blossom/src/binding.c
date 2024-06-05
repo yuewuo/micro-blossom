@@ -87,9 +87,6 @@ SingleReadout get_single_readout(uint16_t context_id)
 
 void reset_context(uint16_t context_id)
 {
-    set_maximum_growth(0, context_id);
-    execute_instruction(RESET_INSTRUCTION, context_id);
-    get_single_readout(context_id); // make sure there is no other pending instructions and clear the grown value
     execute_instruction(RESET_INSTRUCTION, context_id);
 }
 
