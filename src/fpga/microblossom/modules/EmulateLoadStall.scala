@@ -36,6 +36,6 @@ case class LoadStallEmulator(config: DualConfig, timeBit: Int = 64, intervalBits
 
   val readyTime = UInt(timeBit bits)
   readyTime := io.startTime + (io.interval * io.layerId).resized
-  io.isStall := io.currentTime >= readyTime
+  io.isStall := io.currentTime < readyTime
 
 }

@@ -181,6 +181,22 @@ impl DualModuleAxi4Driver {
         self.context_id = original_context_id;
         Ok(())
     }
+
+    pub fn setup_load_stall_emulator(&mut self, start_time: u64, interval: u32) -> std::io::Result<()> {
+        let base = Self::READOUT_BASE + 128 * self.context_id as usize;
+        self.memory_write_64(base + 112, start_time)?;
+        self.memory_write_32(base + 120, interval)
+    }
+
+    pub fn get_last_load_time(&mut self) -> std::io::Result<u64> {
+        let base = Self::READOUT_BASE + 128 * self.context_id as usize;
+        self.memory_read_64(base)
+    }
+
+    pub fn get_last_finish_time(&mut self) -> std::io::Result<u64> {
+        let base = Self::READOUT_BASE + 128 * self.context_id as usize;
+        self.memory_read_64(base + 8)
+    }
 }
 
 impl DualStacklessDriver for DualModuleAxi4Driver {

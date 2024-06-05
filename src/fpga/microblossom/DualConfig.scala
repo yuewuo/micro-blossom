@@ -58,6 +58,7 @@ case class DualConfig(
       case None               => LayerFusion(0, Seq(), Map(), Map(), Map())
     }
   }
+  def numLayers = layerFusion.num_layers
   def parityReporters = {
     graph.parity_reporters match {
       case Some(parity_reporters) => parity_reporters.reporters

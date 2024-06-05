@@ -39,7 +39,8 @@ pub mod extern_c {
         pub weight_bits: uint8_t,
         pub instruction_buffer_depth: uint8_t,
         pub flags: MicroBlossomHardwareFlags,
-        pub reserved: uint16_t,
+        pub num_layers: uint8_t,
+        pub reserved: uint8_t,
     }
 
     #[derive(Clone, Copy)]
@@ -59,6 +60,7 @@ pub mod extern_c {
             const HARD_CODE_WEIGHTS = 1 << 3;
             const SUPPORT_CONTEXT_SWITCHING = 1 << 4;
             const IS_64_BUS = 1 << 5;
+            const SUPPORT_LOAD_STALL_EMULATOR = 1 << 6;
         }
     }
 
@@ -90,6 +92,9 @@ pub mod extern_c {
         pub fn get_maximum_growth(context_id: uint16_t) -> uint16_t;
         pub fn reset_context(context_id: uint16_t);
         pub fn reset_all(context_depth: uint16_t);
+        pub fn setup_load_stall_emulator(start_time: uint64_t, interval: uint32_t, context_id: uint16_t);
+        pub fn get_last_load_time(context_id: uint16_t) -> uint64_t;
+        pub fn get_last_finish_time(context_id: uint16_t) -> uint64_t;
 
         pub fn clear_instruction_counter();
         pub fn get_instruction_counter() -> uint32_t;

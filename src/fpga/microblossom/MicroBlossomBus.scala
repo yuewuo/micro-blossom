@@ -70,7 +70,7 @@ import org.rogach.scallop._
 //    0x2FFC
 // 2. 128KB context readouts at [0x2_0000, 0x4_0000), each context takes 128 byte space, assuming no more than 1024 contexts
 //    [context 0]
-//      0: (R) 64 bits timestamp of receiving the last ``load obstacles'' instruction
+//      0: (R) 64 bits timestamp of receiving the last ``load'' instruction
 //             (reading this address will also waiting for all the transactions of this context to be completed)
 //      0: (W:clear) clear the 16 bits accumulated_grown value
 //      8: (R) 64 bits timestamp of receiving the last ``growable = infinity'' response
@@ -137,6 +137,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
   configurationBits(3) := Bool(config.hardCodeWeights)
   configurationBits(4) := Bool(config.supportContextSwitching)
   configurationBits(5) := Bool(is64bus)
+  configurationBits(6) := Bool(config.supportLoadStallEmulator)
   val hardwareInfo = new Area {
     factory.readMultiWord(
       U(config.contextDepth, 32 bits) ## U(DualConfig.version, 32 bits),
@@ -144,7 +145,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       documentation = "micro-blossom version and context depth"
     )
     factory.readMultiWord(
-      configurationBits ##
+      U(config.numLayers, 8 bits) ## configurationBits ##
         U(config.instructionBufferDepth, 8 bits) ## U(config.weightBits, 8 bits) ##
         U(config.vertexBits, 8 bits) ## U(config.conflictChannels, 8 bits),
       address = 16,

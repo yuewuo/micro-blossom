@@ -41,11 +41,11 @@ use std::time::Instant;
 lazy_static! {
     pub static ref MICRO_BLOSSOM_FREQUENCY: f64 = match env::var("MICRO_BLOSSOM_FREQUENCY") {
         Ok(value) => value.parse().unwrap(),
-        Err(_) => 200e6,  // assume 200 MHz clock
+        Err(_) => 100e6,  // assume 100 MHz clock
     };
     pub static ref CONSIDER_CPU_TIME: bool = match env::var("CONSIDER_CPU_TIME") {
         Ok(value) => value.parse().unwrap(),
-        Err(_) => true, // by default consider CPU time
+        Err(_) => false, // by default do not consider CPU time
     };
 }
 
@@ -116,17 +116,20 @@ lazy_static! {
 extern "C" fn get_native_time() -> u64 {
     let mut locked = SIMULATOR_DRIVER.lock();
     let driver = locked.as_mut().unwrap();
-    let nanos = driver.memory_read_64(0).unwrap() as f64 / *MICRO_BLOSSOM_FREQUENCY * 1e9;
+    let clock_cycle = driver.memory_read_64(0).unwrap();
     if *CONSIDER_CPU_TIME {
-        nanos.round() as u64 + ((BEGIN_TIME.elapsed().as_nanos() - driver.client.link_wall_time().as_nanos()) as u64)
+        let cpu_nanos = (BEGIN_TIME.elapsed().as_nanos() - driver.client.link_wall_time().as_nanos()) as f64;
+        let cpu_cycles = cpu_nanos * 1e-9 / (*MICRO_BLOSSOM_FREQUENCY);
+        clock_cycle + (cpu_cycles.round() as u64)
     } else {
-        nanos.round() as u64
+        clock_cycle
     }
 }
 
 #[no_mangle]
 extern "C" fn diff_native_time(start: u64, end: u64) -> f32 {
-    (end - start) as f32 * 1.0e-9
+    // assume 100 MHz
+    (end - start) as f32 / (*MICRO_BLOSSOM_FREQUENCY as f32)
 }
 
 #[no_mangle]
@@ -189,4 +192,28 @@ extern "C" fn reset_all(context_depth: u16) {
     let mut simulator = SIMULATOR_DRIVER.lock();
     let driver = simulator.as_mut().unwrap();
     driver.reset_all(context_depth).unwrap();
+}
+
+#[no_mangle]
+extern "C" fn setup_load_stall_emulator(start_time: u64, interval: u32, context_id: u16) {
+    let mut simulator = SIMULATOR_DRIVER.lock();
+    let driver = simulator.as_mut().unwrap();
+    driver.context_id = context_id;
+    driver.setup_load_stall_emulator(start_time, interval).unwrap();
+}
+
+#[no_mangle]
+extern "C" fn get_last_load_time(context_id: u16) -> u64 {
+    let mut simulator = SIMULATOR_DRIVER.lock();
+    let driver = simulator.as_mut().unwrap();
+    driver.context_id = context_id;
+    driver.get_last_load_time().unwrap()
+}
+
+#[no_mangle]
+extern "C" fn get_last_finish_time(context_id: u16) -> u64 {
+    let mut simulator = SIMULATOR_DRIVER.lock();
+    let driver = simulator.as_mut().unwrap();
+    driver.context_id = context_id;
+    driver.get_last_finish_time().unwrap()
 }
