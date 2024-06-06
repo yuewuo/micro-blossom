@@ -1,5 +1,0 @@
-[2024-05-29 16:20:24] optimization start
-[2024-05-29 16:20:24] iteration 0: trying divide_by 2
-[2024-05-29 18:40:56] suggested achievable divide_by is 5
-[2024-05-29 18:40:56] iteration 1: trying divide_by 5
-[2024-05-29 19:30:58] [found best clock_divide_by] 5

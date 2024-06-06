@@ -1,2 +1,0 @@
-[2024-05-30 15:20:13] optimization start
-[2024-05-30 15:20:13] iteration 0: trying divide_by 9

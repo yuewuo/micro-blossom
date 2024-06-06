@@ -1,3 +1,0 @@
-[2024-05-30 11:29:01] optimization start
-[2024-05-30 11:29:01] iteration 0: trying divide_by 8
-[2024-05-30 15:20:13] [found best clock_divide_by] 8
