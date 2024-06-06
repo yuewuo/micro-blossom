@@ -12,27 +12,27 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 
 @dataclass
 class Configuration(OptimizableConfiguration):
-    d: int
+    noisy_measurements: int
+    d: int = 9
     frequency: int | None = None
 
     def init_frequency(self) -> int:
-        return 250
+        return HeuristicFrequencyCircuitLevel.of(self.d + 2)
 
     def frequency_log_dir(self) -> str:
         return os.path.join(this_dir, "frequency_log")
 
     def name(self) -> str:
-        return f"d_{self.d}"
+        return f"nm_{self.noisy_measurements}"
 
     def get_graph_builder(self) -> MicroBlossomGraphBuilder:
         return MicroBlossomGraphBuilder(
             graph_folder=os.path.join(this_dir, "tmp-graph"),
             name=self.name(),
-            noise_model="phenomenological",
             d=self.d,
-            p=0.01,
-            noisy_measurements=0,
-            max_half_weight=1,
+            p=0.001,
+            noisy_measurements=self.noisy_measurements,
+            max_half_weight=7,
         )
 
     def get_project(self, frequency: int | None = None) -> MicroBlossomAxi4Builder:
@@ -45,11 +45,12 @@ class Configuration(OptimizableConfiguration):
             project_folder=os.path.join(this_dir, "tmp-project"),
             inject_registers=["execute", "update"],
             support_offloading=True,
+            support_layer_fusion=True,
+            support_load_stall_emulator=True,
         )
 
 
-d_vec = [3, 5, 7, 9, 11, 15, 21, 27] + [35, 51, 69, 81]
-configurations = [Configuration(d=d) for d in d_vec]
+configurations = [Configuration(d=9, noisy_measurements=nm) for nm in range(1, 19)]
 
 
 def main():

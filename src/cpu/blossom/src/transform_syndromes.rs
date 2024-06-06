@@ -74,7 +74,7 @@ impl TransformSyndromesType {
                 let mut new_vertex_indices: Vec<usize> = Vec::with_capacity(initializer.vertex_num);
                 // 0 is left boundary, 1 is right boundary
                 let mut vertex_num = 2;
-                let virtual_t = ((max_t + min_t) / 2) as f64;
+                let virtual_t = ((max_t + min_t) / 4 * 2) as f64;  // make sure t % 2 == 0
                 let mut new_positions = vec![
                     VisualizePosition::new(d as f64, 0., virtual_t),
                     VisualizePosition::new(d as f64, (2 * d) as f64, virtual_t),

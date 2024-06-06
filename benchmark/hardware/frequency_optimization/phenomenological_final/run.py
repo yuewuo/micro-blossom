@@ -27,7 +27,7 @@ class Configuration(OptimizableConfiguration):
     def get_graph_builder(self) -> MicroBlossomGraphBuilder:
         return MicroBlossomGraphBuilder(
             graph_folder=os.path.join(this_dir, "tmp-graph"),
-            name=f"d_{self.d}",
+            name=self.name(),
             noise_model="phenomenological",
             d=self.d,
             p=0.001,
