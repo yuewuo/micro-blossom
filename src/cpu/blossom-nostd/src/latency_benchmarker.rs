@@ -4,6 +4,8 @@
 //! whose log value is within certain range. This is useful to plot a log-log plot where the x axis
 //! is the log value of the latency and the y axis is log value of the probability
 //!
+
+#[allow(unused_imports)]
 use crate::util::*;
 use libm::{floor, log, pow};
 

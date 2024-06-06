@@ -235,7 +235,6 @@ pub use unreachable_or_loop;
 #[allow(unused_imports)]
 pub use usu;
 
-#[cfg(not(feature = "std"))]
 pub mod c_printer {
     use core::ffi::c_char;
     pub use core::fmt::Write;

@@ -160,11 +160,14 @@ pub mod extern_c {
     }
 }
 
-pub fn print_string(s: &str) {
-    for c in s.chars() {
-        unsafe { extern_c::print_char(c as cty::c_char) };
-    }
-}
+#[allow(unused_imports)]
+pub use c_printer::print;
+
+#[allow(unused_imports)]
+pub use c_printer::println;
+
+#[allow(unused_imports)]
+pub use c_printer::Printer;
 
 pub fn nop_delay(cycles: u32) {
     for _ in 0..cycles {
