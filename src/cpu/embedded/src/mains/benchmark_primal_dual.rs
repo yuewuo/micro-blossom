@@ -8,7 +8,6 @@ use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::primal_module_embedded::*;
-use micro_blossom_nostd::util::*;
 
 /*
 EMBEDDED_BLOSSOM_MAIN=benchmark_primal_dual make aarch64

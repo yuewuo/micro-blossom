@@ -4,6 +4,8 @@
 //! whose log value is within certain range. This is useful to plot a log-log plot where the x axis
 //! is the log value of the latency and the y axis is log value of the probability
 //!
+use crate::util::*;
+use libm::{floor, log, pow};
 
 pub struct LatencyBenchmarker<const N: usize = 2000> {
     pub lower: f64,
@@ -48,8 +50,8 @@ impl<const N: usize> LatencyBenchmarker<N> {
         } else if latency >= self.upper {
             self.overflow_count += 1;
         } else {
-            let ratio = (latency / self.lower).log(self.upper / self.lower);
-            let index = ((N as f64) * ratio).floor() as usize;
+            let ratio = log(latency / self.lower) / log(self.upper / self.lower);
+            let index = floor((N as f64) * ratio) as usize;
             assert!(index < N);
             self.counter[index] += 1;
         }
@@ -70,7 +72,7 @@ impl<const N: usize> LatencyBenchmarker<N> {
     }
 
     pub fn latency_of(&self, index: usize) -> f64 {
-        self.lower * (self.upper / self.lower).powf((index as f64 + 0.5) / (N as f64))
+        self.lower * pow(self.upper / self.lower, (index as f64 + 0.5) / (N as f64))
     }
 
     pub fn debug_println(&self) {

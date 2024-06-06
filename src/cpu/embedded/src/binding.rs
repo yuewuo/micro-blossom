@@ -1,5 +1,6 @@
 use core::arch::asm;
 pub use core::fmt::Write;
+pub use micro_blossom_nostd::util::*;
 
 pub mod extern_c {
     use bitflags::bitflags;
@@ -164,44 +165,6 @@ pub fn print_string(s: &str) {
         unsafe { extern_c::print_char(c as cty::c_char) };
     }
 }
-
-pub struct Printer;
-
-impl Write for Printer {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        print_string(s);
-        Ok(())
-    }
-}
-
-#[macro_export]
-macro_rules! print {
-    ($($arg:tt)*) => ({
-        cfg_if::cfg_if! {
-            if #[cfg(not(feature="disable_print"))] {
-                let mut printer = Printer;
-                write!(&mut printer, $($arg)*).unwrap();
-            }
-        }
-    })
-}
-#[allow(unused_imports)]
-pub use print;
-
-#[macro_export]
-macro_rules! println {
-    () => (print!("\n"));
-    ($($arg:tt)*) => ({
-        cfg_if::cfg_if! {
-            if #[cfg(not(feature="disable_print"))] {
-                let mut printer = Printer;
-                writeln!(&mut printer, $($arg)*).unwrap();
-            }
-        }
-    })
-}
-#[allow(unused_imports)]
-pub use println;
 
 pub fn nop_delay(cycles: u32) {
     for _ in 0..cycles {

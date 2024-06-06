@@ -234,3 +234,73 @@ pub use unimplemented_or_loop;
 pub use unreachable_or_loop;
 #[allow(unused_imports)]
 pub use usu;
+
+#[cfg(not(feature = "std"))]
+pub mod c_printer {
+    use core::ffi::c_char;
+    pub use core::fmt::Write;
+
+    extern "C" {
+        pub fn print_char(c: c_char);
+    }
+
+    pub fn print_string(s: &str) {
+        for c in s.chars() {
+            unsafe { print_char(c as c_char) };
+        }
+    }
+
+    pub struct Printer;
+
+    impl Write for Printer {
+        fn write_str(&mut self, s: &str) -> core::fmt::Result {
+            print_string(s);
+            Ok(())
+        }
+    }
+
+    #[macro_export]
+    macro_rules! print {
+    ($($arg:tt)*) => ({
+            cfg_if::cfg_if! {
+                if #[cfg(not(feature="disable_print"))] {
+                    let mut printer = Printer;
+                    write!(&mut printer, $($arg)*).unwrap();
+                }
+            }
+        })
+    }
+    #[allow(unused_imports)]
+    pub use print;
+
+    #[macro_export]
+    macro_rules! println {
+    () => (print!("\n"));
+        ($($arg:tt)*) => ({
+            cfg_if::cfg_if! {
+                if #[cfg(not(feature="disable_print"))] {
+                    let mut printer = Printer;
+                    writeln!(&mut printer, $($arg)*).unwrap();
+                }
+            }
+        })
+    }
+    #[allow(unused_imports)]
+    pub use println;
+}
+
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+pub use c_printer::print;
+
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+pub use c_printer::println;
+
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+pub use crate::util::c_printer::Printer;
+
+#[cfg(not(feature = "std"))]
+#[allow(unused_imports)]
+pub use core::fmt::Write;

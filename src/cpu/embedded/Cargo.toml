@@ -31,7 +31,9 @@ default = ["panic_halt", "compact"]
 riscv = ["riscv-rt"]
 panic_halt = ["panic-halt"]
 tiny_benchmark_time = [] # useful for simulation
-disable_print = [] # useful when using ILA for debugging
+disable_print = [
+    "micro-blossom-nostd/disable_print",
+] # useful when using ILA for debugging
 compact = [
     "micro-blossom-nostd/u16_index",
     "micro-blossom-nostd/i16_weight",

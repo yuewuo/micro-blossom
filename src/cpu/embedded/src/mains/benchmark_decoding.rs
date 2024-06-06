@@ -10,7 +10,6 @@ use micro_blossom_nostd::instruction::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::latency_benchmarker::*;
 use micro_blossom_nostd::primal_module_embedded::*;
-use micro_blossom_nostd::util::*;
 
 /*
 cp ../../../resources/syndromes/code_capacity_d3_p0.1.syndromes.defects ../embedded/embedded.defects

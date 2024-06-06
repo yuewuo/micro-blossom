@@ -4,7 +4,6 @@ use crate::mains::test_get_time::sanity_check as sanity_check_get_time;
 use crate::util::*;
 use core::hint::black_box;
 use micro_blossom_nostd::instruction::*;
-use micro_blossom_nostd::util::*;
 
 /*
 

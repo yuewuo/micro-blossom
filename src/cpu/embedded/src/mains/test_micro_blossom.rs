@@ -4,7 +4,6 @@ use core::hint::black_box;
 use extern_c::MicroBlossomHardwareFlags as Flags;
 use konst::{option, primitive::parse_usize, result::unwrap_ctx};
 use micro_blossom_nostd::instruction::*;
-use micro_blossom_nostd::util::*;
 
 /*
  * when building the Vivado project, we need to specify the dual config; also run "make clean" when HDL changes
