@@ -61,8 +61,11 @@ class FrequencyExplorer:
         if log_best_frequency is not None:
             # print(f"best frequency {log_best_frequency}MHz in {self.log_filepath}")
             # check it is indeed achieved
-            assert self.compute_next_maximum_frequency(log_best_frequency) is None
-            return log_best_frequency
+            new_frequency = self.compute_next_maximum_frequency(log_best_frequency)
+            if new_frequency is None:
+                return log_best_frequency
+            # start from this frequency
+            self.max_frequency = math.floor((1 - self.extra_decrease) * new_frequency)
 
         frequency = int(self.max_frequency)
         self.log("optimization start")

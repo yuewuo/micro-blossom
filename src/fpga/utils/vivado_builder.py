@@ -342,7 +342,7 @@ class HeuristicFrequencyCircuitLevel:
         assert d % 2 == 1
         assert d >= 3
         if d == 3:
-            return 180
+            return 170
         if d == 5:
             return 141
         cycle = 3.69e-3 * (d**3) + 8.16
