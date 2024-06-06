@@ -1,4 +1,4 @@
-import os, sys, git
+import os, sys, git, argparse
 from dataclasses import dataclass
 
 git_root_dir = git.Repo(".", search_parent_directories=True).working_tree_dir
@@ -22,6 +22,7 @@ class Configuration:
     fix_noisy_measurements: Optional[int] = None
     support_offloading: bool = False
     support_layer_fusion: bool = False
+    context_depth: int = 1
 
     def config_of(self, d: int) -> "Configuration":
         configuration = Configuration(**self.__dict__)
@@ -53,6 +54,7 @@ class Configuration:
             project_folder=os.path.join(this_dir, "tmp-project"),
             support_offloading=self.support_offloading,
             support_layer_fusion=self.support_layer_fusion,
+            context_depth=self.context_depth,
         )
 
 
@@ -79,11 +81,44 @@ configurations = [
         d_vec=[3, 5, 7, 9, 11, 13, 15],
         support_offloading=True,
     ),
+    # python3 run.py --base-name circuit_fusion
     Configuration(
         base_name="circuit_fusion",
         d_vec=[3, 5, 7, 9, 11, 13, 15],
         support_offloading=True,
         support_layer_fusion=True,
+    ),
+    # python3 run.py --base-name circuit_fusion_context_4
+    Configuration(
+        base_name="circuit_fusion_context_4",
+        d_vec=[3, 5, 7, 9, 11, 13, 15],
+        support_offloading=True,
+        support_layer_fusion=True,
+        context_depth=4,
+    ),
+    # python3 run.py --base-name circuit_fusion_context_16
+    Configuration(
+        base_name="circuit_fusion_context_16",
+        d_vec=[3, 5, 7, 9, 11, 13, 15],
+        support_offloading=True,
+        support_layer_fusion=True,
+        context_depth=16,
+    ),
+    # python3 run.py --base-name circuit_fusion_context_128
+    Configuration(
+        base_name="circuit_fusion_context_128",
+        d_vec=[3, 5, 7, 9, 11, 13, 15],
+        support_offloading=True,
+        support_layer_fusion=True,
+        context_depth=128,
+    ),
+    # python3 run.py --base-name circuit_fusion_context_1024
+    Configuration(
+        base_name="circuit_fusion_context_1024",
+        d_vec=[3, 5, 7, 9, 11, 13, 15],
+        support_offloading=True,
+        support_layer_fusion=True,
+        context_depth=1024,
     ),
 ]
 
@@ -125,6 +160,14 @@ def main(config: Configuration):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Estimate Resource Usage")
+    parser.add_argument(
+        "--base-name",
+        help="if provided, only run the matched configuration",
+    )
+    args = parser.parse_args()
+
     errors = []
     for configuration in configurations:
-        main(configuration)
+        if args.base_name is None or args.base_name == configuration.base_name:
+            main(configuration)
