@@ -8,6 +8,7 @@ use micro_blossom_nostd::dual_driver_tracked::*;
 use micro_blossom_nostd::dual_module_stackless::*;
 use micro_blossom_nostd::instruction::*;
 use micro_blossom_nostd::interface::*;
+use micro_blossom_nostd::latency_benchmarker::*;
 use micro_blossom_nostd::primal_module_embedded::*;
 use micro_blossom_nostd::util::*;
 
@@ -78,6 +79,7 @@ pub fn main() {
     dual_module.driver.driver.context_id = context_id;
     let mut defects_reader = DefectsReader::new(DEFECTS);
 
+    let mut benchmarker: LatencyBenchmarker = LatencyBenchmarker::new_default();
     while let Some(defects) = defects_reader.next() {
         if IGNORE_EMPTY_DEFECT && defects.is_empty() {
             continue;
@@ -152,6 +154,7 @@ pub fn main() {
                 diff * 1e6
             );
         }
+        benchmarker.record(hardware_diff);
         primal_module.reset();
         dual_module.reset();
         // early break if reaching the limit
@@ -161,6 +164,12 @@ pub fn main() {
             }
         }
     }
+    // print out results
+    if !DISABLE_DETAIL_PRINT {
+        benchmarker.debug_println();
+    }
+    benchmarker.println();
+    benchmarker.print_statistics();
 }
 
 /*
