@@ -45,8 +45,21 @@ pub const DISABLE_DETAIL_PRINT: bool = option_env!("DISABLE_DETAIL_PRINT").is_so
 static mut PRIMAL_MODULE: UnsafeCell<PrimalModuleEmbedded<MAX_NODE_NUM>> = UnsafeCell::new(PrimalModuleEmbedded::new());
 static mut DUAL_MODULE: UnsafeCell<DualModuleStackless<DualDriverTracked<DualDriver, MAX_NODE_NUM>>> =
     UnsafeCell::new(DualModuleStackless::new(DualDriverTracked::new(DualDriver::new())));
+static mut LATENCY_BENCHMARKER: UnsafeCell<LatencyBenchmarker> = UnsafeCell::new(LatencyBenchmarker::new_default());
+static mut CPU_WALL_BENCHMARKER: UnsafeCell<LatencyBenchmarker> = UnsafeCell::new(LatencyBenchmarker::new_default());
 
 pub fn main() {
+    // first print all the configurations for trace
+    println!("------- start of build parameters -------");
+    println!("USE_LAYER_FUSION: {USE_LAYER_FUSION:?}");
+    println!("MEASUREMENT_CYCLE_NS: {MEASUREMENT_CYCLE_NS:?}");
+    println!("NUM_LAYER_FUSION: {NUM_LAYER_FUSION:?}");
+    println!("MULTIPLE_FUSION: {MULTIPLE_FUSION:?}");
+    println!("IGNORE_EMPTY_DEFECT: {IGNORE_EMPTY_DEFECT:?}");
+    println!("MAX_ROUND: {MAX_ROUND:?}");
+    println!("DISABLE_DETAIL_PRINT: {DISABLE_DETAIL_PRINT:?}");
+    println!("-------- end of build parameters --------");
+
     // obtain hardware information
     let hardware_info = unsafe { extern_c::get_hardware_info() };
     assert!(hardware_info.conflict_channels == 1);
@@ -78,7 +91,8 @@ pub fn main() {
     dual_module.driver.driver.context_id = context_id;
     let mut defects_reader = DefectsReader::new(DEFECTS);
 
-    let mut benchmarker: LatencyBenchmarker = LatencyBenchmarker::new_default();
+    let latency_benchmarker = unsafe { LATENCY_BENCHMARKER.get().as_mut().unwrap() };
+    let cpu_wall_benchmarker = unsafe { CPU_WALL_BENCHMARKER.get().as_mut().unwrap() };
     while let Some(defects) = defects_reader.next() {
         if IGNORE_EMPTY_DEFECT && defects.is_empty() {
             continue;
@@ -101,9 +115,9 @@ pub fn main() {
             0
         };
         // start timer and set up load stall emulator: the syndrome won't be loaded until this time has passed
-        let start = unsafe { extern_c::get_native_time() };
+        let native_start = unsafe { extern_c::get_native_time() };
         let fast_start = unsafe { extern_c::get_fast_cpu_time() };
-        let syndrome_start = start + syndrome_start_delay_cycle; // wait for setting up everything
+        let syndrome_start = native_start + syndrome_start_delay_cycle; // wait for setting up everything
         let syndrome_finish = syndrome_start + finish_delta;
         let interval = if USE_LAYER_FUSION { measurement_cycle_native } else { 0 };
         unsafe { extern_c::setup_load_stall_emulator(syndrome_start, interval, context_id) };
@@ -134,9 +148,8 @@ pub fn main() {
                 (obstacle, _) = dual_module.find_obstacle();
             }
         }
-        let end = unsafe { extern_c::get_native_time() };
+        let cpu_wall_diff = (unsafe { extern_c::get_fast_cpu_duration_ns(fast_start) } as f64) * 1e-9;
         let counter = unsafe { extern_c::get_instruction_counter() };
-        let diff = unsafe { extern_c::diff_native_time(start, end) } as f64;
         // get time from hardware
         let load_time = unsafe { extern_c::get_last_load_time(context_id) };
         assert!(
@@ -150,14 +163,15 @@ pub fn main() {
                 "[{}] time: {:.3}us, counter: {counter}, wall: {:.3}us",
                 defects_reader.count,
                 hardware_diff * 1e6,
-                diff * 1e6
+                cpu_wall_diff * 1e6
             );
         }
-        benchmarker.record(hardware_diff);
+        latency_benchmarker.record(hardware_diff);
+        cpu_wall_benchmarker.record(cpu_wall_diff);
         primal_module.reset();
         dual_module.reset();
         // early break if reaching the limit
-        if MAX_ROUND != usize::MAX {
+        if MAX_ROUND != 0 {
             if defects_reader.count >= MAX_ROUND {
                 break;
             }
@@ -165,10 +179,17 @@ pub fn main() {
     }
     // print out results
     if !DISABLE_DETAIL_PRINT {
-        benchmarker.debug_println();
+        cpu_wall_benchmarker.debug_println();
+        latency_benchmarker.debug_println();
     }
-    benchmarker.println();
-    benchmarker.print_statistics();
+    print!("cpu_wall_benchmarker");
+    cpu_wall_benchmarker.println();
+    print!("latency_benchmarker");
+    latency_benchmarker.println();
+    println!("cpu_wall_benchmarker statistics:");
+    cpu_wall_benchmarker.print_statistics();
+    println!("latency_benchmarker statistics:");
+    latency_benchmarker.print_statistics();
 }
 
 /*

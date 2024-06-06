@@ -33,7 +33,7 @@ def get_ttyoutput(
                 print(content, end="")
             if content != "":
                 last = time.time()
-            tty_output += content
+            tty_output += content.strip("\x00")
             if time.time() - last > timeout:
                 print(f"[warning] ttyoutput timeouted after {timeout}s")
                 break
