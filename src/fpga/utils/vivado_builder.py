@@ -1,5 +1,6 @@
 import os, sys, git, subprocess, math
 from datetime import datetime
+import numpy as np
 from dataclasses import dataclass, field
 
 git_root_dir = git.Repo(".", search_parent_directories=True).working_tree_dir
@@ -42,6 +43,26 @@ class MicroBlossomGraphBuilder:
 
     def syndrome_file_path(self) -> str:
         return os.path.join(self.graph_folder, f"{self.name}.syndromes")
+
+    def defect_file_path(self) -> str:
+        return os.path.join(self.graph_folder, f"{self.name}.defects")
+
+    # sanity check: assert that the file indeed contains these many samples
+    def assert_defects_file_samples(self, N: int) -> int:
+        defect_file_path = self.defect_file_path()
+        assert os.path.exists(defect_file_path)
+        values = np.fromfile(defect_file_path, dtype=np.int32)
+        sample_count = np.count_nonzero(values == -1)
+        if sample_count < N:
+            print("[error] the file does not contain enough number of samples")
+            print(f"try to delete file: {defect_file_path}")
+            assert sample_count >= N
+
+    def clear(self):
+        if os.path.exists(self.graph_file_path()):
+            os.remove(self.graph_file_path())
+        if os.path.exists(self.syndrome_file_path()):
+            os.remove(self.syndrome_file_path())
 
     def build(self) -> None:
         graph_file_path = self.graph_file_path()
@@ -112,6 +133,7 @@ class MicroBlossomGraphBuilder:
             command = micro_blossom_command() + ["parser"]
             command += [syndrome_file_path]
             command += ["--graph-file", graph_file_path]
+            command += ["--defects-file", self.defect_file_path()]
             # at the end of the file, transform the graph that is automatically generated
             if self.transform_graph:
                 if self.code_type == "rotated-planar-code":

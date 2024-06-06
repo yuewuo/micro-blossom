@@ -124,3 +124,16 @@ uint32_t get_fast_cpu_duration_ns(uint32_t start)
     uint32_t now = get_fast_cpu_time();
     return (float)(now - start) / (float)(COUNTS_PER_SECOND) * 1e9;
 }
+
+ void setup_load_stall_emulator(uint64_t start_time, uint32_t interval, uint16_t context_id) {
+    Xil_Out64(UB_CONTEXT(context_id) + 112, start_time);
+    Xil_Out32(UB_CONTEXT(context_id) + 120, interval);
+}
+
+uint64_t get_last_load_time(uint16_t context_id) {
+    return Xil_In64(UB_CONTEXT(context_id));
+}
+
+uint64_t get_last_finish_time(uint16_t context_id) {
+    return Xil_In64(UB_CONTEXT(context_id) + 8);
+}

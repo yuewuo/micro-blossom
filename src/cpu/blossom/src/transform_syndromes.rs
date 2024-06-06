@@ -114,7 +114,8 @@ impl TransformSyndromesType {
         }
     }
 
-    /// modify the graph
+    /// modify the graph; this must not modify the vertex_num, weighted_edges, etc.
+    /// If you do want to modify them, use `Self::run` on the syndrome file themselves.
     pub fn parse(&self, mut graph: MicroBlossomSingle) -> MicroBlossomSingle {
         match self {
             Self::QecpRotatedPlanarCode { d } => {

@@ -3,6 +3,9 @@ from datetime import datetime
 import math, os
 import traceback
 from dataclasses import dataclass
+from abc import ABC, abstractmethod
+
+from vivado_builder import *
 
 """
 Frequency explorer of arbitrary design
@@ -84,3 +87,33 @@ class FrequencyExplorer:
                 self.log(f"synthesis failed, try next frequency {new_frequency}MHz")
             frequency = new_frequency
         return None
+
+
+class OptimizableConfiguration(ABC):
+    @abstractmethod
+    def frequency_log_dir(self) -> str: ...
+
+    @abstractmethod
+    def init_frequency(self) -> int: ...
+
+    @abstractmethod
+    def get_project(self, frequency: int | None = None) -> MicroBlossomAxi4Builder: ...
+
+    def optimized_project(self) -> MicroBlossomAxi4Builder:
+        frequency_log_dir = self.frequency_log_dir()
+        if not os.path.exists(frequency_log_dir):
+            os.mkdir(frequency_log_dir)
+
+        def compute_next_maximum_frequency(frequency: int) -> int | None:
+            project = self.get_project(frequency=frequency)
+            project.build()
+            return project.next_maximum_frequency()
+
+        explorer = FrequencyExplorer(
+            compute_next_maximum_frequency=compute_next_maximum_frequency,
+            log_filepath=os.path.join(frequency_log_dir, self.name() + ".txt"),
+            max_frequency=self.init_frequency(),
+        )
+
+        best_frequency = explorer.optimize()
+        return self.get_project(frequency=best_frequency)
