@@ -26,14 +26,22 @@ def main(config: Configuration):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Estimate Resource Usage")
+    parser.add_argument(
+        "--base-name",
+        help="if provided, only run the matched configuration",
+    )
+    args = parser.parse_args()
+
     errors = []
     for configuration in configurations:
-        try:
-            main(configuration)
-        except Exception as e:
-            error_str = traceback.format_exc()
-            print(error_str)
-            errors.append(error_str)
+        if args.base_name is None or args.base_name == configuration.base_name:
+            try:
+                main(configuration)
+            except Exception as e:
+                error_str = traceback.format_exc()
+                print(error_str)
+                errors.append(error_str)
     if len(errors) > 0:
         for error in errors:
             print(error)

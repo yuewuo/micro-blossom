@@ -1,0 +1,2 @@
+[2024-06-06 05:56:39] optimization start
+[2024-06-06 05:56:39] iteration 0: trying frequency 49
