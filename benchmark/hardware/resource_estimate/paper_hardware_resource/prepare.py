@@ -13,10 +13,16 @@ def main(config: Configuration):
         # test hello world application
         project.build_embedded_binary()
         project.build_vivado_project(force_recompile_binary=True)
-        tty_output = project.run_application()
-        with open(os.path.join(project.hardware_proj_dir(), f"hello.log"), "w") as log:
-            log.write(tty_output)
-            assert "Hello world!" in tty_output
+
+        if project.is_hardware_connected():
+            tty_output = project.run_application()
+            with open(
+                os.path.join(project.hardware_proj_dir(), f"hello.log"), "w"
+            ) as log:
+                log.write(tty_output)
+                assert "Hello world!" in tty_output
+        else:
+            print("skip hello world test because hardware is not connected")
 
 
 if __name__ == "__main__":

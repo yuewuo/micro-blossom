@@ -250,7 +250,16 @@ class MicroBlossomAxi4Builder:
             print(f"    thought it could potentially run at {new_frequency}MHz")
             return False
 
+    def is_hardware_connected(self) -> bool:
+        return (
+            "MICRO_BLOSSOM_HARDWARE_CONNECTED" in os.environ
+            and os.environ["MICRO_BLOSSOM_HARDWARE_CONNECTED"] != ""
+        )
+
     def run_application(self, silent: bool = True) -> str:
+        assert (
+            self.is_hardware_connected()
+        ), "please export MICRO_BLOSSOM_HARDWARE_CONNECTED=1 if your hardware is connected"
         log_file_path = os.path.join(self.hardware_proj_dir(), "make.log")
         print(f"testing, log output to {log_file_path}")
         with open(log_file_path, "a", encoding="utf8") as log:
