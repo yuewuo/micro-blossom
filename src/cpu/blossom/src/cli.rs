@@ -453,7 +453,13 @@ impl Cli {
                 if let Some(graph_file) = parameters.graph_file {
                     let mut micro_blossom = MicroBlossomSingle::new_code(&code);
                     if let Some(transform_type) = parameters.transform_type {
+                        let original = micro_blossom.clone();
                         micro_blossom = transform_type.parse(micro_blossom);
+                        // sanity check: should not modify these fields because otherwise the
+                        // defects file will contain invalid or misaligned indices
+                        assert_eq!(original.vertex_num, micro_blossom.vertex_num);
+                        assert_eq!(original.weighted_edges, micro_blossom.weighted_edges);
+                        assert_eq!(original.virtual_vertices, micro_blossom.virtual_vertices);
                     }
                     let json_str = serde_json::to_string(&micro_blossom).unwrap();
                     std::fs::write(graph_file, json_str).unwrap();
