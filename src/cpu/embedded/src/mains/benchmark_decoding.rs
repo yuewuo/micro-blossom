@@ -93,6 +93,8 @@ pub fn main() {
 
     let latency_benchmarker = unsafe { LATENCY_BENCHMARKER.get().as_mut().unwrap() };
     let cpu_wall_benchmarker = unsafe { CPU_WALL_BENCHMARKER.get().as_mut().unwrap() };
+    let all_begin_native_time = unsafe { extern_c::get_native_time() };
+    let mut last_native_time = unsafe { extern_c::get_native_time() };
     while let Some(defects) = defects_reader.next() {
         if IGNORE_EMPTY_DEFECT && defects.is_empty() {
             continue;
@@ -176,6 +178,13 @@ pub fn main() {
                 break;
             }
         }
+        // print something every 5s
+        if unsafe { extern_c::diff_native_time(last_native_time, native_start) } > 5. {
+            println!("[info] have run {} samples", defects_reader.count);
+            last_native_time = native_start;
+            println!("latency_benchmarker statistics:");
+            latency_benchmarker.print_statistics();
+        }
     }
     // print out results
     if !DISABLE_DETAIL_PRINT {
@@ -190,6 +199,10 @@ pub fn main() {
     cpu_wall_benchmarker.print_statistics();
     println!("latency_benchmarker statistics:");
     latency_benchmarker.print_statistics();
+    // print overall time consumption for use of estimation
+    let all_end_native_time = unsafe { extern_c::get_native_time() };
+    let all_duration = unsafe { extern_c::diff_native_time(all_begin_native_time, all_end_native_time) };
+    println!("evaluation duration: {all_duration}s");
 }
 
 /*
