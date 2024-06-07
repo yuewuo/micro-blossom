@@ -112,17 +112,28 @@ void reset_all(uint16_t context_depth)
     }
 }
 
-uint32_t get_fast_cpu_time()
+uint64_t get_fast_cpu_time()
 {
-    XTime time_val;
-    XTime_GetTime(&time_val);
-    return time_val;
+    // XTime time_val;
+    // XTime_GetTime(&time_val);
+    // return time_val;
+    // 2024.6.7: the above is not fast at all: about 258ns per function call
+    // use the CNTPCT_EL0 register instead (only applicable to aarch64)
+    uint64_t cntpct;
+    // isb();  // no need in our purpose (just get a rough time estimation but need to be extremely fast)
+    asm volatile("mrs %0, cntpct_el0" : "=r" (cntpct));
+    return cntpct;
+    // benchmark:
+    //    with isb: 42ns
+    //    without isb: 6.4ns
 }
 
-uint32_t get_fast_cpu_duration_ns(uint32_t start)
+uint64_t get_fast_cpu_duration_ns(uint64_t start)
 {
     uint32_t now = get_fast_cpu_time();
-    return (float)(now - start) / (float)(COUNTS_PER_SECOND) * 1e9;
+    uint64_t cntfrq;
+    asm volatile("mrs %0, cntfrq_el0" : "=r" (cntfrq));
+    return (float)(now - start) / (float)cntfrq * 1e9;
 }
 
  void setup_load_stall_emulator(uint64_t start_time, uint32_t interval, uint16_t context_id) {

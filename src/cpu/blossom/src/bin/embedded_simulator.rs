@@ -137,14 +137,14 @@ extern "C" fn diff_native_time(start: u64, end: u64) -> f32 {
 }
 
 #[no_mangle]
-extern "C" fn get_fast_cpu_time() -> u32 {
-    return get_native_time() as u32;
+extern "C" fn get_fast_cpu_time() -> u64 {
+    return get_native_time();
 }
 
 #[no_mangle]
-extern "C" fn get_fast_cpu_duration_ns(start: u32) -> u32 {
+extern "C" fn get_fast_cpu_duration_ns(start: u64) -> u64 {
     let now = get_fast_cpu_time();
-    ((now - start) as f32 / (*MICRO_BLOSSOM_FREQUENCY as f32)) as u32
+    ((now - start) as f64 / (*MICRO_BLOSSOM_FREQUENCY as f64)) as u64
 }
 
 #[no_mangle]
