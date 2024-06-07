@@ -66,6 +66,18 @@ class MicroBlossomGraphBuilder:
         if os.path.exists(self.syndrome_file_path()):
             os.remove(self.syndrome_file_path())
 
+    def get_simulation_command(self, min_failed_cases: int = None) -> list[str]:
+        command = fusion_blossom_qecp_generate_command(
+            d=self.d,
+            p=self.p,
+            total_rounds=self.test_syndrome_count,
+            noisy_measurements=self.noisy_measurements,
+            min_failed_cases=min_failed_cases,
+        )
+        command += ["--code-type", self.code_type]
+        command += ["--noise-model", self.noise_model]
+        return command
+
     def build(self) -> None:
         graph_file_path = self.graph_file_path()
         if os.path.exists(graph_file_path):
@@ -77,14 +89,7 @@ class MicroBlossomGraphBuilder:
         # first create the syndrome file
         syndrome_file_path = self.syndrome_file_path()
         if not os.path.exists(syndrome_file_path):
-            command = fusion_blossom_qecp_generate_command(
-                d=self.d,
-                p=self.p,
-                total_rounds=self.test_syndrome_count,
-                noisy_measurements=self.noisy_measurements,
-            )
-            command += ["--code-type", self.code_type]
-            command += ["--noise-model", self.noise_model]
+            command = self.get_simulation_command()
             command += [
                 "--decoder",
                 "fusion",
