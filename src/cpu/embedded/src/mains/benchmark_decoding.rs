@@ -1,7 +1,9 @@
 use crate::binding::*;
 use crate::defects_reader::*;
 use crate::dual_driver::*;
+use crate::util::*;
 use core::cell::UnsafeCell;
+use core::hint::black_box;
 use include_bytes_plus::include_bytes;
 use konst::{option, primitive::parse_usize, result::unwrap_ctx};
 use micro_blossom_nostd::dual_driver_tracked::*;
@@ -10,6 +12,7 @@ use micro_blossom_nostd::instruction::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::latency_benchmarker::*;
 use micro_blossom_nostd::primal_module_embedded::*;
+use num_traits::float::FloatCore;
 
 /*
 cp ../../../resources/syndromes/code_capacity_d3_p0.1.syndromes.defects ../embedded/embedded.defects
@@ -72,14 +75,14 @@ pub fn main() {
     assert!(NUM_LAYER_FUSION > 0, "must contain at least 1 layer fusion");
     let native_frequency = unsafe { extern_c::get_native_frequency() };
     println!("native_frequency: {:.3}MHz", native_frequency * 1e-6);
-    let measurement_cycle_native = ((MEASUREMENT_CYCLE_NS as f32) * 1e-9 * native_frequency) as u32;
-    let actual_measurement_cycle = unsafe { extern_c::diff_native_time(0, measurement_cycle_native as u64) };
+    let measurement_cycle_native = ((MEASUREMENT_CYCLE_NS as f32) * 1e-9 * native_frequency) as u64;
+    let actual_measurement_cycle = unsafe { extern_c::diff_native_time(0, measurement_cycle_native) };
     println!(
         "measurement_cycle_native: {measurement_cycle_native}, actual measurement cycle: {:.3}us",
         actual_measurement_cycle * 1e6
     );
     // delay the syndrome by 1us to make sure the syndrome is stalled at the first decoding instance
-    let syndrome_start_delay_ns = 1000u32;
+    let syndrome_start_delay_ns = 1000u64;
     let syndrome_start_delay_cycle = ((syndrome_start_delay_ns as f32) * 1e-9 * native_frequency) as u64;
 
     // create primal and dual modules
@@ -90,9 +93,21 @@ pub fn main() {
     let dual_module = unsafe { DUAL_MODULE.get().as_mut().unwrap() };
     dual_module.driver.driver.context_id = context_id;
     let mut defects_reader = DefectsReader::new(DEFECTS);
+    // calculate useful constant across the evaluations
+    let finish_delta = if USE_LAYER_FUSION {
+        (NUM_LAYER_FUSION as u64 - 1) * (measurement_cycle_native as u64)
+    } else {
+        0
+    };
+    let interval = if USE_LAYER_FUSION { measurement_cycle_native } else { 0 } as u32;
+
+    // optional: test whether the fast timer aligns with the native timer
+    // test_fast_timer();
 
     let latency_benchmarker = unsafe { LATENCY_BENCHMARKER.get().as_mut().unwrap() };
     let cpu_wall_benchmarker = unsafe { CPU_WALL_BENCHMARKER.get().as_mut().unwrap() };
+    let all_begin_native_time = unsafe { extern_c::get_native_time() };
+    let mut last_native_time = unsafe { extern_c::get_native_time() };
     while let Some(defects) = defects_reader.next() {
         if IGNORE_EMPTY_DEFECT && defects.is_empty() {
             continue;
@@ -103,23 +118,20 @@ pub fn main() {
             dual_module.add_defect(ni!(vertex_index), ni!(node_index));
         }
         let mut layer_id = 0;
-        let finish_delta = if USE_LAYER_FUSION {
-            (NUM_LAYER_FUSION as u64 - 1) * (measurement_cycle_native as u64)
-        } else {
+        if !USE_LAYER_FUSION {
+            // load all layers except for 1
             for layer_id in 0..NUM_LAYER_FUSION - 1 {
                 unsafe {
                     extern_c::execute_instruction(Instruction32::load_syndrome_external(ni!(layer_id)).into(), context_id)
                 };
             }
             layer_id = NUM_LAYER_FUSION - 1;
-            0
         };
         // start timer and set up load stall emulator: the syndrome won't be loaded until this time has passed
         let native_start = unsafe { extern_c::get_native_time() };
         let fast_start = unsafe { extern_c::get_fast_cpu_time() };
         let syndrome_start = native_start + syndrome_start_delay_cycle; // wait for setting up everything
         let syndrome_finish = syndrome_start + finish_delta;
-        let interval = if USE_LAYER_FUSION { measurement_cycle_native } else { 0 };
         unsafe { extern_c::setup_load_stall_emulator(syndrome_start, interval, context_id) };
         // solve it
         while layer_id < NUM_LAYER_FUSION {
@@ -129,8 +141,10 @@ pub fn main() {
             layer_id += 1;
             if USE_LAYER_FUSION && MULTIPLE_FUSION {
                 // fuse multiple layers at once if it can be done without any stall
-                let duration_ns = unsafe { extern_c::get_fast_cpu_duration_ns(fast_start) } - syndrome_start_delay_ns;
-                while duration_ns > (layer_id as u32) * interval && layer_id < NUM_LAYER_FUSION {
+                let duration_ns = unsafe { extern_c::get_fast_cpu_duration_ns(fast_start) };
+                while duration_ns > syndrome_start_delay_ns + (layer_id as u64) * (MEASUREMENT_CYCLE_NS as u64)
+                    && layer_id < NUM_LAYER_FUSION
+                {
                     unsafe {
                         extern_c::execute_instruction(
                             Instruction32::load_syndrome_external(ni!(layer_id)).into(),
@@ -176,6 +190,13 @@ pub fn main() {
                 break;
             }
         }
+        // print something every 5s
+        if unsafe { extern_c::diff_native_time(last_native_time, native_start) } > 5. {
+            println!("[info] have run {} samples", defects_reader.count);
+            last_native_time = native_start;
+            println!("latency_benchmarker statistics:");
+            latency_benchmarker.print_statistics();
+        }
     }
     // print out results
     if !DISABLE_DETAIL_PRINT {
@@ -190,6 +211,32 @@ pub fn main() {
     cpu_wall_benchmarker.print_statistics();
     println!("latency_benchmarker statistics:");
     latency_benchmarker.print_statistics();
+    // print overall time consumption for use of estimation
+    let all_end_native_time = unsafe { extern_c::get_native_time() };
+    let all_duration = unsafe { extern_c::diff_native_time(all_begin_native_time, all_end_native_time) };
+    println!("evaluation duration: {all_duration}s (running the benchmark)");
+    let overall_duration = unsafe { extern_c::diff_native_time(0, all_end_native_time) };
+    println!("overall duration: {overall_duration}s (from FPGA boot to program end)");
+}
+
+pub fn test_fast_timer() {
+    println!("\nBenchmark Fast Time Speed");
+    let begin_native = unsafe { black_box(extern_c::get_native_time()) };
+    let begin_fast = unsafe { black_box(extern_c::get_fast_cpu_time()) };
+    // run benchmark
+    let mut benchmarker = Benchmarker::new(|| {
+        unsafe { black_box(extern_c::get_fast_cpu_time()) };
+    });
+    benchmarker.autotune();
+    benchmarker.run(3);
+    // benchmark finished, now see whether the duration agrees with each other (up to 5% difference)
+    let epsilon = 0.05;
+    let duration_fast = unsafe { black_box(extern_c::get_fast_cpu_duration_ns(begin_fast)) };
+    let end_native = unsafe { black_box(extern_c::get_native_time()) };
+    let duration_native = unsafe { extern_c::diff_native_time(begin_native, end_native) };
+    println!("native duration: {}ns", duration_native * 1e9);
+    println!("fast duration: {}ns", duration_fast);
+    assert!((duration_native * 1e9 - duration_fast as f32).abs() <= duration_native * 1e9 * epsilon);
 }
 
 /*

@@ -56,7 +56,9 @@ class MicroBlossomGraphBuilder:
         if sample_count < N:
             print("[error] the file does not contain enough number of samples")
             print(f"try to delete file: {defect_file_path}")
-            assert sample_count >= N
+            assert (
+                sample_count >= N
+            ), "this may due to incomplete sample generation, consider delete all and retry"
 
     def clear(self):
         if os.path.exists(self.graph_file_path()):
@@ -278,7 +280,7 @@ class MicroBlossomAxi4Builder:
             and os.environ["MICRO_BLOSSOM_HARDWARE_CONNECTED"] != ""
         )
 
-    def run_application(self, silent: bool = True) -> str:
+    def run_application(self, silent: bool = True, timeout: int = 180) -> str:
         assert (
             self.is_hardware_connected()
         ), "please export MICRO_BLOSSOM_HARDWARE_CONNECTED=1 if your hardware is connected"
@@ -289,7 +291,10 @@ class MicroBlossomAxi4Builder:
                 f"[host_event] [make run_a72 start] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
             )
             tty_output, command_output = get_ttyoutput(
-                command=["make", "run_a72"], cwd=self.hardware_proj_dir(), silent=silent
+                command=["make", "run_a72"],
+                cwd=self.hardware_proj_dir(),
+                silent=silent,
+                timeout=timeout,
             )
             log.write(
                 f"[host_event] [make run_a72 finish] {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"

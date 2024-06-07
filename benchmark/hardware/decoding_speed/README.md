@@ -34,3 +34,13 @@ We have B=10^7 samples: it will run for about 100s, about 1 min.
 Each sample contains about 2 bytes * number of defects, which is about 66 bytes for d=15 circuit-level noise.
 This corresponds to 660MB file.
 Thus, it is surprising that generating the file could be way more expensive than actually running it on hardware.
+
+
+## Evaluation Plans
+
+### 1. Decoding time changing with code distance and physical error rate
+
+We plan to have a figure whose X axis is physical error rate, and Y axis is the average decoding latency.
+We will draw multiple curves, each corresponds to one code distance.
+
+There will be three figures: 

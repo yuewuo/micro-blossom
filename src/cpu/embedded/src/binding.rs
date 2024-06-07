@@ -87,8 +87,8 @@ pub mod extern_c {
         pub fn get_native_frequency() -> c_float;
         pub fn diff_native_time(start: uint64_t, end: uint64_t) -> c_float;
         /// if the time period is small, we can use the cpu counter to quickly obtain the time
-        pub fn get_fast_cpu_time() -> uint32_t;
-        pub fn get_fast_cpu_duration_ns(start: uint32_t) -> uint32_t;
+        pub fn get_fast_cpu_time() -> uint64_t;
+        pub fn get_fast_cpu_duration_ns(start: uint64_t) -> uint64_t;
 
         pub fn get_hardware_info() -> MicroBlossomHardwareInfo;
         pub fn execute_instruction(instruction: uint32_t, context_id: uint16_t);
