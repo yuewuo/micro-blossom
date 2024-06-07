@@ -202,7 +202,9 @@ pub fn main() {
     // print overall time consumption for use of estimation
     let all_end_native_time = unsafe { extern_c::get_native_time() };
     let all_duration = unsafe { extern_c::diff_native_time(all_begin_native_time, all_end_native_time) };
-    println!("evaluation duration: {all_duration}s");
+    println!("evaluation duration: {all_duration}s (running the benchmark)");
+    let overall_duration = unsafe { extern_c::diff_native_time(0, all_end_native_time) };
+    println!("overall duration: {overall_duration}s (from FPGA boot to program end)");
 }
 
 /*

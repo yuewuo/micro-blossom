@@ -28,7 +28,7 @@ if __name__ == "__main__":
                 use_layer_fusion=True,
             )
             result = benchmarker.run()
-            latency_vec.append(result.latency.average_latency())
-        print(f"average latency (d={d}): latency_vec")
+            latency_vec.append(result.latency)
         data.append(latency_vec)
-    plot_data(data, d_vec, p_vec)
+    save_data(data, this_dir)
+    plot_data(this_dir)

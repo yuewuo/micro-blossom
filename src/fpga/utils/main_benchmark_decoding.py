@@ -130,7 +130,7 @@ class DecodingSpeedBenchmarkerBasic:
         graph_builder = self.configuration.get_graph_builder()
         graph_builder.test_syndrome_count = self.samples
         graph_builder.graph_folder = os.path.join(self.this_dir, "tmp-syndrome")
-        graph_builder.name += self.name_suffix + f"_p_{self.p:.4f}_N_{self.samples}"
+        graph_builder.name += self.name_suffix + f"_p_{self.p:.4e}_N_{self.samples}"
         graph_builder.p = self.p
         return graph_builder
 
