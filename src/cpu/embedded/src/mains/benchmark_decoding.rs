@@ -12,6 +12,7 @@ use micro_blossom_nostd::instruction::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::latency_benchmarker::*;
 use micro_blossom_nostd::primal_module_embedded::*;
+#[allow(unused_imports)]
 use num_traits::float::FloatCore;
 
 /*
