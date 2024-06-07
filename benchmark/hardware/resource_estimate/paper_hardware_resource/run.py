@@ -84,38 +84,14 @@ configurations = [
     # python3 run.py --base-name circuit_fusion
     Configuration(
         base_name="circuit_fusion",
-        d_vec=[3, 5, 7, 9, 11, 13, 15],
+        d_vec=[3, 5, 7, 9, 11, 13],
         support_offloading=True,
         support_layer_fusion=True,
-    ),
-    # python3 run.py --base-name circuit_fusion_context_4
-    Configuration(
-        base_name="circuit_fusion_context_4",
-        d_vec=[3, 5, 7, 9, 11, 13, 15],
-        support_offloading=True,
-        support_layer_fusion=True,
-        context_depth=4,
-    ),
-    # python3 run.py --base-name circuit_fusion_context_16
-    Configuration(
-        base_name="circuit_fusion_context_16",
-        d_vec=[3, 5, 7, 9, 11, 13, 15],
-        support_offloading=True,
-        support_layer_fusion=True,
-        context_depth=16,
-    ),
-    # python3 run.py --base-name circuit_fusion_context_128
-    Configuration(
-        base_name="circuit_fusion_context_128",
-        d_vec=[3, 5, 7, 9, 11, 13, 15],
-        support_offloading=True,
-        support_layer_fusion=True,
-        context_depth=128,
     ),
     # python3 run.py --base-name circuit_fusion_context_1024
     Configuration(
         base_name="circuit_fusion_context_1024",
-        d_vec=[3, 5, 7, 9, 11, 13, 15],
+        d_vec=[3, 5, 7, 9, 11, 13],
         support_offloading=True,
         support_layer_fusion=True,
         context_depth=1024,
@@ -136,6 +112,7 @@ def main(config: Configuration):
     results = [
         "# <d> <clb LUTs> <clb_percent> <registers> <reg_percent>"
         + " <#V> <#E> <#pre-matcher>"
+        + " <bram> <bram_percent>"
     ]
     for d in config.d_vec:
         configuration = config.config_of(d)
@@ -144,6 +121,7 @@ def main(config: Configuration):
         report = vivado.report_impl_utilization()
         clb_luts = report.netlist_logic.clb_luts
         registers = report.netlist_logic.registers
+        bram_tile = report.bram.bram_tile
         # also read the number of vertices in the graph and the number of edges
         graph_file_path = project.graph_builder.graph_file_path()
         graph = SingleGraph.from_file(graph_file_path)
@@ -154,6 +132,7 @@ def main(config: Configuration):
         results.append(
             f"{d} {clb_luts.used} {clb_luts.util_percent} {registers.used} {registers.util_percent}"
             + f" {graph.vertex_num} {len(graph.weighted_edges)} {pre_match_num}"
+            + f" {bram_tile.used} {bram_tile.util_percent}"
         )
     with open(report_filename, "w", encoding="utf8") as f:
         f.write("\n".join(results))

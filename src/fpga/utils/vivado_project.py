@@ -47,23 +47,30 @@ class NetListLogic:
 
 
 @dataclass
+class BlockRamEntry:
+    used: float  # block ram can use half...
+    fixed: int
+    prohibited: int
+    available: int
+    less: bool
+    util_percent: float
+
+
+@dataclass
+class BlockRam:
+    bram_tile: BlockRamEntry
+    bram36e5: BlockRamEntry
+    bram18e5: BlockRamEntry
+    uram: BlockRamEntry
+
+
+@dataclass
 class ImplUtilizationReport:
     netlist_logic: NetListLogic
+    bram: BlockRam
 
     @staticmethod
-    def from_file(filepath: str) -> "ImplUtilizationReport":
-        with open(filepath, "r", encoding="utf8") as f:
-            lines = [line.strip("\r\n ") for line in f.readlines()]
-            table_of_contents_lidx = lines.index("Table of Contents")
-            while lines[table_of_contents_lidx] != "":
-                table_of_contents_lidx += 1
-            # ignore the titles in the table of contents
-            lines = lines[table_of_contents_lidx:]
-            netlist_logic_lidx = lines.index("1. Netlist Logic")
-            clb_distribution_lidx = lines.index("2. CLB Distribution")
-            netlist_logic_rpt = "\n".join(
-                lines[netlist_logic_lidx:clb_distribution_lidx]
-            )
+    def obtain_netlist_table(rpt: str) -> dict:
         fields = [
             ("Registers", "registers"),
             ("Register as Flip Flop", "register_as_flip_flop"),
@@ -77,8 +84,8 @@ class ImplUtilizationReport:
             match = re.search(
                 r"\|\s*"
                 + site_type
-                + r"\s*\|\s*(\d*)\s*\|\s*(\d*)\s*\|\s*(\d*)\s*\|\s*(\d*)\s*\|\s*(<?)(([0-9]*[.])?[0-9]+)\s*\|",
-                netlist_logic_rpt,
+                + r"\s*\|\s*(\d*)\s*\|\s*(\d*)\s*\|\s*(\d*)\s*\|\s*(\d*)\s*\|\s*(<?)((?:[0-9]*[.])?[0-9]+)\s*\|",
+                rpt,
             )
             assert match is not None
             entry = NetListLogicEntry(
@@ -90,8 +97,59 @@ class ImplUtilizationReport:
                 util_percent=float(match.group(6)),
             )
             values[key] = entry
-        netlist_logic = NetListLogic(**values)
-        return ImplUtilizationReport(netlist_logic=netlist_logic)
+        return values
+
+    @staticmethod
+    def obtain_blockram_table(rpt: str) -> dict:
+        fields = [
+            ("Block RAM Tile", "bram_tile"),
+            ("RAMB36E5", "bram36e5"),
+            (r"RAMB18E5\*", "bram18e5"),
+            ("URAM", "uram"),
+        ]
+        values = {}
+        for site_type, key in fields:
+            match = re.search(
+                r"\|\s*"
+                + site_type
+                + r"\s*\|\s*((?:[0-9]*[.])?[0-9]+)\s*\|\s*(\d*)\s*\|\s*(\d*)\s*\|\s*(\d*)\s*\|\s*(<?)((?:[0-9]*[.])?[0-9]+)\s*\|",
+                rpt,
+            )
+            assert match is not None
+            entry = BlockRamEntry(
+                used=float(match.group(1)),
+                fixed=int(match.group(2)),
+                prohibited=int(match.group(3)),
+                available=int(match.group(4)),
+                less=match.group(5) == "<",
+                util_percent=float(match.group(6)),
+            )
+            values[key] = entry
+        return values
+
+    @staticmethod
+    def from_file(filepath: str) -> "ImplUtilizationReport":
+        with open(filepath, "r", encoding="utf8") as f:
+            lines = [line.strip("\r\n ") for line in f.readlines()]
+            table_of_contents_lidx = lines.index("Table of Contents")
+            while lines[table_of_contents_lidx] != "":
+                table_of_contents_lidx += 1
+            # ignore the titles in the table of contents
+            lines = lines[table_of_contents_lidx:]
+            netlist_logic_lidx = lines.index("1. Netlist Logic")
+            clb_distribution_lidx = lines.index("2. CLB Distribution")
+            bram_lidx = lines.index("3. BLOCKRAM")
+            arithmetic_lidx = lines.index("4. ARITHMETIC")
+            netlist_logic_rpt = "\n".join(
+                lines[netlist_logic_lidx:clb_distribution_lidx]
+            )
+            bram_rpt = "\n".join(lines[bram_lidx:arithmetic_lidx])
+
+        netlist_values = ImplUtilizationReport.obtain_netlist_table(netlist_logic_rpt)
+        netlist_logic = NetListLogic(**netlist_values)
+        bram_values = ImplUtilizationReport.obtain_blockram_table(bram_rpt)
+        bram = BlockRam(**bram_values)
+        return ImplUtilizationReport(netlist_logic=netlist_logic, bram=bram)
 
 
 class VivadoProject:

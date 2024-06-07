@@ -6,7 +6,8 @@ names = {
     "phenomenological": "phenomenological",
     "circuit": "circuit-level",
     "circuit_offload": "circuit-level (pre)",
-    # "circuit_fusion": "circuit-level (pre+fusion)",
+    "circuit_fusion": "circuit-level (pre+fusion)",
+    "circuit_fusion_context_1024": "circuit-level (pre+fusion+1024 context)",
 }
 
 LUT_TOTAL = 899840
@@ -14,7 +15,7 @@ REG_TOTAL = 1799680
 
 LUT_MIN = 500
 VN_MIN = 3
-VN_MAX = 5000
+VN_MAX = 5000 
 
 
 @dataclass
