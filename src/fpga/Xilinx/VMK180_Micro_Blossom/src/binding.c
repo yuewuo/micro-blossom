@@ -130,7 +130,7 @@ uint64_t get_fast_cpu_time()
 
 uint64_t get_fast_cpu_duration_ns(uint64_t start)
 {
-    uint32_t now = get_fast_cpu_time();
+    uint64_t now = get_fast_cpu_time();
     uint64_t cntfrq;
     asm volatile("mrs %0, cntfrq_el0" : "=r" (cntfrq));
     return (float)(now - start) / (float)cntfrq * 1e9;

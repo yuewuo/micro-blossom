@@ -18,16 +18,17 @@ class TimeDistribution:
     def from_line(line: str) -> "TimeDistribution":
         # example: "<lower>1.000e-9<upper>1.000e0<N>2000[666]1[695]23[696]80[698]7[699]3[underflow]0[overflow]0"
         match = re.search(
-            "<lower>([-e\d\.]+)<upper>([-e\d\.]+)<N>(\d+)((?:\[\d+\]\d+)*)\[underflow\](\d)+\[overflow\](\d)+",
+            "<lower>([-e\d\.]+)<upper>([-e\d\.]+)<N>(\d+)((?:\[\d+\]\d+)*)\[underflow\](\d+)\[overflow\](\d+)",
             line,
         )
         lower = float(match.group(1))
         upper = float(match.group(2))
         N = int(match.group(3))
         counter = {}
-        for ele in match.group(4)[1:].split("["):
-            index, count = ele.split("]")
-            counter[int(index)] = int(count)
+        if match.group(4) != "":
+            for ele in match.group(4)[1:].split("["):
+                index, count = ele.split("]")
+                counter[int(index)] = int(count)
         underflow_count = int(match.group(5))
         overflow_count = int(match.group(6))
         return TimeDistribution(
