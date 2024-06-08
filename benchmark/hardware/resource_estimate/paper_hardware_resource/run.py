@@ -84,7 +84,7 @@ configurations = [
     # python3 run.py --base-name circuit_fusion
     Configuration(
         base_name="circuit_fusion",
-        d_vec=[3, 5, 7, 9, 11, 13],
+        d_vec=[3, 5, 7, 9, 11, 13, 15],
         support_offloading=True,
         support_layer_fusion=True,
     ),

@@ -76,3 +76,4 @@ vivado.*
 *.xsa
 
 binding.h
+*.tar.gz
