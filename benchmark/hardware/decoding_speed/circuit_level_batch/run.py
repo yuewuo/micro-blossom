@@ -11,8 +11,8 @@ from hardware.decoding_speed.circuit_level_common import *
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 
-SAMPLES = 10_000  # draft
-# SAMPLES = 1_000_000  # final
+# SAMPLES = 10_000  # draft
+SAMPLES = 1_000_000  # final
 
 
 if __name__ == "__main__":

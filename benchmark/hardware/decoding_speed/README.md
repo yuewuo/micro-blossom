@@ -44,3 +44,11 @@ We plan to have a figure whose X axis is physical error rate, and Y axis is the 
 We will draw multiple curves, each corresponds to one code distance.
 
 There will be three figures: 
+
+2024.6.8
+change circuit_level_batch/fusion/no_offloading to use 10^6 samples Each, to provide sufficient accuracy.
+run the following
+
+```sh
+python3 circuit_level_fusion/run.py ; python3 circuit_level_batch/run.py ;  python3 circuit_level_no_offloading/run.py ; python3 measurement_round/run.py ; python3 measurement_rate/run.py ; python3 distribution/run.py
+```
