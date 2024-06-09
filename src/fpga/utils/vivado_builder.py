@@ -223,11 +223,13 @@ class MicroBlossomAxi4Builder:
             parameters, run=run, update=update
         )
 
-    def build_rust_binary(self, main: str = "hello_world"):
+    def build_rust_binary(
+        self, main: str = "hello_world", make_target: str = "aarch64"
+    ):
         make_env = os.environ.copy()
         make_env["EMBEDDED_BLOSSOM_MAIN"] = main
         process = subprocess.Popen(
-            ["make", "Xilinx"],
+            ["make", make_target],
             universal_newlines=True,
             stdout=sys.stdout,
             stderr=sys.stderr,

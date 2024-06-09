@@ -82,14 +82,14 @@ if __name__ == "__main__":
             samples = int(ACCUMULATE_LOGICAL_ERRORS / pL)
             samples = min(samples, MAX_SAMPLES)
             samples = max(samples, MIN_SAMPLES)
-            print("logical error rate: {pL}")
-            print("running {samples} samples")
+            print(f"logical error rate: {pL}")
+            print(f"running {samples} samples")
             # run evaluation
             for name, configuration_cls, use_layer_fusion in constructs:
                 benchmarker = DecodingSpeedBenchmarker(
                     this_dir=this_dir,
                     configuration=configuration_cls(d=d),
-                    name_suffix=f"_{name}"
+                    name_suffix=f"_{name}",
                     p=p,
                     samples=samples,
                     use_layer_fusion=use_layer_fusion,

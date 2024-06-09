@@ -161,37 +161,43 @@ class DecodingSpeedBenchmarkerBasic:
         # copy the defects to the folder
         defects_file_path = self.generate_defects()
         dest_file_path = os.path.join(embedded_dir, "embedded.defects")
-        shutil.copyfile(defects_file_path, dest_file_path)
-        # build the project
-        project = self.configuration.optimized_project()
-        project.create_vivado_project(update=True)  # update c files
-        make_env = os.environ.copy()
-        assert "USE_LAYER_FUSION" not in make_env
-        if self.use_layer_fusion:
-            make_env["USE_LAYER_FUSION"] = "1"
-        make_env["MEASUREMENT_CYCLE_NS"] = f"{self.measurement_cycle_ns}"
-        graph = SingleGraph.from_file(project.graph_builder.graph_file_path())
-        make_env["NUM_LAYER_FUSION"] = f"{graph.layer_fusion.num_layers}"
-        assert "DISABLE_MULTIPLE_FUSION" not in make_env
-        if not self.multiple_fusion:
-            make_env["DISABLE_MULTIPLE_FUSION"] = "1"
-        if not self.enable_detailed_print:
-            make_env["DISABLE_DETAIL_PRINT"] = "1"
-        make_env["EMBEDDED_BLOSSOM_MAIN"] = "benchmark_decoding"
-        project.build_embedded_binary(make_env)
-        project.build_vivado_project(force_recompile_binary=True)
-        assert not project.timing_sanity_check_failed()
-        print("running application")
-        start = time.time()
-        tty_output = project.run_application(timeout=timeout, silent=silent)
-        print(f"running application takes {time.time() - start}s")
-        with open(self.tty_result_path(), "w", encoding="utf8") as f:
-            f.write(tty_output)
+        dest_file_ori_path = os.path.join(embedded_dir, "original.defects")
+        shutil.move(dest_file_path, dest_file_ori_path)
+        try:
+            shutil.copyfile(defects_file_path, dest_file_path)
+            # build the project
+            project = self.configuration.optimized_project()
+            project.create_vivado_project(update=True)  # update c files
+            make_env = os.environ.copy()
+            assert "USE_LAYER_FUSION" not in make_env
+            if self.use_layer_fusion:
+                make_env["USE_LAYER_FUSION"] = "1"
+            make_env["MEASUREMENT_CYCLE_NS"] = f"{self.measurement_cycle_ns}"
+            graph = SingleGraph.from_file(project.graph_builder.graph_file_path())
+            make_env["NUM_LAYER_FUSION"] = f"{graph.layer_fusion.num_layers}"
+            assert "DISABLE_MULTIPLE_FUSION" not in make_env
+            if not self.multiple_fusion:
+                make_env["DISABLE_MULTIPLE_FUSION"] = "1"
+            if not self.enable_detailed_print:
+                make_env["DISABLE_DETAIL_PRINT"] = "1"
+            make_env["EMBEDDED_BLOSSOM_MAIN"] = "benchmark_decoding"
+            project.build_embedded_binary(make_env)
+            project.build_vivado_project(force_recompile_binary=True)
+            assert not project.timing_sanity_check_failed()
+            print("running application")
+            start = time.time()
+            tty_output = project.run_application(timeout=timeout, silent=silent)
+            print(f"running application takes {time.time() - start}s")
+            with open(self.tty_result_path(), "w", encoding="utf8") as f:
+                f.write(tty_output)
+        finally:
+            # delete the defect file, because otherwise it might introduce confusion
+            shutil.move(dest_file_ori_path, dest_file_path)
         return BenchmarkDecodingResult.from_tty_output(tty_output)
 
 
-# at most run 1e7 syndromes in some batch, so that a single file is not too large
-DECODING_SPEED_BENCHMARK_SINGLE_RUN_MAX_N: int = 10_000_000
+# at most run 1e6 syndromes in some batch, so that a single file is not too large
+DECODING_SPEED_BENCHMARK_SINGLE_RUN_MAX_N: int = 1_000_000
 
 
 class DecodingSpeedBenchmarker(DecodingSpeedBenchmarkerBasic):
