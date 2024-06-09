@@ -1,0 +1,19 @@
+# <name> <best frequency/MHz>
+nm_1 77
+nm_2 77
+nm_3 77
+nm_4 77
+nm_5 77
+nm_6 77
+nm_7 77
+nm_8 77
+nm_9 77
+nm_10 77
+nm_11 77
+nm_12 77
+nm_13 77
+nm_14 77
+nm_15 77
+nm_16 77
+nm_17 77
+nm_18 77

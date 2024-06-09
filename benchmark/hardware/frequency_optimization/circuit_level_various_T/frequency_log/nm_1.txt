@@ -1,0 +1,2 @@
+[2024-06-06 19:40:24] suggested achievable frequency is NoneMHz
+[2024-06-06 19:40:24] [found best frequency] 77

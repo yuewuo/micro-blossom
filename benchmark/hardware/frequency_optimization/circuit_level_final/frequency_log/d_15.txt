@@ -3,4 +3,4 @@
 [2024-06-06 11:46:45] synthesis failed, try next frequency 34MHz
 [2024-06-06 11:46:45] iteration 1: trying frequency 34
 [2024-06-06 18:12:58] suggested achievable frequency is NoneMHz
-[2024-06-06 18:12:58] [found best frequency] 34
+[2024-06-06 18:12:58] [found best frequency] 43
