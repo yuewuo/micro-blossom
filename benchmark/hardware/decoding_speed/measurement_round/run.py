@@ -15,12 +15,12 @@ SAMPLES = 1_000_000  # final
 p = 0.001
 
 if __name__ == "__main__":
-    data = []
     for use_layer_fusion in [True, False]:
+        suffix = "fusion" if use_layer_fusion else "batch"
+        results = ["# <d> <measurement rounds> <p> <average decoding time>"]
         for configuration in configurations:
             d = configuration.d
-            noisy_measurements = configuration.noisy_measurements
-            suffix = "fusion" if use_layer_fusion else "batch"
+            nm = configuration.noisy_measurements
             benchmarker = DecodingSpeedBenchmarker(
                 this_dir=this_dir,
                 configuration=configuration,
@@ -30,4 +30,7 @@ if __name__ == "__main__":
                 name_suffix=f"_{suffix}",
             )
             result = benchmarker.run()
-            data.append(result)
+            results.append(f"{d} {nm+1} {p} {result.latency.average_latency()}")
+
+        with open(f"{suffix}.txt", "w", encoding="utf8") as f:
+            f.write("\n".join(results))
