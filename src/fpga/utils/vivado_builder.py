@@ -60,11 +60,13 @@ class MicroBlossomGraphBuilder:
                 sample_count >= N
             ), "this may due to incomplete sample generation, consider delete all and retry"
 
-    def clear(self):
+    def clear(self, clear_defect: bool = False):
         if os.path.exists(self.graph_file_path()):
             os.remove(self.graph_file_path())
         if os.path.exists(self.syndrome_file_path()):
             os.remove(self.syndrome_file_path())
+        if clear_defect and os.path.exists(self.defect_file_path()):
+            os.remove(self.defect_file_path())
 
     def get_simulation_command(self, min_failed_cases: int = None) -> list[str]:
         command = fusion_blossom_qecp_generate_command(

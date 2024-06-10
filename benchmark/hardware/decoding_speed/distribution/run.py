@@ -15,7 +15,7 @@ this_dir = os.path.dirname(os.path.abspath(__file__))
 
 MIN_SAMPLES = 10_000
 MAX_SAMPLES = 10_000_000_000
-ACCUMULATE_LOGICAL_ERRORS = 100  # accumulate how many logical errors before return
+ACCUMULATE_LOGICAL_ERRORS = 1000  # accumulate how many logical errors before return
 # ACCUMULATE_LOGICAL_ERRORS = 0.01  # for debugging
 
 d_vec = [9]
@@ -95,3 +95,4 @@ if __name__ == "__main__":
                     use_layer_fusion=use_layer_fusion,
                 )
                 result = benchmarker.run()
+                print(result.latency.average_latency())

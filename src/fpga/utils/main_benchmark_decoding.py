@@ -216,6 +216,8 @@ class DecodingSpeedBenchmarker(DecodingSpeedBenchmarkerBasic):
                 benchmarker.samples = DECODING_SPEED_BENCHMARK_SINGLE_RUN_MAX_N
                 benchmarker.name_suffix += f"_chunk_{i}"
                 result = benchmarker.run(silent=silent)
+                # remove syndrome data because it's too large
+                benchmarker.get_graph_builder().clear(clear_defect=True)
                 if sum_result is None:
                     sum_result = result
                 else:
