@@ -30,4 +30,8 @@ def plot_data(this_dir: str):
                 p_data.append(float(spt[0]))
                 average_latency_data.append(float(spt[1]))
         plt.loglog(p_data, average_latency_data, "o-", label=f"$d = {d}$")
+    plt.ylim(1e-7, 3e-4)
+    plt.ylabel("decoding latency")
+    plt.xlabel("physical error rate")
+    plt.legend()
     plt.savefig(os.path.join(this_dir, f"{name}.pdf"))
