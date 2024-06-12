@@ -24,6 +24,7 @@ measurement_cycle_ns_vec = [
 if __name__ == "__main__":
     data = []
     for d in d_vec:
+        latency_vec = []
         for measurement_cycle_ns in measurement_cycle_ns_vec:
             benchmarker = DecodingSpeedBenchmarker(
                 this_dir=this_dir,
@@ -35,6 +36,13 @@ if __name__ == "__main__":
                 measurement_cycle_ns=measurement_cycle_ns,
             )
             result = benchmarker.run()
-            data.append(result)
-    # save_data(data, this_dir)
-    # plot_data(this_dir)
+            latency_vec.append(result.latency)
+
+        with open(os.path.join(this_dir, f"d_{d}.txt"), "w", encoding="utf8") as f:
+            f.write("# <measurement cycle> <average latency> <samples>\n")
+            for measurement_cycle_ns, latency in zip(
+                measurement_cycle_ns_vec, latency_vec
+            ):
+                f.write(
+                    f"{measurement_cycle_ns} {latency.average_latency()} {latency.count_records()}\n"
+                )
