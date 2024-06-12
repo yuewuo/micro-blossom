@@ -4,18 +4,18 @@ from dataclasses import dataclass, field
 names = {
     "code_capacity": "code capacity",
     "phenomenological": "phenomenological",
-    "circuit": "circuit-level",
-    "circuit_offload": "circuit-level (pre)",
-    "circuit_fusion": "circuit-level (pre+fusion)",
-    "circuit_fusion_context_1024": "circuit-level (pre+fusion+1024 context)",
+    "circuit": "circuit-level (basic)",
+    # "circuit_offload": "circuit-level (pre)",
+    "circuit_fusion": "circuit-level (full)",
+    "circuit_fusion_context_1024": "circuit-level (1k context)",
 }
 
 LUT_TOTAL = 899840
 REG_TOTAL = 1799680
 
-LUT_MIN = 500
+LUT_MIN = 1e3
 VN_MIN = 3
-VN_MAX = 5000 
+VN_MAX = 5000
 
 
 @dataclass
@@ -57,32 +57,21 @@ for name, display in names.items():
 
 def plot_lut():
     plt.cla()
-    fig, ax1 = plt.subplots()
     for curve in curves:
-        ax1.loglog(curve.vertex_num_vec, curve.lut_vec, "o-", label=curve.display)
-    ax2 = ax1.twinx()
+        plt.loglog(curve.vertex_num_vec, curve.lut_vec, "o-", label=curve.display)
+    plt.loglog(
+        [VN_MIN, VN_MAX],
+        [LUT_TOTAL, LUT_TOTAL],
+        ":",
+        color="grey",
+        label="available in VMK180",
+    )
     plt.xlabel("Number of Vertices $|V|$")
     plt.xlim(VN_MIN, VN_MAX)
-    ax1.set_ylabel("Number of CLB LUTs")
-    ax1.set_ylim(LUT_MIN, LUT_TOTAL)
-    ax2.set_ylabel("Percentage")
-    ax2.set_ylim([LUT_MIN / LUT_TOTAL, 1])
-
-    ax2.set_yticks(
-        [i / 10 for i in range(11)],
-        [f"{i}0%" for i in range(11)],
-    )
-    ax1.legend()
+    plt.ylabel("Number of CLB LUTs")
+    plt.ylim(LUT_MIN, LUT_TOTAL * 2)
+    plt.legend()
     plt.savefig("lut.pdf")
 
 
-def plot_registers():
-    plt.cla()
-    for curve in curves:
-        plt.plot(curve.vertex_num_vec, curve.reg_vec)
-    plt.xlabel("Number of Vertices $|V|$")
-    plt.savefig("registers.pdf")
-
-
 plot_lut()
-plot_registers()
