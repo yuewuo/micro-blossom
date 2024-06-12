@@ -25,7 +25,7 @@ constructs = [
     # name, configuration class, use_layer_fusion,
     ("fusion", CircuitLevelFinalConfig, True),
     ("batch", CircuitLevelFinalConfig, False),
-    # ("no_offloading", CircuitLevelNoOffloadingConfig, False),
+    ("no_offloading", CircuitLevelNoOffloadingConfig, False),
 ]
 
 logical_error_rate_file = os.path.join(this_dir, "logical_error_rate.json.save")
