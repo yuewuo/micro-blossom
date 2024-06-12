@@ -25,7 +25,7 @@ constructs = [
     # name, configuration class, use_layer_fusion,
     ("fusion", CircuitLevelFinalConfig, True),
     ("batch", CircuitLevelFinalConfig, False),
-    ("no_offloading", CircuitLevelNoOffloadingConfig, False),
+    # ("no_offloading", CircuitLevelNoOffloadingConfig, False),
 ]
 
 logical_error_rate_file = os.path.join(this_dir, "logical_error_rate.json.save")
@@ -95,4 +95,6 @@ if __name__ == "__main__":
                     use_layer_fusion=use_layer_fusion,
                 )
                 result = benchmarker.run()
-                print(result.latency.average_latency())
+                filename = f"d_{d}_p_{p}_{name}.txt"
+                with open(filename, "w", encoding="utf8") as f:
+                    f.write(result.latency.to_line())
