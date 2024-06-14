@@ -40,6 +40,14 @@ class TimeDistribution:
             overflow_count=overflow_count,
         )
 
+    def flatten(self) -> tuple[list[int], list[int]]:
+        latencies = [
+            self.lower * ((self.upper / self.lower) ** (i / self.N))
+            for i in range(self.N)
+        ]
+        counters = [self.counter.get(i) or 0 for i in range(self.N)]
+        return latencies, counters
+
     def to_line(self) -> str:
         line = f"<lower>{self.lower:.3e}<upper>{self.upper:.3e}<N>{self.N}"
         for index in sorted(self.counter.keys()):

@@ -13,12 +13,12 @@ for name in names:
     with open(f"{name}.txt", "r", encoding="utf8") as f:
         latency = TimeDistribution.from_line(f.read())
 
+        x_vec, y_vec = latency.flatten()
+
         plt.cla()
-
-        # distributions
-        data = [1, 2, 3, 2, 1]
-
-        plt.hist(data)
+        plt.loglog(x_vec, y_vec, ".-")
+        plt.xlim(1e-7, 1e-4)
+        plt.ylim(0.5, 1e9)
+        plt.ylabel("Sample Count")
+        plt.xlabel("Decoding Latency (s)")
         plt.savefig(f"{name}.pdf")
-
-        exit(1)
