@@ -4,6 +4,7 @@ from dataclasses import dataclass
 git_root_dir = git.Repo(".", search_parent_directories=True).working_tree_dir
 sys.path.insert(0, os.path.join(git_root_dir, "benchmark"))
 sys.path.insert(0, os.path.join(git_root_dir, "src", "fpga", "utils"))
+from micro_util import *
 from vivado_builder import *
 from frequency_explorer import *
 
@@ -54,13 +55,20 @@ configurations = [Configuration(d=d) for d in range(3, 18, 2)]
 
 
 def main():
-    results = ["# <name> <best frequency/MHz>"]
+    results = ["# <name> <best frequency/MHz> <estimated frequency/MHz> <vertex num>"]
 
     for configuration in configurations:
 
         optimized = configuration.optimized_project()
-        print(f"{configuration.name()}: {optimized.clock_frequency}MHz")
-        results.append(f"{configuration.name()} {optimized.clock_frequency}")
+        print(
+            f"{configuration.name()}: {optimized.clock_frequency}MHz "
+            + "(estimated max = {optimized.estimate_maximum_frequency()}MHz)"
+        )
+        graph_file_path = optimized.graph_builder.graph_file_path()
+        graph = SingleGraph.from_file(graph_file_path)
+        results.append(
+            f"{configuration.name()} {optimized.clock_frequency} {optimized.estimate_maximum_frequency()} {graph.vertex_num}"
+        )
 
     with open("best_frequencies.txt", "w", encoding="utf8") as f:
         f.write("\n".join(results))

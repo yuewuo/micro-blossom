@@ -314,16 +314,23 @@ class MicroBlossomAxi4Builder:
             log.write(command_output + "\n")
             return tty_output
 
-    # this function assumes the bottleneck is the fast clock domain (self.frequency)
-    # return current frequency if timing passed; otherwise return a maximum frequency that is achievable
-    def next_maximum_frequency(self) -> int | None:
+    def estimate_maximum_frequency(self) -> float:
         vivado = self.get_vivado()
         wns = vivado.routed_timing_summery().clk_pl_0_wns
         frequency = vivado.frequency()
         assert frequency == self.clock_frequency
         period = 1e-6 / frequency
         new_period = period - wns * 1e-9
-        new_frequency = math.floor(1 / new_period / 1e6)
+        new_frequency = 1 / new_period / 1e6
+        return new_frequency
+
+    # this function assumes the bottleneck is the fast clock domain (self.frequency)
+    # return current frequency if timing passed; otherwise return a maximum frequency that is achievable
+    def next_maximum_frequency(self) -> int | None:
+        vivado = self.get_vivado()
+        wns = vivado.routed_timing_summery().clk_pl_0_wns
+        frequency = vivado.frequency()
+        new_frequency = math.floor(self.estimate_maximum_frequency())
         if wns < 0:
             print(f"[failed] frequency={frequency}MHz clock frequency too high")
             print(f"wns: {wns}ns, should lower the frequency to {new_frequency}MHz")
