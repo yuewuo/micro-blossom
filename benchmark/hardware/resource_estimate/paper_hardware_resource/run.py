@@ -52,6 +52,7 @@ class Configuration:
             name=self.name(),
             clock_frequency=self.f,
             project_folder=os.path.join(this_dir, "tmp-project"),
+            inject_registers=["execute", "update"],
             support_offloading=self.support_offloading,
             support_layer_fusion=self.support_layer_fusion,
             context_depth=self.context_depth,
@@ -81,14 +82,14 @@ configurations = [
         d_vec=[3, 5, 7, 9, 11, 13, 15],
         support_offloading=True,
     ),
-    # python3 run.py --base-name circuit_fusion
+    # python3 prepare.py --base-name circuit_fusion
     Configuration(
         base_name="circuit_fusion",
         d_vec=[3, 5, 7, 9, 11, 13, 15],
         support_offloading=True,
         support_layer_fusion=True,
     ),
-    # python3 run.py --base-name circuit_fusion_context_1024
+    # python3 prepare.py --base-name circuit_fusion_context_1024
     Configuration(
         base_name="circuit_fusion_context_1024",
         d_vec=[3, 5, 7, 9, 11, 13],
