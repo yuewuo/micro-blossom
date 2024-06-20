@@ -11,8 +11,8 @@ from hardware.decoding_speed.circuit_level_common import *
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 
-SAMPLES = 10_000  # draft
-# SAMPLES = 1_000_000  # final
+# SAMPLES = 10_000  # draft
+SAMPLES = 1_000_000  # final
 
 p = 0.001
 # measurement cycle in nanoseconds, from 100ns to 10us
