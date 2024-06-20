@@ -847,6 +847,12 @@ impl<const N: usize, const VN: usize> PrimalModuleEmbedded<N, VN> {
     pub fn fuse_layer(&mut self, dual_module: &mut impl DualInterface, layer_id: CompactLayerId) {
         let (layer_fusion, nodes) = (&mut self.layer_fusion, &mut self.nodes);
         layer_fusion.iterate_pending_breaks(|layer_fusion, node| {
+            if !nodes.has_node(node) {
+                // it may happen that a blossom is expanded but its node index remains in the fusion list
+                // in this case, simply ignore this node
+                debug_assert!(nodes.is_blossom(node), "only blossom may encounter this");
+                return true; // no longer an valid node
+            }
             let primal_node = nodes.get_node_mut(node);
             if !primal_node.is_outer_blossom() {
                 return true; // no longer an active node
