@@ -49,7 +49,7 @@ class Profile:
     by default to 5 because usually the first few profiles are not stable yet
     """
 
-    def __init__(self, filename, skip_begin_profiles=20):
+    def __init__(self, filename, skip_begin_profiles=20, apply_entries=None):
         assert isinstance(filename, str)
         self.partition_config = None
         self.entries = []
@@ -68,7 +68,10 @@ class Profile:
                     if skipped < skip_begin_profiles:
                         skipped += 1
                     else:
-                        self.entries.append(value)
+                        if apply_entries is None:
+                            self.entries.append(value)
+                        else:
+                            self.entries.append(apply_entries(value))
 
     def __repr__(self):
         return f"Profile {{ partition_config: {self.partition_config}, entries: [...{len(self.entries)}] }}"

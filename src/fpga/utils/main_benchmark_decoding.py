@@ -1,5 +1,5 @@
 import re, shutil, time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 from vivado_builder import *
 from defects_generator import *
@@ -7,12 +7,12 @@ from defects_generator import *
 
 @dataclass
 class TimeDistribution:
-    lower: float
-    upper: float
-    N: int
-    counter: dict[int, int]
-    underflow_count: int
-    overflow_count: int
+    lower: float = 1e-9
+    upper: float = 1.0
+    N: int = 2000
+    counter: dict[int, int] = field(default_factory=lambda: {})
+    underflow_count: int = 0
+    overflow_count: int = 0
 
     @staticmethod
     def from_line(line: str) -> "TimeDistribution":
@@ -40,12 +40,34 @@ class TimeDistribution:
             overflow_count=overflow_count,
         )
 
+    # add profile from `Profile`
+    def add_profile(self, profile):
+        for entry in profile.entries:
+            decoding_time = entry["events"]["decoded"]
+            self.record(decoding_time)
+
+    def record(self, latency: float):
+        if latency < self.lower:
+            self.underflow_count += 1
+        elif latency >= self.upper:
+            self.overflow_count += 1
+        else:
+            ratio = math.log(latency / self.lower) / math.log(self.upper / self.lower)
+            index = math.floor(self.N * ratio)
+            assert index < self.N
+            if index in self.counter:
+                self.counter[index] += 1
+            else:
+                self.counter[index] = 1
+
     def flatten(self) -> tuple[list[int], list[int]]:
         latencies = [
             self.lower * ((self.upper / self.lower) ** (i / self.N))
             for i in range(self.N)
         ]
         counters = [self.counter.get(i) or 0 for i in range(self.N)]
+        counters[0] += self.underflow_count
+        counters[1] += self.overflow_count
         return latencies, counters
 
     def to_line(self) -> str:

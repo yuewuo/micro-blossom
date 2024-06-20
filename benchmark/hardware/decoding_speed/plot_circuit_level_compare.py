@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 
-names = ["no_offloading", "batch", "fusion"]
+names = ["software", "no_offloading", "batch", "fusion"]
 d_vec = [3, 5, 7, 9, 11, 13, 15]
 p_str = "0.001"
 
