@@ -1,4 +1,4 @@
-from run import *
+from run_with_d import *
 
 slurm_distribute.SLURM_DISTRIBUTE_CPUS_PER_TASK = 12
 

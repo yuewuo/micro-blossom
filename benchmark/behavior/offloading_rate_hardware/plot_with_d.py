@@ -3,7 +3,7 @@ import os, sys, git
 git_root_dir = git.Repo(".", search_parent_directories=True).working_tree_dir
 sys.path.insert(0, os.path.join(git_root_dir, "benchmark"))
 from hardware.decoding_speed.circuit_level_common import *
-from run import *
+from run_with_d import *
 
 this_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -48,4 +48,4 @@ if __name__ == "__main__":
         plt.ylabel("pre-matching coverage")
         plt.xlabel("code distance $d$")
         plt.legend(loc="lower right")
-        plt.savefig(os.path.join(this_dir, f"{name}.pdf"))
+        plt.savefig(os.path.join(this_dir, f"{name}_with_d.pdf"))
