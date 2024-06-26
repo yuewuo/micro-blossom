@@ -1,8 +1,9 @@
-import re, shutil, time
+import re, shutil, time, math
 from dataclasses import dataclass, field
 from typing import Protocol
 from vivado_builder import *
 from defects_generator import *
+import numpy as np
 
 
 @dataclass
@@ -46,21 +47,26 @@ class TimeDistribution:
             decoding_time = entry["events"]["decoded"]
             self.record(decoding_time)
 
-    def record(self, latency: float):
+    # the ratio between two latencies of neighboring bins
+    @property
+    def interval_ratio(self) -> float:
+        return np.expm1(math.log(self.upper / self.lower) / self.N)
+
+    def record(self, latency: float, count: int):
         if latency < self.lower:
-            self.underflow_count += 1
+            self.underflow_count += count
         elif latency >= self.upper:
-            self.overflow_count += 1
+            self.overflow_count += count
         else:
             ratio = math.log(latency / self.lower) / math.log(self.upper / self.lower)
             index = math.floor(self.N * ratio)
             assert index < self.N
             if index in self.counter:
-                self.counter[index] += 1
+                self.counter[index] += count
             else:
-                self.counter[index] = 1
+                self.counter[index] = count
 
-    def flatten(self) -> tuple[list[int], list[int]]:
+    def flatten(self) -> tuple[list[float], list[int]]:
         latencies = [
             self.lower * ((self.upper / self.lower) ** (i / self.N))
             for i in range(self.N)
@@ -105,6 +111,97 @@ class TimeDistribution:
         for index in self.counter.keys():
             sum_latency += self.counter[index] * self.latency_of(index)
         return sum_latency / self.count_records()
+
+    def bias_latency(self, additional_latency: float) -> "TimeDistribution":
+        distribution = TimeDistribution(lower=self.lower, upper=self.upper, N=self.N)
+        for latency, count in zip(*self.flatten()):
+            latency += additional_latency
+            distribution.record(latency, count)
+        return distribution
+
+    def filter_latency_range(
+        self, min_latency: float, max_latency: float, assert_count: int = 1
+    ) -> "TimeDistribution":
+        x_vec = []
+        y_vec = []
+        for latency, count in zip(*self.flatten()):
+            if latency < min_latency or latency > max_latency:
+                assert (
+                    count <= assert_count
+                ), f"[warning] latency {latency} has count {count} > {assert_count}"
+                continue
+            x_vec.append(latency)
+            y_vec.append(count)
+        distribution = TimeDistribution(
+            lower=min(x_vec), upper=max(x_vec), N=len(x_vec)
+        )
+        for x, y in zip(x_vec, y_vec):
+            distribution.record(x, y)
+        return distribution
+
+    # smooth the distribution by combing adjacent bins
+    def combine_bins(self, combine_bin: int = 1) -> "TimeDistribution":
+        x_vec, y_vec = self.flatten()
+        cx_vec = []
+        cy_vec = []
+        if len(x_vec) % combine_bin != 0:
+            # append 0 data
+            padding = math.ceil(len(x_vec) / combine_bin) - len(x_vec)
+            for i in range(padding):
+                x = x_vec[-1] * (self.interval_ratio ** (1 + i))
+                x_vec.append(x)
+                y_vec.append(0)
+        for idx in range(len(x_vec) // combine_bin):
+            start = idx * combine_bin
+            end = (idx + 1) * combine_bin
+            x = sum(x_vec[start:end]) / combine_bin
+            y = sum(y_vec[start:end])
+            cx_vec.append(x)
+            cy_vec.append(y)
+        distribution = TimeDistribution(
+            lower=min(cx_vec), upper=max(cx_vec), N=len(cx_vec)
+        )
+        for x, y in zip(cx_vec, cy_vec):
+            distribution.record(x, y)
+        return distribution
+
+    def fit_exponential_tail(
+        self, f_range: tuple[float, float] | None = None
+    ) -> tuple[float, float]:
+        counts_records = self.count_records()
+        if f_range is None:
+            f_range = (10 / counts_records, 1e5 / counts_records)
+        min_f, max_f = f_range
+        i_vec = []
+        latencies, counters = self.flatten()
+        # search from large latency to small latency
+        for i, counter in reversed(list(enumerate(counters))):
+            if counter / counts_records < min_f:
+                continue
+            if counter / counts_records >= max_f:
+                break
+            i_vec.append(i)
+        fit_latency = np.array([latencies[i] for i in i_vec])
+        fit_freq = np.array([counters[i] for i in i_vec]) / counts_records
+
+        # assume freq / (latency * interval_ratio) = exp(A - B * latency)
+        fit_y = np.log(fit_freq) - np.log(fit_latency) - np.log(self.interval_ratio)
+
+        B, A = np.polyfit(-fit_latency, fit_y, 1)
+        # print(f"P(L) = exp({A} - {B} * latency)")
+        return A, B
+
+    # find a latency where accumulated probability beyond this latency is higher than certain value
+    def find_cut_off_latency(self, probability: float) -> float:
+        cut_off_count = self.count_records() * probability
+        assert cut_off_count >= 10, "otherwise not accurate enough"
+        # accumulate from right most
+        x_vec, y_vec = self.flatten()
+        accumulated = 0
+        for idx in reversed(range(0, len(x_vec))):
+            accumulated += y_vec[idx]
+            if accumulated >= cut_off_count:
+                return x_vec[idx + 1]
 
 
 @dataclass
