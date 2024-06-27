@@ -1,1 +1,338 @@
-[]
+[
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 3 6.309573444801933e-05 -r 20134013 -n 2 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d3-p6.309573444801933e-05.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d3-p6.309573444801933e-05.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 3 0.0001 -r 12703703 -n 2 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d3-p0.0001.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d3-p0.0001.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 3 0.00015848931924611136 -r 8015495 -n 2 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d3-p0.00015848931924611136.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d3-p0.00015848931924611136.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 3 0.000251188643150958 -r 5057435 -n 2 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d3-p0.000251188643150958.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d3-p0.000251188643150958.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 3 0.00039810717055349724 -r 3191026 -n 2 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d3-p0.00039810717055349724.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d3-p0.00039810717055349724.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 3 0.0006309573444801934 -r 2013401 -n 2 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d3-p0.0006309573444801934.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d3-p0.0006309573444801934.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 3 0.001 -r 1270370 -n 2 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d3-p0.001.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d3-p0.001.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 3 0.0015848931924611134 -r 801549 -n 2 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d3-p0.0015848931924611134.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d3-p0.0015848931924611134.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 3 0.0025118864315095794 -r 505743 -n 2 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d3-p0.0025118864315095794.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d3-p0.0025118864315095794.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 3 0.003981071705534973 -r 319102 -n 2 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d3-p0.003981071705534973.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d3-p0.003981071705534973.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 3 0.006309573444801933 -r 201340 -n 2 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d3-p0.006309573444801933.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d3-p0.006309573444801933.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 3 0.01 -r 127037 -n 2 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d3-p0.01.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d3-p0.01.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 5 6.309573444801933e-05 -r 4348946 -n 4 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d5-p6.309573444801933e-05.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d5-p6.309573444801933e-05.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 5 0.0001 -r 2743999 -n 4 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d5-p0.0001.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d5-p0.0001.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 5 0.00015848931924611136 -r 1731346 -n 4 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d5-p0.00015848931924611136.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d5-p0.00015848931924611136.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 5 0.000251188643150958 -r 1092406 -n 4 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d5-p0.000251188643150958.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d5-p0.000251188643150958.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 5 0.00039810717055349724 -r 689261 -n 4 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d5-p0.00039810717055349724.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d5-p0.00039810717055349724.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 5 0.0006309573444801934 -r 434894 -n 4 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d5-p0.0006309573444801934.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d5-p0.0006309573444801934.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 5 0.001 -r 274399 -n 4 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d5-p0.001.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d5-p0.001.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 5 0.0015848931924611134 -r 173134 -n 4 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d5-p0.0015848931924611134.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d5-p0.0015848931924611134.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 5 0.0025118864315095794 -r 109240 -n 4 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d5-p0.0025118864315095794.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d5-p0.0025118864315095794.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 5 0.003981071705534973 -r 68926 -n 4 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d5-p0.003981071705534973.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d5-p0.003981071705534973.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 5 0.006309573444801933 -r 43489 -n 4 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d5-p0.006309573444801933.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d5-p0.006309573444801933.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 5 0.01 -r 27439 -n 4 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d5-p0.01.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d5-p0.01.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 7 6.309573444801933e-05 -r 1584893 -n 6 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d7-p6.309573444801933e-05.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d7-p6.309573444801933e-05.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 7 0.0001 -r 1000000 -n 6 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d7-p0.0001.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d7-p0.0001.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 7 0.00015848931924611136 -r 630957 -n 6 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d7-p0.00015848931924611136.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d7-p0.00015848931924611136.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 7 0.000251188643150958 -r 398107 -n 6 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d7-p0.000251188643150958.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d7-p0.000251188643150958.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 7 0.00039810717055349724 -r 251188 -n 6 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d7-p0.00039810717055349724.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d7-p0.00039810717055349724.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 7 0.0006309573444801934 -r 158489 -n 6 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d7-p0.0006309573444801934.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d7-p0.0006309573444801934.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 7 0.001 -r 100000 -n 6 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d7-p0.001.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d7-p0.001.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 7 0.0015848931924611134 -r 63095 -n 6 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d7-p0.0015848931924611134.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d7-p0.0015848931924611134.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 7 0.0025118864315095794 -r 39810 -n 6 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d7-p0.0025118864315095794.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d7-p0.0025118864315095794.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 7 0.003981071705534973 -r 25118 -n 6 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d7-p0.003981071705534973.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d7-p0.003981071705534973.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 7 0.006309573444801933 -r 15848 -n 6 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d7-p0.006309573444801933.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d7-p0.006309573444801933.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 7 0.01 -r 10000 -n 6 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d7-p0.01.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d7-p0.01.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 9 6.309573444801933e-05 -r 745704 -n 8 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d9-p6.309573444801933e-05.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d9-p6.309573444801933e-05.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 9 0.0001 -r 470507 -n 8 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d9-p0.0001.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d9-p0.0001.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 9 0.00015848931924611136 -r 296870 -n 8 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d9-p0.00015848931924611136.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d9-p0.00015848931924611136.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 9 0.000251188643150958 -r 187312 -n 8 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d9-p0.000251188643150958.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d9-p0.000251188643150958.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 9 0.00039810717055349724 -r 118186 -n 8 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d9-p0.00039810717055349724.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d9-p0.00039810717055349724.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 9 0.0006309573444801934 -r 74570 -n 8 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d9-p0.0006309573444801934.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d9-p0.0006309573444801934.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 9 0.001 -r 47050 -n 8 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d9-p0.001.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d9-p0.001.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 9 0.0015848931924611134 -r 29687 -n 8 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d9-p0.0015848931924611134.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d9-p0.0015848931924611134.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 9 0.0025118864315095794 -r 18731 -n 8 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d9-p0.0025118864315095794.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d9-p0.0025118864315095794.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 9 0.003981071705534973 -r 11818 -n 8 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d9-p0.003981071705534973.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d9-p0.003981071705534973.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 9 0.006309573444801933 -r 7457 -n 8 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d9-p0.006309573444801933.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d9-p0.006309573444801933.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 9 0.01 -r 4705 -n 8 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d9-p0.01.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d9-p0.01.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 11 6.309573444801933e-05 -r 408428 -n 10 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d11-p6.309573444801933e-05.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d11-p6.309573444801933e-05.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 11 0.0001 -r 257700 -n 10 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d11-p0.0001.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d11-p0.0001.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 11 0.00015848931924611136 -r 162598 -n 10 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d11-p0.00015848931924611136.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d11-p0.00015848931924611136.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 11 0.000251188643150958 -r 102592 -n 10 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d11-p0.000251188643150958.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d11-p0.000251188643150958.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 11 0.00039810717055349724 -r 64731 -n 10 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d11-p0.00039810717055349724.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d11-p0.00039810717055349724.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 11 0.0006309573444801934 -r 40842 -n 10 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d11-p0.0006309573444801934.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d11-p0.0006309573444801934.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 11 0.001 -r 25770 -n 10 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d11-p0.001.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d11-p0.001.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 11 0.0015848931924611134 -r 16259 -n 10 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d11-p0.0015848931924611134.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d11-p0.0015848931924611134.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 11 0.0025118864315095794 -r 10259 -n 10 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d11-p0.0025118864315095794.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d11-p0.0025118864315095794.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 11 0.003981071705534973 -r 6473 -n 10 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d11-p0.003981071705534973.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d11-p0.003981071705534973.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 11 0.006309573444801933 -r 4084 -n 10 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d11-p0.006309573444801933.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d11-p0.006309573444801933.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 11 0.01 -r 2577 -n 10 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d11-p0.01.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d11-p0.01.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 13 6.309573444801933e-05 -r 247436 -n 12 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d13-p6.309573444801933e-05.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d13-p6.309573444801933e-05.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 13 0.0001 -r 156121 -n 12 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d13-p0.0001.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d13-p0.0001.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 13 0.00015848931924611136 -r 98506 -n 12 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d13-p0.00015848931924611136.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d13-p0.00015848931924611136.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 13 0.000251188643150958 -r 62153 -n 12 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d13-p0.000251188643150958.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d13-p0.000251188643150958.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 13 0.00039810717055349724 -r 39216 -n 12 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d13-p0.00039810717055349724.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d13-p0.00039810717055349724.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 13 0.0006309573444801934 -r 24743 -n 12 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d13-p0.0006309573444801934.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d13-p0.0006309573444801934.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 13 0.001 -r 15612 -n 12 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d13-p0.001.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d13-p0.001.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 13 0.0015848931924611134 -r 9850 -n 12 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d13-p0.0015848931924611134.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d13-p0.0015848931924611134.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 13 0.0025118864315095794 -r 6215 -n 12 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d13-p0.0025118864315095794.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d13-p0.0025118864315095794.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 13 0.003981071705534973 -r 3921 -n 12 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d13-p0.003981071705534973.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d13-p0.003981071705534973.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 13 0.006309573444801933 -r 2474 -n 12 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d13-p0.006309573444801933.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d13-p0.006309573444801933.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 13 0.01 -r 1561 -n 12 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d13-p0.01.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d13-p0.01.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 15 6.309573444801933e-05 -r 161072 -n 14 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d15-p6.309573444801933e-05.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d15-p6.309573444801933e-05.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 15 0.0001 -r 101629 -n 14 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d15-p0.0001.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d15-p0.0001.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 15 0.00015848931924611136 -r 64123 -n 14 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d15-p0.00015848931924611136.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d15-p0.00015848931924611136.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 15 0.000251188643150958 -r 40459 -n 14 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d15-p0.000251188643150958.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d15-p0.000251188643150958.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 15 0.00039810717055349724 -r 25528 -n 14 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d15-p0.00039810717055349724.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d15-p0.00039810717055349724.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 15 0.0006309573444801934 -r 16107 -n 14 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d15-p0.0006309573444801934.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d15-p0.0006309573444801934.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 15 0.001 -r 10162 -n 14 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d15-p0.001.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d15-p0.001.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 15 0.0015848931924611134 -r 6412 -n 14 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d15-p0.0015848931924611134.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d15-p0.0015848931924611134.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 15 0.0025118864315095794 -r 4045 -n 14 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d15-p0.0025118864315095794.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d15-p0.0025118864315095794.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 15 0.003981071705534973 -r 2552 -n 14 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d15-p0.003981071705534973.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d15-p0.003981071705534973.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 15 0.006309573444801933 -r 1610 -n 14 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d15-p0.006309573444801933.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d15-p0.006309573444801933.profile
+    "\n"
+  ]
+  [
+    /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/src/cpu/blossom/target/release/micro_blossom benchmark 15 0.01 -r 1016 -n 14 --code-type error-pattern-reader --code-config '{"filename":"/gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/generated-d15-p0.01.syndromes"}' --verifier fusion-serial --primal-dual-type embedded-comb --primal-dual-config '{"dual": {"log_instructions": true}}' --benchmark-profiler-output /gpfs/gibbs/project/lin_zhong/yw729/micro-blossom/benchmark/behavior/offloading_rate_hardware/tmp/no_offloading_d15-p0.01.profile
+    "\n"
+  ]
+]

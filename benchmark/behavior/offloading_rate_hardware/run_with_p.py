@@ -53,10 +53,18 @@ def total_rounds(d, p):
 
 evaluation_vec = [
     (
+        "no_offloading",
+        {
+            "dual": {
+                "log_instructions": True,
+            }
+        },
+    ),
+    (
         "pre_match",
         {
             "dual": {
-                # "log_instructions": True,
+                "log_instructions": True,
                 "sim_config": {"support_offloading": True},
             }
         },
@@ -65,7 +73,7 @@ evaluation_vec = [
         "layer_fusion",
         {
             "dual": {
-                # "log_instructions": True,
+                "log_instructions": True,
                 "sim_config": {
                     "support_offloading": True,
                     "support_layer_fusion": True,
@@ -134,26 +142,44 @@ if __name__ == "__main__":
                         continue
 
                     print(benchmark_profile_path)
+
+                    def apply_entries(entry) -> tuple[int, int, int]:
+                        history = entry["solver_profile"]["dual"]["history"]
+                        # adding defects are parallel in hardware level: a single instruction
+                        instruction_count = 0
+                        for instruction in history:
+                            if "AddDefectVertex" in instruction:
+                                continue
+                            instruction_count += 1
+                        # add a load defects instruction
+                        instruction_count += 1
+                        # add a reset instruction
+                        instruction_count += 1
+                        return (
+                            entry["defect_num"],
+                            entry["solver_profile"]["primal"]["offloaded"],
+                            instruction_count,
+                        )
+
                     profile = Profile(
-                        benchmark_profile_path,
-                        apply_entries=lambda x: (
-                            x["defect_num"],
-                            x["solver_profile"]["primal"]["offloaded"],
-                        ),
+                        benchmark_profile_path, apply_entries=apply_entries
                     )
                     offloaded = 0
-                    for entry in profile.entries:
-                        # ["solver_profile"]["primal"]["offloaded"]
-                        offloaded += entry[1]
                     defect_num = 0
+                    instruction_num = 0
+                    num_entries = len(profile.entries)
                     for entry in profile.entries:
                         # ["defect_num"]
                         defect_num += entry[0]
+                        # ["solver_profile"]["primal"]["offloaded"]
+                        offloaded += entry[1]
+                        # len(["solver_profile"]["dual"]["history"])
+                        instruction_num += entry[2]
                     del profile
 
                     offloading_rate = 0
                     confidence_interval = math.nan
-                    if defect_num > 0:
+                    if defect_num > 0 and offloaded > 0:
                         offloading_rate = offloaded / defect_num
                         confidence_interval = (
                             math.sqrt(
@@ -167,14 +193,18 @@ if __name__ == "__main__":
                             / offloading_rate
                         )
                     print(
-                        f"d{d}, p {p}: defect_num {defect_num}, offloaded {offloaded}, offloading_rate: {offloading_rate}, confidence: {confidence_interval}"
+                        f"d{d}, p {p}: defect_num {defect_num}, offloaded {offloaded}, "
+                        + f"offloading_rate: {offloading_rate}, confidence: {confidence_interval}, "
+                        + f"instruction_num/entry: {instruction_num / num_entries}"
                     )
-                    print_result = "%f %d %d %f %.2e" % (
+                    print_result = "%f %d %d %f %.2e %.2f %d" % (
                         p,
                         defect_num,
                         offloaded,
                         offloading_rate,
                         confidence_interval,
+                        instruction_num / num_entries,
+                        num_entries,
                     )
                     results.append(print_result)
 
@@ -184,5 +214,7 @@ if __name__ == "__main__":
                     print("\n\n")
 
                     with open(filename, "w", encoding="utf8") as f:
-                        f.write("# <p> <total_defects> <offloaded> <offloading_rate>\n")
+                        f.write(
+                            "# <p> <total_defects> <offloaded> <offloading_rate> <average_instruction_num> <len(entries)>\n"
+                        )
                         f.write("\n".join(results) + "\n")

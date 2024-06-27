@@ -55,7 +55,7 @@ class Profile:
         self.entries = []
         skipped = 0
         with open(filename, "r", encoding="utf8") as f:
-            for line_idx, line in enumerate(f.readlines()):
+            for line_idx, line in enumerate(f):
                 line = line.strip("\r\n ")
                 if line == "":
                     break
