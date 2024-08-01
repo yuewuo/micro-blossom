@@ -52,7 +52,7 @@ class TimeDistribution:
     def interval_ratio(self) -> float:
         return np.expm1(math.log(self.upper / self.lower) / self.N)
 
-    def record(self, latency: float, count: int):
+    def record(self, latency: float, count: int = 1):
         if latency < self.lower:
             self.underflow_count += count
         elif latency >= self.upper:
