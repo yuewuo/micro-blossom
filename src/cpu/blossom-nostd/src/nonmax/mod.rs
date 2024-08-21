@@ -49,6 +49,9 @@ changes to the MSRV will require major version bumps. After 1.0, MSRV changes
 will only require minor version bumps, but will need significant justification.
 */
 
+#[cfg(feature = "serde")]
+use serde::*;
+
 /// An error type returned when a checked integral type conversion fails (mimics [std::num::TryFromIntError])
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TryFromIntError(());
@@ -132,6 +135,7 @@ macro_rules! nonmax {
         pub struct $nonmax($primitive);
 
         #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+        #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
         #[repr(transparent)]
         pub struct $option_nonmax($primitive);
 

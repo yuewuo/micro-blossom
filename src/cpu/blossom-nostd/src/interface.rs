@@ -7,8 +7,11 @@
 //!
 
 use crate::util::*;
+#[cfg(feature = "serde")]
+use serde::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub enum CompactObstacle {
     /// nothing to do
     None,

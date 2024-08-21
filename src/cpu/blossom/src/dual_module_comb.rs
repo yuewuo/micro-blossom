@@ -40,6 +40,7 @@ pub struct DualModuleCombDriver {
     pub graph: MicroBlossomSingle,
     /// only enabled when `config.log_instructions` is true
     pub profiler_instruction_history: Vec<Instruction>,
+    pub profiler_response_history: Vec<(CompactObstacle, CompactWeight)>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -48,6 +49,8 @@ pub struct DualCombConfig {
     /// record instructions into the profile
     #[serde(default = "dual_comb_config_default::log_instructions")]
     pub log_instructions: bool,
+    #[serde(default = "dual_comb_config_default::log_responses")]
+    pub log_responses: bool,
     #[serde(default = "Default::default")]
     pub sim_config: SimulationConfig,
 }
@@ -60,6 +63,9 @@ impl Default for DualCombConfig {
 
 pub mod dual_comb_config_default {
     pub fn log_instructions() -> bool {
+        false
+    }
+    pub fn log_responses() -> bool {
         false
     }
 }
@@ -79,10 +85,12 @@ impl SolverTrackedDual for DualModuleCombDriver {
     }
     fn reset_profiler(&mut self) {
         self.profiler_instruction_history.clear();
+        self.profiler_response_history.clear();
     }
     fn generate_profiler_report(&self) -> serde_json::Value {
         json!({
             "history": self.profiler_instruction_history,
+            "conflicts": self.profiler_response_history,
         })
     }
     fn fuse_layer(&mut self, layer_id: usize) {
@@ -184,6 +192,7 @@ impl DualModuleCombDriver {
             graph: graph.clone(),
             config,
             profiler_instruction_history: vec![],
+            profiler_response_history: vec![],
         };
         let mut offloading_vec = graph.offloading.0.clone();
         if comb_driver.config.sim_config.support_layer_fusion {
@@ -356,7 +365,9 @@ impl DualStacklessDriver for DualModuleCombDriver {
 impl DualTrackedDriver for DualModuleCombDriver {
     fn find_conflict(&mut self, maximum_growth: CompactWeight) -> (CompactObstacle, CompactWeight) {
         self.maximum_growth = maximum_growth;
-        self.find_obstacle()
+        let response = self.find_obstacle();
+        self.profiler_response_history.push(response.clone());
+        response
     }
 }
 
