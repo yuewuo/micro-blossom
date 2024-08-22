@@ -188,9 +188,9 @@ if __name__ == "__main__":
                         conflict_count = 0
                         in_bits = 0
                         for conflict, max_growable in conflicts:
-                            if max_growable > 0:
-                                continue  # handled by the hardware controller
                             if conflict == "None":
+                                if max_growable > 0:
+                                    continue  # handled by the hardware controller
                                 in_bits += RETURN_TYPE_BITS
                             else:
                                 conflict_count += 1
@@ -235,15 +235,18 @@ if __name__ == "__main__":
                     del profile
 
                     # also calculate the bandwidth requirement if we're just sending syndrome
-                    naive_out_bits = 1  # just the parity bit
+                    naive_out_bits = 1737  # output edge bit for every edge
+                    # matches between defect vertices: for each defect vertex it needs the information of peer,
+                    compressed_out_bits = (defect_num / num_entries) * (INDEX_BITS - 1)
                     naive_in_bits = regular_vertices  # naive encoding of the syndrome
+                    # compress using defect index encoding, plus one ending signal bit (at least one bit even no defect)
                     compressed_in_bits = (defect_num / num_entries) * (
                         INDEX_BITS
                         - 1  # because we don't need to send indices of blossoms in the syndrome
-                    )  # using index
+                    ) + 1
 
                     print_result = (
-                        "%f %d %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %d %d %.3e"
+                        "%e %d %.3e %.3e %.3e %.3e %.3e %.3e %.3e %.3e %d %d %.3e %.3e"
                         % (
                             p,
                             num_entries,
@@ -258,6 +261,7 @@ if __name__ == "__main__":
                             naive_out_bits,
                             naive_in_bits,
                             compressed_in_bits,
+                            compressed_out_bits,
                         )
                     )
                     print(print_result)
