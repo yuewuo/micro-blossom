@@ -235,9 +235,9 @@ if __name__ == "__main__":
                     del profile
 
                     # also calculate the bandwidth requirement if we're just sending syndrome
-                    naive_out_bits = 1737  # output edge bit for every edge
+                    naive_out_bits = d * d  # output the correction for each data qubit
                     # matches between defect vertices: for each defect vertex it needs the information of peer,
-                    compressed_out_bits = (defect_num / num_entries) * (INDEX_BITS - 1)
+                    compressed_out_bits = 1
                     naive_in_bits = regular_vertices  # naive encoding of the syndrome
                     # compress using defect index encoding, plus one ending signal bit (at least one bit even no defect)
                     compressed_in_bits = (defect_num / num_entries) * (
