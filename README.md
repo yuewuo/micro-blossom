@@ -6,9 +6,9 @@ Paper coming soon!!! Stay tuned!!!
 
 Micro Blossom is a heterogenous architecture that solves **exact** MWPM decoding problem in sub-microsecond latency by
 taking advantage of vertex and edge-level fine-grained hardware acceleration.
-At the heart of Micro Blossom is an algorithm (equivalent to the original blossom algorithm) specifically optimized for resource-efficient RTL (register transfer level) implementation, with compact combinatorial logic and pipeline design.
-Given arbitrary decoding graph, Micro Blossom automatically generates a hardware implementation (either Verilog or VHDL depending on your needs) that accelerates the solution finding.
-The heterogenous architecture of Micro Blossom is shown below:
+At the heart of Micro Blossom is an algorithm (equivalent to the original blossom algorithm) specifically optimized for resource-efficient RTL (register transfer level) implementation, with compact combinational logic and pipeline design.
+Given arbitrary decoding graph, Micro Blossom automatically generates a hardware implementation (either Verilog or VHDL depending on your needs).
+The architecture of Micro Blossom is shown below:
 
 ![](./tutorial/src/img/architecture.png)
 
@@ -16,11 +16,11 @@ The heterogenous architecture of Micro Blossom is shown below:
 
 **14x latency reduction**: On a surface code of code distance $d=9$ and physical error rate of $p=0.001$ circuit-level noise model, we reduce the average
 latency from $5.1 \mu s$ using Parity Blossom on CPU (Apple M1 Max) to $367 ns$ using Micro Blossom on FPGA (VMK180), a 14x reduction in **latency**.
-Although [Sparse Blossom (PyMatching V2)](https://github.com/oscarhiggott/PyMatching) is generally faster in this case, it still incurs $3.2 \mu s$ latency considering the $2.4 \mu s$ pure calculation and at least $0.8 \mu s$ CPU-hardware communication latency (PCIe) when using powerful CPUs.
+Although [Sparse Blossom (PyMatching V2)](https://github.com/oscarhiggott/PyMatching) is generally faster than Parity Blossom, it still incurs $3.2 \mu s$ latency considering the $2.4 \mu s$ average CPU runtime in batch mode and at least $0.8 \mu s$ CPU-hardware communication latency (PCIe) when using powerful CPUs (would be even higher when using Apple chips with thunderbolt).
 
-**better effective error rate**: on various code distances than both Helios (hardware UF decoder, which runs even faster but loses accuracy) and Parity Blossom (running on M1 Max). It is only at very large code distances ($d \ge 13$) and physical error rate ($p \ge 0.5\%$) that Helios starts to outperform Micro Blossom. Such complexity is inherent to the optimality of blossom algorithm though. If one want to opt for decoding speed rather than accuracy, one can tune between MWPM and UF using Micro Blossom (currently not supported but could be easily ported from this [`max_tree_size` feature](https://github.com/yuewuo/fusion-blossom/issues/31) in the Fusion Blossom library)
+**better effective error rate**: than both Helios (hardware UF decoder, which runs even faster but loses accuracy) and Parity Blossom (running on M1 Max) on various code distances $d$ and physical error rates $p$. It is only at very large code distances ($d \ge 13$) and physical error rate ($p \ge 0.5\%$) that Helios starts to outperform Micro Blossom. Such complexity is inherent to the optimality of blossom algorithm though. If one want to opt for decoding speed rather than accuracy, this could be done easily by modifying the software part of Micro Blossom (see the [`max_tree_size` feature](https://github.com/yuewuo/fusion-blossom/issues/31) in the Fusion Blossom library)
 
-**latency distribution with exponential tail**: we observe an exponential tail of the latency distribution. The software implementation has similar behavior but it is affected by cache misses at those rare but complicated cases. In Micro Blossom, although we still have a CPU, the memory footprint is much smaller due to the fact that the decoding graph is not stored in the CPU at all. The CPU only has an active memory region that scales with $O(p^2 |V|)$ (Yes!!! not $O(p|V|)$ which is the average number of defect vertices, but rather $O(p^2 |V|)$, further reducing the memory size).
+**better worst-case time complexity and thus smaller tail in latency distribution**: We observe an exponential tail of the latency distribution. The software implementation has similar behavior but it is affected by cache misses as well as higher worst-case time complexity. First, Micro Blossom has a better worst-case time complexity of $O(|V|^3)$ than Sparse Blossom's $O(|V|^4)$. (We also propose a design that further reduces latency to $O(|V|^2 \log |V|)$ if more complicated, but still viable, software and hardware design is permitted. However, those optimizations in time complexity are too expensive in practice.) Second, the memory footprint of Micro Blossom is much smaller than both Sparse Blossom and Parity Blossom due to the fact that the decoding graph is not stored in the CPU at all. The CPU only has an active memory region that scales with $O(p^2 |V|)$ (Yes!!! not $O(p|V|)$ which is the average number of defect vertices, but rather $O(p^2 |V|)$, further reducing the memory size).
 
 Note that an improvement of latency is generally harder than improvement of throughput, because the latter can be achieved by
 increasing the number of cores using coarse-grained parallelism but latency is bounded by how much the algorithm is sequential at its core. Given the complexity and sequential nature of the blossom
