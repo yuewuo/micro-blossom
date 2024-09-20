@@ -14,7 +14,7 @@ The architecture of Micro Blossom is shown below:
 
 ## Benchmark Highlights
 
-**Correctness**: Like Fusion Blossom, we have not only mathematically proven the correctness, but also done massive correctness tests in cycle-accurate Verilog simulators under various conditions.
+**Correctness**: Like Fusion Blossom, we have not only mathematically proven the optimality of the MWPM it generates, but also done massive correctness tests in cycle-accurate Verilog simulators under various conditions.
 
 **14x latency reduction**: On a surface code of code distance $d=9$ and physical error rate of $p=0.001$ circuit-level noise model, we reduce the average
 latency from $5.1 \mu s$ using Parity Blossom on CPU (Apple M1 Max) to $367 ns$ using Micro Blossom on FPGA (VMK180), a 14x reduction in **latency**.
