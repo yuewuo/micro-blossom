@@ -14,6 +14,8 @@ The architecture of Micro Blossom is shown below:
 
 ## Benchmark Highlights
 
+**Correctness**: Like Fusion Blossom, we have not only mathematically proven the correctness, but also done massive correctness tests in cycle-accurate Verilog simulators under various conditions.
+
 **14x latency reduction**: On a surface code of code distance $d=9$ and physical error rate of $p=0.001$ circuit-level noise model, we reduce the average
 latency from $5.1 \mu s$ using Parity Blossom on CPU (Apple M1 Max) to $367 ns$ using Micro Blossom on FPGA (VMK180), a 14x reduction in **latency**.
 Although [Sparse Blossom (PyMatching V2)](https://github.com/oscarhiggott/PyMatching) is generally faster than Parity Blossom, it still incurs $3.2 \mu s$ latency considering the $2.4 \mu s$ average CPU runtime (even with batch mode) and at least $0.8 \mu s$ CPU-hardware communication latency (PCIe round-trip-time) when using powerful CPUs (would be even higher when using Apple chips with thunderbolt). In practice, the CPU-hardware communication will incur even higher latency due to at least two transactions of CPU read (syndrome) and CPU write (correction).
@@ -69,16 +71,21 @@ A few examples of how to generate and use this decoding graph is below
 
 ```sh
 # 1. generate example graphs in ./resources/graphs/*.json
-cd src/cpu/blossom && cargo run --release --bin generate_example_graphs && cd ..
+cd src/cpu/blossom
+cargo run --release --bin generate_example_graphs
+cd ..
 # (if you want to use the visualization tool to see these graphs, check src/cpu/blossom/bin/generate_example_graphs.rs)
 
 # 2. use one graph to generate a Verilog
 # you need to install Java and sbt build tool first, check:
 # https://spinalhdl.github.io/SpinalDoc-RTD/master/SpinalHDL/Getting%20Started/Install%20and%20setup.html
+mkdir gen
 sbt "runMain microblossom.MicroBlossomBusGenerator --graph ./resources/graphs/example_code_capacity_d3.json"
 # (for a complete list of supported arguments, sbt "runMain microblossom.MicroBlossomBusGenerator --help"
 # this command generates Verilog file at `./gen/MicroBlossomBus.v` with a default AXI4 interface.
 ```
+
+The generated Verilog can be used either in simulation (see test cases in `src/cpu/blossom/src/dual_module_axi4.rs` and `benchmark/behavior/tests/run.py`) or real hardware evaluation (see test cases in `benchmark/hardware/tests/run.py` which runs the same behavior tests but on real FPGA hardware).
 
 The benchmark scripts automate this process of generating the graphs, Verilog and the Xilinx project.
 For any question of how to use the project, please [email me](mailto:wuyue16pku@gmail.com).
