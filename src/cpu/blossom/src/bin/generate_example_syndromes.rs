@@ -91,22 +91,25 @@ fn main() {
             &[],
         );
     }
-    for d in [3, 5, 7, 9, 11, 13, 15, 17] {
-        let max_half_weight = 7; // do distinguish between different edges
-        let p = 0.001;
-        let config = json!({
-            "qubit_type": fusion_blossom::qecp::types::QubitType::StabZ,
-            "max_half_weight": max_half_weight,
-            "parallel_init": num_cpus::get() - 1,  // speed up construction
-        });
-        println!("qecp constructing circuit_level_d{d}...");
-        generate_syndromes_preset(
-            format!("circuit_level_d{d}_p{p}"),
-            d,
-            p,
-            max_half_weight,
-            ExampleCodeType::QECPlaygroundCode,
-            &["--code-config".to_string(), serde_json::to_string(&config).unwrap()],
-        );
-    }
+    // the below will need to have `qecp_integrate` feature enabled in `fusion_blossom` package,
+    // this will cause cyclic dependency errors. to solve it, one need to pull the fusion blossom package
+    // repo locally and change Cargo.toml to use that local clone. Then enable `qecp_integrate`.
+    // for d in [3, 5, 7, 9, 11, 13, 15, 17] {
+    //     let max_half_weight = 7; // do distinguish between different edges
+    //     let p = 0.001;
+    //     let config = json!({
+    //         "qubit_type": qecp::types::QubitType::StabZ,
+    //         "max_half_weight": max_half_weight,
+    //         "parallel_init": num_cpus::get() - 1,  // speed up construction
+    //     });
+    //     println!("qecp constructing circuit_level_d{d}...");
+    //     generate_syndromes_preset(
+    //         format!("circuit_level_d{d}_p{p}"),
+    //         d,
+    //         p,
+    //         max_half_weight,
+    //         ExampleCodeType::QECPlaygroundCode,
+    //         &["--code-config".to_string(), serde_json::to_string(&config).unwrap()],
+    //     );
+    // }
 }

@@ -680,13 +680,13 @@ pub mod tests {
         let defect_vertices = vec![163, 212, 213, 223, 224, 265, 273, 281, 323];
         println!("{defect_vertices:?}");
         let config = json!({
-            "code_type": fusion_blossom::qecp::code_builder::CodeType::RotatedPlanarCode,
-            "noise_model": fusion_blossom::qecp::noise_model_builder::NoiseModelBuilder::StimNoiseModel,
-            "qubit_type": fusion_blossom::qecp::types::QubitType::StabZ,
+            "code_type": qecp::code_builder::CodeType::RotatedPlanarCode,
+            "noise_model": qecp::noise_model_builder::NoiseModelBuilder::StimNoiseModel,
+            "qubit_type": qecp::types::QubitType::StabZ,
             "max_half_weight": 7,
             "trim_isolated_vertices": false,
         });
-        let mut code = QECPlaygroundCode::new(9, 0.005, config);
+        let mut code = crate::example_codes::QECPlaygroundCode::new(9, 0.005, config);
         let mut visualizer = Some(
             Visualizer::new(
                 option_env!("FUSION_DIR").map(|dir| dir.to_owned() + "/visualize/data/" + visualize_filename.as_str()),

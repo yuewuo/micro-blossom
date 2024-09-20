@@ -49,10 +49,8 @@ weak-table = "0.3.2"
 rand = "0.8.5"
 lazy_static = "1.4.0"
 petgraph = "0.6.4"
-qecp = { version = "0.2.4", optional = true }
-fusion-blossom = { path = "../../../../fusion-blossom", version = "0.2.9", features = [
-    "qecp_integrate",
-] }
+qecp = { version = "0.2.7" }
+fusion-blossom = { version = "0.2.12" }
 micro-blossom-nostd = { path = "../blossom-nostd", features = [
     "std",
     "obstacle_potentially_outdated",

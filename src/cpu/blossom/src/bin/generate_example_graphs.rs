@@ -3,6 +3,7 @@
 
 use fusion_blossom::example_codes::*;
 use fusion_blossom::visualize::*;
+use micro_blossom::example_codes::QECPlaygroundCode;
 use micro_blossom::resources::*;
 use serde_json::json;
 use std::env;
@@ -64,8 +65,8 @@ fn main() {
     for d in [3, 5, 7, 9, 11, 13, 15, 17] {
         let max_half_weight = 7; // do distinguish between different edges
         let config = json!({
-            "code_type": fusion_blossom::qecp::code_builder::CodeType::RotatedPlanarCode,
-            "qubit_type": fusion_blossom::qecp::types::QubitType::StabZ,
+            "code_type": qecp::code_builder::CodeType::RotatedPlanarCode,
+            "qubit_type": qecp::types::QubitType::StabZ,
             "max_half_weight": max_half_weight,
             "parallel_init": num_cpus::get() - 1,  // speed up construction
             "nm": d-1,  // d-1 noisy measurement rounds and 1 perfect measurement rounds

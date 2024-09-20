@@ -557,11 +557,11 @@ mod tests {
         let visualize_filename = "resources_micro_blossom_fusion_plan_2.json".to_string();
         let d = 3;
         let config = json!({
-            "qubit_type": fusion_blossom::qecp::types::QubitType::StabZ,
+            "qubit_type": qecp::types::QubitType::StabZ,
             "max_half_weight": 7,
             "nm": d-1,  // d-1 noisy measurement rounds and 1 perfect measurement rounds
         });
-        let mut code = QECPlaygroundCode::new(d, 0.001, config);
+        let mut code = crate::example_codes::QECPlaygroundCode::new(d, 0.001, config);
         let micro_blossom = MicroBlossomSingle::new_code(&code);
         println!("{:?}", micro_blossom.layer_fusion);
         visualize_code(&mut code, visualize_filename);

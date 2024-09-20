@@ -58,3 +58,27 @@ For people with concern about why we evaluate the average latency rather than wo
     - bram_speed: understand the CPU-FPGA communication cost under various clock frequencies
     - decoding_speed: evaluate the decoding latency under various conditions and its distribution on real VMK180 hardware
     - resource_estimate: post-implementation resource usage
+
+
+## Usage
+
+Micro Blossom consists of two parts: the CPU program in Rust and FPGA program in Scala.
+The FPGA part has a CLI program that generates Verilog/VHDL files given a decoding graph input.
+The decoding graph input is defined by a JSON format in `src/fpga/microblossom/utils/SingleGraph.scala`.
+A few examples of how to generate and use this decoding graph is below
+
+```sh
+# 1. generate example graphs in ./resources/graphs/*.json
+cd src/cpu/blossom && cargo run --release --bin generate_example_graphs && cd ..
+# (if you want to use the visualization tool to see these graphs, check src/cpu/blossom/bin/generate_example_graphs.rs)
+
+# 2. use one graph to generate a Verilog
+# you need to install Java and sbt build tool first, check:
+# https://spinalhdl.github.io/SpinalDoc-RTD/master/SpinalHDL/Getting%20Started/Install%20and%20setup.html
+sbt "runMain microblossom.MicroBlossomBusGenerator --graph ./resources/graphs/example_code_capacity_d3.json"
+# (for a complete list of supported arguments, sbt "runMain microblossom.MicroBlossomBusGenerator --help"
+# this command generates Verilog file at `./gen/MicroBlossomBus.v` with a default AXI4 interface.
+```
+
+The benchmark scripts automate this process of generating the graphs, Verilog and the Xilinx project.
+For any question of how to use the project, please [email me](mailto:wuyue16pku@gmail.com).

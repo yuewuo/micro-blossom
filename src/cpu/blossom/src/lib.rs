@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate serde_json;
+
 pub mod cli;
 pub mod dual_module_adaptor;
 pub mod dual_module_axi4;
@@ -7,6 +10,7 @@ pub mod dual_module_comb_offloading;
 pub mod dual_module_comb_vertex;
 pub mod dual_module_looper;
 pub mod dual_module_scala;
+pub mod example_codes;
 pub mod mwpm_solver;
 pub mod primal_module_embedded_adaptor;
 pub mod resources;

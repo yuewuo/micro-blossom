@@ -7,10 +7,12 @@ use fusion_blossom::dual_module::*;
 use fusion_blossom::dual_module_parallel::*;
 use fusion_blossom::dual_module_serial::*;
 use fusion_blossom::example_codes::*;
+use fusion_blossom::pointers::*;
 use fusion_blossom::primal_module::*;
 use fusion_blossom::primal_module_parallel::*;
 use fusion_blossom::util::*;
 use fusion_blossom::visualize::*;
+use micro_blossom::example_codes::QECPlaygroundCode;
 use serde_json::json;
 
 fn main() {
@@ -30,9 +32,9 @@ fn micro_fusion_demo() {
         0.01,
         json!({
             "nm": d - 1,
-            "code_type": fusion_blossom::qecp::code_builder::CodeType::RotatedPlanarCode,
-            "noise_model": fusion_blossom::qecp::noise_model_builder::NoiseModelBuilder::StimNoiseModel,
-            "qubit_type": fusion_blossom::qecp::types::QubitType::StabZ,
+            "code_type": qecp::code_builder::CodeType::RotatedPlanarCode,
+            "noise_model": qecp::noise_model_builder::NoiseModelBuilder::StimNoiseModel,
+            "qubit_type": qecp::types::QubitType::StabZ,
             "max_half_weight": 7,
             "trim_isolated_vertices": false,
         }),
@@ -126,9 +128,9 @@ fn micro_paper_circuit_level_demo() {
         0.001,
         json!({
             "nm": d - 1,
-            "code_type": fusion_blossom::qecp::code_builder::CodeType::RotatedPlanarCode,
-            "noise_model": fusion_blossom::qecp::noise_model_builder::NoiseModelBuilder::StimNoiseModel,
-            "qubit_type": fusion_blossom::qecp::types::QubitType::StabZ,
+            "code_type": qecp::code_builder::CodeType::RotatedPlanarCode,
+            "noise_model": qecp::noise_model_builder::NoiseModelBuilder::StimNoiseModel,
+            "qubit_type": qecp::types::QubitType::StabZ,
             "max_half_weight": 7,
             "trim_isolated_vertices": false,
         }),
@@ -162,9 +164,9 @@ fn micro_paper_phenomenological_demo() {
         0.001,
         json!({
             "nm": d - 1,
-            "code_type": fusion_blossom::qecp::code_builder::CodeType::RotatedPlanarCode,
-            "noise_model": fusion_blossom::qecp::noise_model_builder::NoiseModelBuilder::Phenomenological,
-            "qubit_type": fusion_blossom::qecp::types::QubitType::StabZ,
+            "code_type": qecp::code_builder::CodeType::RotatedPlanarCode,
+            "noise_model": qecp::noise_model_builder::NoiseModelBuilder::Phenomenological,
+            "qubit_type": qecp::types::QubitType::StabZ,
             "max_half_weight": 7,
             "trim_isolated_vertices": false,
         }),

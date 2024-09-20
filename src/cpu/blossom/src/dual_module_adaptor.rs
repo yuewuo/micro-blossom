@@ -1,5 +1,6 @@
 use crate::resources::*;
 use fusion_blossom::dual_module::*;
+use fusion_blossom::pointers::*;
 use fusion_blossom::util::*;
 use micro_blossom_nostd::interface::*;
 use micro_blossom_nostd::util::*;
