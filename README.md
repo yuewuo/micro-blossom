@@ -35,6 +35,7 @@ While Micro Blossom does use more resources (152k LUT, 4-bit weighted circuit-le
 the resource usage per logical qubit is 1.4k LUT, lower than the 2.1k LUT per logical qubit for Helios.
 This is due to the more efficient CPU-hardware collaboration of Micro Blossom where the hardware focuses on massive yet simple parallel computation while the
 CPU focuses on complicated yet rare computation.
+Note that Micro Blossom does require an additional CPU which is overall more expensive than Helios using pure FPGA, which is kind of expected due to the higher complexity of the blossom algorithm.
 
 ![](./tutorial/src/img/benchmark.png)
 
