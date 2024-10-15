@@ -97,6 +97,46 @@ configurations = [
         support_layer_fusion=True,
         context_depth=1024,
     ),
+    # python3 prepare.py --base-name circuit_fusion_context_2
+    Configuration(
+        base_name="circuit_fusion_context_1024",
+        d_vec=[3, 5, 7, 9, 11, 13, 15],
+        support_offloading=True,
+        support_layer_fusion=True,
+        context_depth=2,
+    ),
+    # python3 prepare.py --base-name circuit_fusion_context_4
+    Configuration(
+        base_name="circuit_fusion_context_1024",
+        d_vec=[3, 5, 7, 9, 11, 13, 15],
+        support_offloading=True,
+        support_layer_fusion=True,
+        context_depth=4,
+    ),
+    # python3 prepare.py --base-name circuit_fusion_context_8
+    Configuration(
+        base_name="circuit_fusion_context_1024",
+        d_vec=[3, 5, 7, 9, 11, 13, 15],
+        support_offloading=True,
+        support_layer_fusion=True,
+        context_depth=8,
+    ),
+    # python3 prepare.py --base-name circuit_fusion_context_16
+    Configuration(
+        base_name="circuit_fusion_context_1024",
+        d_vec=[3, 5, 7, 9, 11, 13, 15],
+        support_offloading=True,
+        support_layer_fusion=True,
+        context_depth=16,
+    ),
+    # python3 prepare.py --base-name circuit_fusion_context_32
+    Configuration(
+        base_name="circuit_fusion_context_1024",
+        d_vec=[3, 5, 7, 9, 11, 13, 15],
+        support_offloading=True,
+        support_layer_fusion=True,
+        context_depth=32,
+    ),
 ]
 
 
