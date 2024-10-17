@@ -4,7 +4,7 @@
 use fusion_blossom::cli::ExampleCodeType;
 use fusion_blossom::util::*;
 use micro_blossom::cli::execute_in_cli;
-use serde_json::json;
+// use serde_json::json;
 use serde_variant::to_variant_name;
 
 const COMMAND_HEAD: &'static [&'static str] = &[
