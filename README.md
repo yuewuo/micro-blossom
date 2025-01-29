@@ -90,3 +90,14 @@ The generated Verilog can be used either in simulation (see test cases in `src/c
 
 The benchmark scripts automate this process of generating the graphs, Verilog, and the Xilinx project.
 For any questions about how to use the project, please [email me](mailto:wuyue16pku@gmail.com).
+
+
+### Docker
+
+It is recommended to use the docker file to create an environment.
+
+```sh
+docker build --tag 'micro-blossom' .
+docker run -itd --name 'mb' -v .:/root/micro-blossom 'micro-blossom'
+docker exec -it mb bash  # into the bash environment
+```

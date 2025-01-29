@@ -38,6 +38,7 @@ fn generate_example(name: String, code: impl ExampleCode + FusionVisualizer) {
 
 fn main() {
     let max_half_weight = 1;
+    generate_example(format!("d3"), CodeCapacityRepetitionCode::new(3, 0.1, max_half_weight)); // for simple example
     for d in [3, 5] {
         generate_example(
             format!("code_capacity_d{d}"),

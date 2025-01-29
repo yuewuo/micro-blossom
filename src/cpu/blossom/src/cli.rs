@@ -188,9 +188,12 @@ enum TestCommands {
     PrimalEmbedded(StandardTestParameters),
     DualComb(StandardTestParameters),
     EmbeddedComb(StandardTestParameters),
+    PaperSection5(StandardTestParameters), // alias for `EmbeddedComb`
     EmbeddedCombPreMatching(StandardTestParameters),
+    PaperSection6(StandardTestParameters), // alias for `EmbeddedCombPreMatching`
     EmbeddedCombLayerFusion(StandardTestParameters),
     EmbeddedCombPreMatchingLayerFusion(StandardTestParameters),
+    PaperSection7(StandardTestParameters), // alias for `EmbeddedCombPreMatchingLayerFusion`
     EmbeddedScala(StandardTestParameters),
     EmbeddedLooper(StandardTestParameters),
     EmbeddedAxi4(StandardTestParameters),
@@ -360,8 +363,10 @@ impl TestCommands {
         let (primal_dual_type, parameters, primal_dual_config) = match self.clone() {
             TestCommands::PrimalEmbedded(parameters) => ("primal-embedded", parameters, json!({})),
             TestCommands::DualComb(parameters) => ("dual-comb", parameters, json!({})),
-            TestCommands::EmbeddedComb(parameters) => ("embedded-comb", parameters, json!({})),
-            TestCommands::EmbeddedCombPreMatching(parameters) => (
+            TestCommands::EmbeddedComb(parameters) | TestCommands::PaperSection5(parameters) => {
+                ("embedded-comb", parameters, json!({}))
+            }
+            TestCommands::EmbeddedCombPreMatching(parameters) | TestCommands::PaperSection6(parameters) => (
                 "embedded-comb",
                 parameters,
                 json!({"dual":{"sim_config":{"support_offloading":true}}}),
@@ -371,7 +376,7 @@ impl TestCommands {
                 parameters,
                 json!({"dual":{"sim_config":{"support_layer_fusion":true}}}),
             ),
-            TestCommands::EmbeddedCombPreMatchingLayerFusion(parameters) => (
+            TestCommands::EmbeddedCombPreMatchingLayerFusion(parameters) | TestCommands::PaperSection7(parameters) => (
                 "embedded-comb",
                 parameters,
                 json!({"dual":{"sim_config":{"support_offloading":true,"support_layer_fusion":true}}}),
@@ -380,6 +385,13 @@ impl TestCommands {
             TestCommands::EmbeddedLooper(parameters) => ("embedded-looper", parameters, json!({})),
             TestCommands::EmbeddedAxi4(parameters) => ("embedded-axi4", parameters, json!({})),
         };
+        if matches!(
+            self.clone(),
+            TestCommands::EmbeddedScala(_) | TestCommands::EmbeddedLooper(_) | TestCommands::EmbeddedAxi4(_)
+        ) {
+            // Verilator compilation is too time-consuming on large code distances
+            env::set_var("SMALL_TEST_ONLY", "1");
+        }
         let command_head = vec![format!(""), format!("benchmark")];
         let mut command_tail = vec!["--total-rounds".to_string(), format!("{}", parameters.total_rounds)];
         if !parameters.disable_fusion {

@@ -60,7 +60,8 @@ bin/*
 simWorkspace/
 tmp/
 null
-/gen/
+/gen/*
+!/gen/README.md
 
 *.pyc
 *.py~
