@@ -47,7 +47,7 @@ RUN verilator --version
 # Install SBT for Scala
 WORKDIR $HOME
 RUN curl -fL https://github.com/coursier/coursier/releases/latest/download/cs-x86_64-pc-linux.gz | gzip -d > cs && chmod +x cs && ./cs setup -y
-RUN echo 'export PATH="${PATH}:/root/.local/share/coursier/bin"' >> ~/.bashrc 
+RUN echo 'export PATH="${PATH}:$HOME/.local/share/coursier/bin"' >> ~/.bashrc 
 RUN source $HOME/.bashrc
 WORKDIR $HOME/micro-blossom
 RUN sbt version
@@ -65,3 +65,7 @@ RUN cargo build --release
 # Build Micro Blossom binary
 WORKDIR $HOME/micro-blossom/src/cpu/blossom
 RUN cargo build --release
+
+# Export several useful shortcuts
+RUN echo 'export MB_CIRCUIT_LEVEL_FINAL="$HOME/micro-blossom/benchmark/hardware/frequency_optimization/circuit_level_final"' >> ~/.bashrc 
+RUN echo 'export MB_VIVADO_PROJECTS="$MB_CIRCUIT_LEVEL_FINAL/tmp-project"' >> ~/.bashrc 

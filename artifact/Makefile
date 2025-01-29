@@ -18,6 +18,14 @@ partial-clean: clean-example-graphs clean-resource-estimate clean-rust-build cle
 	@echo "    try complete-clean.sh for cleaning everything"
 	@echo ""
 
+complete-clean: partial-clean clean-vivado-projects clean-speed-data
+
+# rebuild everything from scratch, including all graphs, syndromes and Vivado projects
+build: build-vivado-projects
+
+##################################################
+# partial clean targets
+##################################################
 
 clean-rust-build:
 	rm -rf $(GIT_DIR)/src/cpu/blossom/target
@@ -40,3 +48,37 @@ clean-sbt:
 	rm -rf $(GIT_DIR)/project/target
 	rm -rf $(GIT_DIR)/target
 	rm -rf $(GIT_DIR)/tmp
+
+
+##################################################
+# complete clean targets
+##################################################
+
+clean-vivado-projects:
+	rm -rf $(GIT_DIR)/benchmark/hardware/frequency_optimization/code_capacity_final/tmp-graph
+	rm -rf $(GIT_DIR)/benchmark/hardware/frequency_optimization/code_capacity_final/tmp-project
+
+clean-speed-data: clean-speed-software clean-speed-section5 clean-speed-section6 clean-speed-section7
+
+clean-speed-software:
+	cd $(GIT_DIR)/benchmark/hardware/decoding_speed/circuit_level_no_offloading ; \
+		rm -rf tmp-syndrome tmp-profile *.pdf *.txt
+
+clean-speed-section5:
+	cd $(GIT_DIR)/benchmark/hardware/decoding_speed/circuit_level_no_offloading ; \
+		rm -rf tmp-syndrome tmp-tty *.pdf *.txt
+
+clean-speed-section6:
+	cd $(GIT_DIR)/benchmark/hardware/decoding_speed/circuit_level_batch ; \
+		rm -rf tmp-syndrome tmp-tty *.pdf *.txt
+
+clean-speed-section7:
+	cd $(GIT_DIR)/benchmark/hardware/decoding_speed/circuit_level_fusion ; \
+		rm -rf tmp-syndrome tmp-tty *.pdf *.txt
+
+##################################################
+# recover the builds
+##################################################
+
+build-vivado-projects:
+	cd $(GIT_DIR)/benchmark/hardware/frequency_optimization/code_capacity_final && python3 run.py
