@@ -61,7 +61,7 @@ def main():
         optimized = configuration.optimized_project()
         print(
             f"{configuration.name()}: {optimized.clock_frequency}MHz "
-            + "(estimated max = {optimized.estimate_maximum_frequency()}MHz)"
+            + f"(estimated max = {optimized.estimate_maximum_frequency()}MHz)"
         )
         graph_file_path = optimized.graph_builder.graph_file_path()
         graph = SingleGraph.from_file(graph_file_path)
