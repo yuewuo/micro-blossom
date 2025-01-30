@@ -69,7 +69,9 @@ def main():
             f"{configuration.name()} {optimized.clock_frequency} {optimized.estimate_maximum_frequency()} {graph.vertex_num}"
         )
 
-    with open("best_frequencies.txt", "w", encoding="utf8") as f:
+    with open(
+        os.path.join(this_dir, "best_frequencies.txt"), "w", encoding="utf8"
+    ) as f:
         f.write("\n".join(results))
 
 

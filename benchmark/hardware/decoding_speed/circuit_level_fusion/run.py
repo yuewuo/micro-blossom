@@ -30,5 +30,5 @@ if __name__ == "__main__":
             result = benchmarker.run()
             latency_vec.append(result.latency)
         data.append(latency_vec)
-    save_data(data, this_dir)
+        save_data(data, this_dir)
     plot_data(this_dir)

@@ -61,7 +61,7 @@ if __name__ == "__main__":
                 )
                 if os.path.exists(benchmark_profile_path):
                     print(
-                        "[warning] found existing profile (if you think it's stale, delete it and rerun)"
+                        f"[warning] found existing profile (if you think it's stale, delete it and rerun): {benchmark_profile_path}"
                     )
                 else:
                     command = fusion_blossom_benchmark_command(
@@ -87,5 +87,5 @@ if __name__ == "__main__":
                 distribution.add_profile(profile)
             latency_vec.append(distribution)
         data.append(latency_vec)
-    save_data(data, this_dir)
+        save_data(data, this_dir)
     plot_data(this_dir)
