@@ -265,6 +265,19 @@ sbt "runMain vexriscv.demo.Briey"  # try to build briey
 VEXRISCV_REGRESSION_SEED=42 VEXRISCV_REGRESSION_LINUX_REGRESSION=no VEXRISCV_REGRESSION_ZEPHYR_COUNT=0 sbt "testOnly vexriscv.TestIndividualFeatures"
 ```
 
+## Publish to Zenodo
+
+To prepare the package by removing all the irrelevant files:
+
+```sh
+cd artifacts
+make partial-clean
+# make sure the correct Vivado projects are included
+du -sh  # should be something close to 39G
+cd ../..
+tar --exclude="**/.git" --exclude="**/.metals" --exclude="**/.vscode" -czvf micro-blossom.tar.gz micro-blossom
+```
+
 ## References
 
 [Blog: Rust on Risc-V, by Craig J Bishop](https://craigjb.com/2020/01/22/ecp5/)

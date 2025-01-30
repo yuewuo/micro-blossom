@@ -1,5 +1,7 @@
 FROM ubuntu:22.04
 
+SHELL ["/bin/bash", "--login", "-c"]
+
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
@@ -26,46 +28,48 @@ RUN apt-get update && apt-get install -y \
     && apt-get clean
 
 # Install Rust toolchain
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-RUN . "$HOME/.cargo/env"
-RUN rustup default nightly-2023-11-16
-RUN rustup target add aarch64-unknown-none
+# ENV PATH="$PATH:$HOME/.cargo/bin"
+RUN cd $HOME \
+    && curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    && echo 'export PATH="${PATH}:$HOME/.cargo/bin"' >> ~/.bashrc \
+    && export PATH="${PATH}:$HOME/.cargo/bin" \
+    && rustup default nightly-2023-11-16 \
+    && rustup target add aarch64-unknown-none
 
 # Install verilator
-WORKDIR $HOME
-RUN git clone https://github.com/verilator/verilator
-WORKDIR $HOME/verilator
-RUN git pull
-RUN git checkout v5.014
-RUN ccache -M 50G
-RUN autoconf
-RUN ./configure
-RUN make -j `nproc`
-RUN make install
-RUN verilator --version
+RUN cd $HOME \
+    && git clone https://github.com/verilator/verilator \
+    && cd $HOME/verilator \
+    && git pull \
+    && git checkout v5.014 \
+    && ccache -M 50G \
+    && autoconf \
+    && ./configure \
+    && make -j `nproc` \
+    && make install \
+    && verilator --version
 
 # Install SBT for Scala
-WORKDIR $HOME
-RUN curl -fL https://github.com/coursier/coursier/releases/latest/download/cs-x86_64-pc-linux.gz | gzip -d > cs && chmod +x cs && ./cs setup -y
-RUN echo 'export PATH="${PATH}:$HOME/.local/share/coursier/bin"' >> ~/.bashrc 
-RUN source $HOME/.bashrc
-WORKDIR $HOME/micro-blossom
-RUN sbt version
+# ENV PATH="$PATH:$HOME/.local/share/coursier/bin"
+ARG CS_URL="https://github.com/coursier/coursier/releases/latest/download/cs-x86_64-pc-linux.gz"
+RUN cd $HOME \
+    && curl -fL $CS_URL | gzip -d > cs \
+    && chmod +x cs \
+    && ./cs setup -y \
+    && echo 'export PATH="${PATH}:$HOME/.local/share/coursier/bin"' >> ~/.bashrc \
+    && export PATH="${PATH}:$HOME/.local/share/coursier/bin"
 
 # Install Python dependencies
-RUN pip install -r $HOME/micro-blossom/benchmark/requirements.txt
+RUN pip install dataclasses-json hjson numpy protobuf scipy gitpython matplotlib
 
 # Download Fusion Blossom and put it aside the micro-blossom folder
-WORKDIR $HOME
-RUN git clone https://github.com/yuewuo/fusion-blossom.git
-WORKDIR $HOME/fusion-blossom
-RUN git checkout c90d75362e7994f90b1199af3ec648ae6ebc034b
-RUN cargo build --release
-
-# Build Micro Blossom binary
-WORKDIR $HOME/micro-blossom/src/cpu/blossom
-RUN cargo build --release
+ARG FUSION_BLOSSOM_COMMIT="c90d75362e7994f90b1199af3ec648ae6ebc034b"
+RUN cd $HOME \
+    && git clone https://github.com/yuewuo/fusion-blossom.git \
+    && cd $HOME/fusion-blossom \
+    && git checkout $FUSION_BLOSSOM_COMMIT \
+    && cargo build --release
 
 # Export several useful shortcuts
-RUN echo 'export MB_CIRCUIT_LEVEL_FINAL="$HOME/micro-blossom/benchmark/hardware/frequency_optimization/circuit_level_final"' >> ~/.bashrc 
-RUN echo 'export MB_VIVADO_PROJECTS="$MB_CIRCUIT_LEVEL_FINAL/tmp-project"' >> ~/.bashrc 
+RUN echo 'export MB_CIRCUIT_LEVEL_FINAL="$HOME/micro-blossom/benchmark/hardware/frequency_optimization/circuit_level_final"' >> ~/.bashrc \
+    && echo 'export MB_VIVADO_PROJECTS="$MB_CIRCUIT_LEVEL_FINAL/tmp-project"' >> ~/.bashrc 
