@@ -13,6 +13,9 @@ else:
 
 # create platform from XSA only if not exists
 if not client.list_platforms():
+    # remove the whole folder to avoid Exception: 'Cannot create platform
+    shutil.rmtree(workspace)
+    # create platform
     platform = client.create_platform_component(
         name=name,
         hw=f"./{name}.xsa",

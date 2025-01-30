@@ -12,6 +12,9 @@ else:
 
 # create platform from XSA only if not exists
 if not client.list_platforms():
+    # remove the whole folder to avoid Exception: 'Cannot create platform
+    shutil.rmtree(workspace)
+    # create platform
     platform = client.create_platform_component(name=name, hw=f"./{name}.xsa", os="standalone", cpu=cpus[0], domain_name=f"standalone_{cpus[0]}")
     for cpu in cpus[1:]:
         platform.add_domain(cpu=cpu, os="standalone", name=f"standalone_{cpu}")
