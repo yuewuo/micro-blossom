@@ -11,7 +11,7 @@ all:
 	@echo "        a complete clean will require the user to install Vivado Design Suite and a VMK180"
 	@echo "        evaluation board to rerun everything from scratch"
 
-partial-clean: clean-example-graphs clean-resource-estimate clean-rust-build clean-embedded-build
+partial-clean: clean-example-graphs clean-resource-estimate clean-rust-build clean-embedded-build clean-artifact-pdf
 	@echo ""
 	@echo "Clean the build files that are only created during the artifact run"
 	@echo "This command will not clean the Vivado projects and trace files shipped with the artifact"
@@ -40,6 +40,9 @@ clean-simulation:
 clean-resource-estimate:
 	rm -f $(GIT_DIR)/benchmark/hardware/resource_estimate/circuit_level/tmp/*
 
+clean-artifact-pdf:
+	rm -f $(GIT_DIR)/artifact/*.pdf
+
 clean-example-graphs:
 	rm -f $(GIT_DIR)/resources/graphs/*.json
 
@@ -55,30 +58,30 @@ clean-sbt:
 ##################################################
 
 clean-vivado-projects:
-	rm -rf $(GIT_DIR)/benchmark/hardware/frequency_optimization/code_capacity_final/tmp-graph
-	rm -rf $(GIT_DIR)/benchmark/hardware/frequency_optimization/code_capacity_final/tmp-project
+	rm -rf $(GIT_DIR)/benchmark/hardware/frequency_optimization/circuit_level_final/tmp-graph
+	rm -rf $(GIT_DIR)/benchmark/hardware/frequency_optimization/circuit_level_final/tmp-project
 
 clean-speed-data: clean-speed-software clean-speed-section5 clean-speed-section6 clean-speed-section7
 
 clean-speed-software:
 	cd $(GIT_DIR)/benchmark/hardware/decoding_speed/circuit_level_no_offloading ; \
-		rm -rf tmp-syndrome tmp-profile *.pdf *.txt
+		rm -rf tmp-syndrome tmp-profile *.pdf
 
 clean-speed-section5:
 	cd $(GIT_DIR)/benchmark/hardware/decoding_speed/circuit_level_no_offloading ; \
-		rm -rf tmp-syndrome tmp-tty *.pdf *.txt
+		rm -rf tmp-syndrome tmp-tty *.pdf
 
 clean-speed-section6:
 	cd $(GIT_DIR)/benchmark/hardware/decoding_speed/circuit_level_batch ; \
-		rm -rf tmp-syndrome tmp-tty *.pdf *.txt
+		rm -rf tmp-syndrome tmp-tty *.pdf
 
 clean-speed-section7:
 	cd $(GIT_DIR)/benchmark/hardware/decoding_speed/circuit_level_fusion ; \
-		rm -rf tmp-syndrome tmp-tty *.pdf *.txt
+		rm -rf tmp-syndrome tmp-tty *.pdf
 
 ##################################################
 # recover the builds
 ##################################################
 
 build-vivado-projects:
-	cd $(GIT_DIR)/benchmark/hardware/frequency_optimization/code_capacity_final && python3 run.py
+	cd $(GIT_DIR)/benchmark/hardware/frequency_optimization/circuit_level_final && python3 run.py

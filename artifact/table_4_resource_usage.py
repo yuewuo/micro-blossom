@@ -80,7 +80,7 @@ def main() -> list[Column]:
         columns.append(column)
 
     title_print("generating table PDF")
-    generate_table(columns, "resource_usage.pdf")
+    generate_table(columns, "table_4.pdf")
 
     return columns
 
