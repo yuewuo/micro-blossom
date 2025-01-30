@@ -71,7 +71,7 @@ clean-vivado-projects:
 	rm -rf $(GIT_DIR)/benchmark/hardware/frequency_optimization/circuit_level_final/tmp-graph
 	rm -rf $(GIT_DIR)/benchmark/hardware/frequency_optimization/circuit_level_final/tmp-project
 
-clean-speed-data: clean-speed-software clean-speed-section5 clean-speed-section6 clean-speed-section7
+clean-speed-data: clean-speed-software clean-speed-section5 clean-speed-section6 clean-speed-section7 clean-artifact-pdf
 
 clean-speed-software:
 	cd $(GIT_DIR)/benchmark/hardware/decoding_speed/circuit_level_software ; \

@@ -275,7 +275,26 @@ make partial-clean
 # make sure the correct Vivado projects are included
 du -sh  # should be something close to 39G
 cd ../..
-tar --exclude="**/.git" --exclude="**/.metals" --exclude="**/.vscode" -czvf micro-blossom.tar.gz micro-blossom
+# make sure to include the .git folder, since the Python scripts use the git repo to find paths
+tar --exclude="**/.metals" --exclude="**/.vscode" -czvf micro-blossom.tar.gz micro-blossom
+```
+
+To prepare a test machine for external AE reviewers, I set up another user on my Ubuntu22.04 machine.
+I also need to set up permission for the user to access docker and the tty device, using the following commands
+
+```sh
+sudo usermod -aG docker $USER
+# better inside a tmux session since it should run forever in background
+sudo picocom /dev/ttyUSB1 -b 115200 --imap lfcrlf -g /home/ae/micro-blossom/src/fpga/utils/ttymicroblossom
+```
+
+We also need to set up access for the Digilent USB adaptor so that the new user can access the FPGA device via xsdb.
+This is a little bit trikky though, see [this post](https://blog.t123yh.xyz:2/index.php/archives/1013) for permitting multiple users to share the device:
+
+```sh
+sudo adduser $USER dialout  # add to the dialout group
+sudo rm /tmp/digilent-adept2-*  # need to remove all such files
+python3 artifact/test_tty.py  # see if that works for this new user
 ```
 
 ## References
