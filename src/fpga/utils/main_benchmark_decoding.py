@@ -289,7 +289,9 @@ class DecodingSpeedBenchmarkerBasic:
         defects_file_path = self.generate_defects()
         dest_file_path = os.path.join(embedded_dir, "embedded.defects")
         dest_file_ori_path = os.path.join(embedded_dir, "original.defects")
-        shutil.move(dest_file_path, dest_file_ori_path)
+        has_original = os.path.exists(dest_file_path)
+        if has_original:
+            shutil.move(dest_file_path, dest_file_ori_path)
         try:
             shutil.copyfile(defects_file_path, dest_file_path)
             # build the project
@@ -319,7 +321,8 @@ class DecodingSpeedBenchmarkerBasic:
                 f.write(tty_output)
         finally:
             # delete the defect file, because otherwise it might introduce confusion
-            shutil.move(dest_file_ori_path, dest_file_path)
+            if has_original:
+                shutil.move(dest_file_ori_path, dest_file_path)
         return BenchmarkDecodingResult.from_tty_output(tty_output)
 
 
