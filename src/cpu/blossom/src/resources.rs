@@ -11,20 +11,31 @@ use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MicroBlossomSingle {
+    /// only for visualization positions of the vertices
     pub positions: Vec<Position>,
+    /// number of vertices, including virtual vertices
     pub vertex_num: usize,
+    /// each edge is a tuple of (left vertex, right vertex, weight)
     pub weighted_edges: Vec<WeightedEdge>,
+    /// virtual vertices that corresponds to the boundary of the code, can be matched arbitrary times
     pub virtual_vertices: Vec<usize>,
-    /// a binary tree from every vertex/edge to a single root
+    /// a binary tree from every vertex to a single root, for communication with CPU
     pub vertex_binary_tree: BinaryTree,
+    /// a binary tree from every edge to a single root, for communication with CPU
     pub edge_binary_tree: BinaryTree,
+    /// a combined binary tree from vertex and edge, for communication with CPU
     pub vertex_edge_binary_tree: BinaryTree, // first vertex, then edge
+    /// maximum growth of each vertex, should be set to the maximum possible length to the nearest virtual vertex;
+    /// if simplicity is desired, set it to sum_{e \in E} w_e would suffice.
     pub vertex_max_growth: Vec<isize>,
-    /// primal offloading
+    /// primal offloading, with three types: regular edge, virtual edge and fusion edge
     pub offloading: OffloadingFinder,
-    /// microscopic fusion
+    /// round-wise fusion, supposedly layer by layer but can be customized
     pub layer_fusion: Option<LayerFusion>,
-    /// parity tracker allows the hardware to report the pre-matched result
+    /// parity tracker allows the hardware to report the pre-matched result;
+    /// when combining with the parity result from the CPU, it constitutes the complete decoded result.
+    /// an arbitrary number of parity reports is supported, but they are not allowed to change
+    /// in runtime in the current implementation.
     pub parity_reporters: Option<ParityReporters>,
 }
 
@@ -32,13 +43,17 @@ pub struct MicroBlossomSingle {
 pub struct Position {
     pub i: f64,
     pub j: f64,
+    /// time axis, pointing upwards
     pub t: f64,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct WeightedEdge {
+    /// left vertex
     pub l: usize,
+    /// right vertex
     pub r: usize,
+    /// weight
     pub w: isize,
 }
 
@@ -59,19 +74,20 @@ pub struct BinaryTreeNode {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct BinaryTree {
+    /// the number of nodes is equal to the number of elements in the binary tree
     nodes: Vec<BinaryTreeNode>,
 }
 
 /// the type of offloading
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum OffloadingType {
-    /// a pair of defects match with each other
+    /// a pair of defects match with each other (regular edge)
     #[serde(rename = "dm")]
     DefectMatch {
         #[serde(rename = "e")]
         edge_index: usize,
     },
-    /// a defect match with virtual vertex
+    /// a defect match with virtual vertex (boundary edge)
     #[serde(rename = "vm")]
     VirtualMatch {
         #[serde(rename = "e")]
