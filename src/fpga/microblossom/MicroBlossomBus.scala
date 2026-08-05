@@ -14,7 +14,7 @@ package microblossom
  *        the next time you actually read the obstacle.
  *     2. Current implementation only supports one obstacle channel. The address space allows for multiple obstacles
  *        but implementation is missing.
- *     3. To maximum the throughput, we allow obstacle pre-fetching by issuing a FindObstacle explicitly. If the
+ *     3. To maximize the throughput, we allow obstacle pre-fetching by issuing a FindObstacle explicitly. If the
  *        `maximumGrowth` value is not changed from last time, the result is fed back immediately.
  *
  */
@@ -71,7 +71,7 @@ import org.rogach.scallop._
 // 2. 128KB context readouts at [0x2_0000, 0x4_0000), each context takes 128 byte space, assuming no more than 1024 contexts
 //    [context 0]
 //      0: (R) 64 bits timestamp of receiving the last ``load'' instruction
-//             (reading this address will also waiting for all the transactions of this context to be completed)
+//             (reading this address will also wait for all the transactions of this context to be completed)
 //      0: (W:clear) clear the 16 bits accumulated_grown value
 //      8: (R) 64 bits timestamp of receiving the last ``growable = infinity'' response
 //      16: (RW) 16 bits maximum growth write (offloaded primal), when 0, disable offloaded primal,
@@ -589,7 +589,7 @@ case class MicroBlossomBus[T <: IMasterSlave, F <: BusSlaveFactoryDelayed](
       }
     }
 
-    // must entre this state before issuing an obstacle: issuing multiple FindObstacle instruction
+    // must enter this state before issuing an obstacle: issuing multiple FindObstacle instruction
     // in the queue causes data races, because the maximumGrowth value is not updated according to the last
     // accumulatedGrown value
     val stateReadIssueFindObstacleWaitPending: State = new State {

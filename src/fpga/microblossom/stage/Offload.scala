@@ -76,7 +76,7 @@ case class StageOffloadEdge(config: DualConfig) extends Bundle {
 case class StageOffloadEdge2(config: DualConfig) extends Bundle {
   val state = EdgeState(config.weightBits)
   val isTight = Bool
-  val isTightExFusion = Bool // if the conditioned vertex is virtual, then this edge is not consider tight when counting
+  val isTightExFusion = Bool // if the conditioned vertex is virtual, then this edge is not considered tight when counting
   val compact = BroadcastCompact(config)
 
   def connect(last: StageOffloadEdge) = {

@@ -71,7 +71,7 @@ case class TimingReport(filepath: String) {
                   netlistResource = netlistResource
                 )
               )
-            case _ => // no nothing
+            case _ => // do nothing
           }
         }
       }
