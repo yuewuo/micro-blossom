@@ -62,7 +62,7 @@ case class ResourceReport(filepath: String) {
           isLastTitle = true
           lastTitle = title
           lastIndex = index
-        case _ => // no nothing
+        case _ => // do nothing
       }
     }
   } finally {

@@ -41,7 +41,7 @@ case class RepeatedReport(var report: VivadoReports, var count: Int = 1) {
       line match {
         case Config.CLBLUTPattern(num) =>
           return num.toInt
-        case _ => // no nothing
+        case _ => // do nothing
       }
     }
     throw new Exception("cannot find CLB LUT count in the table")
