@@ -23,7 +23,7 @@ impl<const VN: usize> LayerFusionData<VN> {
     }
 
     /// record a matching with some vertex that is currently virtual but will be fused later;
-    /// when `fuse_layer` is called, we should break such matchings becausse they are no longer valid
+    /// when `fuse_layer` is called, we should break such matchings because they are no longer valid
     pub fn append_break(&mut self, node_index: CompactNodeIndex) {
         debug_assert!(self.count_pending_breaks < VN);
         self.pending_breaks[self.count_pending_breaks] = node_index;
