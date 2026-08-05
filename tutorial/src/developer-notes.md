@@ -183,7 +183,7 @@ Note: you need to install proper version of scala.
 ```sh
 # build a single package with all dependencies at target/scala-2.12/microblossom.jar
 sbt assembly
-# run some main functino
+# run some main function
 scala -classpath target/scala-2.12/microblossom.jar microblossom.MicroBlossomBusGenerator --help
 ```
 

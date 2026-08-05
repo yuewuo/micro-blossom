@@ -82,7 +82,7 @@ cd ..
 # https://spinalhdl.github.io/SpinalDoc-RTD/master/SpinalHDL/Getting%20Started/Install%20and%20setup.html
 mkdir gen
 sbt "runMain microblossom.MicroBlossomBusGenerator --graph ./resources/graphs/example_code_capacity_d3.json"
-# (for a complete list of supported arguments, sbt "runMain microblossom.MicroBlossomBusGenerator --help"
+# (for a complete list of supported arguments, sbt "runMain microblossom.MicroBlossomBusGenerator --help")
 # this command generates Verilog file at `./gen/MicroBlossomBus.v` with a default AXI4 interface.
 ```
 
