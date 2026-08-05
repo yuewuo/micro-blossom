@@ -2,7 +2,7 @@
 //!
 //! A data type that keeps track of (partial) defect nodes and all blossom nodes.
 //! The defect nodes are kept partial because of the pre-decoder that never reports some of the
-//! defects if they are not evolves in potential complex matchings.
+//! defects if they are not involved in potential complex matchings.
 //!
 
 use crate::interface::*;
@@ -262,7 +262,7 @@ impl<const N: usize> PrimalNodes<N> {
         loop {
             let node = self.get_node(node_index);
             if node.grow_state.is_none() {
-                debug_assert!(node.parent.is_some(), "an inner node must have a outer parent blossom");
+                debug_assert!(node.parent.is_some(), "an inner node must have an outer parent blossom");
                 node_index = usu!(node.parent);
             } else {
                 return node_index;
@@ -277,7 +277,7 @@ impl<const N: usize> PrimalNodes<N> {
         loop {
             let node = self.get_node(node_index);
             if node.grow_state.is_none() {
-                debug_assert!(node.parent.is_some(), "an inner node must have a outer parent blossom");
+                debug_assert!(node.parent.is_some(), "an inner node must have an outer parent blossom");
                 second_outer_blossom = node_index;
                 node_index = usu!(node.parent);
             } else {
