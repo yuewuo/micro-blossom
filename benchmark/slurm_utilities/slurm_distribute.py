@@ -77,7 +77,7 @@ def confirm_or_die(action=""):
         if answer.upper() in ["Y", "YES"]:
             return
         elif answer.upper() in ["N", "NO"]:
-            raise "confirmation failed, exit"
+            raise Exception("confirmation failed, exit")
 
 class SlurmDistributeVec(list):
     def sanity_checked_append(self, command):
@@ -101,7 +101,7 @@ def slurm_distribute_wrap(program, filefolder):
             slurm_commands_vec = SlurmDistributeVec()
             def error_run_command_get_stdout(command):
                 print(f"should not call `run_command_get_stdout` here, command: ${command}")
-                raise "should not call `run_command_get_stdout` here"
+                raise Exception("should not call `run_command_get_stdout` here")
             program(slurm_commands_vec=slurm_commands_vec, run_command_get_stdout=error_run_command_get_stdout)
             stringify_commands = []
             def run_stringify_command(command):
@@ -260,7 +260,7 @@ def slurm_distribute_wrap(program, filefolder):
                 parsed_command = command_parse_qecp(stringify_command)
                 if parsed_command not in parsed_results:
                     print(f"couldn't find results for command '{stringify_command}'")
-                    raise "result not found"
+                    raise Exception("result not found")
                 return parsed_results[parsed_command], 0
             return program(slurm_commands_vec=None, run_command_get_stdout=feeding_output)
 
