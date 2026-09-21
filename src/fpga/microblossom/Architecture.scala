@@ -92,7 +92,7 @@ object Speed {
       case 0 => "Stay"
       case 1 => "Grow"
       case 2 => "Shrink"
-      case _ => throw new Exception(s"unknown speed field {speed(value)}")
+      case _ => throw new Exception(s"unknown speed field $value")
     }
   }
 }
