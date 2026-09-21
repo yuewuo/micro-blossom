@@ -117,7 +117,8 @@ class TestVariant:
 
     # find the edge 0 for testing in the graph file, see `src/cpu/embedded/src/mains/test_micro_blossom.rs`
     def find_edge_0(self) -> tuple[int, int, int]:
-        graph = SingleGraph.from_file(self.config()["graph"])
+        graph_path = self.config()["graph"]
+        graph = SingleGraph.from_file(graph_path)
         for edge_index in range(len(graph.weighted_edges)):
             edge = graph.weighted_edges[edge_index]
             for left, right in [(edge.l, edge.r), (edge.r, edge.l)]:
@@ -126,6 +127,9 @@ class TestVariant:
                     and left not in graph.virtual_vertices
                 ):
                     return left, right, edge.w
+        raise Exception(
+            f"no edge connects a regular vertex to a virtual vertex in {graph_path}"
+        )
 
     def embedded_main_config(self) -> dict[str, any]:
         config = self.config()
