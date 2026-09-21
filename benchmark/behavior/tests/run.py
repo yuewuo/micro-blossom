@@ -2,6 +2,7 @@ import os
 import sys
 import subprocess
 from dataclasses import dataclass
+from typing import Any
 import git, argparse
 
 git_root_dir = git.Repo(".", search_parent_directories=True).working_tree_dir
@@ -94,9 +95,9 @@ variants = [
 
 @dataclass
 class TestVariant:
-    variant: dict[str, any]
+    variant: dict[str, Any]
 
-    def config(self) -> dict[str, any]:
+    def config(self) -> dict[str, Any]:
         return {"graph": default_graph, **self.variant}
 
     def name(self) -> str:
@@ -127,7 +128,7 @@ class TestVariant:
                 ):
                     return left, right, edge.w
 
-    def embedded_main_config(self) -> dict[str, any]:
+    def embedded_main_config(self) -> dict[str, Any]:
         config = self.config()
         left, virtual, weight = self.find_edge_0()
         config["EDGE_0_LEFT"] = left
