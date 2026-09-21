@@ -100,7 +100,7 @@ def slurm_distribute_wrap(program, filefolder):
             # first gether all commands
             slurm_commands_vec = SlurmDistributeVec()
             def error_run_command_get_stdout(command):
-                print(f"should not call `run_command_get_stdout` here, command: ${command}")
+                print(f"should not call `run_command_get_stdout` here, command: {command}")
                 raise "should not call `run_command_get_stdout` here"
             program(slurm_commands_vec=slurm_commands_vec, run_command_get_stdout=error_run_command_get_stdout)
             stringify_commands = []

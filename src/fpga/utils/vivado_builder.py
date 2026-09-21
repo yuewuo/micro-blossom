@@ -124,7 +124,7 @@ class MicroBlossomGraphBuilder:
                     print("\n" + stdout)
                     assert returncode == 0, "command fails..."
                 else:
-                    raise Exception(f"transform not implemented for ${self.code_type}")
+                    raise Exception(f"transform not implemented for {self.code_type}")
 
             if self.visualize_graph:
                 command = fusion_blossom_command() + [
@@ -148,7 +148,7 @@ class MicroBlossomGraphBuilder:
                 if self.code_type == "rotated-planar-code":
                     command += ["qecp-rotated-planar-code", f"{self.d}"]
                 else:
-                    raise Exception(f"transform not implemented for ${self.code_type}")
+                    raise Exception(f"transform not implemented for {self.code_type}")
             print(command)
             stdout, returncode = run_command_get_stdout(command)
             print("\n" + stdout)
